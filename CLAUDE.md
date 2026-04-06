@@ -5,6 +5,75 @@ Hynek řekne název a nápad → Claude udělá vše ostatní.
 
 ---
 
+## Nastavení nového MacBooku (udělat jednou)
+
+Bez těchto nástrojů Claude nemůže plně automatizovat zakládání projektů.
+Projdi kroky v tomto pořadí.
+
+### 1. Xcode Command Line Tools (git, make, atd.)
+```bash
+xcode-select --install
+```
+
+### 2. Homebrew (package manager)
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+### 3. Node.js (přes nvm — správa verzí)
+```bash
+brew install nvm
+# přidej do ~/.zshrc:
+export NVM_DIR="$HOME/.nvm"
+[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
+# pak:
+source ~/.zshrc
+nvm install --lts
+nvm use --lts
+```
+
+### 4. GitHub CLI
+```bash
+brew install gh
+gh auth login
+# → zvolí: GitHub.com → HTTPS → Login with a browser
+```
+
+### 5. Vercel CLI
+```bash
+npm i -g vercel
+vercel login
+# → přihlásí přes browser
+```
+
+### 6. SSH klíč pro GitHub (pro git push)
+```bash
+ssh-keygen -t ed25519 -C "tvuj@email.cz"
+# Enter třikrát (výchozí cesta, bez hesla)
+cat ~/.ssh/id_ed25519.pub
+# zkopíruj výstup a přidej na github.com/settings/keys
+```
+
+### 7. Git konfigurace
+```bash
+git config --global user.name "darbujan"
+git config --global user.email "tvuj@email.cz"
+```
+
+### 8. Vercel — napoj GitHub účet
+Na vercel.com → Settings → Git → Connect GitHub účet `czhyenacz-g`.
+Zaškrtni "Auto-deploy on push" pro všechna repozitáře.
+
+### Ověření že vše funguje
+```bash
+node --version      # v20+
+git --version       # 2.x
+gh auth status      # Logged in to github.com
+vercel whoami       # tvoje jméno na Vercel
+```
+
+---
+
 ## Stack
 
 - **Next.js 15** (App Router)
