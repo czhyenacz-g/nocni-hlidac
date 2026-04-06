@@ -86,6 +86,21 @@ vercel whoami       # tvoje jméno na Vercel
 
 ---
 
+## Tokeny (API přístupy)
+
+Uloženy v `~/PhpstormProjects/starter/.tokens` — soubor není commitován (.gitignore).
+
+Obsahuje:
+- `GITHUB_TOKEN` — pro vytváření GitHub repozitářů přes API
+- `VERCEL_TOKEN` — pro vytváření a deploy Vercel projektů přes API
+
+Před každou akcí načti tokeny:
+```bash
+source ~/PhpstormProjects/starter/.tokens
+```
+
+---
+
 ## Jak založit nový projekt
 
 ### 1. Zkopíruj starter
