@@ -188,6 +188,24 @@ app/
 
 ---
 
+## E-mail (Zoho Mail)
+
+Pro každou novou doménu se nastavuje přesměrování e-mailu přes **Zoho Mail** (bezplatný plán, vlastní doména).
+
+### Postup
+1. Přihlas se na [zoho.com/mail](https://www.zoho.com/mail/) (účet Hynek)
+2. Přidej doménu: Settings → Domains → Add Domain → zadej `DOMENA.cz`
+3. Ověř doménu přidáním TXT záznamu do DNS (Zoho zobrazí přesnou hodnotu)
+4. Nastav MX záznamy dle instrukcí Zoho (obvykle `mx.zoho.eu`)
+5. Vytvoř aliasy / přesměrování: Settings → Email Forwarding → přidej `info@DOMENA.cz` → přesměruj na `hynek@darbujan.cz`
+
+### Checklist pro e-mail
+- [ ] Doména přidána a ověřena v Zoho Mail
+- [ ] MX záznamy nastaveny v DNS
+- [ ] Přesměrování `info@DOMENA.cz → hynek@darbujan.cz` funguje
+
+---
+
 ## Checklist pro nový projekt
 
 - [ ] Nahrazeny všechny `PROJECT_*` placeholdery
@@ -197,6 +215,7 @@ app/
 - [ ] Git repo vytvořeno a pushnuté
 - [ ] Vercel nasadil — URL funguje
 - [ ] OG image funguje: `https://DOMENA/api/og?title=Test`
+- [ ] E-mail přesměrování přes Zoho Mail nastaveno
 
 ---
 
