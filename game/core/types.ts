@@ -4,7 +4,8 @@
 // "at_door" (u dveří — stav pro DoorView, ne kamera) nejsou nutně kamerou
 // vidět; ostatní stage odpovídají konkrétním kamerám přes
 // CameraDefinition.enemyVisibleAtStage. Který podmnožinu stage nepřítel na
-// své trase skutečně navštíví, určuje EnemyDefinition.route.
+// své trase skutečně navštíví, určuje EnemyDefinition.routeVariants
+// (jedna se vylosuje při startu směny — viz GameState.enemyRoute).
 export type EnemyStage =
   | "outside"
   | "outer_yard"
@@ -48,7 +49,12 @@ export interface CameraDefinition {
 export interface EnemyDefinition {
   id: string;
   name: string;
-  route: EnemyStage[];
+  /**
+   * Možné celé trasy — při startu směny se jedna náhodně vylosuje (viz
+   * gameState.ts#pickRouteVariant) a po zbytek směny se používá jen ona
+   * (state.enemyRoute). Pro nepřítele s jedinou trasou stačí pole s jedním prvkem.
+   */
+  routeVariants: EnemyStage[][];
   /** Šance na postup na další stage při každém enemy tick (0–1). */
   advanceChance: number;
   /** Násobitel šance na postup, když ho hráč sleduje na kameře. */
@@ -146,6 +152,8 @@ export interface GameState {
   /** Kolikrát už se porucha za tuto směnu spustila (viz generator.faultMaxPerShift). */
   generatorFaultCount: number;
 
+  /** Trasa vylosovaná při startu směny z enemy.routeVariants — platí po celou směnu. */
+  enemyRoute: EnemyStage[];
   enemyStage: EnemyStage;
   /** Poslední rozhodnutí při vyhodnocení ENEMY_ADVANCE — jen pro DebugPanel, žádná logika na něm nestaví. */
   lastEnemyDecision: EnemyMoveDecision;

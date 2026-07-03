@@ -44,11 +44,14 @@ pryč a naopak kdy se k nim včas vrátit.
 
 ## Nepřítel
 
-Trasa (`basicIntruder`): `outside -> outer_yard -> right_hallway -> door_hallway
--> at_door -> attack`. `outside` není vidět na žádné kameře (nepřítel se teprve
-blíží), `at_door` taky ne — to je stav pro DoorView, ne kameru. Kamera
-`left_hallway` existuje, ale tato trasa jí neprochází — je připravená pro
-budoucího nepřítele/směnu s jinou trasou (viz TECH_DESIGN.md).
+Trasa (`basicIntruder`) má dvě stejně pravděpodobné varianty, jedna se vylosuje při
+startu směny a platí po celou její dobu:
+
+- `outside -> outer_yard -> right_hallway -> door_hallway -> at_door -> attack`
+- `outside -> outer_yard -> left_hallway -> door_hallway -> at_door -> attack`
+
+`outside` není vidět na žádné kameře (nepřítel se teprve blíží), `at_door` taky ne —
+to je stav pro DoorView, ne kameru.
 
 - Každé ~2 s (viz `night.enemyTickMs`) se vyhodnocuje, co nepřítel udělá — tři
   nezávislé možnosti:
@@ -106,7 +109,8 @@ hráče (`order`, nižší = dál venku):
 
 1. **Venkovní vstup** (`outer_yard`) — nejvzdálenější pohled
 2. **Pravá chodba** (`right_hallway`) / **Levá chodba** (`left_hallway`) — boční
-   chodby ke dveřím (`basicIntruder` jde jen pravou, levá čeká na budoucí trasu)
+   chodby ke dveřím (`basicIntruder` si na začátku směny náhodně vylosuje jednu
+   z nich, viz "Nepřítel" výše)
 3. **Chodba před dveřmi** (`door_hallway`) — poslední úsek, nejblíž hráči
 
 Otevřená kamera stojí malou energii a dočasně zpomaluje postup nepřítele, pokud

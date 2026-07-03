@@ -63,9 +63,17 @@ jak přišly z konfigurace).
 
 ## Definice nepřítele
 
-`game/enemies/basicIntruder.ts` — `EnemyDefinition` (trasa, šance na postup, násobitel při
-sledování, šance na ústup, rozsah čekání u zavřených dveří než se resetuje a jeho
-zrychlení světlem). Další typy nepřátel budou další soubory ve stejné složce.
+`game/enemies/basicIntruder.ts` — `EnemyDefinition` (varianty trasy, šance na postup,
+násobitel při sledování, šance na ústup, rozsah čekání u zavřených dveří než se resetuje a
+jeho zrychlení světlem). Další typy nepřátel budou další soubory ve stejné složce.
+
+### Varianty trasy (`routeVariants` / `state.enemyRoute`)
+
+`EnemyDefinition.routeVariants: EnemyStage[][]` — víc celých tras (u `basicIntruder` dvě,
+pravou a levou chodbou). `gameState.ts#pickRouteVariant` jednu náhodně vylosuje při startu
+směny (`createInitialGameState`) a uloží do `state.enemyRoute` — po zbytek směny se používá
+jen ona, neřeší se to znovu při každém kroku. Reducer (`ENEMY_ADVANCE`) pracuje výhradně s
+`state.enemyRoute`, nikdy s `night.enemy.routeVariants` přímo.
 
 ### Pravděpodobnostní pohyb (`retreatChance`)
 
@@ -80,7 +88,7 @@ mezi třemi možnostmi porovnáním s kumulativní pravděpodobností:
 Výsledek (`"advance" | "stay" | "retreat"`, plus `"waiting_at_door"` / `"gave_up"` /
 `"attack"` ze standoff větve) se ukládá do `state.lastEnemyDecision` — čistě pro
 `DebugPanel.tsx`, žádná další logika na něm nestaví. Retreat i advance sdílí stejné pole
-`route: EnemyStage[]` — funguje to i pro budoucího nepřítele s jinou trasou/kombinací
+`state.enemyRoute` — funguje to i pro budoucího nepřítele s jinou trasou/kombinací
 pravděpodobností beze změny reduceru.
 
 ### Standoff u zavřených dveří (`doorHoldRangeMs` / `doorHoldLightAccelMultiplier`)

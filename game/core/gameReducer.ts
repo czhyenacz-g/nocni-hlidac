@@ -193,7 +193,7 @@ export function createGameReducer(night: NightDefinition) {
       case "ENEMY_ADVANCE": {
         if (!state.isRunning) return state;
 
-        const route = night.enemy.route;
+        const route = state.enemyRoute;
         const currentIndex = route.indexOf(state.enemyStage);
         const atDoorStage = state.enemyStage === "at_door";
 
