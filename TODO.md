@@ -16,7 +16,7 @@
 - [x] Obrazovka vítězství
 - [x] Restart aktuální směny po smrti
 - [x] Základní lekačka (overlay + zvuk)
-- [x] Zvukové efekty pro napětí a smrt (placeholder + fallback)
+- [x] Zvukové efekty pro napětí a smrt (CC0 placeholder z Kenney.nl + fallback při chybějícím souboru)
 - [x] Postupná vizuální desaturace podle napětí
 - [x] Build a lokální spuštění bez chyb
 - [ ] Playtest a doladění balancu (šance postupu nepřítele, spotřeba energie)
@@ -24,7 +24,8 @@
 ## Další kroky po MVP
 
 - Skutečná pixel-art grafika (sprity pro místnost, kamery, nepřítele)
-- Skutečné audio soubory místo placeholderů v `public/assets/audio/`
+- Vlastní/kvalitnější audio místo Kenney.nl CC0 placeholderů (zejména `ambience_loop`,
+  který teď je jen krátký smyčkovaný efekt, ne skutečná ambientní kompozice)
 - Druhá směna (`night02.ts`) s jiným nepřítelem/balancem
 - Dynamická vrstvená ambience podle `tensionLevel`
 - Vylepšený jumpscare (delší/výraznější sekvence, ne jen barevný flash)

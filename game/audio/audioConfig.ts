@@ -1,14 +1,14 @@
 import { AUDIO_EVENTS, AudioEventId } from "./audioEvents";
 
 export interface AudioClipConfig {
-  /** Cesta k souboru v /public/assets/audio. Soubor nemusí zatím existovat. */
+  /** Cesta k souboru v /public/assets/audio. Nemusí existovat — AudioManager to ošetřuje. */
   src: string;
   volume: number;
   loop: boolean;
 }
 
-// Placeholder konfigurace zvuků pro první směnu. Soubory zatím nemusí existovat —
-// AudioManager selhání přehrání tiše ignoruje (viz audioManager.ts).
+// Placeholder zvuky (CC0, Kenney.nl — viz assets/audio/README.md) pro první směnu.
+// I kdyby soubor chyběl, AudioManager selhání přehrání tiše ignoruje (viz audioManager.ts).
 export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   [AUDIO_EVENTS.ambienceLoop]: { src: "/assets/audio/ambience_loop.mp3", volume: 0.35, loop: true },
   [AUDIO_EVENTS.cameraNoise]: { src: "/assets/audio/camera_noise.mp3", volume: 0.5, loop: false },

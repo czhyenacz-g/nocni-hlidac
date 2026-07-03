@@ -77,5 +77,6 @@ místě, ne rozeseta po komponentách.
 `AudioManager.play()` i `startLoop()` obalují `audio.play()` do `try/catch` a `.catch()` na
 vrácený promise. Pokud soubor neexistuje nebo přehrání selže (např. kvůli autoplay policy),
 chyba se tiše ignoruje a hra pokračuje beze změny — audio je "nice to have", ne kritická
-závislost. Toto platí i v první verzi, kdy `public/assets/audio/` neobsahuje žádné reálné
-soubory.
+závislost. `public/assets/audio/` teď obsahuje reálné placeholder zvuky (CC0, Kenney.nl —
+viz `assets/audio/README.md`), ale pravidlo platí bez ohledu na to, jestli soubor existuje:
+kdykoliv v budoucnu nějaký chybí, chybí, nebo se poškodí, hra musí fungovat dál.
