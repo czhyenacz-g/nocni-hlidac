@@ -12,7 +12,8 @@ tagy rozházené po komponentách.
 Definováno v `game/audio/audioEvents.ts` a nakonfigurováno v `game/audio/audioConfig.ts`:
 
 - `ambience_loop` — tiché pozadí, hraje smyčkou po celou dobu směny
-- `camera_noise` — krátký šum při přepnutí kamery
+- `camera_noise` — zvuk překvapení: hraje jen když je nepřítel zrovna na kameře
+  nejblíž hráči, a jen jednou za tuto "návštěvu" (viz "Zvukové události" níže)
 - `door_close` / `door_open` — cvaknutí dveří
 - `light_click` — cvaknutí světla
 - `enemy_step` — kroky/pohyb nepřítele na trase
@@ -48,6 +49,13 @@ Herní logika a UI komponenty nevolají `new Audio()` přímo — volají
 `audioManager.play(AUDIO_EVENTS.xxx)` (nebo `startLoop`/`stopLoop` pro smyčky). Napojení na
 konkrétní herní stav je v `app/play/page.tsx`: `useEffect` hooky sledují změny stavu
 (obrazovka, dveře, světlo, energie, stage nepřítele) a podle nich spouští odpovídající zvuk.
+
+`camera_noise` je výjimka z jednoduchého "one state → one sound" vzoru: hraje se přímo v
+`handleSelectCamera` (ne v `useEffect`, protože je vázaný na akci kliknutí, ne na změnu
+stavu), a navíc si drží vlastní "už jsem překvapil" flag
+(`hasPlayedNearCameraSurpriseRef`) — jinak by hrál při každém kliknutí na kameru, dokud tam
+nepřítel je, místo jednou za jeho "návštěvu". Reset flagu má vlastní `useEffect` sledující
+`state.enemyStage`.
 
 ## Ticho před lekačkou
 

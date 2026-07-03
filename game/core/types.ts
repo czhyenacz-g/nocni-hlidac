@@ -41,6 +41,12 @@ export interface CameraDefinition {
   description?: string;
   /** Pořadí v panelu; nižší = blíž venku. Kamery bez order se řadí za ty s order, v pořadí v poli. */
   order?: number;
+  /**
+   * Fyzická pozice pro layout panelu (viz CameraPanel.tsx) — "left"/"right" se
+   * umístí vedle sebe ve stejné řadě, "center"/bez pozice zabere celou šířku.
+   * Čistě vizuální, žádná herní logika na tom nestaví.
+   */
+  position?: "left" | "right" | "center";
   type?: CameraType;
   /** Stage nepřítele, ve kterém je na této kameře vidět. */
   enemyVisibleAtStage: EnemyStage;

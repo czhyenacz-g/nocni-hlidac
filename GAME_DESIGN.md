@@ -114,9 +114,15 @@ hráče (`order`, nižší = dál venku):
 3. **Chodba před dveřmi** (`door_hallway`) — poslední úsek, nejblíž hráči
 
 Otevřená kamera stojí malou energii a dočasně zpomaluje postup nepřítele, pokud
-je na ní právě vidět. Kliknutí na kameru navíc krátce zašumí (`camera_noise`),
-ale **jen** když je nepřítel zrovna na kameře nejblíž hráči (`door_hallway`) —
-funguje to jako tichý indikátor nebezpečí, ne obyčejný UI klik.
+je na ní právě vidět. Kliknutí na kameru navíc krátce zašumí (`camera_noise`) —
+zvuk překvapení, ne obyčejný UI klik: hraje **jen** když je nepřítel zrovna na
+kameře nejblíž hráči (`door_hallway`), a **jen jednou** za tuto "návštěvu" —
+dokud tam nepřítel je, další klikání (třeba přes jinou kameru a zpátky) ho
+neopakuje. Zvuk se "odjistí" znovu, až nepřítel z `door_hallway` odejde.
+
+Panel kamer je zarovnaný podle fyzické pozice (`CameraDefinition.position`) —
+venkovní vstup a chodba před dveřmi přes celou šířku nahoře/dole, pravá a levá
+chodba vedle sebe uprostřed, ať si hráč snáz udělá mentální mapu místnosti.
 
 Seznam a počet kamer je čistě konfigurační (`NightDefinition.cameras` +
 `defaultCameraId`) — žádná komponenta kamery nemá natvrdo napsané, viz

@@ -59,7 +59,9 @@ kamer a v jaké kombinaci má daná směna k dispozici, určuje výhradně
 `NightDefinition.cameras` (+ `defaultCameraId` pro přednastavenou kameru při startu). Nová
 směna může mít jiný počet i jiné kamery, aniž by se muselo sáhnout do `components/game/`.
 `CameraPanel.tsx` řadí kamery podle `order` (kamery bez `order` jdou na konec, v pořadí,
-jak přišly z konfigurace).
+jak přišly z konfigurace) a rozestavuje je do 2sloupcové mřížky podle `CameraDefinition.position`
+(`"left"`/`"right"` vedle sebe ve stejné řadě, `"center"`/bez pozice přes celou šířku) — čistě
+vizuální hint, žádná herní logika na `position` nestaví.
 
 ## Definice nepřítele
 
@@ -193,8 +195,10 @@ pohodlně prstem trefit do všech důležitých prvků, ne aby hra na mobilu vyp
 - `.mobile-landscape-hint` — čistě CSS doporučení otočit telefon (`@media (orientation:
   portrait) and (max-width: 820px)`), žádná JS detekce zařízení. Komponenta
   `MobileLandscapeHint.tsx` jen vykresluje text, CSS řídí kdy je vidět.
-- `DebugPanel.tsx` je skrytý pod `lg` breakpointem (Tailwind `hidden lg:flex`) — je to dev
-  nástroj, na mobilu by jen zabíral místo a mohl překrývat skutečné ovládání.
+- `DebugPanel.tsx` je skrytý pod `lg` breakpointem (Tailwind `hidden lg:block`) — je to dev
+  nástroj, na mobilu by jen zabíral místo a mohl překrývat skutečné ovládání. I na desktopu
+  je to nativní `<details>`/`<summary>` bez `open` — defaultně sbalené, žádný extra React
+  state jen na to, jestli je vidět.
 - `viewport` export v `app/layout.tsx` (`width: device-width, initialScale: 1`) — bez něj by
   mobilní prohlížeč mohl stránku defaultně oddálit a tap targety by v praxi vyšly menší, než
   kolik mají v CSS pixelech.

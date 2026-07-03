@@ -2,13 +2,15 @@ import { CameraDefinition } from "../core/types";
 
 // Definice kamer pro Objekt 13. Oddělené od herní logiky, aby šly rozšiřovat —
 // UI (CameraPanel/CameraView) je vždy jen vykresluje, nikdy je nemá natvrdo.
-// order řídí pořadí v panelu (nižší = blíž venku, tedy dál od hráče).
+// order řídí pořadí v panelu (nižší = blíž venku, tedy dál od hráče), position
+// řídí levo/pravo zarovnání odpovídající fyzickému rozložení chodeb.
 export const OBJECT13_CAMERAS: CameraDefinition[] = [
   {
     id: "outer_yard",
     label: "KAM 01 — Venkovní vstup",
     description: "Nejvzdálenější pohled, hlavní vstup na pozemek.",
     order: 1,
+    position: "center",
     type: "outside",
     enemyVisibleAtStage: "outer_yard",
   },
@@ -17,6 +19,7 @@ export const OBJECT13_CAMERAS: CameraDefinition[] = [
     label: "KAM 02 — Pravá chodba",
     description: "Boční chodba vedoucí ke dveřím zprava.",
     order: 2,
+    position: "right",
     type: "hallway",
     enemyVisibleAtStage: "right_hallway",
   },
@@ -25,6 +28,7 @@ export const OBJECT13_CAMERAS: CameraDefinition[] = [
     label: "KAM 03 — Levá chodba",
     description: "Boční chodba vedoucí ke dveřím zleva.",
     order: 2,
+    position: "left",
     type: "hallway",
     enemyVisibleAtStage: "left_hallway",
   },
@@ -33,6 +37,7 @@ export const OBJECT13_CAMERAS: CameraDefinition[] = [
     label: "KAM 04 — Chodba před dveřmi",
     description: "Poslední úsek těsně před dveřmi — nejdůležitější kamera.",
     order: 3,
+    position: "center",
     type: "door",
     enemyVisibleAtStage: "door_hallway",
   },

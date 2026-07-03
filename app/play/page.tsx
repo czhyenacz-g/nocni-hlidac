@@ -32,6 +32,10 @@ export default function PlayPage() {
   const prevLightRef = useRef(state.lightOn);
   const prevPowerRef = useRef(state.power);
   const prevGeneratorBeepSeqRef = useRef(state.generatorBeepSeq);
+  // Zvuk překvapení na nejbližší kameře smí zaznít jen jednou za "návštěvu" —
+  // dokud tam nepřítel je, další kliknutí na kameru (ani na jinou a zpátky) ho
+  // znovu nespustí. Resetuje se, až nepřítel z téhle stage odejde (uteče/postoupí).
+  const hasPlayedNearCameraSurpriseRef = useRef(false);
 
   useEffect(() => {
     audioManager.setMuted(state.audioMuted);
@@ -94,6 +98,13 @@ export default function PlayPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.enemyStage]);
 
+  useEffect(() => {
+    // Nepřítel odešel z kamery nejblíž hráči — příští příchod tam bude zase překvapení.
+    if (state.enemyStage !== nearestCamera.enemyVisibleAtStage) {
+      hasPlayedNearCameraSurpriseRef.current = false;
+    }
+  }, [state.enemyStage]);
+
   function handleStart() {
     audioManager.init();
     audioManager.play(AUDIO_EVENTS.uiClick);
@@ -147,10 +158,12 @@ export default function PlayPage() {
   }
 
   function handleSelectCamera(cameraId: CameraId) {
-    // camera_noise hraje jen když je nepřítel právě na kameře nejblíž hráči —
-    // funguje jako tichý indikátor nebezpečí, ne obyčejný UI klik.
-    if (state.enemyStage === nearestCamera.enemyVisibleAtStage) {
+    // camera_noise je zvuk překvapení: hraje jen když je nepřítel právě na
+    // kameře nejblíž hráči, a jen poprvé za tuto "návštěvu" — další kliknutí
+    // (třeba na jinou kameru a zpátky), dokud tam pořád je, ho neopakuje.
+    if (state.enemyStage === nearestCamera.enemyVisibleAtStage && !hasPlayedNearCameraSurpriseRef.current) {
       audioManager.play(AUDIO_EVENTS.cameraNoise);
+      hasPlayedNearCameraSurpriseRef.current = true;
     }
     dispatch({ type: "OPEN_CAMERA", cameraId });
   }
