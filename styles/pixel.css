@@ -48,6 +48,18 @@
   );
 }
 
+/* Silnější šum během "ladění signálu" po přepnutí kamery (viz cameraFocusMs). */
+.camera-static {
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.09) 0px,
+    rgba(255, 255, 255, 0.09) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  animation: pixel-blink 0.15s steps(2) infinite;
+}
+
 /* Kontrolka generátoru — jen pomocný vizuál, hlavní signál je zvuk (viz AUDIO_DESIGN.md). */
 .pixel-indicator {
   width: 14px;

@@ -20,9 +20,10 @@ efekt smyčkovaný přes `loop: true`, ne skutečně nekonečná ambientní komp
 - `generator_warning_beep.mp3` — rychlé varovné pípání v kritickém stavu
   (`AUDIO_EVENTS.generatorWarningBeep`)
 - `monster_retreat_roar.mp3` — řev při door-light repelu (`AUDIO_EVENTS.monsterRetreatRoar`)
+- `blackout_howl.mp3` — vzdálené zavytí na začátku blackoutu (`AUDIO_EVENTS.blackoutHowl`)
 
 Dokud nejsou doplněné, hra funguje beze změny — `AudioManager` chybějící soubor jen
-tiše ignoruje (viz pravidlo výše). U těchto tří navíc `game/audio/audioConfig.ts`
+tiše ignoruje (viz pravidlo výše). U těchto čtyř navíc `game/audio/audioConfig.ts`
 definuje `fallbackSynth` — krátký tón/sekvenci syntetizovanou přímo přes Web Audio API
 (`AudioManager.playFallbackSynth`, žádná externí knihovna), takže i bez hotových
 souborů je slyšet aspoň placeholder pípnutí/řev. Jakmile soubor přibude, fallback se

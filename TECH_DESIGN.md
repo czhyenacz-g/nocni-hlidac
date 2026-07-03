@@ -44,6 +44,11 @@ navíc přičte pevná `2 * rates.doorClosed + rates.lightOn` (počítáno ze sa
 Výsledek je vždy oříznutý na `[0, MAX_POWER]`. Celý výpočet je v reduceru — UI
 (`PowerMeter.tsx`) jen vykresluje `state.power`, nic nepočítá.
 
+Když `power <= 0`, `TICK` už nekončí smrtí — přepne `state.gameStatus` na `"blackout"`
+(vynuluje `blackoutElapsedMs`, vynutí `doorClosed: false`, `lightOn: false`,
+`cameraOpen: false`) a `applyPowerDelta`/`updateGenerator`/`updateDoorLightRepel` se
+od té chvíle vůbec nevolají — viz "Blackout" níže.
+
 ## Definice kamer
 
 `game/cameras/cameras.object13.ts` — pole `CameraDefinition` (`id`, `label`, volitelně
@@ -62,6 +67,18 @@ směna může mít jiný počet i jiné kamery, aniž by se muselo sáhnout do `
 jak přišly z konfigurace) a rozestavuje je do 2sloupcové mřížky podle `CameraDefinition.position`
 (`"left"`/`"right"` vedle sebe ve stejné řadě, `"center"`/bez pozice přes celou šířku) — čistě
 vizuální hint, žádná herní logika na `position` nestaví.
+
+### Kamera focus/šum (`cameraFocusMs`)
+
+`game/core/cameraFocus.ts#isCameraFocused(state)` je čistě odvozený stav — žádný vlastní TICK.
+`OPEN_CAMERA` v `gameReducer.ts` při každém výběru/přepnutí kamery nastaví
+`state.cameraFocusUntilMs = state.elapsedMs + night.cameraFocusMs` (700 ms); `isCameraFocused`
+pak jen porovná `state.elapsedMs >= cameraFocusUntilMs`, což se samo posouvá s běžícím `TICK`.
+`DeskView.tsx` výsledek spočítá a předá jako `focused` prop do `CameraView.tsx` — ta ho jen
+zobrazuje (šum + `COPY.game.cameraFocusingLabel`, dokud `!focused`), žádnou logiku sama
+neřeší. `cameraFocusMs` je zatím pevná hodnota v `NightDefinition`, ale je to jediné místo,
+které by bylo potřeba změnit na funkci `(state, night) => number`, kdyby měl focus delay
+později záviset na napětí/energii/generátoru — CameraView by se nemusela měnit vůbec.
 
 ## Definice nepřítele
 
@@ -152,8 +169,9 @@ odpočtu energie/času.
 
 ## Stav hry
 
-`GameState` obsahuje: aktuální obrazovku, čas směny, energii, pohled hráče
-(`playerView`), stav dveří/světla/kamer, stage nepřítele a důvod smrti. Vytváří ho
+`GameState` obsahuje: aktuální obrazovku, čas směny, energii, `gameStatus`/
+`blackoutElapsedMs`, pohled hráče (`playerView`), stav dveří/světla/kamer (+
+`cameraFocusUntilMs`), stage nepřítele a důvod smrti. Vytváří ho
 `createInitialGameState(night)`.
 
 ## Pohled hráče (DeskView / DoorView / GeneratorView)
@@ -216,6 +234,56 @@ ticha, časové okno poruchy, délka `restarting` penalizace) je v `NightDefinit
   penalizaci neprodlužuje).
 - `applyPowerDelta`'s `generatorExtraDrain` platí pro `criticalBeeping` i
   `restarting` stejně — jedna podmínka, ne duplicitní výpočet.
+
+## Blackout
+
+`GameState.gameStatus: "normal" | "blackout"` + `blackoutElapsedMs: number`. Balanc
+(`durationMs`, `phaseThresholdsMs`, `canBeSurvivedIfShiftEnds`) je `NightDefinition.blackout:
+BlackoutDefinition` (`game/nights/night01.ts`).
+
+- `TICK` v `gameReducer.ts` má na začátku samostatnou větev pro `gameStatus === "blackout"` —
+  žádné volání `applyPowerDelta`/`updateGenerator`/`updateDoorLightRepel` (mrtvé systémy, nic
+  z toho už nemá smysl počítat). Jen `elapsedMs`/`remainingMs` (čas směny běží dál) a
+  `blackoutElapsedMs += action.deltaMs`.
+  - `remainingMs <= 0` se testuje **před** `blackoutElapsedMs >= durationMs` → výhra má
+    přednost, pokud by oboje vyšlo ve stejném ticku (`canBeSurvivedIfShiftEnds`).
+  - `blackoutElapsedMs >= night.blackout.durationMs` → smrt, `deathReason: "blackout_timeout"`.
+- `ENEMY_ADVANCE` je v blackoutu no-op (`isRunning` zůstává `true`, ale `gameStatus ===
+  "blackout"` guard vrátí `state` beze změny) — pozice nepřítele zamrzne, hrozbu dál
+  representuje jen `blackoutElapsedMs` odpočet, ne další simulace trasy.
+- `TOGGLE_DOOR` / `TOGGLE_LIGHT` / `OPEN_CAMERA` / `RESTART_GENERATOR` mají všechny guard
+  `state.gameStatus === "blackout"` → no-op. Dveře byly navíc vynuceny na `doorClosed: false`
+  v okamžiku vstupu do blackoutu (viz "Výpočet energie" výše), takže reálně jsou "otevřené"
+  po celou dobu.
+- `components/game/BlackoutView.tsx` nahrazuje DeskView/DoorView/GeneratorView v
+  `GameScreen.tsx`, dokud `state.gameStatus === "blackout"` — žádné dílčí "blackout mód" v
+  jednotlivých view komponentách. Fáze textu počítá čistá funkce
+  `game/visuals/blackoutPhase.ts#getBlackoutPhaseIndex(blackoutElapsedMs, blackout)`, texty
+  jsou v `content/copy.ts` (`COPY.blackout.phaseTexts`).
+- `computeTensionLevel` (`game/visuals/atmosphereState.ts`) vrací `1` (maximum) rovnou, pokud
+  `input.gameStatus === "blackout"` — nemusí se počítat zbytek vzorce.
+- Zvuk: `app/play/page.tsx` sleduje přechod `gameStatus` z `"normal"` na `"blackout"` přes
+  `useRef` (stejný vzor jako jinde) a přehraje jednorázové `blackout_howl`. Generátor přestane
+  pípat sám od sebe (jeho `TICK` větev se v blackoutu nevolá).
+
+## LoadingScreen
+
+Falešný briefing mezi menu a startem směny — žádné skutečné technické načítání.
+
+- `ScreenId` má novou hodnotu `"loading"`. Akce `START_LOADING` (dispatchovaná z
+  `MainMenuScreen.onStart`) přepne `screen: "loading"` s čerstvým `createInitialGameState`
+  (`isRunning` zůstává `false`).
+- `app/play/page.tsx` má `useEffect` sledující `state.screen === "loading"`, který po
+  `LOADING_SCREEN_DURATION_MS` (`balancing/constants.ts`, 4000 ms) dispatchne `START_SHIFT` —
+  časování loading→playing je čistě UI záležitost (`setTimeout`), ne herní pravidlo v reduceru.
+- `content/loadingHints.ts` — `LoadingHint` (id, category, text, volitelně `minNight`/
+  `maxNight`/`weight`) + `LOADING_HINTS` data + `selectLoadingHints(count, night?)`: jednoduchý
+  weighted random bez opakování, `minNight`/`maxNight` filtrování je připravené, ale
+  nevyužité (jedna směna zatím). `LOADING_SCREEN_HINT_COUNT` (3) řídí, kolik hintů se vybere.
+- `components/screens/LoadingScreen.tsx` si hinty vybere sám (`useState(() =>
+  selectLoadingHints(...))`, počítáno jednou při mountu) a postupně je odkrývá vlastním
+  `useInterval`-stylem efektem (`LOADING_SCREEN_DURATION_MS / hints.length` na hint) —
+  self-contained, `app/play/page.tsx` o výběru hintů nic neví.
 
 ## Mobilní tap targety
 

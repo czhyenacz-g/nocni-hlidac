@@ -20,6 +20,10 @@ export default function DebugPanel({ state, night, tensionLevel, onDebugToggleDo
     <details className="hidden lg:block pixel-panel p-2 text-[10px] text-gray-500 font-mono leading-tight">
       <summary className="tap-target cursor-pointer select-none">DEV panel</summary>
       <div className="flex flex-col gap-2 mt-2">
+        <div>
+          gameStatus: {state.gameStatus}
+          {state.gameStatus === "blackout" && ` (${state.blackoutElapsedMs.toFixed(0)} / ${night.blackout.durationMs} ms)`}
+        </div>
         <div>enemyStage: {state.enemyStage} ({state.lastEnemyDecision})</div>
         <div>tension: {tensionLevel.toFixed(2)}</div>
         <div>power: {state.power.toFixed(1)}</div>

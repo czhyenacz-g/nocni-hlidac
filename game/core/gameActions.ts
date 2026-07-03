@@ -1,6 +1,7 @@
 import { CameraId } from "./types";
 
 export type GameAction =
+  | { type: "START_LOADING" }
   | { type: "START_SHIFT" }
   | { type: "RESTART_SHIFT" }
   | { type: "TOGGLE_DOOR" }

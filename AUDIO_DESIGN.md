@@ -26,6 +26,9 @@ Definováno v `game/audio/audioEvents.ts` a nakonfigurováno v `game/audio/audio
 - `generator_warning_beep` — rychlé varovné pípání v kritickém stavu generátoru
 - `monster_retreat_roar` — jednorázový řev při door-light repelu (viz "Světlo a dveře" v
   `GAME_DESIGN.md`) — hraje přesně jednou za repel, nikdy opakovaně na tik
+- `blackout_howl` — vzdálené zavytí jednou na začátku blackoutu (viz "Blackout" v
+  `GAME_DESIGN.md`); normální pípání generátoru se v blackoutu samo zastaví (jeho `TICK`
+  větev se nevolá), žádný speciální "vypni zvuk" krok není potřeba
 
 ## Ambientní zvuková vrstva
 
@@ -112,6 +115,10 @@ jen "oznámí", že nastal beep.
 a nic nepřehrává. `app/play/page.tsx` sleduje `state.monsterRetreatRoarSeq` přes `useRef` a na
 změnu zahraje zvuk přesně jednou — díky tomu, že reducer sám nikdy nevolá `audioManager`, je
 nemožné, aby se řev spustil vícekrát za tik nebo z jiného místa v kódu.
+
+`blackout_howl` sleduje přechod hodnoty, ne čítač — `app/play/page.tsx` porovnává
+`state.gameStatus` s předchozí hodnotou (`useRef`) a zahraje zvuk jen na hraně
+`"normal" → "blackout"`, ne při každém ticku, kdy `gameStatus === "blackout"` platí.
 
 ## Syntetizovaný fallback (bez čekání na audio soubory)
 

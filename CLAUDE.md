@@ -33,6 +33,23 @@ funkce, abstrakce ani konfigurovatelnost, které aktuální směna nepotřebuje.
   ani konkrétní camera id — příští směna může mít jiný počet a jinou kombinaci. Totéž platí
   pro `EnemyDefinition.route`: stage nepřítele nejsou to samé jako camera id (např. `at_door`
   není kamera) a UI ani reducer nesmí předpokládat, že každá stage odpovídá nějaké kameře.
+- Texty pro LoadingScreen (a jakýkoliv další "hint"/servisní obsah) patří do
+  `content/loadingHints.ts` (nebo obdobného content souboru), nikdy natvrdo do
+  `LoadingScreen.tsx`. Výběr/filtrování hintů (`selectLoadingHints`) je čistá funkce v
+  content vrstvě, ne v komponentě ani v `gameReducer.ts` — je to obsahové rozhodnutí, ne
+  herní pravidlo.
+- Odvozený stav, který se dá spočítat čistě z existujících polí `GameState` (např.
+  `isCameraFocused` v `game/core/cameraFocus.ts`, fáze blackoutu v
+  `game/visuals/blackoutPhase.ts`), patří do samostatné čisté funkce v `game/core/` nebo
+  `game/visuals/`, ne do komponenty a ne jako duplicitní pole přepočítávané v `TICK`.
+  Komponenta (např. `CameraView.tsx`, `BlackoutView.tsx`) dostane výsledek jako prop a jen
+  ho zobrazí.
+- `gameStatus: "blackout"` je alternativní režim `TICK`u, ne varianta uvnitř běžné herní
+  logiky — má vlastní větev na začátku `TICK` (žádné volání `applyPowerDelta`/
+  `updateGenerator`/`updateDoorLightRepel`, ty počítají s normálním provozem) a vlastní
+  view komponentu (`BlackoutView.tsx`), která nahrazuje DeskView/DoorView/GeneratorView
+  vcelku — nerozpadávej blackout na dílčí "blackout mód" uvnitř každé view komponenty
+  zvlášť.
 
 ## Povinnost držet audio odděleně
 

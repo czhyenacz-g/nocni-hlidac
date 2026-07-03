@@ -2,22 +2,35 @@
 
 ## Základní herní smyčka
 
-1. Hráč spustí směnu z hlavního menu.
+1. Hráč spustí směnu z hlavního menu — nejdřív krátký falešný briefing
+   (LoadingScreen, viz níže), pak samotná směna.
 2. Sleduje kamery ze stolního pohledu, aby věděl, kde se nepřítel nachází.
 3. Zapíná/vypíná světlo ze stolního pohledu; když je potřeba zavřít dveře, musí se
    nejdřív otočit do pohledu na dveře a teprve tam na ně kliknout — obojí (dveře i
    světlo) spotřebovává energii, viz "Pohled hráče" a "Energie" níže.
 4. Když je nepřítel u dveří a dveře jsou otevřené, spustí se jumpscare a smrt.
-5. Pokud energie dojde, hráč je bezbranný a umírá.
-6. Pokud hráč přežije celou délku směny, vyhrává.
+5. Pokud energie dojde, baterie nesplaskne rovnou ve smrt — nastane blackout
+   (viz "Blackout" níže), kritických posledních pár vteřin, které se dají přežít.
+6. Pokud hráč přežije celou délku směny, vyhrává (i uprostřed blackoutu).
 7. Po smrti může okamžitě restartovat aktuální směnu.
 
 ## Obrazovky
 
 - **MainMenuScreen** — název, podtitul, úvodní text, tlačítko "Spustit směnu"
-- **GameScreen** — energie, časovač směny a aktuální pohled hráče (DeskView, DoorView nebo GeneratorView)
+- **LoadingScreen** — falešný servisní briefing mezi menu a startem směny (viz níže)
+- **GameScreen** — energie, časovač směny a aktuální pohled hráče (DeskView, DoorView
+  nebo GeneratorView) — v blackoutu je místo nich přes celou obrazovku BlackoutView
 - **DeathScreen** — krátký jumpscare overlay, důvod smrti, tlačítko "Zkusit znovu"
 - **WinScreen** — text o přežití směny, tlačítko "Znovu"
+
+## LoadingScreen — falešný briefing
+
+Po kliknutí na "Spustit směnu" se ~4 sekundy (`LOADING_SCREEN_DURATION_MS`) zobrazí
+servisní terminál Objektu 13, který postupně vypíše 2–4 náhodně vybrané hlášky
+(`content/loadingHints.ts#selectLoadingHints`) — kombinace vysvětlení mechanik
+("Magnetický zámek drží dveře zavřené jen pod proudem...") a lehkého lore
+("Objekt 13 byl navržen pro denní provoz..."). Není to skutečné technické
+načítání, jen atmosférická pauza a rychlokurz mechanik. Zatím se nedá přeskočit.
 
 ## Pohled hráče
 
@@ -71,6 +84,15 @@ to je stav pro DoorView, ne kameru. (Existuje ještě `breach` — připravená 
 
 ## Energie
 
+Objekt 13 běží na starý generátor a nouzovou baterii, ne na abstraktní "power bar":
+generátor sám neutáhne všechny systémy najednou, přes den se baterie dobíjí ze
+solárních panelů, v noci hráč jede z rezervy. Kamery, světla, magnetický zámek
+dveří, generátorové řízení a pomocné systémy žerou víc, než generátor zvládá
+stabilně dodat — proto energie za normálních okolností ubývá, i když hráč "nic
+nedělá". Tohle vysvětlení je i jeden z hintů na LoadingScreen
+(`content/loadingHints.ts`, `energy_generator_battery`), ne natvrdo v jedné
+komponentě.
+
 Chování se liší podle toho, jestli hráč aktivně sleduje kamery (DeskView + otevřená
 kamera), nebo ne:
 
@@ -86,7 +108,8 @@ kamera), nebo ne:
   `doorClosed` sazba + `lightOn` sazba) — bez ohledu na to, jestli jsou skutečně
   zapnuté. Platí to jak při sledování kamer, tak při dobíjení.
 - Energie nikdy nepřekročí 100 % ani neklesne pod 0 %.
-- Když energie dojde na 0, hráč je téměř bezbranný a prohrává (`power_depleted`).
+- Když energie dojde na 0, baterie je vybitá a nastane **blackout** (viz níže) —
+  ne okamžitá smrt.
 - Prahy `LOW_POWER_THRESHOLD` a `CRITICAL_POWER_THRESHOLD` (viz `balancing/constants.ts`)
   řídí vizuální/zvukové varování.
 
@@ -135,7 +158,9 @@ hráče (`order`, nižší = dál venku):
 3. **Chodba před dveřmi** (`door_hallway`) — poslední úsek, nejblíž hráči
 
 Otevřená kamera stojí malou energii a dočasně zpomaluje postup nepřítele, pokud
-je na ní právě vidět. Kliknutí na kameru navíc krátce zašumí (`camera_noise`) —
+je na ní právě vidět. Kamery nejsou instantní taby — po každém výběru/přepnutí
+kamera ~700 ms (`cameraFocusMs`) jen "ladí signál" (šum, žádný obsah), teprve
+pak ukáže ostrý obraz. Kliknutí na kameru navíc krátce zašumí (`camera_noise`) —
 zvuk překvapení, ne obyčejný UI klik: hraje **jen** když je nepřítel zrovna na
 kameře nejblíž hráči (`door_hallway`), a **jen jednou** za tuto "návštěvu" —
 dokud tam nepřítel je, další klikání (třeba přes jinou kameru a zpátky) ho
@@ -180,17 +205,48 @@ dokud je generátor v jakémkoliv nenormálním stavu (`silentFault`,
 `criticalBeeping`, `restarting`), jako drobná pomůcka pro hráče, který zrovna
 kouká do kamer a zvuk mu unikl.
 
+## Blackout
+
+Když energie dojde na 0, nenastává okamžitá smrt — baterie je vybitá, generátor
+chcípne a magnetický zámek dveří povolí. Hráč dostane ~12 sekund
+(`night.blackout.durationMs`) čistého strachu, než přijde skutečný konec.
+
+Během blackoutu (`gameStatus: "blackout"`):
+- kamery, světlo, standardní restart generátoru nejdou použít (žádný efekt na klik)
+- dveře se považují za otevřené/odemčené a nejdou zavřít
+- generátor přestane pípat, i to varovné
+- pozice nepřítele na trase zamrzne — hrozbu odteď representuje jen odpočet
+- čas směny běží dál jako předtím
+
+Místo DeskView/DoorView/GeneratorView se zobrazí `BlackoutView` s postupujícím
+atmosférickým textem podle čtyř fází (`game/visuals/blackoutPhase.ts`,
+hranice `night.blackout.phaseThresholdsMs`, texty v `content/copy.ts`):
+
+0. Monitor problikne, kamery zčernají.
+1. Dveře cvaknou — zámek povolil.
+2. Generátor vydá poslední zvuk a utichne.
+3. Zavytí, ticho, kroky se blíží.
+
+**Přežití:** pokud `remainingMs` klesne na 0 dřív, než blackout doběhne
+(`night.blackout.canBeSurvivedIfShiftEnds`), hráč **vyhrává** — i uprostřed
+blackoutu. Blackout na úplném konci směny tedy není automatická prohra.
+
+**Smrt:** pokud blackout doběhne dřív než konec směny, hráč umírá
+(`deathReason: "blackout_timeout"`, "Nouzová baterie padla na nulu. Magnetický
+zámek povolil.").
+
 ## Smrt
 
 Dva důvody (`DeathReason`):
-- `door_open_at_attack` — nezavřel dveře včas
-- `power_depleted` — došla energie
+- `door_open_at_attack` — nezavřel dveře včas, dokud generátor/baterie fungovaly
+- `blackout_timeout` — blackout doběhl dřív, než skončila směna
 
 Zobrazí se krátký jumpscare overlay a `DeathScreen` s možností okamžitého restartu směny.
 
 ## Výhra
 
-Když `remainingMs` klesne na 0 a hráč je stále naživu, zobrazí se `WinScreen`.
+Když `remainingMs` klesne na 0 a hráč je stále naživu (i uprostřed blackoutu — viz
+výše), zobrazí se `WinScreen`.
 
 ## Pozdější možné rozšíření
 
@@ -199,3 +255,5 @@ Když `remainingMs` klesne na 0 a hráč je stále naživu, zobrazí se `WinScre
 - Vlastní pixel-art grafika místo CSS placeholderu
 - Skutečné audio soubory
 - Ukládání postupu mezi směnami
+- Přeskočitelný LoadingScreen
+- Focus delay kamer počítaný podle napětí/energie/generátoru, ne pevná hodnota

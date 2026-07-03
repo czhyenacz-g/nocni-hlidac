@@ -2,6 +2,7 @@ import { CameraId, GameState, NightDefinition } from "@/game/core/types";
 import DeskView from "../game/DeskView";
 import DoorView from "../game/DoorView";
 import GeneratorView from "../game/GeneratorView";
+import BlackoutView from "../game/BlackoutView";
 import PowerMeter from "../game/PowerMeter";
 import ShiftTimer from "../game/ShiftTimer";
 import AudioToggle from "../game/AudioToggle";
@@ -52,26 +53,32 @@ export default function GameScreen({
 
       <PowerMeter power={state.power} />
 
-      {state.playerView === "desk" && (
-        <DeskView
-          state={state}
-          night={night}
-          onToggleLight={onToggleLight}
-          onSelectCamera={onSelectCamera}
-          onCloseCameras={onCloseCameras}
-          onLookAtDoor={onLookAtDoor}
-          onLookAtGenerator={onLookAtGenerator}
-        />
-      )}
-      {state.playerView === "door" && (
-        <DoorView doorClosed={state.doorClosed} onToggleDoor={onToggleDoor} onLookAtDesk={onLookAtDesk} />
-      )}
-      {state.playerView === "generator" && (
-        <GeneratorView
-          generatorState={state.generatorState}
-          onRestartGenerator={onRestartGenerator}
-          onLookAtDesk={onLookAtDesk}
-        />
+      {state.gameStatus === "blackout" ? (
+        <BlackoutView blackoutElapsedMs={state.blackoutElapsedMs} blackout={night.blackout} />
+      ) : (
+        <>
+          {state.playerView === "desk" && (
+            <DeskView
+              state={state}
+              night={night}
+              onToggleLight={onToggleLight}
+              onSelectCamera={onSelectCamera}
+              onCloseCameras={onCloseCameras}
+              onLookAtDoor={onLookAtDoor}
+              onLookAtGenerator={onLookAtGenerator}
+            />
+          )}
+          {state.playerView === "door" && (
+            <DoorView doorClosed={state.doorClosed} onToggleDoor={onToggleDoor} onLookAtDesk={onLookAtDesk} />
+          )}
+          {state.playerView === "generator" && (
+            <GeneratorView
+              generatorState={state.generatorState}
+              onRestartGenerator={onRestartGenerator}
+              onLookAtDesk={onLookAtDesk}
+            />
+          )}
+        </>
       )}
 
       <DebugPanel

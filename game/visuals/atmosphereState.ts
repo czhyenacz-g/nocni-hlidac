@@ -9,6 +9,8 @@ function clamp01(value: number): number {
  * Samostatný mechanismus, který vizuální komponenty jen čtou — žádná náhodná CSS logika v UI.
  */
 export function computeTensionLevel(input: TensionInput): number {
+  if (input.gameStatus === "blackout") return 1;
+
   const powerRatio = 1 - clamp01(input.power / input.startPower);
   const timeRatio = 1 - clamp01(input.remainingMs / input.durationMs);
 

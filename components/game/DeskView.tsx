@@ -1,5 +1,6 @@
 import { COPY } from "@/content/copy";
 import { CameraId, GameState, NightDefinition } from "@/game/core/types";
+import { isCameraFocused } from "@/game/core/cameraFocus";
 import CameraPanel from "./CameraPanel";
 import CameraView from "./CameraView";
 import LightControl from "./LightControl";
@@ -33,7 +34,7 @@ export default function DeskView({
       <div>
         <div className="text-[10px] text-gray-400 mb-1">{COPY.game.camerasLabel}</div>
         {state.cameraOpen ? (
-          <CameraView camera={activeCamera} enemyStage={state.enemyStage} />
+          <CameraView camera={activeCamera} enemyStage={state.enemyStage} focused={isCameraFocused(state)} />
         ) : (
           <div className="pixel-panel h-40 flex items-center justify-center text-gray-500 text-sm">
             {COPY.game.noCameraSelected}

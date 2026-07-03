@@ -2,6 +2,7 @@
 
 import { useEffect, useReducer, useRef } from "react";
 import MainMenuScreen from "@/components/screens/MainMenuScreen";
+import LoadingScreen from "@/components/screens/LoadingScreen";
 import GameScreen from "@/components/screens/GameScreen";
 import DeathScreen from "@/components/screens/DeathScreen";
 import WinScreen from "@/components/screens/WinScreen";
@@ -14,6 +15,7 @@ import { audioManager } from "@/game/audio/audioManager";
 import { AUDIO_EVENTS } from "@/game/audio/audioEvents";
 import { computeTensionLevel } from "@/game/visuals/atmosphereState";
 import { atmosphereStyleToCssVars, tensionToAtmosphereStyle } from "@/game/visuals/visualEffects";
+import { LOADING_SCREEN_DURATION_MS } from "@/game/balancing/constants";
 
 const night = NIGHT_01;
 const gameReducer = createGameReducer(night);
@@ -33,6 +35,7 @@ export default function PlayPage() {
   const prevPowerRef = useRef(state.power);
   const prevGeneratorBeepSeqRef = useRef(state.generatorBeepSeq);
   const prevMonsterRetreatRoarSeqRef = useRef(state.monsterRetreatRoarSeq);
+  const prevGameStatusRef = useRef(state.gameStatus);
   // Zvuk překvapení na nejbližší kameře smí zaznít jen jednou za "návštěvu" —
   // dokud tam nepřítel je, další kliknutí na kameru (ani na jinou a zpátky) ho
   // znovu nespustí. Resetuje se, až nepřítel z téhle stage odejde (uteče/postoupí).
@@ -113,10 +116,25 @@ export default function PlayPage() {
     }
   }, [state.monsterRetreatRoarSeq]);
 
+  useEffect(() => {
+    if (prevGameStatusRef.current !== "blackout" && state.gameStatus === "blackout") {
+      audioManager.play(AUDIO_EVENTS.blackoutHowl);
+    }
+    prevGameStatusRef.current = state.gameStatus;
+  }, [state.gameStatus]);
+
+  // Falešný loading screen — po LOADING_SCREEN_DURATION_MS automaticky spustí
+  // směnu. Zatím nejde přeskočit, viz TODO.md.
+  useEffect(() => {
+    if (state.screen !== "loading") return;
+    const timeout = setTimeout(() => dispatch({ type: "START_SHIFT" }), LOADING_SCREEN_DURATION_MS);
+    return () => clearTimeout(timeout);
+  }, [state.screen]);
+
   function handleStart() {
     audioManager.init();
     audioManager.play(AUDIO_EVENTS.uiClick);
-    dispatch({ type: "START_SHIFT" });
+    dispatch({ type: "START_LOADING" });
   }
 
   function handleRestart() {
@@ -191,6 +209,7 @@ export default function PlayPage() {
     durationMs: night.durationMs,
     enemyStage: state.enemyStage,
     doorClosed: state.doorClosed,
+    gameStatus: state.gameStatus,
   });
   const atmosphereStyle = tensionToAtmosphereStyle(tensionLevel);
   const atmosphereVars = atmosphereStyleToCssVars(atmosphereStyle);
@@ -202,6 +221,7 @@ export default function PlayPage() {
       style={atmosphereVars as React.CSSProperties}
     >
       {state.screen === "menu" && <MainMenuScreen onStart={handleStart} />}
+      {state.screen === "loading" && <LoadingScreen />}
       {state.screen === "playing" && (
         <GameScreen
           state={state}

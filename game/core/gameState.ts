@@ -23,6 +23,8 @@ export function createInitialGameState(night: NightDefinition): GameState {
     remainingMs: night.durationMs,
 
     power: night.startPower,
+    gameStatus: "normal",
+    blackoutElapsedMs: 0,
 
     playerView: "desk",
 
@@ -31,6 +33,7 @@ export function createInitialGameState(night: NightDefinition): GameState {
 
     cameraOpen: false,
     activeCameraId: night.defaultCameraId,
+    cameraFocusUntilMs: null,
 
     generatorState: "normal",
     generatorNextBeepAtMs: night.generator.beepIntervalMs,

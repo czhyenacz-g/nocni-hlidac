@@ -177,6 +177,9 @@ function updateDoorLightRepel(state: GameState, night: NightDefinition, deltaMs:
 export function createGameReducer(night: NightDefinition) {
   return function gameReducer(state: GameState, action: GameAction): GameState {
     switch (action.type) {
+      case "START_LOADING":
+        return { ...createInitialGameState(night), audioMuted: state.audioMuted, screen: "loading" };
+
       case "START_SHIFT":
         return {
           ...createInitialGameState(night),
@@ -202,18 +205,19 @@ export function createGameReducer(night: NightDefinition) {
       case "TOGGLE_DOOR":
         // Dveře jde přepnout jen v pohledu na dveře — hráč se tam musí nejdřív
         // otočit (LOOK_AT_DOOR). Debug panel simuluje oba kroky najednou.
-        if (!state.isRunning || state.playerView !== "door") return state;
+        // V blackoutu zámek povolil — dveře jsou vždy "otevřené" a nejdou zavřít.
+        if (!state.isRunning || state.playerView !== "door" || state.gameStatus === "blackout") return state;
         return { ...state, doorClosed: !state.doorClosed };
 
       case "TOGGLE_LIGHT":
-        if (!state.isRunning) return state;
+        if (!state.isRunning || state.gameStatus === "blackout") return state;
         return { ...state, lightOn: !state.lightOn };
 
       case "LOOK_AT_DOOR":
         // Kamery se při odchodu od stolu vždy zavřou — hráč se nedívá na dveře
         // a zároveň na kameru, žádná nezůstane "otevřená" na pozadí.
         if (!state.isRunning) return state;
-        return { ...state, playerView: "door", cameraOpen: false, activeCameraId: null };
+        return { ...state, playerView: "door", cameraOpen: false, activeCameraId: null, cameraFocusUntilMs: null };
 
       case "LOOK_AT_DESK":
         if (!state.isRunning) return state;
@@ -221,10 +225,17 @@ export function createGameReducer(night: NightDefinition) {
 
       case "LOOK_AT_GENERATOR":
         if (!state.isRunning) return state;
-        return { ...state, playerView: "generator", cameraOpen: false, activeCameraId: null };
+        return {
+          ...state,
+          playerView: "generator",
+          cameraOpen: false,
+          activeCameraId: null,
+          cameraFocusUntilMs: null,
+        };
 
       case "RESTART_GENERATOR": {
-        if (!state.isRunning) return state;
+        // V blackoutu generátor úplně chcípl — standardní restart ho nevzkřísí.
+        if (!state.isRunning || state.gameStatus === "blackout") return state;
 
         // Omylem restartovaný funkční generátor — zbytečný klik ho na chvíli
         // vyřadí (stejná extra spotřeba jako criticalBeeping), místo aby byl no-op.
@@ -249,22 +260,60 @@ export function createGameReducer(night: NightDefinition) {
       }
 
       case "OPEN_CAMERA":
-        if (!state.isRunning) return state;
-        return { ...state, cameraOpen: true, activeCameraId: action.cameraId };
+        // V blackoutu jsou kamery mrtvé — nejdou zapnout ani přepnout.
+        if (!state.isRunning || state.gameStatus === "blackout") return state;
+        return {
+          ...state,
+          cameraOpen: true,
+          activeCameraId: action.cameraId,
+          // Nová "ladění signálu" perioda při každém výběru/přepnutí kamery —
+          // CameraView zobrazí šum, dokud state.elapsedMs nedosáhne tohoto času.
+          cameraFocusUntilMs: state.elapsedMs + night.cameraFocusMs,
+        };
 
       case "CLOSE_CAMERAS":
-        return { ...state, cameraOpen: false, activeCameraId: null };
+        return { ...state, cameraOpen: false, activeCameraId: null, cameraFocusUntilMs: null };
 
       case "TICK": {
         if (!state.isRunning) return state;
 
         const elapsedMs = state.elapsedMs + action.deltaMs;
         const remainingMs = clamp(night.durationMs - elapsedMs, 0, night.durationMs);
+
+        // ── Blackout: baterie na nule, všechny systémy mrtvé — vlastní, mnohem
+        // jednodušší časování. Generátor/door-light repel/energie se tu vůbec
+        // nepočítají, jsou to mrtvé systémy. Jediné, co běží, je čas směny a
+        // blackoutElapsedMs proti sobě — viz GAME_DESIGN.md "Blackout".
+        if (state.gameStatus === "blackout") {
+          const blackoutElapsedMs = state.blackoutElapsedMs + action.deltaMs;
+
+          if (night.blackout.canBeSurvivedIfShiftEnds && remainingMs <= 0) {
+            return { ...state, elapsedMs, remainingMs: 0, blackoutElapsedMs, isRunning: false, screen: "win" };
+          }
+
+          if (blackoutElapsedMs >= night.blackout.durationMs) {
+            return {
+              ...state,
+              elapsedMs,
+              remainingMs,
+              blackoutElapsedMs,
+              isRunning: false,
+              screen: "death",
+              deathReason: "blackout_timeout",
+            };
+          }
+
+          return { ...state, elapsedMs, remainingMs, blackoutElapsedMs };
+        }
+
         const generatorUpdate = updateGenerator(state, night, elapsedMs);
         const doorLightRepelUpdate = updateDoorLightRepel(state, night, action.deltaMs);
         const power = applyPowerDelta({ ...state, ...generatorUpdate }, night, action.deltaMs);
 
         if (power <= 0) {
+          // Baterie na nule -> blackout, ne okamžitá smrt. Zámek povolí (dveře
+          // "otevřené"), systémy jdou vypnout — viz TOGGLE_DOOR/TOGGLE_LIGHT/
+          // OPEN_CAMERA/RESTART_GENERATOR guardy výše.
           return {
             ...state,
             ...generatorUpdate,
@@ -272,9 +321,13 @@ export function createGameReducer(night: NightDefinition) {
             elapsedMs,
             remainingMs,
             power: 0,
-            isRunning: false,
-            screen: "death",
-            deathReason: "power_depleted",
+            gameStatus: "blackout",
+            blackoutElapsedMs: 0,
+            doorClosed: false,
+            lightOn: false,
+            cameraOpen: false,
+            activeCameraId: null,
+            cameraFocusUntilMs: null,
           };
         }
 
@@ -295,7 +348,9 @@ export function createGameReducer(night: NightDefinition) {
       }
 
       case "ENEMY_ADVANCE": {
-        if (!state.isRunning) return state;
+        // V blackoutu je pozice nepřítele zamrzlá — hrozbu odteď representuje
+        // blackoutElapsedMs v TICKu, ne další postup po trase.
+        if (!state.isRunning || state.gameStatus === "blackout") return state;
 
         const route = state.enemyRoute;
         const currentIndex = route.indexOf(state.enemyStage);

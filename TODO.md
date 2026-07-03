@@ -45,9 +45,18 @@
 - [x] Syntetizovaný fallback (Web Audio, bez knihovny) pro `generator_beep`,
       `generator_warning_beep`, `monster_retreat_roar` — slyšet i bez hotových
       audio souborů, doladit hodnoty v `audioConfig.ts`
+- [x] Vysvětlení energie ve světě hry (generátor/baterie/solár) jako LoadingScreen hint,
+      ne natvrdo v komponentě
+- [x] LoadingScreen — falešný briefing mezi menu a startem směny, `content/loadingHints.ts`
+      + `selectLoadingHints()` (weighted random, `minNight`/`maxNight` připraveno)
+- [x] Kamera focus/šum po přepnutí (`cameraFocusMs` 700 ms, `game/core/cameraFocus.ts`)
+- [x] Blackout místo okamžité smrti při `power <= 0` — `gameStatus`, `BlackoutView`,
+      4 atmosférické fáze, přežití pokud směna skončí dřív, jinak smrt
+      (`deathReason: "blackout_timeout"`)
 - [ ] Playtest a doladění balancu (šance postupu nepřítele, retreatChance, spotřeba
       energie, rychlost dobíjení, časové okno poruchy generátoru, tempo kritického
-      pípání, rozsah doorHoldRangeMs, doorLightRepelRequiredMs, restartPenaltyMs)
+      pípání, rozsah doorHoldRangeMs, doorLightRepelRequiredMs, restartPenaltyMs,
+      délka blackoutu a jeho fází, LOADING_SCREEN_DURATION_MS)
 - [ ] Ověřit, jestli `enemy_near` (hraje globálně při `at_door`/`attack`, nezávisle na
       tom, kterou kameru zrovna sleduješ) je záměr, nebo má být vázané na aktivní kameru
 - [ ] Ruční test na skutečném mobilu (ne jen zmenšené okno v desktop prohlížeči):
@@ -62,14 +71,17 @@
 - Skutečná pixel-art grafika (sprity pro místnost, kamery, nepřítele, generátor)
 - Vlastní/kvalitnější audio místo Kenney.nl CC0 placeholderů (zejména `ambience_loop`,
   který teď je jen krátký smyčkovaný efekt, ne skutečná ambientní kompozice); doplnit
-  reálné soubory `generator_beep.mp3`, `generator_warning_beep.mp3` a
-  `monster_retreat_roar.mp3` (zatím jen konfigurace + syntetizovaný fallback, viz
-  `assets/audio/README.md`)
+  reálné soubory `generator_beep.mp3`, `generator_warning_beep.mp3`,
+  `monster_retreat_roar.mp3` a `blackout_howl.mp3` (zatím jen konfigurace +
+  syntetizovaný fallback, viz `assets/audio/README.md`)
 - Druhá směna (`night02.ts`) s jiným nepřítelem/balancem
 - Dynamická vrstvená ambience podle `tensionLevel`
 - Vylepšený jumpscare (delší/výraznější sekvence, ne jen barevný flash)
 - Ukládání nejlepšího výsledku / progressu do localStorage
 - Nastavení hlasitosti (ne jen mute/unmute)
+- Přeskočitelný LoadingScreen
+- `cameraFocusMs` počítaný podle napětí/energie/generátoru místo pevné hodnoty
+- Vizuálně dopracované fáze blackoutu (dnes jen text, žádná speciální animace/efekt navíc)
 
 ## Explicitně odložené věci
 

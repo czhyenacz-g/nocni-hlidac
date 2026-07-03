@@ -73,4 +73,19 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
       waveform: "sawtooth",
     },
   },
+  // Vzdálené zavytí na začátku blackoutu (viz GAME_DESIGN.md "Blackout").
+  [AUDIO_EVENTS.blackoutHowl]: {
+    src: "/assets/audio/blackout_howl.mp3",
+    volume: 0.7,
+    loop: false,
+    fallbackSynth: {
+      notes: [
+        { frequency: 220, durationMs: 500, gapMs: 40 },
+        { frequency: 140, durationMs: 700, gapMs: 40 },
+        { frequency: 80, durationMs: 900 },
+      ],
+      volume: 0.35,
+      waveform: "sawtooth",
+    },
+  },
 };

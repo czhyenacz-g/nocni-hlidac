@@ -20,6 +20,7 @@ export const NIGHT_01: NightDefinition = {
   cameras: OBJECT13_CAMERAS,
   defaultCameraId: "outer_yard",
   enemyTickMs: 2000,
+  cameraFocusMs: 700,
   generator: {
     beepIntervalMs: 5000,
     criticalBeepIntervalMs: 700,
@@ -28,5 +29,10 @@ export const NIGHT_01: NightDefinition = {
     faultEarliestAtMs: 45000,
     faultLatestAtMs: 110000,
     restartPenaltyMs: 5000,
+  },
+  blackout: {
+    durationMs: 12000,
+    phaseThresholdsMs: [2000, 5000, 8000],
+    canBeSurvivedIfShiftEnds: true,
   },
 };

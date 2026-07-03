@@ -21,11 +21,11 @@ export const OBJECT13_JUMPSCARES: Record<DeathReason, JumpscareDefinition> = {
     silenceBeforeMs: 800,
     effectDurationMs: 600,
   },
-  power_depleted: {
-    id: "power_out",
-    reason: "power_depleted",
-    title: "Došla energie.",
-    message: "Bez proudu jsi byl bezbranný.",
+  blackout_timeout: {
+    id: "blackout_timeout",
+    reason: "blackout_timeout",
+    title: "Nouzová baterie padla na nulu.",
+    message: "Magnetický zámek povolil.",
     silenceBeforeMs: 1000,
     effectDurationMs: 600,
   },

@@ -29,7 +29,7 @@ export type EnemyMoveDecision =
   | "light_repelled"
   | "attack";
 
-export type ScreenId = "menu" | "playing" | "death" | "win";
+export type ScreenId = "menu" | "loading" | "playing" | "death" | "win";
 
 /** Kam se hráč v místnosti právě dívá — ovládá to, co je aktuálně klikatelné. */
 export type PlayerView = "desk" | "door" | "generator";
@@ -129,6 +129,22 @@ export interface NightDefinition {
   /** Interval (ms), jak často se vyhodnocuje postup nepřítele. */
   enemyTickMs: number;
   generator: GeneratorDefinition;
+  /**
+   * Jak dlouho (ms) po výběru kamery trvá "ladění signálu" (šum), než se
+   * zobrazí ostrý obraz — viz game/core/cameraFocus.ts. Zatím pevná hodnota,
+   * ale připravená na to, aby se později počítala podle napětí/energie/generátoru.
+   */
+  cameraFocusMs: number;
+  blackout: BlackoutDefinition;
+}
+
+export interface BlackoutDefinition {
+  /** Jak dlouho (ms) blackout trvá, než přijde smrt, pokud mezitím neskončí směna. */
+  durationMs: number;
+  /** Tři hranice (ms od začátku blackoutu) mezi čtyřmi atmosférickými fázemi — viz GAME_DESIGN.md. */
+  phaseThresholdsMs: [number, number, number];
+  /** Pokud směna doběhne do konce dřív, než blackout skončí, hráč přežije. */
+  canBeSurvivedIfShiftEnds: boolean;
 }
 
 export interface GeneratorDefinition {
@@ -151,7 +167,9 @@ export interface GeneratorDefinition {
   restartPenaltyMs: number;
 }
 
-export type DeathReason = "door_open_at_attack" | "power_depleted";
+export type DeathReason = "door_open_at_attack" | "blackout_timeout";
+
+export type GameStatus = "normal" | "blackout";
 
 export interface GameState {
   screen: ScreenId;
@@ -161,6 +179,14 @@ export interface GameState {
   remainingMs: number;
 
   power: number;
+  /**
+   * "blackout" = baterie na nule, všechny systémy vypnuté, zámek povolil.
+   * Hráč přežije, pokud směna doběhne do konce dřív než blackoutElapsedMs
+   * dosáhne night.blackout.durationMs — jinak smrt. Viz GAME_DESIGN.md "Blackout".
+   */
+  gameStatus: GameStatus;
+  /** Nastřádaný čas (ms) od začátku blackoutu — 0 mimo blackout. */
+  blackoutElapsedMs: number;
 
   playerView: PlayerView;
 
@@ -169,6 +195,8 @@ export interface GameState {
 
   cameraOpen: boolean;
   activeCameraId: CameraId | null;
+  /** elapsedMs, kdy skončí "ladění signálu" po výběru kamery — viz game/core/cameraFocus.ts. */
+  cameraFocusUntilMs: number | null;
 
   generatorState: GeneratorState;
   /** elapsedMs, kdy má zaznít další pípnutí (normální i kritické tempo). */
@@ -215,4 +243,6 @@ export interface TensionInput {
   durationMs: number;
   enemyStage: EnemyStage;
   doorClosed: boolean;
+  /** Blackout je vždy maximální napětí bez ohledu na ostatní vstupy. */
+  gameStatus: GameStatus;
 }

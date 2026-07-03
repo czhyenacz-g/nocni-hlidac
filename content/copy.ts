@@ -16,6 +16,7 @@ export const COPY = {
     timeLabel: "Čas směny",
     camerasLabel: "Kamery",
     noCameraSelected: "Vyber kameru.",
+    cameraFocusingLabel: "LADÍM SIGNÁL...",
     audioOnLabel: "Zvuk: zapnutý",
     audioOffLabel: "Zvuk: vypnutý",
     lookAtDoorLabel: "Otočit se ke dveřím →",
@@ -35,12 +36,26 @@ export const COPY = {
     retryButton: "Zkusit znovu",
     reasons: {
       door_open_at_attack: "Nestihl jsi zavřít dveře.",
-      power_depleted: "Došla energie.",
+      blackout_timeout: "Nouzová baterie padla na nulu. Magnetický zámek povolil.",
     },
+  },
+  blackout: {
+    // Čtyři atmosférické fáze podle game/visuals/blackoutPhase.ts#getBlackoutPhaseIndex.
+    phaseTexts: [
+      "Monitor problikne. Kamery zčernají.",
+      "Dveře cvaknou — magnetický zámek povolil.",
+      "Generátor vydá poslední zvuk a utichne.",
+      "Odněkud se ozve zavytí. Kroky se blíží.",
+    ] as const,
+    subtitle: "Nouzová baterie je na nule.",
   },
   win: {
     title: "Přežil jsi směnu.",
     subtitle: "Slunce vychází. Objekt 13 je zatím v klidu.",
     retryButton: "Znovu",
+  },
+  loading: {
+    title: "OBJEKT 13 — SERVISNÍ TERMINÁL",
+    subtitle: "Spouštím systémy směny...",
   },
 } as const;
