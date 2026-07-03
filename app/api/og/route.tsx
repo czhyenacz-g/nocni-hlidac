@@ -5,7 +5,7 @@ export const runtime = "edge";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const title = searchParams.get("title") || "PROJECT_NAME";
+  const title = searchParams.get("title") || "Noční hlídač";
   const sub = searchParams.get("sub") || "";
 
   return new ImageResponse(
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
             display: "flex",
           }}
         >
-          PROJECT_DOMAIN
+          nocni-hlidac.cz
         </div>
       </div>
     ),

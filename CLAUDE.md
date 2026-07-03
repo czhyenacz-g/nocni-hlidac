@@ -1,7 +1,57 @@
+# Noční hlídač — pravidla pro další vývoj
+
+Tento repozitář byl založen ze starteru (viz zbytek souboru níže pro obecný setup), ale
+od teď je to samostatná hra: **Noční hlídač / Objekt 13: První směna**. Engine se jmenuje
+**Noční služba** a vzniká postupným čištěním z první hratelné směny — necílíme dopředu na
+obecný engine pro cokoliv.
+
+## Nejdůležitější zásada
+
+Nejdřív musí existovat malá funkční hratelná verze. Až potom rozšiřování. Nepřidávej
+funkce, abstrakce ani konfigurovatelnost, které aktuální směna nepotřebuje.
+
+## Zákaz monolitických souborů
+
+- Co obrazovka, to samostatný soubor v `components/screens/`.
+- Co směna/noc, to samostatná definice v `game/nights/`.
+- Co typ nepřítele, to samostatný soubor (nebo jasně oddělená definice) v `game/enemies/`.
+- Herní stav (`game/core/`) musí zůstat oddělený od UI (`components/`).
+- Pravidla hry (reducer, definice směn/nepřátel/kamer) musí být oddělená od vizuálních
+  komponent.
+- Texty (`content/copy.ts`), konfigurace směn, definice kamer a nepřítele nikdy nedávat
+  přímo do hlavní komponenty (`app/play/page.tsx`) — jen se tam propojují.
+
+## Povinnost držet audio odděleně
+
+Veškerá audio logika žije v `game/audio/` (`audioManager.ts`, `audioEvents.ts`,
+`audioConfig.ts`). Komponenty a herní logika volají jen `audioManager.play(...)` /
+`startLoop(...)` / `stopLoop(...)`. Nový zvuk = nový event + config, ne `new Audio()`
+přímo v komponentě. Přehrání chybějícího/nenačteného souboru se musí vždy tiše ignorovat —
+hra nesmí spadnout kvůli chybějícímu audio souboru (viz `AUDIO_DESIGN.md`).
+
+## Povinnost držet vizuální atmosféru odděleně
+
+Desaturace/kontrast/blikání se počítá v `game/visuals/` (`atmosphereState.ts`,
+`visualEffects.ts`) z `tensionLevel`, ne jako náhodné CSS podmínky rozeseté po
+komponentách. Pokud přibude nový vizuální efekt vázaný na napětí, patří do
+`visualEffects.ts` a do `styles/atmosphere.css`, ne do jednotlivých screen komponent.
+
+## Povinnost aktualizovat dokumentaci po větších změnách
+
+Po každé větší změně (nová směna, nový nepřítel, změna herních pravidel, změna audio/
+vizuální vrstvy) aktualizuj odpovídající `GAME_DESIGN.md`, `TECH_DESIGN.md`,
+`AUDIO_DESIGN.md` a `TODO.md`.
+
+---
+
 # Starter — instrukce pro Claude
 
 Tento repozitář je šablona pro rychlé zakládání nových Next.js projektů.
 Hynek řekne název a nápad → Claude udělá vše ostatní.
+
+Následující sekce je obecný starter postup (env setup, tokeny, jak založit *nový*
+projekt) — ponecháno jako referenční dokumentace, pro tento konkrétní projekt (Noční
+hlídač) už bylo provedeno.
 
 ---
 

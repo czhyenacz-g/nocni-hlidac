@@ -1,0 +1,43 @@
+/*
+ * Vizuální atmosféra: postupná desaturace podle napětí (tensionLevel).
+ * Proměnné --atmosphere-* nastavuje game/visuals/visualEffects.ts přes inline style
+ * na wrapper elementu .atmosphere-root — žádné náhodné CSS rozházené po komponentách.
+ */
+
+.atmosphere-root {
+  --atmosphere-saturation: 1;
+  --atmosphere-contrast: 1;
+  --atmosphere-flicker: 0;
+
+  filter: saturate(var(--atmosphere-saturation)) contrast(var(--atmosphere-contrast));
+  transition: filter 0.6s ease-out;
+}
+
+.atmosphere-root[data-flicker="true"] {
+  animation: atmosphere-flicker 2.4s steps(6) infinite;
+}
+
+@keyframes atmosphere-flicker {
+  0%, 92%, 100% { filter: saturate(var(--atmosphere-saturation)) contrast(var(--atmosphere-contrast)); }
+  94% { filter: saturate(var(--atmosphere-saturation)) contrast(var(--atmosphere-contrast)) brightness(1.3); }
+  96% { filter: saturate(var(--atmosphere-saturation)) contrast(var(--atmosphere-contrast)) brightness(0.7); }
+}
+
+.jumpscare-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  animation: jumpscare-flash 0.6s steps(3) 1 forwards;
+  z-index: 50;
+}
+
+@keyframes jumpscare-flash {
+  0% { background: #000; opacity: 1; }
+  20% { background: #ef4444; opacity: 1; }
+  40% { background: #fff; opacity: 1; }
+  60% { background: #ef4444; opacity: 1; }
+  100% { background: #000; opacity: 0; }
+}
