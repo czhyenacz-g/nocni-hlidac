@@ -72,6 +72,19 @@
   background: #4ade80;
 }
 
+/* Jednorázové bliknutí přesně v okamžiku pípnutí (viz GeneratorView.tsx —
+ * remountuje se přes key na generatorBeepSeq), ne nekonečná smyčka jako u
+ * criticalBeeping/restarting. */
+.pixel-indicator[data-flash="true"] {
+  animation: pixel-flash-once 0.35s ease-out 1;
+}
+
+@keyframes pixel-flash-once {
+  0% { opacity: 1; }
+  35% { opacity: 0.1; }
+  100% { opacity: 1; }
+}
+
 .pixel-indicator[data-state="silentFault"] {
   background: #374151;
 }

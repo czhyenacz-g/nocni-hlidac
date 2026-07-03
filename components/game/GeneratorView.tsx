@@ -4,6 +4,8 @@ import ViewSwitchArrow from "./ViewSwitchArrow";
 
 interface GeneratorViewProps {
   generatorState: GeneratorState;
+  /** Zvyšuje se při každém pípnutí (state.generatorBeepSeq) — synchronizuje bliknutí kontrolky se zvukem. */
+  beepSeq: number;
   onRestartGenerator: () => void;
   onLookAtDesk: () => void;
 }
@@ -12,7 +14,12 @@ interface GeneratorViewProps {
 // sem musí nejdřív otočit z DeskView (viz gameActions.ts LOOK_AT_GENERATOR).
 // Vizuální stav je jen pomocný — hlavní signál poruchy je zvuk (ticho, pak
 // rychlé pípání), viz AUDIO_DESIGN.md.
-export default function GeneratorView({ generatorState, onRestartGenerator, onLookAtDesk }: GeneratorViewProps) {
+export default function GeneratorView({ generatorState, beepSeq, onRestartGenerator, onLookAtDesk }: GeneratorViewProps) {
+  // Kontrolka v "normal" stavu je jinak statická zelená — key na beepSeq ji
+  // při každém pípnutí remountne, což znovu spustí jednorázovou pixel-flash
+  // animaci (viz styles/pixel.css) přesně v okamžiku zvuku.
+  const indicatorKey = generatorState === "normal" ? beepSeq : generatorState;
+
   return (
     <div className="flex flex-col gap-3">
       <ViewSwitchArrow label={COPY.game.lookAtDeskLabel} onClick={onLookAtDesk} align="left" />
@@ -23,7 +30,12 @@ export default function GeneratorView({ generatorState, onRestartGenerator, onLo
         onClick={onRestartGenerator}
         aria-label="Restartovat generátor"
       >
-        <span className="pixel-indicator" data-state={generatorState} />
+        <span
+          key={indicatorKey}
+          className="pixel-indicator"
+          data-state={generatorState}
+          data-flash={generatorState === "normal"}
+        />
         <span>{COPY.game.generatorStateLabels[generatorState]}</span>
         <span className="text-[10px] text-gray-400">{COPY.game.generatorViewHint}</span>
       </button>

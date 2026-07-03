@@ -74,6 +74,7 @@ export default function GameScreen({
           {state.playerView === "generator" && (
             <GeneratorView
               generatorState={state.generatorState}
+              beepSeq={state.generatorBeepSeq}
               onRestartGenerator={onRestartGenerator}
               onLookAtDesk={onLookAtDesk}
             />

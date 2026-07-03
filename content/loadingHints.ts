@@ -25,14 +25,14 @@ export interface LoadingHint {
   weight?: number;
 }
 
+// Každý hint drž pod ~15 slovy — LoadingScreen je krátký briefing, ne odstavec
+// na čtení. Klidně dvě krátké věty (viz generator_normal_beep), jen ne dlouhé
+// souvětí jako byl původně energy_generator_battery.
 export const LOADING_HINTS: LoadingHint[] = [
   {
     id: "energy_generator_battery",
     category: "energy",
-    text:
-      "Starý generátor objekt sotva drží při životě. Přes den se dobíjí baterie ze soláru. " +
-      "V noci jedeš z rezervy. Kamery, světla, magnetický zámek, generátorové řízení " +
-      "a pomocné systémy žerou víc, než generátor zvládá stabilně dodat.",
+    text: "Starý generátor sotva drží objekt při životě — v noci jedeš z rezervy baterie.",
     weight: 2,
   },
   {

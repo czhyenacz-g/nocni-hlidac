@@ -45,12 +45,17 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   [AUDIO_EVENTS.jumpscare]: { src: "/assets/audio/jumpscare.mp3", volume: 1.0, loop: false },
   [AUDIO_EVENTS.shiftWin]: { src: "/assets/audio/shift_win.mp3", volume: 0.7, loop: false },
   [AUDIO_EVENTS.uiClick]: { src: "/assets/audio/ui_click.mp3", volume: 0.4, loop: false },
-  // Slyšitelné, ale ne otravné — normální "generátor běží" tiknutí každých pár sekund.
+  // Výrazné "generátor běží" pípnutí každých pár sekund — má být jasně slyšet,
+  // ne jen tiché tiknutí v pozadí.
   [AUDIO_EVENTS.generatorBeep]: {
     src: "/assets/audio/generator_beep.mp3",
-    volume: 0.35,
+    volume: 0.6,
     loop: false,
-    fallbackSynth: { notes: [{ frequency: 880, durationMs: 90 }], volume: 0.18, waveform: "sine" },
+    fallbackSynth: {
+      notes: [{ frequency: 1000, durationMs: 110 }],
+      volume: 0.4,
+      waveform: "square",
+    },
   },
   // Hlasitější a časté (viz night.generator.criticalBeepIntervalMs) — má znít stresově.
   [AUDIO_EVENTS.generatorWarningBeep]: {
