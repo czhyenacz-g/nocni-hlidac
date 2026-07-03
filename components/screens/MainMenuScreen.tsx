@@ -1,5 +1,6 @@
 import { COPY } from "@/content/copy";
 import Footer from "@/components/Footer";
+import { BACKGROUND_IMAGES } from "@/game/visuals/backgroundImages";
 
 interface MainMenuScreenProps {
   onStart: () => void;
@@ -9,7 +10,9 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
   return (
     <main
       className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-900 bg-cover bg-center"
-      style={{ backgroundImage: "linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.75)), url(/menu_bg.webp)" }}
+      style={{
+        backgroundImage: `linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.75)), url(${BACKGROUND_IMAGES.menu})`,
+      }}
     >
       <div className="w-full max-w-md text-center pixel-panel p-8">
         <h1 className="text-3xl font-bold mb-1 text-red-500">{COPY.menu.title}</h1>

@@ -1,4 +1,5 @@
 import { CameraId, GameState, NightDefinition } from "@/game/core/types";
+import { BACKGROUND_IMAGES } from "@/game/visuals/backgroundImages";
 import DeskView from "../game/DeskView";
 import DoorView from "../game/DoorView";
 import GeneratorView from "../game/GeneratorView";
@@ -41,8 +42,22 @@ export default function GameScreen({
   onDebugToggleDoor,
   onDebugRestartGenerator,
 }: GameScreenProps) {
+  // Pozadí jen ve fázi "vidím ty 4 monitory" (DeskView, mimo blackout, kdy
+  // BlackoutView stejně celou obrazovku nahrazuje) — DoorView/GeneratorView
+  // mají zůstat vizuálně čisté close-up pohledy bez atmosférického pozadí.
+  const showPlayBackground = state.playerView === "desk" && state.gameStatus !== "blackout";
+
   return (
-    <main className="min-h-screen p-4 flex flex-col gap-4 max-w-md mx-auto">
+    <main
+      className="min-h-screen p-4 flex flex-col gap-4 max-w-md mx-auto bg-cover bg-center"
+      style={
+        showPlayBackground
+          ? {
+              backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.8)), url(${BACKGROUND_IMAGES.play})`,
+            }
+          : undefined
+      }
+    >
       <div className="flex justify-between items-center">
         <ShiftTimer remainingMs={state.remainingMs} />
         <AudioToggle muted={state.audioMuted} onToggle={onToggleAudio} />

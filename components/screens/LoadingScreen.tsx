@@ -4,13 +4,20 @@ import { useEffect, useState } from "react";
 import { COPY } from "@/content/copy";
 import { selectLoadingHints } from "@/content/loadingHints";
 import { LOADING_SCREEN_DURATION_MS, LOADING_SCREEN_HINT_COUNT } from "@/game/balancing/constants";
+import { preloadBackgroundImages } from "@/game/visuals/backgroundImages";
 
 // Falešný briefing screen mezi hlavním menu a startem směny — žádné skutečné
-// technické načítání, jen atmosférický servisní terminál Objektu 13, který
-// postupně vypíše pár hlášek. Zatím nejde přeskočit (viz TODO.md).
+// technické načítání navenek, ale skutečně stáhne pozadí obrazovek do cache
+// prohlížeče (viz preloadBackgroundImages), ať se pak zobrazí okamžitě i při
+// zhoršeném připojení později ve směně. Atmosférický servisní terminál
+// Objektu 13 zatím nejde přeskočit (viz TODO.md).
 export default function LoadingScreen() {
   const [hints] = useState(() => selectLoadingHints(LOADING_SCREEN_HINT_COUNT));
   const [visibleCount, setVisibleCount] = useState(0);
+
+  useEffect(() => {
+    preloadBackgroundImages();
+  }, []);
 
   useEffect(() => {
     if (hints.length === 0) return;

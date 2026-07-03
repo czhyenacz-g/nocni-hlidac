@@ -66,6 +66,14 @@
       v detailu, stejná mřížka na mobilu i desktopu
 - [x] Pozadí úvodního menu (`public/menu_bg.webp`, konvertováno z PNG přes `cwebp`) jako
       CSS `background-image` v `MainMenuScreen.tsx` s tmavým gradientem přes obrázek
+- [x] Pozadí win screenu (`public/win1_background.webp`) a fáze DeskView na `/play`
+      (`public/play_background.webp`, jen když `playerView === "desk"` a mimo blackout) —
+      cesty centralizované v `game/visuals/backgroundImages.ts` (`BACKGROUND_IMAGES`),
+      `preloadBackgroundImages()` je natvrdo stáhne do cache prohlížeče při
+      `LoadingScreen.tsx`, ať se pak zobrazí okamžitě i při zhoršeném připojení
+- [x] `/dev-sound` — dev stránka se seznamem všech audio eventů (`game/audio/audioEvents.ts`),
+      popisem, souborem/fallbackem a tlačítkem přehrát (`app/dev-sound/`, gatované
+      `DEBUG_PANEL_ENABLED`)
 - [x] Generátor pípání o 30 % tišší (`generator_beep` 0.6/0.8 -> 0.42/0.56)
 - [x] Útok u dveří: krok slyšet zřetelně před jumpscare, ne najednou (`enemy_step` ->
       ~220 ms odklad -> `jumpscare`, viz AUDIO_DESIGN.md "Útok u dveří")
