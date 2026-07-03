@@ -46,14 +46,15 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   [AUDIO_EVENTS.shiftWin]: { src: "/assets/audio/shift_win.mp3", volume: 0.7, loop: false },
   [AUDIO_EVENTS.uiClick]: { src: "/assets/audio/ui_click.mp3", volume: 0.4, loop: false },
   // Výrazné "generátor běží" pípnutí každých pár sekund — má být jasně slyšet,
-  // ne jen tiché tiknutí v pozadí.
+  // ne jen tiché tiknutí v pozadí. Hlasitost o 30 % snížená oproti dřívější
+  // 0.6/0.8 (na žádost — původní hlasitost byla po předchozím doladění moc rušivá).
   [AUDIO_EVENTS.generatorBeep]: {
     src: "/assets/audio/generator_beep.mp3",
-    volume: 0.6,
+    volume: 0.42,
     loop: false,
     fallbackSynth: {
       notes: [{ frequency: 1000, durationMs: 160 }],
-      volume: 0.8,
+      volume: 0.56,
       waveform: "square",
     },
   },

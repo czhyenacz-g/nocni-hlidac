@@ -34,6 +34,7 @@ export function createInitialGameState(night: NightDefinition): GameState {
 
     cameraOpen: false,
     activeCameraId: night.defaultCameraId,
+    cameraViewMode: "overview",
     cameraFocusUntilMs: null,
 
     generatorState: "normal",

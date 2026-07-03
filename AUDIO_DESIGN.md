@@ -70,6 +70,22 @@ Definice lekaček (`game/jumpscares/jumpscares.object13.ts`) obsahuje `silenceBe
 záměrné krátké ticho před `jumpscare` zvukem. V první verzi je hodnota připravená v datech;
 samotné vizuální/zvukové zpoždění lze doladit later bez zásahu do herní logiky.
 
+## Útok u dveří — krok před jumpscare, ne najednou
+
+Smrt `door_open_at_attack` má vlastní krátkou zvukovou sekvenci, ať zní jako "poslední
+krok, pak útok", ne jako dva zvuky přehrané naráz přes sebe. `app/play/page.tsx`:
+
+- `state.enemyStage === "at_door"` (nepřítel došel ke dveřím, standoff začíná) — hraje
+  `enemy_near`, jako dřív.
+- Přechod na `state.enemyStage === "attack"` (dveře byly otevřené) sám o sobě **nic
+  nepřehrává** — jen `enemy_step`/`enemy_near` efekt ho záměrně přeskakuje, aby se
+  nepřekrýval se sekvencí níže.
+- Skutečná sekvence běží v efektu na `state.screen === "death"`: pro
+  `deathReason === "door_open_at_attack"` se nejdřív přehraje `enemy_step` (poslední krok
+  těsně za dveřmi) a až po ~220 ms `jumpscare` — `setTimeout` uvnitř efektu, s cleanupem
+  (`clearTimeout`) při dalším přechodu obrazovky. Pro `blackout_timeout` (a `win`) se
+  žádné zpoždění nepřidává, `jumpscare`/`shift_win` hraje instantně jako dřív.
+
 ## Jak funguje AudioManager
 
 `game/audio/audioManager.ts` je jednoduchá třída se singleton instancí (`audioManager`):

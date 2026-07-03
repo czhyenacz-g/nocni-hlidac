@@ -166,13 +166,35 @@ kameře nejblíž hráči (`door_hallway`), a **jen jednou** za tuto "návštěv
 dokud tam nepřítel je, další klikání (třeba přes jinou kameru a zpátky) ho
 neopakuje. Zvuk se "odjistí" znovu, až nepřítel z `door_hallway` odejde.
 
-Panel kamer je zarovnaný podle fyzické pozice (`CameraDefinition.position`) —
-venkovní vstup a chodba před dveřmi přes celou šířku nahoře/dole, pravá a levá
-chodba vedle sebe uprostřed, ať si hráč snáz udělá mentální mapu místnosti.
+### Overview / detail — přepínání kamer není zdarma
+
+Kamerový panel má dva režimy (`GameState.cameraViewMode: "overview" | "detail"`),
+záměrně ne jen čtyři obyčejná tlačítka:
+
+- **Overview** (`CameraMonitorGrid.tsx`) — výchozí pohled, mřížka malých
+  monitorů (na 4 kamerách 2×2), jedna dlaždice na kameru z `night.cameras`.
+  Monitor ukazuje jen štítek a statický šum, **žádný živý obraz** — hráč nevidí,
+  kde je nepřítel, dokud si konkrétní kameru nezvětší.
+- **Detail** (`CameraDetailView.tsx`) — klik na monitor přiblíží danou kameru na
+  celou plochu (`CameraView`, stejné "ladění signálu" jako dřív) a přidá
+  tlačítko/šipku "Zpět na přehled". Až odsud se dá vidět, jestli je na kameře
+  nepřítel.
+
+Hráč se tak musí aktivně rozhodnout: koukat na přehled (bez informace, kde
+nepřítel je) vs. zvětšit jednu konkrétní kameru (informace, ale musí se pak
+ručně vrátit zpět, než zkusí jinou). **Zpomalení nepřítele platí jen v detailu**
+vybrané kamery — overview se nikdy nepočítá jako aktivní sledování (viz
+`isEnemyBeingWatched` v `gameReducer.ts`), jinak by šlo sledovat všechny kamery
+najednou zdarma jen otevřeným přehledem.
+
+Na mobilu je stejná mřížka monitorů (responzivně menší dlaždice), žádné
+oddělené kompaktní ovládání — 2×2 mřížka je dost malá i na úzký displej a
+zachovává stejnou herní mechaniku overview/detail všude.
 
 Seznam a počet kamer je čistě konfigurační (`NightDefinition.cameras` +
-`defaultCameraId`) — žádná komponenta kamery nemá natvrdo napsané, viz
-TECH_DESIGN.md "Kamery jsou konfigurační, nikdy hardcoded".
+`defaultCameraId`) — žádná komponenta kamery (`CameraMonitorGrid`,
+`CameraMonitorTile`, `CameraDetailView`, `CameraPanel`) nemá natvrdo napsané,
+viz TECH_DESIGN.md "Kamery jsou konfigurační, nikdy hardcoded".
 
 ## Generátor
 

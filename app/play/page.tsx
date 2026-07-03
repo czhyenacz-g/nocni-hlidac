@@ -48,21 +48,35 @@ export default function PlayPage() {
   }, [state.audioMuted]);
 
   useEffect(() => {
-    if (prevScreenRef.current !== state.screen) {
-      if (state.screen === "playing") {
-        audioManager.startLoop(AUDIO_EVENTS.ambienceLoop);
-      }
-      if (state.screen === "death") {
-        audioManager.stopLoop(AUDIO_EVENTS.ambienceLoop);
+    if (prevScreenRef.current === state.screen) return;
+
+    let jumpscareTimeout: ReturnType<typeof setTimeout> | undefined;
+
+    if (state.screen === "playing") {
+      audioManager.startLoop(AUDIO_EVENTS.ambienceLoop);
+    }
+    if (state.screen === "death") {
+      audioManager.stopLoop(AUDIO_EVENTS.ambienceLoop);
+      if (state.deathReason === "door_open_at_attack") {
+        // Poslední krok těsně u dveří musí být zřetelně slyšet PŘED
+        // jumpscare zvukem, ne zamíchaně přes sebe — proto krátký odklad,
+        // ne current instantní přehrání obou najednou.
+        audioManager.play(AUDIO_EVENTS.enemyStep);
+        jumpscareTimeout = setTimeout(() => audioManager.play(AUDIO_EVENTS.jumpscare), 220);
+      } else {
         audioManager.play(AUDIO_EVENTS.jumpscare);
       }
-      if (state.screen === "win") {
-        audioManager.stopLoop(AUDIO_EVENTS.ambienceLoop);
-        audioManager.play(AUDIO_EVENTS.shiftWin);
-      }
-      prevScreenRef.current = state.screen;
     }
-  }, [state.screen]);
+    if (state.screen === "win") {
+      audioManager.stopLoop(AUDIO_EVENTS.ambienceLoop);
+      audioManager.play(AUDIO_EVENTS.shiftWin);
+    }
+    prevScreenRef.current = state.screen;
+
+    return () => {
+      if (jumpscareTimeout) clearTimeout(jumpscareTimeout);
+    };
+  }, [state.screen, state.deathReason]);
 
   useEffect(() => {
     if (prevDoorRef.current !== state.doorClosed) {
@@ -96,9 +110,12 @@ export default function PlayPage() {
   }, [state.generatorBeepSeq, state.generatorState]);
 
   useEffect(() => {
-    if (state.enemyStage === "at_door" || state.enemyStage === "attack") {
+    // "attack" má vlastní zvukovou sekvenci (krok -> jumpscare, viz efekt na
+    // state.screen výše) — tady by přehrání enemyNear souběžně s jumpscare
+    // jen zamíchalo oba zvuky přes sebe.
+    if (state.enemyStage === "at_door") {
       audioManager.play(AUDIO_EVENTS.enemyNear);
-    } else if (state.enemyStage !== "outside") {
+    } else if (state.enemyStage !== "outside" && state.enemyStage !== "attack") {
       audioManager.play(AUDIO_EVENTS.enemyStep);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

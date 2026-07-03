@@ -7,7 +7,6 @@ import PowerMeter from "../game/PowerMeter";
 import ShiftTimer from "../game/ShiftTimer";
 import AudioToggle from "../game/AudioToggle";
 import DebugPanel from "../game/DebugPanel";
-import MobileLandscapeHint from "../game/MobileLandscapeHint";
 
 interface GameScreenProps {
   state: GameState;
@@ -44,8 +43,6 @@ export default function GameScreen({
 }: GameScreenProps) {
   return (
     <main className="min-h-screen p-4 flex flex-col gap-4 max-w-md mx-auto">
-      <MobileLandscapeHint />
-
       <div className="flex justify-between items-center">
         <ShiftTimer remainingMs={state.remainingMs} />
         <AudioToggle muted={state.audioMuted} onToggle={onToggleAudio} />

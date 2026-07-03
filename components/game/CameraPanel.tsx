@@ -1,49 +1,35 @@
-import { CameraDefinition, CameraId } from "@/game/core/types";
+import { CameraDefinition, CameraId, CameraViewMode, EnemyStage } from "@/game/core/types";
+import CameraMonitorGrid from "./CameraMonitorGrid";
+import CameraDetailView from "./CameraDetailView";
 
 interface CameraPanelProps {
   cameras: CameraDefinition[];
+  cameraViewMode: CameraViewMode;
   activeCameraId: CameraId | null;
-  cameraOpen: boolean;
+  enemyStage: EnemyStage;
+  focused: boolean;
   onSelectCamera: (id: CameraId) => void;
   onCloseCameras: () => void;
 }
 
-// "left"/"right" sedí vedle sebe ve stejné řadě 2sloupcové mřížky, "center"
-// (i kamery bez position) zabere celou šířku řady — viz CameraDefinition.position.
-function positionClassName(position: CameraDefinition["position"]): string {
-  if (position === "left") return "col-start-1";
-  if (position === "right") return "col-start-2";
-  return "col-span-2";
-}
-
+// Wrapper podle GameState.cameraViewMode: overview = mřížka monitorů
+// (CameraMonitorGrid), detail = zvětšená jedna kamera (CameraDetailView).
+// Sama žádnou herní logiku nemá, jen vybírá, co vykreslit.
 export default function CameraPanel({
   cameras,
+  cameraViewMode,
   activeCameraId,
-  cameraOpen,
+  enemyStage,
+  focused,
   onSelectCamera,
   onCloseCameras,
 }: CameraPanelProps) {
-  // Pořadí v panelu podle order (kamery bez order jdou za těmi s order, jinak
-  // v pořadí, ve kterém přišly z konfigurace směny). Uvnitř mřížky o tom, kdo
-  // sedí vlevo/vpravo, rozhoduje position — pořadí v poli řeší jen tie-breaky.
-  const sortedCameras = [...cameras].sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity));
+  if (cameraViewMode === "detail") {
+    const activeCamera = cameras.find((c) => c.id === activeCameraId) ?? null;
+    return (
+      <CameraDetailView camera={activeCamera} enemyStage={enemyStage} focused={focused} onBack={onCloseCameras} />
+    );
+  }
 
-  return (
-    <div className="grid grid-cols-2 gap-3">
-      {sortedCameras.map((camera) => (
-        <button
-          key={camera.id}
-          className={`pixel-button tap-target px-3 py-2 text-xs ${positionClassName(camera.position)}`}
-          data-active={cameraOpen && activeCameraId === camera.id}
-          onClick={() => onSelectCamera(camera.id)}
-          aria-label={camera.label}
-        >
-          {camera.label}
-        </button>
-      ))}
-      <button className="pixel-button tap-target col-span-2 px-3 py-2 text-xs" onClick={onCloseCameras}>
-        Zavřít kamery
-      </button>
-    </div>
-  );
+  return <CameraMonitorGrid cameras={cameras} onSelectCamera={onSelectCamera} />;
 }

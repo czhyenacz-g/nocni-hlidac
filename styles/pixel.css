@@ -104,6 +104,31 @@
   50% { opacity: 0.15; }
 }
 
+/* ── Kamerový monitor overview/detail (viz CameraMonitorGrid/CameraDetailView) ──
+ * Overview mřížka = jen štítek + statický šum, žádný živý obraz — proto tu
+ * stačí subtilní hover/focus rámeček, který navíc naznačuje "je to klikací
+ * monitor, ne jen tlačítko". */
+.camera-monitor-tile {
+  position: relative;
+}
+
+.camera-monitor-tile:hover,
+.camera-monitor-tile:focus-visible {
+  outline: 2px solid #f59e0b;
+  outline-offset: -2px;
+}
+
+/* Lehký zoom při přechodu overview -> detail (CameraDetailView) — jen
+ * jednorázová animace na mount, žádný trvalý transform. */
+.camera-detail-zoom-in {
+  animation: camera-zoom-in 0.18s ease-out;
+}
+
+@keyframes camera-zoom-in {
+  0% { transform: scale(0.94); opacity: 0.5; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
 /* ── Mobilní dotykové cíle ─────────────────────────────────────────────────
  * Klikací PLOCHA smí být větší než viditelná pixel-art grafika (přes padding/
  * min-height, ne zvětšením textu). Obecná akce >= 44x44 px, kritická herní
@@ -131,21 +156,3 @@
   align-items: center;
 }
 
-/* Jemné doporučení otočit telefon na šířku — čisté CSS, žádná JS logika ani
- * detekce zařízení. Zobrazí se jen na úzkých displejích na výšku. */
-.mobile-landscape-hint {
-  display: none;
-}
-
-@media (orientation: portrait) and (max-width: 820px) {
-  .mobile-landscape-hint {
-    display: block;
-    text-align: center;
-    font-size: 11px;
-    color: #fbbf24;
-    background: rgba(217, 119, 6, 0.12);
-    border: 1px solid rgba(217, 119, 6, 0.35);
-    border-radius: 4px;
-    padding: 8px 12px;
-  }
-}

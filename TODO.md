@@ -30,7 +30,9 @@
 - [x] Náhodná volba strany (pravá/levá chodba) — `routeVariants`, losuje se jednou při
       startu směny
 - [x] Mobilní stabilizace — dotykové cíle (`.tap-target`, `.tap-target-critical`,
-      `.view-hotspot`), `.mobile-landscape-hint`, DebugPanel skrytý pod `lg`, viewport meta
+      `.view-hotspot`), DebugPanel skrytý pod `lg`, viewport meta
+      (pozn. `.mobile-landscape-hint`/`MobileLandscapeHint.tsx` byly později odstraněny —
+      hláška "hraje se lépe na šířku" nebyla pravdivá, hra je cílená na portrait mobil)
 - [x] Oprava `camera_noise` (jednorázový za "návštěvu") a zarovnání kamer podle pozice,
       sbalitelný DebugPanel
 - [x] Door-light repel: zavřené dveře + zapnuté světlo + nepřítel u dveří ~1,5 s ->
@@ -57,6 +59,18 @@
       audio fáze blackoutu (`blackoutPhaseSeq` v reduceru, `enemy_step`/`enemy_near`/
       `blackout_door_hit` v `app/play/page.tsx`, jumpscare na konci), `BlackoutView` texty
       sladěné se skutečně přehrávaným audiem, `DebugPanel` ukazuje fázi
+- [x] Kamerový panel overview/detail (`cameraViewMode`) místo čtyř tlačítek —
+      `CameraMonitorGrid`/`CameraMonitorTile` (2×2 mřížka, jen štítek + šum, žádný živý
+      obraz) a `CameraDetailView` (zvětšená kamera + "Zpět na přehled"), `CameraPanel` jen
+      wrapper podle režimu; aktivní sledování (zpomalení nepřítele, `cameraOpen`) platí jen
+      v detailu, stejná mřížka na mobilu i desktopu
+- [x] Pozadí úvodního menu (`public/menu_bg.webp`, konvertováno z PNG přes `cwebp`) jako
+      CSS `background-image` v `MainMenuScreen.tsx` s tmavým gradientem přes obrázek
+- [x] Generátor pípání o 30 % tišší (`generator_beep` 0.6/0.8 -> 0.42/0.56)
+- [x] Útok u dveří: krok slyšet zřetelně před jumpscare, ne najednou (`enemy_step` ->
+      ~220 ms odklad -> `jumpscare`, viz AUDIO_DESIGN.md "Útok u dveří")
+- [x] Odstraněna neplatná mobilní hláška „otoč telefon na šířku“ (`MobileLandscapeHint.tsx`
+      přestal být použitý, `.mobile-landscape-hint` CSS smazáno — hra je cílená na portrait)
 - [x] Footer (`components/Footer.tsx`) s odkazem na `/about`, jen na MainMenuScreen a
       `/about` — ne na herních obrazovkách, ať nic neruší
 - [x] `/about` stránka — kdo za projektem stojí, pocta nočním pracovníkům, textová
@@ -70,8 +84,8 @@
 - [ ] Ruční test na skutečném mobilu (ne jen zmenšené okno v desktop prohlížeči):
       - přepínání desk → door → desk a desk → generator → desk prstem
       - klik na dveře/generátor v DoorView/GeneratorView
-      - kamera tlačítka v CameraPanel při 4 kamerách (zalomení na užší obrazovce)
-      - `.mobile-landscape-hint` se objeví v portrait a zmizí v landscape
+      - kamerová mřížka monitorů (`CameraMonitorGrid`) při 4 kamerách, klik na monitor a
+        zpět na přehled (`CameraDetailView`)
       - žádný hotspot není nalepený na okraj displeje (notch/safe area u `viewportFit: cover`)
 
 ## Další kroky po MVP

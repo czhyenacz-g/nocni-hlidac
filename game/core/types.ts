@@ -45,6 +45,16 @@ export type GeneratorState = "normal" | "silentFault" | "criticalBeeping" | "res
 
 export type CameraId = "outer_yard" | "right_hallway" | "left_hallway" | "door_hallway";
 
+/**
+ * overview — hráč vidí všechny kamery jako malé monitory v mřížce
+ * (CameraMonitorGrid), jen štítek + statický šum, žádný živý obraz. Nepočítá
+ * se jako aktivní sledování konkrétní kamery (viz isEnemyBeingWatched v
+ * gameReducer.ts) — jinak by šlo sledovat všechny kamery najednou zdarma.
+ * detail — hráč zvětšil jednu konkrétní kameru (CameraDetailView); teprve
+ * tady platí `cameraOpen`, camera focus/šum a zpomalení nepřítele.
+ */
+export type CameraViewMode = "overview" | "detail";
+
 export type CameraType = "outside" | "hallway" | "door" | "utility";
 
 export interface CameraDefinition {
@@ -55,9 +65,10 @@ export interface CameraDefinition {
   /** Pořadí v panelu; nižší = blíž venku. Kamery bez order se řadí za ty s order, v pořadí v poli. */
   order?: number;
   /**
-   * Fyzická pozice pro layout panelu (viz CameraPanel.tsx) — "left"/"right" se
-   * umístí vedle sebe ve stejné řadě, "center"/bez pozice zabere celou šířku.
-   * Čistě vizuální, žádná herní logika na tom nestaví.
+   * Fyzická pozice odpovídající rozložení chodeb — zatím jen dokumentační
+   * metadata (žádná herní logika na tom nestaví). CameraMonitorGrid.tsx
+   * ji nekonzumuje, overview je jednotná 2×N mřížka podle `order`; připravené
+   * pro případný budoucí spatial layout.
    */
   position?: "left" | "right" | "center";
   type?: CameraType;
@@ -201,8 +212,14 @@ export interface GameState {
   doorClosed: boolean;
   lightOn: boolean;
 
+  /**
+   * true jen v `cameraViewMode === "detail"` — overview (mřížka náhledů) se
+   * nikdy nepočítá jako otevřená/aktivně sledovaná kamera, viz CameraViewMode.
+   */
   cameraOpen: boolean;
   activeCameraId: CameraId | null;
+  /** overview (mřížka monitorů) vs. detail (zvětšená jedna kamera) — viz CameraViewMode. */
+  cameraViewMode: CameraViewMode;
   /** elapsedMs, kdy skončí "ladění signálu" po výběru kamery — viz game/core/cameraFocus.ts. */
   cameraFocusUntilMs: number | null;
 

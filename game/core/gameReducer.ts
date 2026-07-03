@@ -218,7 +218,14 @@ export function createGameReducer(night: NightDefinition) {
         // Kamery se při odchodu od stolu vždy zavřou — hráč se nedívá na dveře
         // a zároveň na kameru, žádná nezůstane "otevřená" na pozadí.
         if (!state.isRunning) return state;
-        return { ...state, playerView: "door", cameraOpen: false, activeCameraId: null, cameraFocusUntilMs: null };
+        return {
+          ...state,
+          playerView: "door",
+          cameraOpen: false,
+          activeCameraId: null,
+          cameraViewMode: "overview",
+          cameraFocusUntilMs: null,
+        };
 
       case "LOOK_AT_DESK":
         if (!state.isRunning) return state;
@@ -231,6 +238,7 @@ export function createGameReducer(night: NightDefinition) {
           playerView: "generator",
           cameraOpen: false,
           activeCameraId: null,
+          cameraViewMode: "overview",
           cameraFocusUntilMs: null,
         };
 
@@ -262,18 +270,29 @@ export function createGameReducer(night: NightDefinition) {
 
       case "OPEN_CAMERA":
         // V blackoutu jsou kamery mrtvé — nejdou zapnout ani přepnout.
+        // Klik na monitor v overview mřížce -> zoom do detailu dané kamery;
+        // teprve tady se počítá jako aktivní sledování (viz isEnemyBeingWatched).
         if (!state.isRunning || state.gameStatus === "blackout") return state;
         return {
           ...state,
           cameraOpen: true,
           activeCameraId: action.cameraId,
+          cameraViewMode: "detail",
           // Nová "ladění signálu" perioda při každém výběru/přepnutí kamery —
           // CameraView zobrazí šum, dokud state.elapsedMs nedosáhne tohoto času.
           cameraFocusUntilMs: state.elapsedMs + night.cameraFocusMs,
         };
 
       case "CLOSE_CAMERAS":
-        return { ...state, cameraOpen: false, activeCameraId: null, cameraFocusUntilMs: null };
+        // Návrat z detailu zpět na overview mřížku (tlačítko "Zpět na přehled")
+        // i vynucené zavření kamer jinde v reduceru — vždy stejný cílový stav.
+        return {
+          ...state,
+          cameraOpen: false,
+          activeCameraId: null,
+          cameraViewMode: "overview",
+          cameraFocusUntilMs: null,
+        };
 
       case "TICK": {
         if (!state.isRunning) return state;
@@ -344,6 +363,7 @@ export function createGameReducer(night: NightDefinition) {
             lightOn: false,
             cameraOpen: false,
             activeCameraId: null,
+            cameraViewMode: "overview",
             cameraFocusUntilMs: null,
           };
         }

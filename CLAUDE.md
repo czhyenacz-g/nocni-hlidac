@@ -29,10 +29,18 @@ funkce, abstrakce ani konfigurovatelnost, které aktuální směna nepotřebuje.
   `RESTART_GENERATOR` jen mimo `"normal"`), vynuť to přímo v reduceru, ne jen v UI.
 - Seznam kamer je vždy konfigurační (`NightDefinition.cameras` + `defaultCameraId` v
   `game/nights/night01.ts`, definice v `game/cameras/`), nikdy hardcoded v
-  `CameraPanel.tsx`/`CameraView.tsx` ani jinde v UI. Nepředpokládej v kódu konkrétní počet
-  ani konkrétní camera id — příští směna může mít jiný počet a jinou kombinaci. Totéž platí
-  pro `EnemyDefinition.route`: stage nepřítele nejsou to samé jako camera id (např. `at_door`
+  `CameraPanel.tsx`/`CameraMonitorGrid.tsx`/`CameraMonitorTile.tsx`/`CameraDetailView.tsx`/
+  `CameraView.tsx` ani jinde v UI. Nepředpokládej v kódu konkrétní počet ani konkrétní camera
+  id — příští směna může mít jiný počet a jinou kombinaci. Totéž platí pro
+  `EnemyDefinition.route`: stage nepřítele nejsou to samé jako camera id (např. `at_door`
   není kamera) a UI ani reducer nesmí předpokládat, že každá stage odpovídá nějaké kameře.
+- Kamerové UI na desktopu není čtyři obyčejná tlačítka — je to overview/detail model
+  (`GameState.cameraViewMode: "overview" | "detail"`): `CameraMonitorGrid.tsx` ukazuje
+  všechny kamery jako mřížku malých monitorů (jen štítek + šum, žádný živý obraz),
+  `CameraDetailView.tsx` zvětší jednu vybranou kameru se skutečným obsahem a tlačítkem
+  zpět. Overview se nikdy nepočítá jako aktivní sledování (`cameraOpen` je `true` jen v
+  detailu) — nepřidávej cestu, jak by šlo sledovat nepřítele jen z přehledu, to by
+  rozbilo herní důvod, proč overview/detail vůbec existuje (viz GAME_DESIGN.md "Kamery").
 - Texty pro LoadingScreen (a jakýkoliv další "hint"/servisní obsah) patří do
   `content/loadingHints.ts` (nebo obdobného content souboru), nikdy natvrdo do
   `LoadingScreen.tsx`. Výběr/filtrování hintů (`selectLoadingHints`) je čistá funkce v

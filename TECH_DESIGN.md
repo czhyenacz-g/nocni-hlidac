@@ -58,15 +58,47 @@ by měly vlastní soubor v `game/cameras/`.
 
 ### Kamery jsou konfigurační, nikdy hardcoded
 
-`CameraPanel.tsx` a `CameraView.tsx` vždy renderují ze seznamu, který dostanou přes props
-(`night.cameras`) — nikde v UI není napsaný konkrétní camera id ani jejich počet. Kolik
-kamer a v jaké kombinaci má daná směna k dispozici, určuje výhradně
-`NightDefinition.cameras` (+ `defaultCameraId` pro přednastavenou kameru při startu). Nová
-směna může mít jiný počet i jiné kamery, aniž by se muselo sáhnout do `components/game/`.
-`CameraPanel.tsx` řadí kamery podle `order` (kamery bez `order` jdou na konec, v pořadí,
-jak přišly z konfigurace) a rozestavuje je do 2sloupcové mřížky podle `CameraDefinition.position`
-(`"left"`/`"right"` vedle sebe ve stejné řadě, `"center"`/bez pozice přes celou šířku) — čistě
-vizuální hint, žádná herní logika na `position` nestaví.
+`CameraPanel.tsx`, `CameraMonitorGrid.tsx`, `CameraMonitorTile.tsx`, `CameraDetailView.tsx` a
+`CameraView.tsx` vždy renderují ze seznamu, který dostanou přes props (`night.cameras`) —
+nikde v UI není napsaný konkrétní camera id ani jejich počet. Kolik kamer a v jaké kombinaci
+má daná směna k dispozici, určuje výhradně `NightDefinition.cameras` (+ `defaultCameraId` pro
+přednastavenou kameru při startu). Nová směna může mít jiný počet i jiné kamery, aniž by se
+muselo sáhnout do `components/game/`. `CameraMonitorGrid.tsx` řadí kamery podle `order`
+(kamery bez `order` jdou na konec, v pořadí, jak přišly z konfigurace) a vykresluje je do
+jednotné 2sloupcové mřížky (4 kamery → 2×2) — `CameraDefinition.position` se pro tuto mřížku
+nekonzumuje (zůstává jen jako připravená dokumentační metadata), viz "Kamerový panel:
+overview/detail" níže.
+
+### Kamerový panel: overview/detail (`cameraViewMode`)
+
+Na rozdíl od dřívějších čtyř tlačítek má kamerový panel dva režimy,
+`GameState.cameraViewMode: "overview" | "detail"`:
+
+- `CameraPanel.tsx` je čistý wrapper bez vlastní herní logiky — podle
+  `cameraViewMode` vykreslí buď `CameraMonitorGrid.tsx` (overview), nebo
+  `CameraDetailView.tsx` (detail, obaluje existující `CameraView.tsx` +
+  `ViewSwitchArrow` jako tlačítko "Zpět na přehled").
+- `CameraMonitorTile.tsx` v overview **nedostává** `enemyStage` ani žádný jiný
+  herní stav — schválně zobrazuje jen `camera.label` + statický šum, žádný
+  živý obraz. To je záměrné: overview nesmí prozrazovat, kde je nepřítel.
+- Klik na monitor dispatchuje existující `OPEN_CAMERA` akci (žádná nová akce
+  nebyla potřeba) — `gameReducer.ts` teď navíc nastaví `cameraViewMode: "detail"`
+  vedle původního `cameraOpen: true` / `activeCameraId` / `cameraFocusUntilMs`.
+- Tlačítko "Zpět na přehled" dispatchuje existující `CLOSE_CAMERAS` — reducer
+  teď nastaví `cameraViewMode: "overview"` vedle `cameraOpen: false` a
+  `activeCameraId: null`. Stejná úprava (`cameraViewMode: "overview"`) je
+  doplněná všude, kde reducer dřív nuceně zavíral kamery: `LOOK_AT_DOOR`,
+  `LOOK_AT_GENERATOR`, vstup do blackoutu (`TICK`, `power <= 0`) — po návratu
+  na stůl tak hráč vždy uvidí přehled, nikdy zaseknutý detail.
+- **`cameraOpen` je teď true jen v `cameraViewMode === "detail"`.** Díky tomu
+  se nemusela měnit žádná navazující logika: `isEnemyBeingWatched` (sleduje
+  `state.cameraOpen && state.activeCameraId`) i `applyPowerDelta`
+  (`watchingCameras = state.cameraOpen && state.playerView === "desk"`) fungují
+  beze změny — overview automaticky **není** aktivní sledování ani "sledování
+  kamer" pro spotřebu energie (chová se jako dřívější `cameraOpen: false`,
+  žádná extra spotřeba navíc), zpomalení nepřítele platí jen v detailu.
+  Balanc spotřeby energie se tím neměnil, jen se přesně namapoval na nový
+  overview/detail model.
 
 ### Kamera focus/šum (`cameraFocusMs`)
 
@@ -311,9 +343,6 @@ pohodlně prstem trefit do všech důležitých prvků, ne aby hra na mobilu vyp
 - `.view-hotspot` + `.pixel-arrow-button` — šipky pro přepnutí pohledu (`ViewSwitchArrow.tsx`,
   min. 48 px výška). Hotspot je vždy plocha `<button>`, ne jen viditelný text — padding dělá
   klikací zónu větší než sám text.
-- `.mobile-landscape-hint` — čistě CSS doporučení otočit telefon (`@media (orientation:
-  portrait) and (max-width: 820px)`), žádná JS detekce zařízení. Komponenta
-  `MobileLandscapeHint.tsx` jen vykresluje text, CSS řídí kdy je vidět.
 - `DebugPanel.tsx` je skrytý pod `lg` breakpointem (Tailwind `hidden lg:block`) — je to dev
   nástroj, na mobilu by jen zabíral místo a mohl překrývat skutečné ovládání. I na desktopu
   je to nativní `<details>`/`<summary>` bez `open` — defaultně sbalené, žádný extra React
