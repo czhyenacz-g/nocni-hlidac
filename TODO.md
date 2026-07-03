@@ -53,6 +53,10 @@
 - [x] Blackout místo okamžité smrti při `power <= 0` — `gameStatus`, `BlackoutView`,
       4 atmosférické fáze, přežití pokud směna skončí dřív, jinak smrt
       (`deathReason: "blackout_timeout"`)
+- [x] Footer (`components/Footer.tsx`) s odkazem na `/about`, jen na MainMenuScreen a
+      `/about` — ne na herních obrazovkách, ať nic neruší
+- [x] `/about` stránka — kdo za projektem stojí, pocta nočním pracovníkům, textová
+      avizace budoucí důstojné inzerce/sponzoringu (žádný formulář/backend)
 - [ ] Playtest a doladění balancu (šance postupu nepřítele, retreatChance, spotřeba
       energie, rychlost dobíjení, časové okno poruchy generátoru, tempo kritického
       pípání, rozsah doorHoldRangeMs, doorLightRepelRequiredMs, restartPenaltyMs,
@@ -82,6 +86,9 @@
 - Přeskočitelný LoadingScreen
 - `cameraFocusMs` počítaný podle napětí/energie/generátoru místo pevné hodnoty
 - Vizuálně dopracované fáze blackoutu (dnes jen text, žádná speciální animace/efekt navíc)
+- Skutečná vrstva inzerce nočních provozů (nabídky práce, partnerství, sponzoring) —
+  `/about` zatím jen textově avizuje, žádný formulář/portál/databáze
+- Skutečný kontaktní formulář na `/about` místo `mailto:` odkazu
 
 ## Explicitně odložené věci
 
@@ -92,5 +99,7 @@
 - Multiplayer
 - Složitý backend
 - Velký lore systém
+- Pracovní portál / skutečná inzerce nočních provozů — na `/about` je to zatím jen text,
+  žádný formulář, výpis nabídek, platby ani administrace; explicitně NENÍ součástí MVP
 - Generický engine pro všechno (vznikne postupně z první hratelné směny)
 - Složitá procedurální mapa

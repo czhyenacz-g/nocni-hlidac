@@ -22,11 +22,18 @@ relace (jedna směna = pár minut).
 
 Prototyp — první hratelná směna (MVP) funguje: menu, hra, smrt, výhra, restart.
 Grafika a zvuk jsou placeholder, architektura je připravená na rozšíření.
+Existuje i prezentační `/about` stránka a nenápadný Footer (mimo hratelnou plochu) s
+odkazem na ni.
 
 ## Budoucí monetizace
 
-Zatím žádná. Neřeší se platby, Discord login, Patreon ani databáze.
-Až se ověří, že je hra zábavná a hratelná, může se zvážit další kapitoly / dárky / reklama.
+Zatím žádná skutečná implementace. Neřeší se platby, Discord login, Patreon ani databáze.
+`/about` už ale textově avizuje budoucí směr: **důstojná inzerce pro noční provozy** —
+nabídky práce pro noční hlídače/ostrahu/vrátné/recepční, noční sklady a technické služby,
+partnerství a sponzoring hry/webu. Tohle je záměrně jen textová avizace, ne funkční
+pracovní portál — žádný formulář, žádná databáze, žádná administrace. Až se ověří, že
+je hra zábavná a hratelná, může se zvážit další kapitoly / dárky / reklama / skutečná
+inzertní vrstva.
 
 ## Rizika
 
@@ -42,3 +49,5 @@ Až se ověří, že je hra zábavná a hratelná, může se zvážit další ka
 - Velký lore systém
 - Generický engine pro všechno — engine vznikne postupným čištěním z první hratelné směny
 - Složitou procedurální mapu
+- Skutečný pracovní portál / formulář na inzerci — `/about` zatím jen textově avizuje směr,
+  žádný backend ani administrace

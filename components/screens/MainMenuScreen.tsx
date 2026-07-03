@@ -1,5 +1,5 @@
 import { COPY } from "@/content/copy";
-import { GAME_VERSION } from "@/game/balancing/constants";
+import Footer from "@/components/Footer";
 
 interface MainMenuScreenProps {
   onStart: () => void;
@@ -17,12 +17,9 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
         </button>
       </div>
 
-      <footer className="fixed bottom-0 left-0 right-0 py-2 px-4 text-center text-[10px] text-gray-600">
-        {GAME_VERSION} ·{" "}
-        <a href={`mailto:${COPY.menu.authorEmail}`} className="hover:text-gray-400">
-          {COPY.menu.authorEmail}
-        </a>
-      </footer>
+      <div className="fixed bottom-0 left-0 right-0">
+        <Footer />
+      </div>
     </main>
   );
 }
