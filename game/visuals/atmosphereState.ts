@@ -14,13 +14,15 @@ export function computeTensionLevel(input: TensionInput): number {
 
   const enemyProximity = {
     outside: 0,
-    camera_01_far: 0.25,
-    camera_02_hall: 0.5,
-    camera_03_door: 0.8,
+    outer_yard: 0.2,
+    right_hallway: 0.4,
+    left_hallway: 0.4,
+    door_hallway: 0.65,
+    at_door: 0.85,
     attack: 1,
   }[input.enemyStage];
 
-  const doorDanger = input.enemyStage === "camera_03_door" && !input.doorClosed ? 0.3 : 0;
+  const doorDanger = input.enemyStage === "at_door" && !input.doorClosed ? 0.3 : 0;
 
   const tension =
     powerRatio * 0.3 +

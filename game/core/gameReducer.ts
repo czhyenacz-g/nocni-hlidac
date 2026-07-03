@@ -195,7 +195,7 @@ export function createGameReducer(night: NightDefinition) {
 
         const route = night.enemy.route;
         const currentIndex = route.indexOf(state.enemyStage);
-        const atDoorStage = state.enemyStage === "camera_03_door";
+        const atDoorStage = state.enemyStage === "at_door";
 
         if (atDoorStage) {
           if (state.doorClosed) {
@@ -209,6 +209,7 @@ export function createGameReducer(night: NightDefinition) {
               return {
                 ...state,
                 enemyStage: "outside",
+                lastEnemyDecision: "gave_up",
                 enemyAtDoorSinceMs: null,
                 enemyDoorHoldTargetMs: null,
                 enemyDoorHoldProgressMs: 0,
@@ -216,6 +217,7 @@ export function createGameReducer(night: NightDefinition) {
             }
             return {
               ...state,
+              lastEnemyDecision: "waiting_at_door",
               enemyAtDoorSinceMs: since,
               enemyDoorHoldTargetMs: target,
               enemyDoorHoldProgressMs: progress,
@@ -226,24 +228,43 @@ export function createGameReducer(night: NightDefinition) {
           return {
             ...state,
             enemyStage: "attack",
+            lastEnemyDecision: "attack",
             isRunning: false,
             screen: "death",
             deathReason: "door_open_at_attack",
           };
         }
 
+        // Postup/setrvání/ústup — nezávislé pravděpodobnosti, zbytek (1 - advance - retreat)
+        // znamená setrvání. Sledování na kameře jen zpomaluje postup, ústup neovlivňuje.
         const watched = isEnemyBeingWatched(state, night);
-        const chance = night.enemy.advanceChance * (watched ? night.enemy.watchedAdvanceMultiplier : 1);
+        const advanceChance = night.enemy.advanceChance * (watched ? night.enemy.watchedAdvanceMultiplier : 1);
+        const retreatChance = night.enemy.retreatChance;
+        const roll = Math.random();
 
-        if (Math.random() >= chance) return state;
+        let nextIndex = currentIndex;
+        let decision: GameState["lastEnemyDecision"] = "stay";
 
-        const nextIndex = Math.min(currentIndex + 1, route.length - 1);
+        if (roll < advanceChance) {
+          nextIndex = Math.min(currentIndex + 1, route.length - 1);
+          decision = "advance";
+        } else if (roll < advanceChance + retreatChance) {
+          nextIndex = Math.max(currentIndex - 1, 0);
+          // Na první pozici (nebo pokud by index nezměnil) nemá ústup kam jít — bere se jako setrvání.
+          decision = nextIndex === currentIndex ? "stay" : "retreat";
+        }
+
+        if (nextIndex === currentIndex) {
+          return { ...state, lastEnemyDecision: decision };
+        }
+
         const nextStage = route[nextIndex];
 
         return {
           ...state,
           enemyStage: nextStage,
-          enemyAtDoorSinceMs: nextStage === "camera_03_door" ? state.elapsedMs : null,
+          lastEnemyDecision: decision,
+          enemyAtDoorSinceMs: nextStage === "at_door" ? state.elapsedMs : null,
           enemyDoorHoldTargetMs: null,
           enemyDoorHoldProgressMs: 0,
         };

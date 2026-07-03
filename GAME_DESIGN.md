@@ -39,18 +39,27 @@ pryč a naopak kdy se k nim včas vrátit.
 
 - Délka: ~2:30 minuty
 - Počáteční energie: 100
-- 3 kamery, 1 pár dveří, 1 světlo do chodby
+- 4 kamery, 1 pár dveří, 1 světlo do chodby
 - Jeden nepřítel: `basicIntruder`
 
 ## Nepřítel
 
-Trasa: `venku -> chodba daleko -> chodba blízko -> u dveří -> útok`
+Trasa (`basicIntruder`): `outside -> outer_yard -> right_hallway -> door_hallway
+-> at_door -> attack`. `outside` není vidět na žádné kameře (nepřítel se teprve
+blíží), `at_door` taky ne — to je stav pro DoorView, ne kameru. Kamera
+`left_hallway` existuje, ale tato trasa jí neprochází — je připravená pro
+budoucího nepřítele/směnu s jinou trasou (viz TECH_DESIGN.md).
 
-- Každé ~2 s (viz `night.enemyTickMs`) má šanci postoupit na další stage trasy.
-- Sledování kamery, na které je právě viditelný, jeho postup zpomaluje
-  (nižší šance na postup, `watchedAdvanceMultiplier`).
-- Když je u dveří (`camera_03_door`):
-  - dveře zavřené → po náhodné době 6–8 s se vzdá a vrátí na start trasy
+- Každé ~2 s (viz `night.enemyTickMs`) se vyhodnocuje, co nepřítel udělá — tři
+  nezávislé možnosti:
+  - **postoupí** o krok dál (`advanceChance`, zpomalené sledováním na kameře přes
+    `watchedAdvanceMultiplier`)
+  - **ustoupí** o krok zpět (`retreatChance`, výchozí 10 %) — na první pozici
+    (`outside`) ustoupit nemá kam, bere se to jako setrvání
+  - jinak **zůstává** na místě
+  - Poslední rozhodnutí (`advance`/`stay`/`retreat`/...) je vidět v DebugPanelu.
+- Když je u dveří (`at_door`):
+  - dveře zavřené → po náhodné době 6–8 s se vzdá a vrátí úplně na začátek trasy
     (`doorHoldRangeMs`) — **se zapnutým světlem 2× rychleji** (efektivně 3–4 s,
     `doorHoldLightAccelMultiplier`); zapnutí/vypnutí světla uprostřed čekání
     zrychlí/zpomalí zbytek okamžitě, ne až při příštím příchodu ke dveřím
@@ -92,8 +101,22 @@ důvod světlo zapnout i za cenu energie, ne jen ho nechávat vypnuté.
 
 ## Kamery
 
-3 kamery pokrývající trasu nepřítele. Otevřená kamera stojí malou energii a dočasně
-zpomaluje postup nepřítele, pokud je na ní právě vidět.
+4 kamery (`game/cameras/cameras.object13.ts`), seřazené podle vzdálenosti od
+hráče (`order`, nižší = dál venku):
+
+1. **Venkovní vstup** (`outer_yard`) — nejvzdálenější pohled
+2. **Pravá chodba** (`right_hallway`) / **Levá chodba** (`left_hallway`) — boční
+   chodby ke dveřím (`basicIntruder` jde jen pravou, levá čeká na budoucí trasu)
+3. **Chodba před dveřmi** (`door_hallway`) — poslední úsek, nejblíž hráči
+
+Otevřená kamera stojí malou energii a dočasně zpomaluje postup nepřítele, pokud
+je na ní právě vidět. Kliknutí na kameru navíc krátce zašumí (`camera_noise`),
+ale **jen** když je nepřítel zrovna na kameře nejblíž hráči (`door_hallway`) —
+funguje to jako tichý indikátor nebezpečí, ne obyčejný UI klik.
+
+Seznam a počet kamer je čistě konfigurační (`NightDefinition.cameras` +
+`defaultCameraId`) — žádná komponenta kamery nemá natvrdo napsané, viz
+TECH_DESIGN.md "Kamery jsou konfigurační, nikdy hardcoded".
 
 ## Generátor
 

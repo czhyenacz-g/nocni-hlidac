@@ -23,7 +23,7 @@ export function createInitialGameState(night: NightDefinition): GameState {
     lightOn: false,
 
     cameraOpen: false,
-    activeCameraId: null,
+    activeCameraId: night.defaultCameraId,
 
     generatorState: "normal",
     generatorNextBeepAtMs: night.generator.beepIntervalMs,
@@ -33,6 +33,7 @@ export function createInitialGameState(night: NightDefinition): GameState {
     generatorFaultCount: 0,
 
     enemyStage: "outside",
+    lastEnemyDecision: "stay",
     enemyAtDoorSinceMs: null,
     enemyDoorHoldTargetMs: null,
     enemyDoorHoldProgressMs: 0,

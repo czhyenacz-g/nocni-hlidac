@@ -27,6 +27,12 @@ funkce, abstrakce ani konfigurovatelnost, které aktuální směna nepotřebuje.
   vlastní akce (`LOOK_AT_*`) v `gameReducer.ts`, ne lokální React state v komponentě.
   Pokud má akce smysl jen v konkrétním pohledu (např. `TOGGLE_DOOR` jen v `"door"`,
   `RESTART_GENERATOR` jen mimo `"normal"`), vynuť to přímo v reduceru, ne jen v UI.
+- Seznam kamer je vždy konfigurační (`NightDefinition.cameras` + `defaultCameraId` v
+  `game/nights/night01.ts`, definice v `game/cameras/`), nikdy hardcoded v
+  `CameraPanel.tsx`/`CameraView.tsx` ani jinde v UI. Nepředpokládej v kódu konkrétní počet
+  ani konkrétní camera id — příští směna může mít jiný počet a jinou kombinaci. Totéž platí
+  pro `EnemyDefinition.route`: stage nepřítele nejsou to samé jako camera id (např. `at_door`
+  není kamera) a UI ani reducer nesmí předpokládat, že každá stage odpovídá nějaké kameře.
 
 ## Povinnost držet audio odděleně
 

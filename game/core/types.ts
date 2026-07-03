@@ -1,11 +1,21 @@
 // Sdílené typy pro herní stav, nezávislé na UI.
 
+// Fyzické pozice nepřítele na trase. "outside" (mimo dohled žádné kamery) a
+// "at_door" (u dveří — stav pro DoorView, ne kamera) nejsou nutně kamerou
+// vidět; ostatní stage odpovídají konkrétním kamerám přes
+// CameraDefinition.enemyVisibleAtStage. Který podmnožinu stage nepřítel na
+// své trase skutečně navštíví, určuje EnemyDefinition.route.
 export type EnemyStage =
   | "outside"
-  | "camera_01_far"
-  | "camera_02_hall"
-  | "camera_03_door"
+  | "outer_yard"
+  | "right_hallway"
+  | "left_hallway"
+  | "door_hallway"
+  | "at_door"
   | "attack";
+
+/** Poslední rozhodnutí nepřítele při vyhodnocení ENEMY_ADVANCE — pro DebugPanel. */
+export type EnemyMoveDecision = "advance" | "stay" | "retreat" | "waiting_at_door" | "gave_up" | "attack";
 
 export type ScreenId = "menu" | "playing" | "death" | "win";
 
@@ -19,11 +29,18 @@ export type PlayerView = "desk" | "door" | "generator";
  */
 export type GeneratorState = "normal" | "silentFault" | "criticalBeeping";
 
-export type CameraId = "camera_01_far" | "camera_02_hall" | "camera_03_door";
+export type CameraId = "outer_yard" | "right_hallway" | "left_hallway" | "door_hallway";
+
+export type CameraType = "outside" | "hallway" | "door" | "utility";
 
 export interface CameraDefinition {
   id: CameraId;
   label: string;
+  /** Krátký popis pro UI (např. tooltip/podnadpis) — volitelný. */
+  description?: string;
+  /** Pořadí v panelu; nižší = blíž venku. Kamery bez order se řadí za ty s order, v pořadí v poli. */
+  order?: number;
+  type?: CameraType;
   /** Stage nepřítele, ve kterém je na této kameře vidět. */
   enemyVisibleAtStage: EnemyStage;
 }
@@ -36,6 +53,12 @@ export interface EnemyDefinition {
   advanceChance: number;
   /** Násobitel šance na postup, když ho hráč sleduje na kameře. */
   watchedAdvanceMultiplier: number;
+  /**
+   * Šance vrátit se při každém enemy ticku o jeden krok zpět na trase (0–1).
+   * Nezávislá na advanceChance/watchedAdvanceMultiplier — zbytek pravděpodobnosti
+   * (1 - advanceChance - retreatChance) znamená, že zůstává na místě.
+   */
+  retreatChance: number;
   /**
    * Rozsah (ms), ze kterého se při každém příchodu ke dveřím vylosuje cíl
    * čekání u zavřených dveří, než se nepřítel vzdá a vrátí na start trasy —
@@ -65,7 +88,14 @@ export interface NightDefinition {
   /** Kolik energie za sekundu se vrátí, když hráč aktivně nesleduje kamery (viz gameReducer TICK). */
   rechargePerSecondWhenIdle: number;
   enemy: EnemyDefinition;
+  /**
+   * Kamery dostupné v této směně. Žádný kód mimo tento konfigurační objekt (a
+   * data v game/cameras/) nesmí seznam kamer předpokládat — UI ho vždy
+   * vykresluje odsud, počet a kombinace se může mezi směnami lišit.
+   */
   cameras: CameraDefinition[];
+  /** Kamera, na kterou se přednastaví activeCameraId při startu směny (musí být v cameras). */
+  defaultCameraId: CameraId;
   /** Interval (ms), jak často se vyhodnocuje postup nepřítele. */
   enemyTickMs: number;
   generator: GeneratorDefinition;
@@ -117,6 +147,8 @@ export interface GameState {
   generatorFaultCount: number;
 
   enemyStage: EnemyStage;
+  /** Poslední rozhodnutí při vyhodnocení ENEMY_ADVANCE — jen pro DebugPanel, žádná logika na něm nestaví. */
+  lastEnemyDecision: EnemyMoveDecision;
   enemyAtDoorSinceMs: number | null;
   /** Vylosovaný cíl (ms) aktuálního čekání u dveří — null mimo standoff u zavřených dveří. */
   enemyDoorHoldTargetMs: number | null;

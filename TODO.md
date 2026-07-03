@@ -6,7 +6,7 @@
 - [x] Spuštění hry
 - [x] Jedna hratelná směna (`night01`)
 - [x] Jedna místnost hráče (GameScreen)
-- [x] 3 kamery
+- [x] 4 kamery, konfigurační (ne hardcoded v UI)
 - [x] Jedny dveře
 - [x] Jedno světlo do chodby
 - [x] Jeden nepřítel (`basicIntruder`)
@@ -25,9 +25,12 @@
       kritické pípání + extra spotřeba, restart přes GeneratorView)
 - [x] Světlo dává nepříteli u dveří reálný efekt (2× rychlejší odehnání), enemyTickMs
       zvýšen na 2 s, blikající hotspot na generátor v DeskView při poruše
-- [ ] Playtest a doladění balancu (šance postupu nepřítele, spotřeba energie, rychlost
-      dobíjení, časové okno poruchy generátoru, tempo kritického pípání, rozsah
-      doorHoldRangeMs a doorHoldLightAccelMultiplier)
+- [x] 4. kamera (Chodba před dveřmi) + trasa nepřítele přes ni, `at_door` oddělený od
+      kamer, pravděpodobnostní pohyb s `retreatChance` (ústup), `camera_noise` jen
+      když je nepřítel na kameře nejblíž hráči
+- [ ] Playtest a doladění balancu (šance postupu nepřítele, retreatChance, spotřeba
+      energie, rychlost dobíjení, časové okno poruchy generátoru, tempo kritického
+      pípání, rozsah doorHoldRangeMs a doorHoldLightAccelMultiplier)
 
 ## Další kroky po MVP
 
@@ -37,6 +40,8 @@
   reálné soubory `generator_beep.mp3` a `generator_warning_beep.mp3` (zatím jen
   konfigurace, viz `assets/audio/README.md`)
 - Druhá směna (`night02.ts`) s jiným nepřítelem/balancem
+- Alternativní trasa přes levou chodbu (`left_hallway`) — kamera i typ existují,
+  jen ji zatím žádná trasa nevyužívá
 - Dynamická vrstvená ambience podle `tensionLevel`
 - Vylepšený jumpscare (delší/výraznější sekvence, ne jen barevný flash)
 - Ukládání nejlepšího výsledku / progressu do localStorage

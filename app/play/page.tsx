@@ -18,6 +18,10 @@ import { atmosphereStyleToCssVars, tensionToAtmosphereStyle } from "@/game/visua
 const night = NIGHT_01;
 const gameReducer = createGameReducer(night);
 
+// Kamera nejblíž hráči (nejvyšší order) — používá se pro podmíněný camera_noise
+// při výběru kamery, viz handleSelectCamera níže.
+const nearestCamera = [...night.cameras].sort((a, b) => (b.order ?? 0) - (a.order ?? 0))[0];
+
 export default function PlayPage() {
   const [state, dispatch] = useReducer(gameReducer, undefined, () => createInitialGameState(night));
 
@@ -82,7 +86,7 @@ export default function PlayPage() {
   }, [state.generatorBeepSeq, state.generatorState]);
 
   useEffect(() => {
-    if (state.enemyStage === "camera_03_door" || state.enemyStage === "attack") {
+    if (state.enemyStage === "at_door" || state.enemyStage === "attack") {
       audioManager.play(AUDIO_EVENTS.enemyNear);
     } else if (state.enemyStage !== "outside") {
       audioManager.play(AUDIO_EVENTS.enemyStep);
@@ -143,7 +147,11 @@ export default function PlayPage() {
   }
 
   function handleSelectCamera(cameraId: CameraId) {
-    audioManager.play(AUDIO_EVENTS.cameraNoise);
+    // camera_noise hraje jen když je nepřítel právě na kameře nejblíž hráči —
+    // funguje jako tichý indikátor nebezpečí, ne obyčejný UI klik.
+    if (state.enemyStage === nearestCamera.enemyVisibleAtStage) {
+      audioManager.play(AUDIO_EVENTS.cameraNoise);
+    }
     dispatch({ type: "OPEN_CAMERA", cameraId });
   }
 

@@ -18,7 +18,10 @@ export default function CameraView({ camera, enemyStage }: CameraViewProps) {
 
   return (
     <div className="pixel-panel pixel-screen-static h-40 flex flex-col items-center justify-center relative overflow-hidden">
-      <span className="absolute top-1 left-2 text-[10px] text-gray-500">{camera.label}</span>
+      <span className="absolute top-1 left-2 text-[10px] text-gray-500">
+        {camera.label}
+        {camera.description && <span className="block text-gray-600">{camera.description}</span>}
+      </span>
       <span className="absolute top-1 right-2 text-[10px] text-red-500 animate-pulse">● REC</span>
       {enemyVisible ? (
         <span className="text-red-500 text-sm font-bold">POSTAVA V DOSAHU</span>

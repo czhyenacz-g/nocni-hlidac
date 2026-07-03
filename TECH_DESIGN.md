@@ -46,17 +46,48 @@ Výsledek je vždy oříznutý na `[0, MAX_POWER]`. Celý výpočet je v reducer
 
 ## Definice kamer
 
-`game/cameras/cameras.object13.ts` — pole `CameraDefinition` (id, popisek, na jaké stage
-trasy nepřítele je na dané kameře vidět). Kamery jsou svázané s konkrétním objektem
-(Objekt 13), další lokace by měly vlastní soubor v `game/cameras/`.
+`game/cameras/cameras.object13.ts` — pole `CameraDefinition` (`id`, `label`, volitelně
+`description`, `order`, `type`, a `enemyVisibleAtStage` — na jaké stage trasy nepřítele je
+na dané kameře vidět). Kamery jsou svázané s konkrétním objektem (Objekt 13), další lokace
+by měly vlastní soubor v `game/cameras/`.
+
+### Kamery jsou konfigurační, nikdy hardcoded
+
+`CameraPanel.tsx` a `CameraView.tsx` vždy renderují ze seznamu, který dostanou přes props
+(`night.cameras`) — nikde v UI není napsaný konkrétní camera id ani jejich počet. Kolik
+kamer a v jaké kombinaci má daná směna k dispozici, určuje výhradně
+`NightDefinition.cameras` (+ `defaultCameraId` pro přednastavenou kameru při startu). Nová
+směna může mít jiný počet i jiné kamery, aniž by se muselo sáhnout do `components/game/`.
+`CameraPanel.tsx` řadí kamery podle `order` (kamery bez `order` jdou na konec, v pořadí,
+jak přišly z konfigurace).
 
 ## Definice nepřítele
 
 `game/enemies/basicIntruder.ts` — `EnemyDefinition` (trasa, šance na postup, násobitel při
-sledování, rozsah čekání u zavřených dveří než se resetuje a jeho zrychlení světlem).
-Další typy nepřátel budou další soubory ve stejné složce.
+sledování, šance na ústup, rozsah čekání u zavřených dveří než se resetuje a jeho
+zrychlení světlem). Další typy nepřátel budou další soubory ve stejné složce.
+
+### Pravděpodobnostní pohyb (`retreatChance`)
+
+`ENEMY_ADVANCE` (mimo standoff u dveří, viz níže) vygeneruje jeden náhodný roll a rozhodne
+mezi třemi možnostmi porovnáním s kumulativní pravděpodobností:
+
+- `roll < advanceChance` (po zohlednění `watchedAdvanceMultiplier`) → postup o index dál
+- `roll < advanceChance + retreatChance` → ústup o index zpět, s `Math.max(currentIndex - 1,
+  0)` — na první pozici trasy tedy nemá kam ustoupit a `decision` se přepíše na `"stay"`
+- jinak → zůstává na místě
+
+Výsledek (`"advance" | "stay" | "retreat"`, plus `"waiting_at_door"` / `"gave_up"` /
+`"attack"` ze standoff větve) se ukládá do `state.lastEnemyDecision` — čistě pro
+`DebugPanel.tsx`, žádná další logika na něm nestaví. Retreat i advance sdílí stejné pole
+`route: EnemyStage[]` — funguje to i pro budoucího nepřítele s jinou trasou/kombinací
+pravděpodobností beze změny reduceru.
 
 ### Standoff u zavřených dveří (`doorHoldRangeMs` / `doorHoldLightAccelMultiplier`)
+
+Tuto větev spouští stage `"at_door"` — samostatný stav trasy, který **není** kamera (na
+rozdíl od dřívějšího `"camera_03_door"`, kdy stage a camera id byly stejný string). Vizuálně
+je `at_door` doména `DoorView.tsx`, ne kamer — viz "Kamery jsou konfigurační" výše.
 
 `gameReducer.ts#rollDoorHoldTargetMs` vylosuje při prvním příchodu ke dveřím (v
 `ENEMY_ADVANCE`, kdy `enemyDoorHoldTargetMs` je ještě `null`) cíl v `enemy.doorHoldRangeMs`
