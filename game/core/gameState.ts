@@ -25,6 +25,7 @@ export function createInitialGameState(night: NightDefinition): GameState {
     power: night.startPower,
     gameStatus: "normal",
     blackoutElapsedMs: 0,
+    blackoutPhaseSeq: 0,
 
     playerView: "desk",
 

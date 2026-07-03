@@ -36,16 +36,18 @@ export const COPY = {
     retryButton: "Zkusit znovu",
     reasons: {
       door_open_at_attack: "Nestihl jsi zavřít dveře.",
-      blackout_timeout: "Nouzová baterie padla na nulu. Magnetický zámek povolil.",
+      blackout_timeout: "Nabíjení selhalo. Nouzová baterie vydržela jen pár sekund. Ve tmě povolil zámek.",
     },
   },
   blackout: {
     // Čtyři atmosférické fáze podle game/visuals/blackoutPhase.ts#getBlackoutPhaseIndex.
+    // Každý text odpovídá zvuku, který se v dané fázi skutečně přehraje (viz
+    // app/play/page.tsx#blackoutPhaseSeq efekt) — text nesmí slibovat zvuk, který nezní.
     phaseTexts: [
-      "Monitor problikne. Kamery zčernají.",
-      "Dveře cvaknou — magnetický zámek povolil.",
-      "Generátor vydá poslední zvuk a utichne.",
-      "Odněkud se ozve zavytí. Kroky se blíží.",
+      "Nouzová baterie převzala napájení.",
+      "Zámek slábne. Odněkud se ozvaly vzdálené kroky.",
+      "Chodba utichla. Kroky se zrychlují.",
+      "Něco je za dveřmi.",
     ] as const,
     subtitle: "Nouzová baterie je na nule.",
   },

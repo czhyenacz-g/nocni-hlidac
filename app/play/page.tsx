@@ -15,6 +15,7 @@ import { audioManager } from "@/game/audio/audioManager";
 import { AUDIO_EVENTS } from "@/game/audio/audioEvents";
 import { computeTensionLevel } from "@/game/visuals/atmosphereState";
 import { atmosphereStyleToCssVars, tensionToAtmosphereStyle } from "@/game/visuals/visualEffects";
+import { getBlackoutPhaseIndex } from "@/game/visuals/blackoutPhase";
 import { LOADING_SCREEN_DURATION_MS } from "@/game/balancing/constants";
 
 const night = NIGHT_01;
@@ -36,6 +37,7 @@ export default function PlayPage() {
   const prevGeneratorBeepSeqRef = useRef(state.generatorBeepSeq);
   const prevMonsterRetreatRoarSeqRef = useRef(state.monsterRetreatRoarSeq);
   const prevGameStatusRef = useRef(state.gameStatus);
+  const prevBlackoutPhaseSeqRef = useRef(state.blackoutPhaseSeq);
   // Zvuk překvapení na nejbližší kameře smí zaznít jen jednou za "návštěvu" —
   // dokud tam nepřítel je, další kliknutí na kameru (ani na jinou a zpátky) ho
   // znovu nespustí. Resetuje se, až nepřítel z téhle stage odejde (uteče/postoupí).
@@ -122,6 +124,20 @@ export default function PlayPage() {
     }
     prevGameStatusRef.current = state.gameStatus;
   }, [state.gameStatus]);
+
+  // Fáze 1/2/3 blackoutu (viz getBlackoutPhaseIndex) mají svůj zvuk — vzdálený
+  // krok, blížící se krok, dech/bouchání těsně před koncem. Fázi 0 (start)
+  // pokrývá blackoutHowl výše, konec (jumpscare) pokrývá efekt na screen === "death".
+  useEffect(() => {
+    if (prevBlackoutPhaseSeqRef.current !== state.blackoutPhaseSeq) {
+      const phase = getBlackoutPhaseIndex(state.blackoutElapsedMs, night.blackout);
+      if (phase === 1) audioManager.play(AUDIO_EVENTS.enemyStep);
+      else if (phase === 2) audioManager.play(AUDIO_EVENTS.enemyNear);
+      else if (phase === 3) audioManager.play(AUDIO_EVENTS.blackoutDoorHit);
+      prevBlackoutPhaseSeqRef.current = state.blackoutPhaseSeq;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.blackoutPhaseSeq]);
 
   // Falešný loading screen — po LOADING_SCREEN_DURATION_MS automaticky spustí
   // směnu. Zatím nejde přeskočit, viz TODO.md.

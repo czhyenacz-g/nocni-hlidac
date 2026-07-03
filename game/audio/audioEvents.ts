@@ -15,6 +15,7 @@ export const AUDIO_EVENTS = {
   generatorWarningBeep: "generator_warning_beep",
   monsterRetreatRoar: "monster_retreat_roar",
   blackoutHowl: "blackout_howl",
+  blackoutDoorHit: "blackout_door_hit",
 } as const;
 
 export type AudioEventId = (typeof AUDIO_EVENTS)[keyof typeof AUDIO_EVENTS];

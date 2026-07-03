@@ -1,5 +1,6 @@
 import { DEBUG_PANEL_ENABLED } from "@/game/balancing/constants";
 import { GameState, NightDefinition } from "@/game/core/types";
+import { getBlackoutPhaseIndex } from "@/game/visuals/blackoutPhase";
 import DoorControl from "./DoorControl";
 
 interface DebugPanelProps {
@@ -22,7 +23,8 @@ export default function DebugPanel({ state, night, tensionLevel, onDebugToggleDo
       <div className="flex flex-col gap-2 mt-2">
         <div>
           gameStatus: {state.gameStatus}
-          {state.gameStatus === "blackout" && ` (${state.blackoutElapsedMs.toFixed(0)} / ${night.blackout.durationMs} ms)`}
+          {state.gameStatus === "blackout" &&
+            ` (${state.blackoutElapsedMs.toFixed(0)} / ${night.blackout.durationMs} ms, phase ${getBlackoutPhaseIndex(state.blackoutElapsedMs, night.blackout)}, seq ${state.blackoutPhaseSeq})`}
         </div>
         <div>enemyStage: {state.enemyStage} ({state.lastEnemyDecision})</div>
         <div>tension: {tensionLevel.toFixed(2)}</div>

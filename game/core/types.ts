@@ -187,6 +187,14 @@ export interface GameState {
   gameStatus: GameStatus;
   /** Nastřádaný čas (ms) od začátku blackoutu — 0 mimo blackout. */
   blackoutElapsedMs: number;
+  /**
+   * Zvyšuje se při každém přechodu na další atmosférickou fázi blackoutu (viz
+   * game/visuals/blackoutPhase.ts#getBlackoutPhaseIndex) — UI podle změny
+   * spouští odpovídající zvuk (kroky/dech), stejný vzor jako generatorBeepSeq.
+   * Samotnou fázi (0–3) si nikdo neukládá duplicitně, počítá se čistou funkcí
+   * z blackoutElapsedMs, kdykoliv je potřeba (BlackoutView, DebugPanel).
+   */
+  blackoutPhaseSeq: number;
 
   playerView: PlayerView;
 

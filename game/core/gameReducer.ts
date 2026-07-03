@@ -2,6 +2,7 @@ import { GameAction } from "./gameActions";
 import { createInitialGameState } from "./gameState";
 import { EnemyDefinition, GameState, NightDefinition } from "./types";
 import { MAX_POWER } from "../balancing/constants";
+import { getBlackoutPhaseIndex } from "../visuals/blackoutPhase";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -287,8 +288,23 @@ export function createGameReducer(night: NightDefinition) {
         if (state.gameStatus === "blackout") {
           const blackoutElapsedMs = state.blackoutElapsedMs + action.deltaMs;
 
+          // Fáze se posunula (viz getBlackoutPhaseIndex) -> zvyš čítač, ať UI
+          // podle změny spustí odpovídající zvuk (kroky/dech, viz
+          // app/play/page.tsx). Reducer sám žádné audio nevolá.
+          const prevPhase = getBlackoutPhaseIndex(state.blackoutElapsedMs, night.blackout);
+          const nextPhase = getBlackoutPhaseIndex(blackoutElapsedMs, night.blackout);
+          const blackoutPhaseSeq = nextPhase !== prevPhase ? state.blackoutPhaseSeq + 1 : state.blackoutPhaseSeq;
+
           if (night.blackout.canBeSurvivedIfShiftEnds && remainingMs <= 0) {
-            return { ...state, elapsedMs, remainingMs: 0, blackoutElapsedMs, isRunning: false, screen: "win" };
+            return {
+              ...state,
+              elapsedMs,
+              remainingMs: 0,
+              blackoutElapsedMs,
+              blackoutPhaseSeq,
+              isRunning: false,
+              screen: "win",
+            };
           }
 
           if (blackoutElapsedMs >= night.blackout.durationMs) {
@@ -297,13 +313,14 @@ export function createGameReducer(night: NightDefinition) {
               elapsedMs,
               remainingMs,
               blackoutElapsedMs,
+              blackoutPhaseSeq,
               isRunning: false,
               screen: "death",
               deathReason: "blackout_timeout",
             };
           }
 
-          return { ...state, elapsedMs, remainingMs, blackoutElapsedMs };
+          return { ...state, elapsedMs, remainingMs, blackoutElapsedMs, blackoutPhaseSeq };
         }
 
         const generatorUpdate = updateGenerator(state, night, elapsedMs);

@@ -248,6 +248,12 @@ BlackoutDefinition` (`game/nights/night01.ts`).
   - `remainingMs <= 0` se testuje **před** `blackoutElapsedMs >= durationMs` → výhra má
     přednost, pokud by oboje vyšlo ve stejném ticku (`canBeSurvivedIfShiftEnds`).
   - `blackoutElapsedMs >= night.blackout.durationMs` → smrt, `deathReason: "blackout_timeout"`.
+  - Zároveň se v každém ticku porovná `getBlackoutPhaseIndex` pro starý a nový
+    `blackoutElapsedMs` (`game/visuals/blackoutPhase.ts`) — pokud se fáze (0–3) posunula,
+    `blackoutPhaseSeq` se zvýší o 1. Samotná fáze se nikde duplicitně neukládá, kdykoliv je
+    potřeba (BlackoutView, DebugPanel) se spočítá čistou funkcí z `blackoutElapsedMs`.
+    `blackoutPhaseSeq` je čistě sekvenční čítač pro edge-detekci v UI, stejný vzor jako
+    `generatorBeepSeq`/`monsterRetreatRoarSeq` — reducer sám žádné audio nevolá.
 - `ENEMY_ADVANCE` je v blackoutu no-op (`isRunning` zůstává `true`, ale `gameStatus ===
   "blackout"` guard vrátí `state` beze změny) — pozice nepřítele zamrzne, hrozbu dál
   representuje jen `blackoutElapsedMs` odpočet, ne další simulace trasy.
@@ -264,7 +270,14 @@ BlackoutDefinition` (`game/nights/night01.ts`).
   `input.gameStatus === "blackout"` — nemusí se počítat zbytek vzorce.
 - Zvuk: `app/play/page.tsx` sleduje přechod `gameStatus` z `"normal"` na `"blackout"` přes
   `useRef` (stejný vzor jako jinde) a přehraje jednorázové `blackout_howl`. Generátor přestane
-  pípat sám od sebe (jeho `TICK` větev se v blackoutu nevolá).
+  pípat sám od sebe (jeho `TICK` větev se v blackoutu nevolá). Samostatný `useEffect` sleduje
+  `blackoutPhaseSeq` (stejný `useRef`-diffing vzor) a podle aktuální fáze
+  (`getBlackoutPhaseIndex(state.blackoutElapsedMs, night.blackout)`, přepočítané v efektu, ne
+  jako závislost) přehraje `enemyStep` (fáze 1), `enemyNear` (fáze 2) nebo `blackoutDoorHit`
+  (fáze 3) — viz AUDIO_DESIGN.md "Blackout". Konečný `jumpscare` řeší už existující efekt na
+  `screen === "death"`, nic navíc se pro konec blackoutu nepřidává.
+- `DebugPanel.tsx` k `gameStatus`/`blackoutElapsedMs` navíc zobrazuje aktuální fázi
+  (`getBlackoutPhaseIndex`) a `blackoutPhaseSeq`.
 
 ## LoadingScreen
 

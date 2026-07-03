@@ -53,6 +53,10 @@
 - [x] Blackout místo okamžité smrti při `power <= 0` — `gameStatus`, `BlackoutView`,
       4 atmosférické fáze, přežití pokud směna skončí dřív, jinak smrt
       (`deathReason: "blackout_timeout"`)
+- [x] Čitelnost blackout smrti — jasný death text odlišený od smrti nepřítelem u dveří,
+      audio fáze blackoutu (`blackoutPhaseSeq` v reduceru, `enemy_step`/`enemy_near`/
+      `blackout_door_hit` v `app/play/page.tsx`, jumpscare na konci), `BlackoutView` texty
+      sladěné se skutečně přehrávaným audiem, `DebugPanel` ukazuje fázi
 - [x] Footer (`components/Footer.tsx`) s odkazem na `/about`, jen na MainMenuScreen a
       `/about` — ne na herních obrazovkách, ať nic neruší
 - [x] `/about` stránka — kdo za projektem stojí, pocta nočním pracovníkům, textová
@@ -76,8 +80,8 @@
 - Vlastní/kvalitnější audio místo Kenney.nl CC0 placeholderů (zejména `ambience_loop`,
   který teď je jen krátký smyčkovaný efekt, ne skutečná ambientní kompozice); doplnit
   reálné soubory `generator_beep.mp3`, `generator_warning_beep.mp3`,
-  `monster_retreat_roar.mp3` a `blackout_howl.mp3` (zatím jen konfigurace +
-  syntetizovaný fallback, viz `assets/audio/README.md`)
+  `monster_retreat_roar.mp3`, `blackout_howl.mp3` a `blackout_door_hit.mp3` (zatím jen
+  konfigurace + syntetizovaný fallback, viz `assets/audio/README.md`)
 - Druhá směna (`night02.ts`) s jiným nepřítelem/balancem
 - Dynamická vrstvená ambience podle `tensionLevel`
 - Vylepšený jumpscare (delší/výraznější sekvence, ne jen barevný flash)

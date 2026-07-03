@@ -29,6 +29,8 @@ Definováno v `game/audio/audioEvents.ts` a nakonfigurováno v `game/audio/audio
 - `blackout_howl` — vzdálené zavytí jednou na začátku blackoutu (viz "Blackout" v
   `GAME_DESIGN.md`); normální pípání generátoru se v blackoutu samo zastaví (jeho `TICK`
   větev se nevolá), žádný speciální "vypni zvuk" krok není potřeba
+- `blackout_door_hit` — dech/bouchání/blízký krok těsně před koncem blackoutu (poslední
+  atmosférická fáze, viz "Blackout" níže)
 
 ## Ambientní zvuková vrstva
 
@@ -120,10 +122,34 @@ nemožné, aby se řev spustil vícekrát za tik nebo z jiného místa v kódu.
 `state.gameStatus` s předchozí hodnotou (`useRef`) a zahraje zvuk jen na hraně
 `"normal" → "blackout"`, ne při každém ticku, kdy `gameStatus === "blackout"` platí.
 
+## Blackout — audio fáze
+
+Blackout není jen ticho s odpočtem — má vlastní zvukovou sekvenci, ať je smrt na konci
+čitelná jako `blackout_timeout`, ne jako nejasný útok:
+
+0. **Start** (`gameStatus` hrana `"normal" → "blackout"`) — `blackout_howl`.
+1. **Fáze 1** (`blackoutElapsedMs` překročí první práh `phaseThresholdsMs[0]`) — `enemy_step`
+   (vzdálený krok), stejný zvuk jako běžný pohyb nepřítele mimo blackout.
+2. **Fáze 2** (druhý práh) — `enemy_near` (kroky se zrychlují/blíží).
+3. **Fáze 3** (třetí práh, těsně před koncem) — `blackout_door_hit` (dech/bouchání).
+4. **Konec** (`blackoutElapsedMs >= durationMs`, `screen` přejde na `"death"`) — `jumpscare`,
+   stejný efekt jako u každé jiné smrti, žádný speciální blackout kód navíc.
+
+Mechanismus je stejný sekvenční-čítač vzor jako `generatorBeepSeq`/`monsterRetreatRoarSeq`:
+`gameReducer.ts` v `TICK` větvi pro `gameStatus === "blackout"` porovná
+`getBlackoutPhaseIndex` (`game/visuals/blackoutPhase.ts`) pro starou a novou hodnotu
+`blackoutElapsedMs` a při posunu fáze zvýší `blackoutPhaseSeq` o 1 — žádné volání audia z
+reduceru. `app/play/page.tsx` sleduje `blackoutPhaseSeq` přes `useRef` a při změně přehraje
+zvuk odpovídající aktuální fázi (`getBlackoutPhaseIndex` přepočítané v efektu).
+
+`BlackoutView.tsx` texty (`content/copy.ts` `COPY.blackout.phaseTexts`) jsou navržené tak, aby
+odpovídaly těmto skutečně přehrávaným zvukům — žádný text neslibuje krok/dech, který by se
+nepřehrál (viz GAME_DESIGN.md "Blackout").
+
 ## Syntetizovaný fallback (bez čekání na audio soubory)
 
-`generator_beep`, `generator_warning_beep` a `monster_retreat_roar` mají v
-`audioConfig.ts` navíc `fallbackSynth` — krátkou sekvenci tónů (frekvence, délka,
+`generator_beep`, `generator_warning_beep`, `monster_retreat_roar`, `blackout_howl` a
+`blackout_door_hit` mají v `audioConfig.ts` navíc `fallbackSynth` — krátkou sekvenci tónů (frekvence, délka,
 tvar vlny) syntetizovanou přes nativní Web Audio API, žádná externí knihovna.
 `AudioManager.play()` ho spustí automaticky, když `audio.play()` na chybějící/nenačtený
 soubor selže (stejný `.catch()`, který jinak zvuk jen tiše zahodí). Jakmile do

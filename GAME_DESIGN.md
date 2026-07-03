@@ -220,26 +220,34 @@ Během blackoutu (`gameStatus: "blackout"`):
 
 Místo DeskView/DoorView/GeneratorView se zobrazí `BlackoutView` s postupujícím
 atmosférickým textem podle čtyř fází (`game/visuals/blackoutPhase.ts`,
-hranice `night.blackout.phaseThresholdsMs`, texty v `content/copy.ts`):
+hranice `night.blackout.phaseThresholdsMs`, texty v `content/copy.ts`). Každá
+fáze má i svůj zvuk (viz AUDIO_DESIGN.md "Blackout"), text nikdy neslibuje
+zvuk, který se nepřehraje:
 
-0. Monitor problikne, kamery zčernají.
-1. Dveře cvaknou — zámek povolil.
-2. Generátor vydá poslední zvuk a utichne.
-3. Zavytí, ticho, kroky se blíží.
+0. "Nouzová baterie převzala napájení." — hraje `blackoutHowl` (zavytí při vstupu do blackoutu).
+1. "Zámek slábne. Odněkud se ozvaly vzdálené kroky." — hraje `enemyStep`.
+2. "Chodba utichla. Kroky se zrychlují." — hraje `enemyNear`.
+3. "Něco je za dveřmi." — hraje `blackoutDoorHit` (dech/bouchání těsně před koncem).
+
+Na úplném konci (`deathReason: "blackout_timeout"`) hraje `jumpscare` — stejný
+efekt jako u každé jiné smrti (viz `app/play/page.tsx`, `screen === "death"`).
 
 **Přežití:** pokud `remainingMs` klesne na 0 dřív, než blackout doběhne
 (`night.blackout.canBeSurvivedIfShiftEnds`), hráč **vyhrává** — i uprostřed
 blackoutu. Blackout na úplném konci směny tedy není automatická prohra.
 
 **Smrt:** pokud blackout doběhne dřív než konec směny, hráč umírá
-(`deathReason: "blackout_timeout"`, "Nouzová baterie padla na nulu. Magnetický
-zámek povolil.").
+(`deathReason: "blackout_timeout"`). Death screen ukazuje jasně odlišný text od
+smrti nepřítelem u dveří: "Nabíjení selhalo. Nouzová baterie vydržela jen pár
+sekund. Ve tmě povolil zámek." — hráč má jednoznačně poznat, že ho zabil
+výpadek energie/timeout, ne přímý útok nepřítele.
 
 ## Smrt
 
-Dva důvody (`DeathReason`):
+Dva důvody (`DeathReason`), s odlišným textem na `DeathScreen` (`content/copy.ts`
+`death.reasons`), ať hráč vždy pozná, co ho zabilo:
 - `door_open_at_attack` — nezavřel dveře včas, dokud generátor/baterie fungovaly
-- `blackout_timeout` — blackout doběhl dřív, než skončila směna
+- `blackout_timeout` — blackout doběhl dřív, než skončila směna (viz "Blackout" výše)
 
 Zobrazí se krátký jumpscare overlay a `DeathScreen` s možností okamžitého restartu směny.
 

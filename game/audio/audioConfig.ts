@@ -93,4 +93,20 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
       waveform: "sawtooth",
     },
   },
+  // Těsně před koncem blackoutu (poslední fáze) — dech/bouchání/blízký krok,
+  // ne ještě jumpscare (ten hraje až screen === "death", viz app/play/page.tsx).
+  [AUDIO_EVENTS.blackoutDoorHit]: {
+    src: "/assets/audio/blackout_door_hit.mp3",
+    volume: 0.8,
+    loop: false,
+    fallbackSynth: {
+      notes: [
+        { frequency: 70, durationMs: 180, gapMs: 90 },
+        { frequency: 60, durationMs: 220, gapMs: 90 },
+        { frequency: 50, durationMs: 260 },
+      ],
+      volume: 0.5,
+      waveform: "sawtooth",
+    },
+  },
 };
