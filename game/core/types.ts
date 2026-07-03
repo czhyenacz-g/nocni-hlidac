@@ -36,8 +36,18 @@ export interface EnemyDefinition {
   advanceChance: number;
   /** Násobitel šance na postup, když ho hráč sleduje na kameře. */
   watchedAdvanceMultiplier: number;
-  /** Jak dlouho (ms) může stát u dveří, než se resetuje, pokud jsou zavřené. */
-  doorHoldBeforeResetMs: number;
+  /**
+   * Rozsah (ms), ze kterého se při každém příchodu ke dveřím vylosuje cíl
+   * čekání u zavřených dveří, než se nepřítel vzdá a vrátí na start trasy —
+   * beze světla v chodbě (viz gameReducer ENEMY_ADVANCE).
+   */
+  doorHoldRangeMs: { min: number; max: number };
+  /**
+   * Násobitel rychlosti, kterým se čekání blíží k vylosovanému cíli, když
+   * svítí světlo do chodby. Efekt je okamžitý — zapnutí/vypnutí světla
+   * uprostřed čekání zrychlí/zpomalí zbytek od té chvíle.
+   */
+  doorHoldLightAccelMultiplier: number;
 }
 
 export interface NightDefinition {
@@ -108,6 +118,10 @@ export interface GameState {
 
   enemyStage: EnemyStage;
   enemyAtDoorSinceMs: number | null;
+  /** Vylosovaný cíl (ms) aktuálního čekání u dveří — null mimo standoff u zavřených dveří. */
+  enemyDoorHoldTargetMs: number | null;
+  /** Efektivní nastřádaný čas (ms) čekání — zrychluje se, když svítí světlo (viz gameReducer). */
+  enemyDoorHoldProgressMs: number;
 
   deathReason: DeathReason | null;
 

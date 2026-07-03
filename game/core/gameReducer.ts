@@ -1,6 +1,6 @@
 import { GameAction } from "./gameActions";
 import { createInitialGameState } from "./gameState";
-import { GameState, NightDefinition } from "./types";
+import { EnemyDefinition, GameState, NightDefinition } from "./types";
 import { MAX_POWER } from "../balancing/constants";
 
 function clamp(value: number, min: number, max: number): number {
@@ -11,6 +11,14 @@ function isEnemyBeingWatched(state: GameState, night: NightDefinition): boolean 
   if (!state.cameraOpen || !state.activeCameraId) return false;
   const camera = night.cameras.find((c) => c.id === state.activeCameraId);
   return camera?.enemyVisibleAtStage === state.enemyStage;
+}
+
+// Vylosuje (jednou na standoff u zavřených dveří) cíl efektivního čekání, než
+// se nepřítel vzdá — viz doorHoldRangeMs / doorHoldLightAccelMultiplier v
+// basicIntruder.ts a použití v ENEMY_ADVANCE níže.
+function rollDoorHoldTargetMs(enemy: EnemyDefinition): number {
+  const { min, max } = enemy.doorHoldRangeMs;
+  return min + Math.random() * (max - min);
 }
 
 // Když hráč aktivně sleduje kamery (otevřená kamera v pohledu na stůl), energie
@@ -192,11 +200,26 @@ export function createGameReducer(night: NightDefinition) {
         if (atDoorStage) {
           if (state.doorClosed) {
             const since = state.enemyAtDoorSinceMs ?? state.elapsedMs;
-            const waited = state.elapsedMs - since;
-            if (waited >= night.enemy.doorHoldBeforeResetMs) {
-              return { ...state, enemyStage: "outside", enemyAtDoorSinceMs: null };
+            const target = state.enemyDoorHoldTargetMs ?? rollDoorHoldTargetMs(night.enemy);
+            // Světlo v chodbě čekání zrychluje — efekt je okamžitý, ne jen na nový standoff.
+            const accel = state.lightOn ? night.enemy.doorHoldLightAccelMultiplier : 1;
+            const progress = state.enemyDoorHoldProgressMs + night.enemyTickMs * accel;
+
+            if (progress >= target) {
+              return {
+                ...state,
+                enemyStage: "outside",
+                enemyAtDoorSinceMs: null,
+                enemyDoorHoldTargetMs: null,
+                enemyDoorHoldProgressMs: 0,
+              };
             }
-            return { ...state, enemyAtDoorSinceMs: since };
+            return {
+              ...state,
+              enemyAtDoorSinceMs: since,
+              enemyDoorHoldTargetMs: target,
+              enemyDoorHoldProgressMs: progress,
+            };
           }
 
           // Dveře otevřené a nepřítel je u nich -> útok.
@@ -221,6 +244,8 @@ export function createGameReducer(night: NightDefinition) {
           ...state,
           enemyStage: nextStage,
           enemyAtDoorSinceMs: nextStage === "camera_03_door" ? state.elapsedMs : null,
+          enemyDoorHoldTargetMs: null,
+          enemyDoorHoldProgressMs: 0,
         };
       }
 

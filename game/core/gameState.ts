@@ -34,6 +34,8 @@ export function createInitialGameState(night: NightDefinition): GameState {
 
     enemyStage: "outside",
     enemyAtDoorSinceMs: null,
+    enemyDoorHoldTargetMs: null,
+    enemyDoorHoldProgressMs: 0,
 
     deathReason: null,
 

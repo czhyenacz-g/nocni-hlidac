@@ -23,8 +23,11 @@
 - [x] Dobíjení energie mimo kamerový pohled (~1 %/3 s, nesmí přebít spotřebu dveří/světla)
 - [x] Generátor jako zvuková gameplay mechanika (normální pípání, porucha, ticho,
       kritické pípání + extra spotřeba, restart přes GeneratorView)
+- [x] Světlo dává nepříteli u dveří reálný efekt (2× rychlejší odehnání), enemyTickMs
+      zvýšen na 2 s, blikající hotspot na generátor v DeskView při poruše
 - [ ] Playtest a doladění balancu (šance postupu nepřítele, spotřeba energie, rychlost
-      dobíjení, časové okno poruchy generátoru, tempo kritického pípání)
+      dobíjení, časové okno poruchy generátoru, tempo kritického pípání, rozsah
+      doorHoldRangeMs a doorHoldLightAccelMultiplier)
 
 ## Další kroky po MVP
 

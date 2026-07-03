@@ -46,12 +46,15 @@ pryč a naopak kdy se k nim včas vrátit.
 
 Trasa: `venku -> chodba daleko -> chodba blízko -> u dveří -> útok`
 
-- Každých ~1,5 s (viz `night.enemyTickMs`) má šanci postoupit na další stage trasy.
+- Každé ~2 s (viz `night.enemyTickMs`) má šanci postoupit na další stage trasy.
 - Sledování kamery, na které je právě viditelný, jeho postup zpomaluje
   (nižší šance na postup, `watchedAdvanceMultiplier`).
 - Když je u dveří (`camera_03_door`):
-  - dveře zavřené → po krátké době (`doorHoldBeforeResetMs`) se vrátí na start trasy
-  - dveře otevřené → zaútočí → jumpscare → smrt
+  - dveře zavřené → po náhodné době 6–8 s se vzdá a vrátí na start trasy
+    (`doorHoldRangeMs`) — **se zapnutým světlem 2× rychleji** (efektivně 3–4 s,
+    `doorHoldLightAccelMultiplier`); zapnutí/vypnutí světla uprostřed čekání
+    zrychlí/zpomalí zbytek okamžitě, ne až při příštím příchodu ke dveřím
+  - dveře otevřené → zaútočí na nejbližším vyhodnocení (do ~2 s) → jumpscare → smrt
 
 ## Energie
 
@@ -83,7 +86,9 @@ dveře chrání před útokem, ale spotřebovávají energii.
 
 ## Světlo
 
-Krátké posvícení do chodby — pomáhá vidět nepřítele mimo kamery, spotřebovává energii.
+Spotřebovává energii, ale má i přímý herní efekt: když nepřítel čeká u zavřených
+dveří, zapnuté světlo ho odežene 2× rychleji (viz "Nepřítel" výše) — hráč tak má
+důvod světlo zapnout i za cenu energie, ne jen ho nechávat vypnuté.
 
 ## Kamery
 
@@ -109,7 +114,10 @@ pípání. Tři stavy (`GeneratorState`):
 Restart: hráč se musí otočit do GeneratorView (šipka z DeskView) a kliknout na
 generátor — funguje z obou poruchových stavů (i během ticha, bez postihu) a
 vrátí generátor do `normal` s novým pípáním za 5 s. Vizuální kontrolka
-(stabilní/zhaslá/blikající) je jen pomocná — hlavní signál má být zvuk.
+(stabilní/zhaslá/blikající) je jen pomocná — hlavní signál má být zvuk. Šipka
+"Zkontrolovat generátor" v DeskView navíc bliká, dokud je generátor v poruše
+(`silentFault` i `criticalBeeping`), jako drobná pomůcka pro hráče, který zrovna
+kouká do kamer a zvuk mu unikl.
 
 ## Smrt
 

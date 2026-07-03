@@ -7,5 +7,7 @@ export const BASIC_INTRUDER: EnemyDefinition = {
   route: ["outside", "camera_01_far", "camera_02_hall", "camera_03_door", "attack"],
   advanceChance: 0.16,
   watchedAdvanceMultiplier: 0.5,
-  doorHoldBeforeResetMs: 6000,
+  // Beze světla se vzdá po 6–8 s (náhodně); se světlem 2x rychleji, tedy efektivně 3–4 s.
+  doorHoldRangeMs: { min: 6000, max: 8000 },
+  doorHoldLightAccelMultiplier: 2,
 };

@@ -18,7 +18,7 @@ export const NIGHT_01: NightDefinition = {
   rechargePerSecondWhenIdle: 1 / 3,
   enemy: BASIC_INTRUDER,
   cameras: OBJECT13_CAMERAS,
-  enemyTickMs: 1500,
+  enemyTickMs: 2000,
   generator: {
     beepIntervalMs: 5000,
     criticalBeepIntervalMs: 700,

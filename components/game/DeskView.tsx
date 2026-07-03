@@ -54,7 +54,12 @@ export default function DeskView({
 
       <div className="grid grid-cols-2 gap-2">
         <ViewSwitchArrow label={COPY.game.lookAtDoorLabel} onClick={onLookAtDoor} align="right" />
-        <ViewSwitchArrow label={COPY.game.lookAtGeneratorLabel} onClick={onLookAtGenerator} align="right" />
+        <ViewSwitchArrow
+          label={COPY.game.lookAtGeneratorLabel}
+          onClick={onLookAtGenerator}
+          align="right"
+          urgent={state.generatorState !== "normal"}
+        />
       </div>
     </div>
   );

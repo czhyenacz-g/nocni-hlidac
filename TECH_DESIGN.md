@@ -53,8 +53,20 @@ trasy nepřítele je na dané kameře vidět). Kamery jsou svázané s konkrétn
 ## Definice nepřítele
 
 `game/enemies/basicIntruder.ts` — `EnemyDefinition` (trasa, šance na postup, násobitel při
-sledování, jak dlouho vydrží u zavřených dveří, než se resetuje). Další typy nepřátel budou
-další soubory ve stejné složce.
+sledování, rozsah čekání u zavřených dveří než se resetuje a jeho zrychlení světlem).
+Další typy nepřátel budou další soubory ve stejné složce.
+
+### Standoff u zavřených dveří (`doorHoldRangeMs` / `doorHoldLightAccelMultiplier`)
+
+`gameReducer.ts#rollDoorHoldTargetMs` vylosuje při prvním příchodu ke dveřím (v
+`ENEMY_ADVANCE`, kdy `enemyDoorHoldTargetMs` je ještě `null`) cíl v `enemy.doorHoldRangeMs`
+(6000–8000 ms u `basicIntruder`) a uloží ho do `state.enemyDoorHoldTargetMs`. Každý další
+tik, dokud jsou dveře zavřené, se `state.enemyDoorHoldProgressMs` zvyšuje o
+`night.enemyTickMs * (state.lightOn ? doorHoldLightAccelMultiplier : 1)` — se zapnutým
+světlem tedy roste 2× rychleji. Jakmile `progress >= target`, nepřítel se vzdá
+(`enemyStage: "outside"`), oboje se vynuluje na `null`/`0`. Díky tomu, že se srovnává
+akumulovaný `progress` (ne wall-clock čas), zapnutí/vypnutí světla uprostřed čekání mění
+efektivní rychlost okamžitě, ne až při dalším standoffu.
 
 ## Game loop
 
@@ -84,13 +96,16 @@ klikatelné — nejde jen o vizuální přepínač: `TOGGLE_DOOR` funguje jen kd
 
 - `components/game/DeskView.tsx` — kamery + světlo + šipky na dveře a na
   generátor (`ViewSwitchArrow`). Dveře ani generátor tu nejsou vůbec vykreslené.
+  Šipka na generátor dostává `urgent={state.generatorState !== "normal"}`.
 - `components/game/DoorView.tsx` — samotné dveře (klik = `TOGGLE_DOOR`) + šipka
   zpět na stůl.
 - `components/game/GeneratorView.tsx` — generátor s vizuální kontrolkou
   (`.pixel-indicator` v `styles/pixel.css`, stav podle `data-state`), klik =
   `RESTART_GENERATOR` + šipka zpět na stůl.
 - `components/game/ViewSwitchArrow.tsx` — sdílená malá komponenta pro všechny
-  šipky (parametrizovaná textem a směrem), místo skoro identických souborů.
+  šipky (parametrizovaná textem, směrem a volitelným `urgent` — bliká přes
+  `.pixel-button[data-urgent="true"]` v `styles/pixel.css`), místo skoro
+  identických souborů.
 - `components/screens/GameScreen.tsx` jen vybírá, který z pohledů vykreslit podle
   `state.playerView` — sama žádnou herní logiku neobsahuje.
 - `components/game/DoorControl.tsx` (původní jedno tlačítko dveří) je teď DEV-only —
