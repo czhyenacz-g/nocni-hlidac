@@ -69,6 +69,11 @@
   animation: pixel-blink 0.35s steps(2) infinite;
 }
 
+.pixel-indicator[data-state="restarting"] {
+  background: #facc15;
+  animation: pixel-blink 0.5s steps(2) infinite;
+}
+
 @keyframes pixel-blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.15; }

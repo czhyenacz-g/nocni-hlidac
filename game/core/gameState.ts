@@ -38,6 +38,7 @@ export function createInitialGameState(night: NightDefinition): GameState {
     generatorSilentSinceMs: null,
     generatorFaultAtMs: rollGeneratorFaultAtMs(night),
     generatorFaultCount: 0,
+    generatorRestartUntilMs: null,
 
     enemyRoute: pickRouteVariant(night),
     enemyStage: "outside",
@@ -45,6 +46,8 @@ export function createInitialGameState(night: NightDefinition): GameState {
     enemyAtDoorSinceMs: null,
     enemyDoorHoldTargetMs: null,
     enemyDoorHoldProgressMs: 0,
+    doorLightRepelMs: 0,
+    monsterRetreatRoarSeq: 0,
 
     deathReason: null,
 

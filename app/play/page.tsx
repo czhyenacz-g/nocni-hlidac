@@ -32,6 +32,7 @@ export default function PlayPage() {
   const prevLightRef = useRef(state.lightOn);
   const prevPowerRef = useRef(state.power);
   const prevGeneratorBeepSeqRef = useRef(state.generatorBeepSeq);
+  const prevMonsterRetreatRoarSeqRef = useRef(state.monsterRetreatRoarSeq);
   // Zvuk překvapení na nejbližší kameře smí zaznít jen jednou za "návštěvu" —
   // dokud tam nepřítel je, další kliknutí na kameru (ani na jinou a zpátky) ho
   // znovu nespustí. Resetuje se, až nepřítel z téhle stage odejde (uteče/postoupí).
@@ -104,6 +105,13 @@ export default function PlayPage() {
       hasPlayedNearCameraSurpriseRef.current = false;
     }
   }, [state.enemyStage]);
+
+  useEffect(() => {
+    if (prevMonsterRetreatRoarSeqRef.current !== state.monsterRetreatRoarSeq) {
+      audioManager.play(AUDIO_EVENTS.monsterRetreatRoar);
+      prevMonsterRetreatRoarSeqRef.current = state.monsterRetreatRoarSeq;
+    }
+  }, [state.monsterRetreatRoarSeq]);
 
   function handleStart() {
     audioManager.init();

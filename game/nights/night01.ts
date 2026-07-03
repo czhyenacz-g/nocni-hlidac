@@ -27,5 +27,6 @@ export const NIGHT_01: NightDefinition = {
     faultMaxPerShift: 1,
     faultEarliestAtMs: 45000,
     faultLatestAtMs: 110000,
+    restartPenaltyMs: 5000,
   },
 };

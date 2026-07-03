@@ -27,6 +27,7 @@ export const COPY = {
       normal: "Generátor běží.",
       silentFault: "Generátor mlčí...",
       criticalBeeping: "PORUCHA! Restartuj generátor!",
+      restarting: "Restartuje se...",
     },
   },
   death: {

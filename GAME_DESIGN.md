@@ -51,7 +51,9 @@ startu směny a platí po celou její dobu:
 - `outside -> outer_yard -> left_hallway -> door_hallway -> at_door -> attack`
 
 `outside` není vidět na žádné kameře (nepřítel se teprve blíží), `at_door` taky ne —
-to je stav pro DoorView, ne kameru.
+to je stav pro DoorView, ne kameru. (Existuje ještě `breach` — připravená druhá
+"u dveří" stage pro budoucí trasy, chová se stejně jako `at_door`, ale zatím ji
+žádná trasa nepoužívá, viz TECH_DESIGN.md.)
 
 - Každé ~2 s (viz `night.enemyTickMs`) se vyhodnocuje, co nepřítel udělá — tři
   nezávislé možnosti:
@@ -63,9 +65,8 @@ to je stav pro DoorView, ne kameru.
   - Poslední rozhodnutí (`advance`/`stay`/`retreat`/...) je vidět v DebugPanelu.
 - Když je u dveří (`at_door`):
   - dveře zavřené → po náhodné době 6–8 s se vzdá a vrátí úplně na začátek trasy
-    (`doorHoldRangeMs`) — **se zapnutým světlem 2× rychleji** (efektivně 3–4 s,
-    `doorHoldLightAccelMultiplier`); zapnutí/vypnutí světla uprostřed čekání
-    zrychlí/zpomalí zbytek okamžitě, ne až při příštím příchodu ke dveřím
+    (`doorHoldRangeMs`) — nezávisle na světle, viz "Světlo a dveře" níže pro
+    mnohem rychlejší kombinovaný efekt
   - dveře otevřené → zaútočí na nejbližším vyhodnocení (do ~2 s) → jumpscare → smrt
 
 ## Energie
@@ -96,11 +97,31 @@ Výpočet je celý v `gameReducer.ts` (`applyPowerDelta`), UI jen zobrazuje výs
 Přepínatelné jen v pohledu na dveře (DoorView) — viz "Pohled hráče" výše. Zavřené
 dveře chrání před útokem, ale spotřebovávají energii.
 
-## Světlo
+## Světlo a dveře
 
-Spotřebovává energii, ale má i přímý herní efekt: když nepřítel čeká u zavřených
-dveří, zapnuté světlo ho odežene 2× rychleji (viz "Nepřítel" výše) — hráč tak má
-důvod světlo zapnout i za cenu energie, ne jen ho nechávat vypnuté.
+Světlo **samo o sobě nepřítele nikdy neodpudí** — u otevřených dveří ani u zavřených
+bez toho, aby zrovna svítilo. Jediný efekt světla je v přesné kombinaci se dvěma
+dalšími podmínkami, a to **repel**:
+
+- dveře zavřené
+- světlo zapnuté
+- nepřítel je u dveří (`at_door`)
+
+Pokud tohle platí nepřetržitě `doorLightRepelRequiredMs` (výchozí 1,5 s), nepřítel
+silně a rychle ustoupí — zahraje se jednorázový řev (`monster_retreat_roar`) a
+nepřítel se resetuje úplně na začátek trasy (`monsterRetreatStage`). Jakmile
+kterákoliv ze tří podmínek přestane platit (otevřeš dveře, zhasneš, nepřítel
+odejde od dveří), časovač se okamžitě vynuluje — žádné "napůl nastřádané" repely
+se nepřenáší do příště.
+
+Na rozdíl od obecného vzdání se (výše, 6–8 s, nezávislé na světle), tenhle
+repel je rychlý, jasný a dobře čitelný: *"Zavřel jsem dveře, rozsvítil jsem,
+monstrum zařvalo a uteklo."* Dveře zůstávají hlavní obranou — světlo je jen
+potvrzující nástroj navrch, ne náhrada za zavření dveří.
+
+Časovač se počítá v `TICK` (běžný herní tik, ~100 ms), ne v `ENEMY_ADVANCE`
+(~2 s) — proto repel přijde předvídatelně kolem 1,5 s, ne v hrubých skocích po
+celých `enemyTickMs`.
 
 ## Kamery
 
@@ -131,7 +152,7 @@ TECH_DESIGN.md "Kamery jsou konfigurační, nikdy hardcoded".
 ## Generátor
 
 První zvuková gameplay mechanika — normální stav není ticho, ale pravidelné
-pípání. Tři stavy (`GeneratorState`):
+pípání. Čtyři stavy (`GeneratorState`):
 
 - **normal** — pípne každých 5 s (`generator.beepIntervalMs`). Toto pípání říká
   hráči "generátor běží", žádný jiný signál není potřeba.
@@ -143,13 +164,20 @@ pípání. Tři stavy (`GeneratorState`):
 - **criticalBeeping** — když hráč nestihne restartovat do 10 s, spustí se rychlé
   varovné pípání (`generator.criticalBeepIntervalMs`) a dodatečná spotřeba
   energie (viz "Energie" výše). Trvá, dokud generátor hráč nerestartuje.
+- **restarting** — trest za zbytečný klik: pokud hráč restartuje generátor, který
+  byl v pořádku (`normal`), na `generator.restartPenaltyMs` (5 s) se sám vyřadí —
+  potichu (žádné pípání) a se stejnou extra spotřebou energie jako
+  `criticalBeeping`. Po vypršení se automaticky vrátí do `normal` s novým
+  pípáním. Cíl: naučit hráče nekontrolovat generátor naslepo, jen když k tomu
+  má důvod (ticho, nebo rychlé pípání).
 
 Restart: hráč se musí otočit do GeneratorView (šipka z DeskView) a kliknout na
-generátor — funguje z obou poruchových stavů (i během ticha, bez postihu) a
-vrátí generátor do `normal` s novým pípáním za 5 s. Vizuální kontrolka
-(stabilní/zhaslá/blikající) je jen pomocná — hlavní signál má být zvuk. Šipka
-"Zkontrolovat generátor" v DeskView navíc bliká, dokud je generátor v poruše
-(`silentFault` i `criticalBeeping`), jako drobná pomůcka pro hráče, který zrovna
+generátor — z obou poruchových stavů funguje bez postihu (i během ticha), z
+`normal` spustí penalizaci `restarting` výše. Vizuální kontrolka
+(stabilní/zhaslá/blikající červeně/blikající žlutě) je jen pomocná — hlavní
+signál má být zvuk. Šipka "Zkontrolovat generátor" v DeskView navíc bliká,
+dokud je generátor v jakémkoliv nenormálním stavu (`silentFault`,
+`criticalBeeping`, `restarting`), jako drobná pomůcka pro hráče, který zrovna
 kouká do kamer a zvuk mu unikl.
 
 ## Smrt

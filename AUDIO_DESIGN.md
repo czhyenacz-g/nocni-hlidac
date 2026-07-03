@@ -24,6 +24,8 @@ Definováno v `game/audio/audioEvents.ts` a nakonfigurováno v `game/audio/audio
 - `ui_click` — obecný UI klik (např. tlačítko Start, otočení mezi pohledy)
 - `generator_beep` — normální pípnutí generátoru každých 5 s (viz "Generátor" níže)
 - `generator_warning_beep` — rychlé varovné pípání v kritickém stavu generátoru
+- `monster_retreat_roar` — jednorázový řev při door-light repelu (viz "Světlo a dveře" v
+  `GAME_DESIGN.md`) — hraje přesně jednou za repel, nikdy opakovaně na tik
 
 ## Ambientní zvuková vrstva
 
@@ -71,15 +73,21 @@ samotné vizuální/zvukové zpoždění lze doladit later bez zásahu do herní
   po první uživatelské interakci (kliknutí na "Spustit směnu"), kvůli autoplay policy
   prohlížečů.
 - `play(id)` — přehraje zvuk od začátku; chybu při přehrání (chybějící/nenačtený soubor)
-  tiše zachytí a ignoruje.
+  tiše zachytí a pokud event má `fallbackSynth`, zahraje místo něj syntetizovaný tón
+  (`playFallbackSynth`, viz níže).
 - `startLoop(id)` / `stopLoop(id)` — spustí/zastaví smyčkový zvuk (ambience).
 - `setMuted(bool)` — globální mute, pozastaví i běžící smyčky.
+- `playFallbackSynth(synth)` (privátní) — vytvoří/znovupoužije jeden sdílený `AudioContext`
+  a přehraje sekvenci oscilátorů podle `FallbackSynthConfig` (viz "Syntetizovaný fallback"
+  níže). Selhání (např. limit počtu `AudioContext`) se tiše ignoruje stejně jako u
+  souborového přehrávání.
 
 ## Jak přidat nový zvuk
 
 1. Přidej klíč do `AUDIO_EVENTS` v `game/audio/audioEvents.ts`.
 2. Přidej odpovídající záznam do `AUDIO_CONFIG` v `game/audio/audioConfig.ts` (cesta v
-   `/public/assets/audio/`, hlasitost, `loop`).
+   `/public/assets/audio/`, hlasitost, `loop`), volitelně `fallbackSynth`, pokud chceš
+   slyšet aspoň placeholder tón, než bude hotový skutečný soubor.
 3. Zavolej `audioManager.play(AUDIO_EVENTS.novyZvuk)` (nebo `startLoop`) na místě, kde má
    zvuk hrát — typicky v `useEffect` v `app/play/page.tsx`, který sleduje relevantní část
    stavu.
@@ -98,6 +106,23 @@ Generátor je ukázka stejného vzoru pro periodický, ne jen jednorázový zvuk
 žádné volání audia), a `app/play/page.tsx` na tuto změnu reaguje přehráním `generator_beep`
 nebo `generator_warning_beep` podle aktuálního `generatorState` — reducer o zvuku neví nic,
 jen "oznámí", že nastal beep.
+
+`monster_retreat_roar` funguje stejně: `gameReducer.ts#updateDoorLightRepel` (volané z
+`TICK`, ne `ENEMY_ADVANCE` — viz TECH_DESIGN.md) při repelu zvýší `monsterRetreatRoarSeq` o 1
+a nic nepřehrává. `app/play/page.tsx` sleduje `state.monsterRetreatRoarSeq` přes `useRef` a na
+změnu zahraje zvuk přesně jednou — díky tomu, že reducer sám nikdy nevolá `audioManager`, je
+nemožné, aby se řev spustil vícekrát za tik nebo z jiného místa v kódu.
+
+## Syntetizovaný fallback (bez čekání na audio soubory)
+
+`generator_beep`, `generator_warning_beep` a `monster_retreat_roar` mají v
+`audioConfig.ts` navíc `fallbackSynth` — krátkou sekvenci tónů (frekvence, délka,
+tvar vlny) syntetizovanou přes nativní Web Audio API, žádná externí knihovna.
+`AudioManager.play()` ho spustí automaticky, když `audio.play()` na chybějící/nenačtený
+soubor selže (stejný `.catch()`, který jinak zvuk jen tiše zahodí). Jakmile do
+`public/assets/audio/` přibude skutečný soubor, fallback se přestane používat sám od
+sebe — nic se v kódu, který zvuk spouští, nemusí měnit. Hodnoty (frekvence/délka/
+hlasitost) jsou centralizované v `audioConfig.ts`, ať se dají snadno doladit.
 
 ## Pravidlo: hra nesmí spadnout při chybějících audio souborech
 

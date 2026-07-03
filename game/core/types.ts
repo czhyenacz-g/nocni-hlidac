@@ -6,6 +6,9 @@
 // CameraDefinition.enemyVisibleAtStage. Který podmnožinu stage nepřítel na
 // své trase skutečně navštíví, určuje EnemyDefinition.routeVariants
 // (jedna se vylosuje při startu směny — viz GameState.enemyRoute).
+// "breach" je připravená pro budoucí trasy (žádná současná ji nepoužívá) — je
+// to jen druhá stage, na kterou reaguje repel dveře+světlo stejně jako na
+// "at_door" (viz gameReducer isAtDoorStage), ne rozpad "at_door" na jemnější kroky.
 export type EnemyStage =
   | "outside"
   | "outer_yard"
@@ -13,10 +16,18 @@ export type EnemyStage =
   | "left_hallway"
   | "door_hallway"
   | "at_door"
+  | "breach"
   | "attack";
 
-/** Poslední rozhodnutí nepřítele při vyhodnocení ENEMY_ADVANCE — pro DebugPanel. */
-export type EnemyMoveDecision = "advance" | "stay" | "retreat" | "waiting_at_door" | "gave_up" | "attack";
+/** Poslední rozhodnutí nepřítele při vyhodnocení ENEMY_ADVANCE/TICK — pro DebugPanel. */
+export type EnemyMoveDecision =
+  | "advance"
+  | "stay"
+  | "retreat"
+  | "waiting_at_door"
+  | "gave_up"
+  | "light_repelled"
+  | "attack";
 
 export type ScreenId = "menu" | "playing" | "death" | "win";
 
@@ -27,8 +38,10 @@ export type PlayerView = "desk" | "door" | "generator";
  * normal — pravidelně pípá, vše v pořádku
  * silentFault — porucha, generátor mlčí; hráč má férový reakční čas na restart
  * criticalBeeping — reakční čas vypršel, rychlé pípání + extra spotřeba energie
+ * restarting — hráč omylem restartoval funkční generátor; krátký výpadek se
+ *   stejnou extra spotřebou jako criticalBeeping, ale tichý — trest za zbytečný klik
  */
-export type GeneratorState = "normal" | "silentFault" | "criticalBeeping";
+export type GeneratorState = "normal" | "silentFault" | "criticalBeeping" | "restarting";
 
 export type CameraId = "outer_yard" | "right_hallway" | "left_hallway" | "door_hallway";
 
@@ -73,16 +86,21 @@ export interface EnemyDefinition {
   retreatChance: number;
   /**
    * Rozsah (ms), ze kterého se při každém příchodu ke dveřím vylosuje cíl
-   * čekání u zavřených dveří, než se nepřítel vzdá a vrátí na start trasy —
-   * beze světla v chodbě (viz gameReducer ENEMY_ADVANCE).
+   * čekání u zavřených dveří, než se nepřítel vzdá a vrátí na start trasy.
+   * Nezávislé na světle — viz doorLightRepelRequiredMs pro kombinovaný efekt
+   * zavřených dveří a světla (gameReducer ENEMY_ADVANCE).
    */
   doorHoldRangeMs: { min: number; max: number };
   /**
-   * Násobitel rychlosti, kterým se čekání blíží k vylosovanému cíli, když
-   * svítí světlo do chodby. Efekt je okamžitý — zapnutí/vypnutí světla
-   * uprostřed čekání zrychlí/zpomalí zbytek od té chvíle.
+   * Kolik ms musí NEPŘETRŽITĚ platit všechny tři podmínky současně — dveře
+   * zavřené, světlo zapnuté, nepřítel u dveří ("at_door"/"breach") — než ho to
+   * odežene (repel). Sleduje se v TICKu (jemněji než enemyTickMs), ne v
+   * ENEMY_ADVANCE — viz gameReducer.ts#updateDoorLightRepel. Světlo samo o
+   * sobě (otevřené dveře) ani zavřené dveře bez světla repel nikdy nespustí.
    */
-  doorHoldLightAccelMultiplier: number;
+  doorLightRepelRequiredMs: number;
+  /** Kam se nepřítel vrátí po repelu — stejný typ resetu jako vzdání se standoffu u dveří. */
+  monsterRetreatStage: EnemyStage;
 }
 
 export interface NightDefinition {
@@ -125,6 +143,12 @@ export interface GeneratorDefinition {
   /** Časové okno (elapsedMs), ve kterém se náhodně vylosuje okamžik poruchy — nikdy hned na začátku směny. */
   faultEarliestAtMs: number;
   faultLatestAtMs: number;
+  /**
+   * Kolik ms trvá "restarting" penalizace, když hráč restartuje generátor,
+   * co byl v pořádku (`generatorState === "normal"`) — zbytečný klik ho na
+   * chvíli vyřadí, se stejnou extra spotřebou energie jako criticalBeeping.
+   */
+  restartPenaltyMs: number;
 }
 
 export type DeathReason = "door_open_at_attack" | "power_depleted";
@@ -157,6 +181,8 @@ export interface GameState {
   generatorFaultAtMs: number;
   /** Kolikrát už se porucha za tuto směnu spustila (viz generator.faultMaxPerShift). */
   generatorFaultCount: number;
+  /** elapsedMs, kdy skončí "restarting" penalizace — null mimo tento stav. */
+  generatorRestartUntilMs: number | null;
 
   /** Trasa vylosovaná při startu směny z enemy.routeVariants — platí po celou směnu. */
   enemyRoute: EnemyStage[];
@@ -166,8 +192,15 @@ export interface GameState {
   enemyAtDoorSinceMs: number | null;
   /** Vylosovaný cíl (ms) aktuálního čekání u dveří — null mimo standoff u zavřených dveří. */
   enemyDoorHoldTargetMs: number | null;
-  /** Efektivní nastřádaný čas (ms) čekání — zrychluje se, když svítí světlo (viz gameReducer). */
   enemyDoorHoldProgressMs: number;
+  /**
+   * Nastřádaný čas (ms), po který nepřetržitě platí dveře zavřené + světlo
+   * zapnuté + nepřítel u dveří — viz EnemyDefinition.doorLightRepelRequiredMs.
+   * Kdykoliv některá podmínka přestane platit, resetuje se na 0.
+   */
+  doorLightRepelMs: number;
+  /** Zvyšuje se při každém repelu — UI podle změny spouští monsterRetreatRoar (viz app/play/page.tsx). */
+  monsterRetreatRoarSeq: number;
 
   deathReason: DeathReason | null;
 

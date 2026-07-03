@@ -13,6 +13,7 @@ export const AUDIO_EVENTS = {
   uiClick: "ui_click",
   generatorBeep: "generator_beep",
   generatorWarningBeep: "generator_warning_beep",
+  monsterRetreatRoar: "monster_retreat_roar",
 } as const;
 
 export type AudioEventId = (typeof AUDIO_EVENTS)[keyof typeof AUDIO_EVENTS];

@@ -1,15 +1,16 @@
 import { DEBUG_PANEL_ENABLED } from "@/game/balancing/constants";
-import { GameState } from "@/game/core/types";
+import { GameState, NightDefinition } from "@/game/core/types";
 import DoorControl from "./DoorControl";
 
 interface DebugPanelProps {
   state: GameState;
+  night: NightDefinition;
   tensionLevel: number;
   onDebugToggleDoor: () => void;
   onDebugRestartGenerator: () => void;
 }
 
-export default function DebugPanel({ state, tensionLevel, onDebugToggleDoor, onDebugRestartGenerator }: DebugPanelProps) {
+export default function DebugPanel({ state, night, tensionLevel, onDebugToggleDoor, onDebugRestartGenerator }: DebugPanelProps) {
   if (!DEBUG_PANEL_ENABLED) return null;
 
   // Dev nástroj, ne herní ovládání — na mobilu/užších obrazovkách by jen
@@ -25,13 +26,15 @@ export default function DebugPanel({ state, tensionLevel, onDebugToggleDoor, onD
         <div>playerView: {state.playerView}</div>
         <div>door: {state.doorClosed ? "closed" : "open"}</div>
         <div>light: {state.lightOn ? "on" : "off"}</div>
+        <div>
+          doorLightRepel: {state.doorLightRepelMs.toFixed(0)} / {night.enemy.doorLightRepelRequiredMs} ms
+          (roars: {state.monsterRetreatRoarSeq})
+        </div>
         <div>generator: {state.generatorState} (faults: {state.generatorFaultCount})</div>
         <DoorControl doorClosed={state.doorClosed} onToggle={onDebugToggleDoor} />
-        {state.generatorState !== "normal" && (
-          <button className="pixel-button px-3 py-2 text-xs w-full" onClick={onDebugRestartGenerator}>
-            DEV: Restartovat generátor
-          </button>
-        )}
+        <button className="pixel-button px-3 py-2 text-xs w-full" onClick={onDebugRestartGenerator}>
+          DEV: Restartovat generátor{state.generatorState === "normal" ? " (test penalizace)" : ""}
+        </button>
       </div>
     </details>
   );

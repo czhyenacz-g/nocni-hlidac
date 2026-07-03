@@ -19,10 +19,12 @@ export function computeTensionLevel(input: TensionInput): number {
     left_hallway: 0.4,
     door_hallway: 0.65,
     at_door: 0.85,
+    breach: 0.92,
     attack: 1,
   }[input.enemyStage];
 
-  const doorDanger = input.enemyStage === "at_door" && !input.doorClosed ? 0.3 : 0;
+  const atDoor = input.enemyStage === "at_door" || input.enemyStage === "breach";
+  const doorDanger = atDoor && !input.doorClosed ? 0.3 : 0;
 
   const tension =
     powerRatio * 0.3 +
