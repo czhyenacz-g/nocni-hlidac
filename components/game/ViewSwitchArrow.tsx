@@ -6,14 +6,19 @@ interface ViewSwitchArrowProps {
   urgent?: boolean;
 }
 
-/** Malý hotspot pro přepnutí pohledu hráče (stůl/kamery <-> dveře/generátor). */
+/**
+ * Hotspot pro přepnutí pohledu hráče (stůl/kamery <-> dveře/generátor).
+ * Klikací plocha (`.view-hotspot`, min. 48 px výška + padding) je záměrně
+ * větší než viditelný text, ať se dá pohodlně trefit prstem.
+ */
 export default function ViewSwitchArrow({ label, onClick, align = "right", urgent = false }: ViewSwitchArrowProps) {
   return (
     <button
-      className="pixel-button px-3 py-2 text-xs w-full"
-      style={{ textAlign: align === "right" ? "right" : "left" }}
+      className="pixel-button pixel-arrow-button view-hotspot px-3 py-2 text-xs w-full"
+      style={{ justifyContent: align === "right" ? "flex-end" : "flex-start" }}
       data-urgent={urgent}
       onClick={onClick}
+      aria-label={label}
     >
       {label}
     </button>

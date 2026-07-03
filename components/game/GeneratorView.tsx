@@ -18,9 +18,10 @@ export default function GeneratorView({ generatorState, onRestartGenerator, onLo
       <ViewSwitchArrow label={COPY.game.lookAtDeskLabel} onClick={onLookAtDesk} align="left" />
 
       <button
-        className="pixel-button pixel-screen-static h-48 w-full flex flex-col items-center justify-center gap-3 text-sm"
+        className="pixel-button pixel-screen-static tap-target-critical h-48 w-full flex flex-col items-center justify-center gap-3 text-sm"
         data-active={generatorState !== "normal"}
         onClick={onRestartGenerator}
+        aria-label="Restartovat generátor"
       >
         <span className="pixel-indicator" data-state={generatorState} />
         <span>{COPY.game.generatorStateLabels[generatorState]}</span>

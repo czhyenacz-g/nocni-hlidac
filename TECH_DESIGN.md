@@ -177,6 +177,31 @@ poruchy) je v `NightDefinition.generator` (`game/nights/night01.ts`).
   naplánuje další normální pípnutí za `beepIntervalMs` od teď; v `normal` je
   no-op.
 
+## Mobilní tap targety
+
+Stabilizační vrstva nad existujícím UI, ne nový design — cíl je, aby se na mobilu dalo
+pohodlně prstem trefit do všech důležitých prvků, ne aby hra na mobilu vypadala jinak.
+
+- `.tap-target` (min. 44×44 px) — obecné akce: tlačítka kamer, "Zavřít kamery", světlo,
+  zvuk, restart/menu/zkusit znovu.
+- `.tap-target-critical` (min. 56×56 px) — kritické herní akce: klik na dveře (`DoorView`)
+  a na generátor (`GeneratorView`). Obě tyhle plochy jsou navíc `h-48` (192 px), takže
+  `.tap-target-critical` je tu jen sémantická pojistka, ne to, co reálně určuje velikost.
+- `.view-hotspot` + `.pixel-arrow-button` — šipky pro přepnutí pohledu (`ViewSwitchArrow.tsx`,
+  min. 48 px výška). Hotspot je vždy plocha `<button>`, ne jen viditelný text — padding dělá
+  klikací zónu větší než sám text.
+- `.mobile-landscape-hint` — čistě CSS doporučení otočit telefon (`@media (orientation:
+  portrait) and (max-width: 820px)`), žádná JS detekce zařízení. Komponenta
+  `MobileLandscapeHint.tsx` jen vykresluje text, CSS řídí kdy je vidět.
+- `DebugPanel.tsx` je skrytý pod `lg` breakpointem (Tailwind `hidden lg:flex`) — je to dev
+  nástroj, na mobilu by jen zabíral místo a mohl překrývat skutečné ovládání.
+- `viewport` export v `app/layout.tsx` (`width: device-width, initialScale: 1`) — bez něj by
+  mobilní prohlížeč mohl stránku defaultně oddálit a tap targety by v praxi vyšly menší, než
+  kolik mají v CSS pixelech.
+
+Vše je čisté CSS/Tailwind classes na existujících elementech — žádná herní logika se
+nepřesunula do CSS a nevznikla samostatná mobilní verze komponent.
+
 ## Restart směny
 
 Akce `RESTART_SHIFT` vytvoří nový `createInitialGameState(night)` (zachová jen nastavení

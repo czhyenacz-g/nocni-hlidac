@@ -15,7 +15,7 @@ export default function DeathScreen({ reason, onRetry }: DeathScreenProps) {
         <p className="text-sm text-gray-400 mb-8">
           {reason ? COPY.death.reasons[reason] : ""}
         </p>
-        <button className="pixel-button px-6 py-3 text-sm w-full" onClick={onRetry}>
+        <button className="pixel-button tap-target px-6 py-3 text-sm w-full" onClick={onRetry}>
           {COPY.death.retryButton}
         </button>
       </div>

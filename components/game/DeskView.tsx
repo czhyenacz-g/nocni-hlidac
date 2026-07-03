@@ -52,7 +52,7 @@ export default function DeskView({
 
       <LightControl lightOn={state.lightOn} onToggle={onToggleLight} />
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-3">
         <ViewSwitchArrow label={COPY.game.lookAtDoorLabel} onClick={onLookAtDoor} align="right" />
         <ViewSwitchArrow
           label={COPY.game.lookAtGeneratorLabel}

@@ -20,18 +20,19 @@ export default function CameraPanel({
   const sortedCameras = [...cameras].sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity));
 
   return (
-    <div className="flex gap-2 flex-wrap">
+    <div className="flex gap-3 flex-wrap">
       {sortedCameras.map((camera) => (
         <button
           key={camera.id}
-          className="pixel-button px-3 py-2 text-xs"
+          className="pixel-button tap-target px-3 py-2 text-xs"
           data-active={cameraOpen && activeCameraId === camera.id}
           onClick={() => onSelectCamera(camera.id)}
+          aria-label={camera.label}
         >
           {camera.label}
         </button>
       ))}
-      <button className="pixel-button px-3 py-2 text-xs" onClick={onCloseCameras}>
+      <button className="pixel-button tap-target px-3 py-2 text-xs" onClick={onCloseCameras}>
         Zavřít kamery
       </button>
     </div>

@@ -28,9 +28,19 @@
 - [x] 4. kamera (Chodba před dveřmi) + trasa nepřítele přes ni, `at_door` oddělený od
       kamer, pravděpodobnostní pohyb s `retreatChance` (ústup), `camera_noise` jen
       když je nepřítel na kameře nejblíž hráči
+- [x] Náhodná volba strany (pravá/levá chodba) — `routeVariants`, losuje se jednou při
+      startu směny
+- [x] Mobilní stabilizace — dotykové cíle (`.tap-target`, `.tap-target-critical`,
+      `.view-hotspot`), `.mobile-landscape-hint`, DebugPanel skrytý pod `lg`, viewport meta
 - [ ] Playtest a doladění balancu (šance postupu nepřítele, retreatChance, spotřeba
       energie, rychlost dobíjení, časové okno poruchy generátoru, tempo kritického
       pípání, rozsah doorHoldRangeMs a doorHoldLightAccelMultiplier)
+- [ ] Ruční test na skutečném mobilu (ne jen zmenšené okno v desktop prohlížeči):
+      - přepínání desk → door → desk a desk → generator → desk prstem
+      - klik na dveře/generátor v DoorView/GeneratorView
+      - kamera tlačítka v CameraPanel při 4 kamerách (zalomení na užší obrazovce)
+      - `.mobile-landscape-hint` se objeví v portrait a zmizí v landscape
+      - žádný hotspot není nalepený na okraj displeje (notch/safe area u `viewportFit: cover`)
 
 ## Další kroky po MVP
 
@@ -40,8 +50,6 @@
   reálné soubory `generator_beep.mp3` a `generator_warning_beep.mp3` (zatím jen
   konfigurace, viz `assets/audio/README.md`)
 - Druhá směna (`night02.ts`) s jiným nepřítelem/balancem
-- Alternativní trasa přes levou chodbu (`left_hallway`) — kamera i typ existují,
-  jen ji zatím žádná trasa nevyužívá
 - Dynamická vrstvená ambience podle `tensionLevel`
 - Vylepšený jumpscare (delší/výraznější sekvence, ne jen barevný flash)
 - Ukládání nejlepšího výsledku / progressu do localStorage

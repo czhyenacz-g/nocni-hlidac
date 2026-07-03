@@ -12,8 +12,10 @@ interface DebugPanelProps {
 export default function DebugPanel({ state, tensionLevel, onDebugToggleDoor, onDebugRestartGenerator }: DebugPanelProps) {
   if (!DEBUG_PANEL_ENABLED) return null;
 
+  // Dev nástroj, ne herní ovládání — na mobilu/užších obrazovkách by jen
+  // zabíral místo a mohl překrývat skutečné hotspoty, proto se pod `lg` skryje.
   return (
-    <div className="pixel-panel p-2 text-[10px] text-gray-500 font-mono leading-tight flex flex-col gap-2">
+    <div className="hidden lg:flex pixel-panel p-2 text-[10px] text-gray-500 font-mono leading-tight flex-col gap-2">
       <div>enemyStage: {state.enemyStage} ({state.lastEnemyDecision})</div>
       <div>tension: {tensionLevel.toFixed(2)}</div>
       <div>power: {state.power.toFixed(1)}</div>

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "@/styles/pixel.css";
 import "@/styles/atmosphere.css";
@@ -22,6 +22,14 @@ export const metadata: Metadata = {
     title: "Noční hlídač — Objekt 13: První směna",
     description: "Klaustrofobická lekací hra v prohlížeči. Sedíš v malé místnosti. Kamery šumí. Dveře nevydrží věčně. Přežij do rána.",
   },
+};
+
+// Bez tohohle prohlížeč na mobilu často defaultně "oddálí" stránku, takže by
+// dotykové cíle vypadaly menší, než jaké skutečně v CSS px jsou.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

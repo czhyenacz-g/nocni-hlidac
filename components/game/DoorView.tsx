@@ -15,9 +15,10 @@ export default function DoorView({ doorClosed, onToggleDoor, onLookAtDesk }: Doo
       <ViewSwitchArrow label={COPY.game.lookAtDeskLabel} onClick={onLookAtDesk} align="left" />
 
       <button
-        className="pixel-button pixel-screen-static h-48 w-full flex flex-col items-center justify-center gap-2 text-sm"
+        className="pixel-button pixel-screen-static tap-target-critical h-48 w-full flex flex-col items-center justify-center gap-2 text-sm"
         data-active={doorClosed}
         onClick={onToggleDoor}
+        aria-label={doorClosed ? "Otevřít dveře" : "Zavřít dveře"}
       >
         <span>{doorClosed ? COPY.game.doorClosedLabel : COPY.game.doorOpenLabel}</span>
         <span className="text-[10px] text-gray-400">{COPY.game.doorViewHint}</span>
