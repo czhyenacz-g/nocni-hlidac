@@ -52,8 +52,8 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
     volume: 0.6,
     loop: false,
     fallbackSynth: {
-      notes: [{ frequency: 1000, durationMs: 110 }],
-      volume: 0.4,
+      notes: [{ frequency: 1000, durationMs: 160 }],
+      volume: 0.8,
       waveform: "square",
     },
   },

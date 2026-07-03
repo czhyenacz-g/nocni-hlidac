@@ -100,6 +100,11 @@ class AudioManager {
       for (const note of synth.notes) {
         const dur = note.durationMs / 1000;
         const attack = Math.min(0.01, dur / 4);
+        // Drž vrchol hlasitosti přes většinu délky noty (sustain), ne jen
+        // okamžitý attack->decay — bez toho zní i "hlasitý" tón v praxi tiše,
+        // protože exponenciální rampa dolů ukusuje skoro celou notu hned od začátku.
+        const holdEnd = t + dur * 0.7;
+        const end = t + dur;
 
         const osc = ctx.createOscillator();
         osc.type = synth.waveform ?? "sine";
@@ -108,12 +113,13 @@ class AudioManager {
         const gain = ctx.createGain();
         gain.gain.setValueAtTime(0.0001, t);
         gain.gain.exponentialRampToValueAtTime(synth.volume, t + attack);
-        gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        gain.gain.setValueAtTime(synth.volume, holdEnd);
+        gain.gain.exponentialRampToValueAtTime(0.0001, end);
 
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.start(t);
-        osc.stop(t + dur + 0.02);
+        osc.stop(end + 0.02);
 
         t += dur + (note.gapMs ?? 0) / 1000;
       }
