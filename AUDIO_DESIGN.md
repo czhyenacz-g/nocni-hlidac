@@ -20,7 +20,9 @@ Definováno v `game/audio/audioEvents.ts` a nakonfigurováno v `game/audio/audio
 - `power_low` — varování při nízké energii
 - `jumpscare` — zvuk při útoku/smrti
 - `shift_win` — zvuk při přežití směny
-- `ui_click` — obecný UI klik (např. tlačítko Start)
+- `ui_click` — obecný UI klik (např. tlačítko Start, otočení mezi pohledy)
+- `generator_beep` — normální pípnutí generátoru každých 5 s (viz "Generátor" níže)
+- `generator_warning_beep` — rychlé varovné pípání v kritickém stavu generátoru
 
 ## Ambientní zvuková vrstva
 
@@ -28,6 +30,17 @@ Definováno v `game/audio/audioEvents.ts` a nakonfigurováno v `game/audio/audio
 šum elektroinstalace, nepravidelné vzdálené zvuky. V první verzi je to reprezentováno jedním
 `ambience_loop` placeholder souborem — rozšíření na vrstvenou/dynamickou ambienci (podle
 `tensionLevel`) je připravené jako další krok, ne v MVP.
+
+## Generátor — první zvuková gameplay mechanika
+
+Normální stav generátoru není ticho, ale pravidelné pípání (`generator_beep`
+každých 5 s) — to je hráčovi jediný signál, že je vše v pořádku. Když se
+generátor porouchá, na 10 sekund úplně ztichne (žádný zvuk, ne jiný zvuk) — ticho
+samo je varování a dává hráči férový reakční čas. Pokud nezareaguje, spustí se
+rychlé, hlasitější `generator_warning_beep` (viz `generator.criticalBeepIntervalMs`
+v `night01.ts`) a zůstane, dokud hráč generátor v `GeneratorView` nerestartuje.
+Vizuální kontrolka v `GeneratorView.tsx` (stabilní/zhaslá/blikající) je jen
+pomocná — hlavní signál má být zvuk, viz `GAME_DESIGN.md` sekce "Generátor".
 
 ## Zvukové události
 
@@ -68,9 +81,15 @@ samotné vizuální/zvukové zpoždění lze doladit later bez zásahu do herní
 ## Jak se audio váže na stav hry
 
 `app/play/page.tsx` drží `useRef` na předchozí hodnoty klíčových částí stavu (obrazovka,
-dveře, světlo, energie, stage nepřítele) a v `useEffect` porovnává se stavem aktuálním —
-při přechodu spustí odpovídající zvuk. Díky tomu je vazba na stav explicitní a na jednom
-místě, ne rozeseta po komponentách.
+dveře, světlo, energie, stage nepřítele, `generatorBeepSeq`) a v `useEffect` porovnává se
+stavem aktuálním — při přechodu spustí odpovídající zvuk. Díky tomu je vazba na stav
+explicitní a na jednom místě, ne rozeseta po komponentách.
+
+Generátor je ukázka stejného vzoru pro periodický, ne jen jednorázový zvuk:
+`gameReducer.ts` při každém pípnutí zvýší `generatorBeepSeq` o 1 (čistá herní logika,
+žádné volání audia), a `app/play/page.tsx` na tuto změnu reaguje přehráním `generator_beep`
+nebo `generator_warning_beep` podle aktuálního `generatorState` — reducer o zvuku neví nic,
+jen "oznámí", že nastal beep.
 
 ## Pravidlo: hra nesmí spadnout při chybějících audio souborech
 

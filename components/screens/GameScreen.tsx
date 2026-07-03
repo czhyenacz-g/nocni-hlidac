@@ -1,9 +1,7 @@
-import { COPY } from "@/content/copy";
 import { CameraId, GameState, NightDefinition } from "@/game/core/types";
-import CameraPanel from "../game/CameraPanel";
-import CameraView from "../game/CameraView";
-import DoorControl from "../game/DoorControl";
-import LightControl from "../game/LightControl";
+import DeskView from "../game/DeskView";
+import DoorView from "../game/DoorView";
+import GeneratorView from "../game/GeneratorView";
 import PowerMeter from "../game/PowerMeter";
 import ShiftTimer from "../game/ShiftTimer";
 import AudioToggle from "../game/AudioToggle";
@@ -18,6 +16,12 @@ interface GameScreenProps {
   onSelectCamera: (id: CameraId) => void;
   onCloseCameras: () => void;
   onToggleAudio: () => void;
+  onLookAtDoor: () => void;
+  onLookAtDesk: () => void;
+  onLookAtGenerator: () => void;
+  onRestartGenerator: () => void;
+  onDebugToggleDoor: () => void;
+  onDebugRestartGenerator: () => void;
 }
 
 export default function GameScreen({
@@ -29,9 +33,13 @@ export default function GameScreen({
   onSelectCamera,
   onCloseCameras,
   onToggleAudio,
+  onLookAtDoor,
+  onLookAtDesk,
+  onLookAtGenerator,
+  onRestartGenerator,
+  onDebugToggleDoor,
+  onDebugRestartGenerator,
 }: GameScreenProps) {
-  const activeCamera = night.cameras.find((c) => c.id === state.activeCameraId) ?? null;
-
   return (
     <main className="min-h-screen p-4 flex flex-col gap-4 max-w-md mx-auto">
       <div className="flex justify-between items-center">
@@ -41,32 +49,34 @@ export default function GameScreen({
 
       <PowerMeter power={state.power} />
 
-      <div>
-        <div className="text-[10px] text-gray-400 mb-1">{COPY.game.camerasLabel}</div>
-        {state.cameraOpen ? (
-          <CameraView camera={activeCamera} enemyStage={state.enemyStage} />
-        ) : (
-          <div className="pixel-panel h-40 flex items-center justify-center text-gray-500 text-sm">
-            {COPY.game.noCameraSelected}
-          </div>
-        )}
-        <div className="mt-2">
-          <CameraPanel
-            cameras={night.cameras}
-            activeCameraId={state.activeCameraId}
-            cameraOpen={state.cameraOpen}
-            onSelectCamera={onSelectCamera}
-            onCloseCameras={onCloseCameras}
-          />
-        </div>
-      </div>
+      {state.playerView === "desk" && (
+        <DeskView
+          state={state}
+          night={night}
+          onToggleLight={onToggleLight}
+          onSelectCamera={onSelectCamera}
+          onCloseCameras={onCloseCameras}
+          onLookAtDoor={onLookAtDoor}
+          onLookAtGenerator={onLookAtGenerator}
+        />
+      )}
+      {state.playerView === "door" && (
+        <DoorView doorClosed={state.doorClosed} onToggleDoor={onToggleDoor} onLookAtDesk={onLookAtDesk} />
+      )}
+      {state.playerView === "generator" && (
+        <GeneratorView
+          generatorState={state.generatorState}
+          onRestartGenerator={onRestartGenerator}
+          onLookAtDesk={onLookAtDesk}
+        />
+      )}
 
-      <div className="grid grid-cols-2 gap-2">
-        <DoorControl doorClosed={state.doorClosed} onToggle={onToggleDoor} />
-        <LightControl lightOn={state.lightOn} onToggle={onToggleLight} />
-      </div>
-
-      <DebugPanel state={state} tensionLevel={tensionLevel} />
+      <DebugPanel
+        state={state}
+        tensionLevel={tensionLevel}
+        onDebugToggleDoor={onDebugToggleDoor}
+        onDebugRestartGenerator={onDebugRestartGenerator}
+      />
     </main>
   );
 }

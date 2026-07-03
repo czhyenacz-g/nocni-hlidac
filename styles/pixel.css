@@ -40,3 +40,29 @@
     transparent 2px
   );
 }
+
+/* Kontrolka generátoru — jen pomocný vizuál, hlavní signál je zvuk (viz AUDIO_DESIGN.md). */
+.pixel-indicator {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.pixel-indicator[data-state="normal"] {
+  background: #4ade80;
+}
+
+.pixel-indicator[data-state="silentFault"] {
+  background: #374151;
+}
+
+.pixel-indicator[data-state="criticalBeeping"] {
+  background: #ef4444;
+  animation: pixel-blink 0.35s steps(2) infinite;
+}
+
+@keyframes pixel-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.15; }
+}

@@ -11,6 +11,8 @@ export const AUDIO_EVENTS = {
   jumpscare: "jumpscare",
   shiftWin: "shift_win",
   uiClick: "ui_click",
+  generatorBeep: "generator_beep",
+  generatorWarningBeep: "generator_warning_beep",
 } as const;
 
 export type AudioEventId = (typeof AUDIO_EVENTS)[keyof typeof AUDIO_EVENTS];

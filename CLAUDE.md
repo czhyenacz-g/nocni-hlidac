@@ -20,6 +20,13 @@ funkce, abstrakce ani konfigurovatelnost, které aktuální směna nepotřebuje.
   komponent.
 - Texty (`content/copy.ts`), konfigurace směn, definice kamer a nepřítele nikdy nedávat
   přímo do hlavní komponenty (`app/play/page.tsx`) — jen se tam propojují.
+- Co pohled hráče (`GameState.playerView`, např. `"desk" | "door" | "generator"`), to
+  samostatná komponenta v `components/game/` (`DeskView.tsx`, `DoorView.tsx`,
+  `GeneratorView.tsx`, ...) — `GameScreen.tsx` jen vybírá, který pohled vykreslit podle
+  `state.playerView`, žádnou herní logiku sama neobsahuje. Přechody mezi pohledy jsou
+  vlastní akce (`LOOK_AT_*`) v `gameReducer.ts`, ne lokální React state v komponentě.
+  Pokud má akce smysl jen v konkrétním pohledu (např. `TOGGLE_DOOR` jen v `"door"`,
+  `RESTART_GENERATOR` jen mimo `"normal"`), vynuť to přímo v reduceru, ne jen v UI.
 
 ## Povinnost držet audio odděleně
 

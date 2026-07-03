@@ -27,6 +27,7 @@ export default function PlayPage() {
   const prevDoorRef = useRef(state.doorClosed);
   const prevLightRef = useRef(state.lightOn);
   const prevPowerRef = useRef(state.power);
+  const prevGeneratorBeepSeqRef = useRef(state.generatorBeepSeq);
 
   useEffect(() => {
     audioManager.setMuted(state.audioMuted);
@@ -72,6 +73,15 @@ export default function PlayPage() {
   }, [state.power]);
 
   useEffect(() => {
+    if (prevGeneratorBeepSeqRef.current !== state.generatorBeepSeq) {
+      audioManager.play(
+        state.generatorState === "criticalBeeping" ? AUDIO_EVENTS.generatorWarningBeep : AUDIO_EVENTS.generatorBeep,
+      );
+      prevGeneratorBeepSeqRef.current = state.generatorBeepSeq;
+    }
+  }, [state.generatorBeepSeq, state.generatorState]);
+
+  useEffect(() => {
     if (state.enemyStage === "camera_03_door" || state.enemyStage === "attack") {
       audioManager.play(AUDIO_EVENTS.enemyNear);
     } else if (state.enemyStage !== "outside") {
@@ -93,6 +103,39 @@ export default function PlayPage() {
 
   function handleToggleDoor() {
     dispatch({ type: "TOGGLE_DOOR" });
+  }
+
+  function handleLookAtDoor() {
+    audioManager.play(AUDIO_EVENTS.uiClick);
+    dispatch({ type: "LOOK_AT_DOOR" });
+  }
+
+  function handleLookAtDesk() {
+    audioManager.play(AUDIO_EVENTS.uiClick);
+    dispatch({ type: "LOOK_AT_DESK" });
+  }
+
+  // DEV-ONLY: DebugPanel's direct door toggle simulates both steps of the
+  // normal flow (look at door, then toggle) instead of bypassing it.
+  function handleDebugToggleDoor() {
+    dispatch({ type: "LOOK_AT_DOOR" });
+    dispatch({ type: "TOGGLE_DOOR" });
+  }
+
+  function handleLookAtGenerator() {
+    audioManager.play(AUDIO_EVENTS.uiClick);
+    dispatch({ type: "LOOK_AT_GENERATOR" });
+  }
+
+  function handleRestartGenerator() {
+    audioManager.play(AUDIO_EVENTS.uiClick);
+    dispatch({ type: "RESTART_GENERATOR" });
+  }
+
+  // DEV-ONLY: same simulate-both-steps pattern as handleDebugToggleDoor.
+  function handleDebugRestartGenerator() {
+    dispatch({ type: "LOOK_AT_GENERATOR" });
+    dispatch({ type: "RESTART_GENERATOR" });
   }
 
   function handleToggleLight() {
@@ -140,6 +183,12 @@ export default function PlayPage() {
           onSelectCamera={handleSelectCamera}
           onCloseCameras={handleCloseCameras}
           onToggleAudio={handleToggleAudio}
+          onLookAtDoor={handleLookAtDoor}
+          onLookAtDesk={handleLookAtDesk}
+          onLookAtGenerator={handleLookAtGenerator}
+          onRestartGenerator={handleRestartGenerator}
+          onDebugToggleDoor={handleDebugToggleDoor}
+          onDebugRestartGenerator={handleDebugRestartGenerator}
         />
       )}
       {state.screen === "death" && <DeathScreen reason={state.deathReason} onRetry={handleRestart} />}

@@ -5,6 +5,7 @@ export const COPY = {
     subtitle: "Objekt 13: První směna",
     intro: "Sedíš v malé místnosti. Kamery šumí. Dveře nevydrží věčně. Přežij do rána.",
     startButton: "Spustit směnu",
+    authorEmail: "hynek@darbujan.cz",
   },
   game: {
     doorClosedLabel: "Dveře: ZAVŘENO",
@@ -17,6 +18,16 @@ export const COPY = {
     noCameraSelected: "Vyber kameru.",
     audioOnLabel: "Zvuk: zapnutý",
     audioOffLabel: "Zvuk: vypnutý",
+    lookAtDoorLabel: "Otočit se ke dveřím →",
+    lookAtDeskLabel: "← Zpět k panelu",
+    doorViewHint: "Klikni na dveře.",
+    lookAtGeneratorLabel: "Zkontrolovat generátor →",
+    generatorViewHint: "Klikni pro restart.",
+    generatorStateLabels: {
+      normal: "Generátor běží.",
+      silentFault: "Generátor mlčí...",
+      criticalBeeping: "PORUCHA! Restartuj generátor!",
+    },
   },
   death: {
     title: "Konec směny.",

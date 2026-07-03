@@ -14,7 +14,17 @@ export const NIGHT_01: NightDefinition = {
     cameraOpen: 0.2,
     idle: 0.15,
   },
+  // 1 % za 3 s = 1/3 % za sekundu — viz GAME_DESIGN.md "Energie".
+  rechargePerSecondWhenIdle: 1 / 3,
   enemy: BASIC_INTRUDER,
   cameras: OBJECT13_CAMERAS,
   enemyTickMs: 1500,
+  generator: {
+    beepIntervalMs: 5000,
+    criticalBeepIntervalMs: 700,
+    silentGraceMs: 10000,
+    faultMaxPerShift: 1,
+    faultEarliestAtMs: 45000,
+    faultLatestAtMs: 110000,
+  },
 };

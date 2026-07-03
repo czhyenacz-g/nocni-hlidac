@@ -1,6 +1,7 @@
 import { GameAction } from "./gameActions";
 import { createInitialGameState } from "./gameState";
 import { GameState, NightDefinition } from "./types";
+import { MAX_POWER } from "../balancing/constants";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -12,14 +13,73 @@ function isEnemyBeingWatched(state: GameState, night: NightDefinition): boolean 
   return camera?.enemyVisibleAtStage === state.enemyStage;
 }
 
-function applyPowerDrain(state: GameState, night: NightDefinition, deltaMs: number): number {
+// Když hráč aktivně sleduje kamery (otevřená kamera v pohledu na stůl), energie
+// jen ubývá. Jinak (dveře/pohled zavřené kamery) se pomalu dobíjí, ale spotřeba
+// zavřených dveří / rozsvíceného světla dobíjení dál přebíjí — viz GAME_DESIGN.md.
+// Kritický stav generátoru navrch přidá pevnou extra spotřebu (jako 2x zavřené
+// dveře + rozsvícené světlo), bez ohledu na to, jestli jsou skutečně zapnuté.
+function applyPowerDelta(state: GameState, night: NightDefinition, deltaMs: number): number {
   const seconds = deltaMs / 1000;
   const rates = night.powerDrainPerSecond;
-  let drain = rates.idle;
+  const watchingCameras = state.cameraOpen && state.playerView === "desk";
+  const generatorExtraDrain =
+    state.generatorState === "criticalBeeping" ? 2 * rates.doorClosed + rates.lightOn : 0;
+
+  if (watchingCameras) {
+    const drain = rates.idle + rates.cameraOpen + generatorExtraDrain;
+    return clamp(state.power - drain * seconds, 0, MAX_POWER);
+  }
+
+  let drain = generatorExtraDrain;
   if (state.doorClosed) drain += rates.doorClosed;
   if (state.lightOn) drain += rates.lightOn;
-  if (state.cameraOpen) drain += rates.cameraOpen;
-  return clamp(state.power - drain * seconds, 0, 100);
+  const delta = (night.rechargePerSecondWhenIdle - drain) * seconds;
+  return clamp(state.power + delta, 0, MAX_POWER);
+}
+
+type GeneratorTickResult = Pick<
+  GameState,
+  "generatorState" | "generatorNextBeepAtMs" | "generatorBeepSeq" | "generatorSilentSinceMs" | "generatorFaultCount"
+>;
+
+// Vyhodnotí generátor pro daný elapsedMs: spuštění (jediné) poruchy, přechod
+// ze ticha do kritického pípání po vypršení reakčního času, a plánování
+// dalšího pípnutí (normální/kritické tempo). Čistá funkce, žádné audio zde —
+// to spouští UI podle změny generatorBeepSeq/generatorState (viz app/play/page.tsx).
+function updateGenerator(state: GameState, night: NightDefinition, elapsedMs: number): GeneratorTickResult {
+  const cfg = night.generator;
+  let generatorState = state.generatorState;
+  let generatorNextBeepAtMs = state.generatorNextBeepAtMs;
+  let generatorBeepSeq = state.generatorBeepSeq;
+  let generatorSilentSinceMs = state.generatorSilentSinceMs;
+  let generatorFaultCount = state.generatorFaultCount;
+
+  if (
+    generatorState === "normal" &&
+    generatorFaultCount < cfg.faultMaxPerShift &&
+    elapsedMs >= state.generatorFaultAtMs
+  ) {
+    generatorState = "silentFault";
+    generatorSilentSinceMs = elapsedMs;
+    generatorFaultCount += 1;
+  } else if (generatorState === "silentFault") {
+    const since = generatorSilentSinceMs ?? elapsedMs;
+    if (elapsedMs - since >= cfg.silentGraceMs) {
+      generatorState = "criticalBeeping";
+      generatorNextBeepAtMs = elapsedMs; // první varovné pípnutí hned při přechodu
+    }
+  }
+
+  if (generatorState === "normal" || generatorState === "criticalBeeping") {
+    if (elapsedMs >= generatorNextBeepAtMs) {
+      generatorBeepSeq += 1;
+      const interval = generatorState === "normal" ? cfg.beepIntervalMs : cfg.criticalBeepIntervalMs;
+      generatorNextBeepAtMs =
+        generatorNextBeepAtMs + interval < elapsedMs ? elapsedMs + interval : generatorNextBeepAtMs + interval;
+    }
+  }
+
+  return { generatorState, generatorNextBeepAtMs, generatorBeepSeq, generatorSilentSinceMs, generatorFaultCount };
 }
 
 /** Reducer je čistá funkce (state, action) -> state; herní pravidla dané směny přijímá jako parametr. */
@@ -49,12 +109,35 @@ export function createGameReducer(night: NightDefinition) {
         return { ...state, audioMuted: !state.audioMuted };
 
       case "TOGGLE_DOOR":
-        if (!state.isRunning) return state;
+        // Dveře jde přepnout jen v pohledu na dveře — hráč se tam musí nejdřív
+        // otočit (LOOK_AT_DOOR). Debug panel simuluje oba kroky najednou.
+        if (!state.isRunning || state.playerView !== "door") return state;
         return { ...state, doorClosed: !state.doorClosed };
 
       case "TOGGLE_LIGHT":
         if (!state.isRunning) return state;
         return { ...state, lightOn: !state.lightOn };
+
+      case "LOOK_AT_DOOR":
+        if (!state.isRunning) return state;
+        return { ...state, playerView: "door" };
+
+      case "LOOK_AT_DESK":
+        if (!state.isRunning) return state;
+        return { ...state, playerView: "desk" };
+
+      case "LOOK_AT_GENERATOR":
+        if (!state.isRunning) return state;
+        return { ...state, playerView: "generator" };
+
+      case "RESTART_GENERATOR":
+        if (!state.isRunning || state.generatorState === "normal") return state;
+        return {
+          ...state,
+          generatorState: "normal",
+          generatorSilentSinceMs: null,
+          generatorNextBeepAtMs: state.elapsedMs + night.generator.beepIntervalMs,
+        };
 
       case "OPEN_CAMERA":
         if (!state.isRunning) return state;
@@ -68,11 +151,13 @@ export function createGameReducer(night: NightDefinition) {
 
         const elapsedMs = state.elapsedMs + action.deltaMs;
         const remainingMs = clamp(night.durationMs - elapsedMs, 0, night.durationMs);
-        const power = applyPowerDrain(state, night, action.deltaMs);
+        const generatorUpdate = updateGenerator(state, night, elapsedMs);
+        const power = applyPowerDelta({ ...state, ...generatorUpdate }, night, action.deltaMs);
 
         if (power <= 0) {
           return {
             ...state,
+            ...generatorUpdate,
             elapsedMs,
             remainingMs,
             power: 0,
@@ -85,6 +170,7 @@ export function createGameReducer(night: NightDefinition) {
         if (remainingMs <= 0) {
           return {
             ...state,
+            ...generatorUpdate,
             elapsedMs,
             remainingMs: 0,
             power,
@@ -93,7 +179,7 @@ export function createGameReducer(night: NightDefinition) {
           };
         }
 
-        return { ...state, elapsedMs, remainingMs, power };
+        return { ...state, ...generatorUpdate, elapsedMs, remainingMs, power };
       }
 
       case "ENEMY_ADVANCE": {
