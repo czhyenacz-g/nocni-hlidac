@@ -80,6 +80,13 @@ Po každé větší změně (nová směna, nový nepřítel, změna herních pra
 vizuální vrstvy) aktualizuj odpovídající `GAME_DESIGN.md`, `TECH_DESIGN.md`,
 `AUDIO_DESIGN.md` a `TODO.md`.
 
+## Povolení: konverze obrázků do WebP
+
+Nástroj `cwebp` (a obdobné čistě lokální konverzní nástroje) smí Claude používat bez ptaní
+na povolení — včetně kopírování/přesouvání zdrojových i výstupních souborů obrázků v rámci
+`public/`. Nejde o destruktivní ani sdílenou akci (jen lokální konverze souborů v repu), proto
+nepotřebuje explicitní souhlas pokaždé znovu.
+
 ---
 
 # Starter — instrukce pro Claude
