@@ -495,6 +495,44 @@ všechny lokace/stavy dveří/overview-vs-detail, `computeHeartbeatVolumes` pro 
 boost multiplier, `computeAmbientStressMultiplier` pro duck křivku,
 `computeGeneratorStressBonus` pro všechny `GeneratorState` hodnoty.
 
+### Stres zpomaluje odpočet (`game/core/stressTimeScale.ts`)
+
+Na rozdíl od heartbeat/ambient vrstvy výše je tohle v `game/core/`, ne `game/audio/` —
+ovlivňuje `GameState.remainingMs` přímo v `gameReducer.ts`, je to herní pravidlo (byť horor
+efekt), ne audio side-effect.
+
+- **`computeStressTimeScale(stressLevel: number): number`** — čistá funkce, `stressLevel`
+  0..1 (ořízne se, mimo-rozsahový vstup nikdy nevytvoří zápornou/přestřelenou hodnotu).
+  `STRESS_TIME_SLOWDOWN_ENABLED === false` vrátí vždy `1` (efekt úplně vypnutý). Jinak `1 -
+  stress * MAX_STRESS_TIME_SLOWDOWN`, capnuté na minimum `0` (obrana proti
+  špatně nastavené konstantě > 1, ne běžný provozní stav).
+- **Zásadní architektonická změna**: `remainingMs` byl dřív čistě odvozený z `elapsedMs`
+  (`night.durationMs - elapsedMs`, přepočítáno každý `TICK`). Teď je to nezávisle
+  dekrementovaná hodnota (`state.remainingMs - action.deltaMs * stressTimeScale`, clampnuté
+  na `[0, night.durationMs]`) — `elapsedMs` samo dál běží čistou reálnou rychlostí
+  (`state.elapsedMs + action.deltaMs`, beze změny), pořád řídí generátor
+  (`faultEarliestAtMs`/`faultLatestAtMs`), kameru (`CAMERA_IMAGE_CYCLE_MS` cyklení),
+  blackout timing atd. — jen "Čas do úsvitu" se odpojil od reálného plynutí. Díky tomu čas
+  **nikdy neskáče nahoru**: `remainingMs` se vždy jen odečítá (o víc nebo míň podle stresu),
+  nikdy nepřepočítává zpětně z `elapsedMs`, takže žádná náhlá korekce nemůže hodnotu zvýšit.
+- **`GameAction`** (`gameActions.ts`): `TICK` má nové volitelné pole `stressLevel?: number` —
+  chybí-li, `computeStressTimeScale(0)` vrátí `1` (normální rychlost), stejné chování jako
+  dřív pro cokoliv, co `TICK` dispatchuje bez tohoto pole.
+- **Propojení bez velkého refaktoru**: `useHeartbeatStress` počítá stress jen uvnitř
+  `app/play/page.tsx` (React hook, ne globální stav), zatímco `useGameLoop`
+  (`game/core/gameLoop.ts`) dispatchuje `TICK` z `setInterval`, který běží nezávisle na
+  React rendery. Řešení: `stressLevelRef` (`MutableRefObject<number>`, volitelný parametr
+  `useGameLoop`) — `page.tsx` ho vytvoří (`useRef(0)`), po každém renderu nastaví
+  `stressLevelRef.current = heartbeatStress` (obyčejné přiřazení, ne efekt — "latest ref"
+  vzor), `gameLoop.ts`'s `tickInterval` čte `stressLevelRef?.current` při každém tiku. Díky
+  tomu se `tickInterval` nemusí kvůli měnícímu se stresu (~10×/s) pořád rušit a zakládat
+  znovu — `useEffect` v `useGameLoop` má beze změny stejné závislosti
+  (`isRunning`/`enemyTickMs`/`dispatch`).
+
+Testy: `game/core/stressTimeScale.test.ts` (čistá funkce, včetně vypnutého efektu přes
+`vi.doMock`), `game/core/tickStressTimeScale.test.ts` (reducer-level — `TICK` s různým
+`stressLevel`, ověřuje že `remainingMs` nikdy neskočí nahoru a `elapsedMs` běží beze změny).
+
 ## Generátor
 
 `GameState.generatorState: "normal" | "silentFault" | "criticalBeeping" | "restarting"` a k

@@ -4,6 +4,7 @@ import { EnemyDefinition, EnemyStage, GameState, NightDefinition } from "./types
 import { DOOR_DEATH_REVEAL_DURATION_MS, MAX_POWER } from "../balancing/constants";
 import { getBlackoutPhaseIndex } from "../visuals/blackoutPhase";
 import { DEFAULT_DIFFICULTY, DIFFICULTY_RULES, Difficulty } from "../difficulty/difficultyConfig";
+import { computeStressTimeScale } from "./stressTimeScale";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -378,7 +379,14 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         if (!state.isRunning) return state;
 
         const elapsedMs = state.elapsedMs + action.deltaMs;
-        const remainingMs = clamp(night.durationMs - elapsedMs, 0, night.durationMs);
+        // Horor efekt: při vyšším stresu ubývá čas do úsvitu pomaleji (viz
+        // game/core/stressTimeScale.ts) — remainingMs proto NENÍ odvozené z
+        // elapsedMs (to dál běží reálnou rychlostí, řídí generátor/kamery/
+        // nepřítele beze změny), ale nezávisle ubývá o `deltaMs * timeScale`.
+        // Nikdy neskáče nahoru — jen pomalejší odpočet, nikdy zrychlení nad
+        // reálný čas ani přičtení navíc.
+        const stressTimeScale = computeStressTimeScale(action.stressLevel ?? 0);
+        const remainingMs = clamp(state.remainingMs - action.deltaMs * stressTimeScale, 0, night.durationMs);
 
         // ── Krátký "reveal" moment před finalizací smrti u dveří (viz
         // ENEMY_ADVANCE) — hráč vidí monstrum ve dveřích (door_open_death_0,

@@ -284,6 +284,21 @@ Přechod mezi nimi je plynulý crossfade (~60–80 stresu), ne tvrdé přepnutí
 ztišuje — od plné hlasitosti (stres 0) až na 20 % (`MIN_AMBIENT_STRESS_MULTIPLIER`, stres
 100), ať je heartbeat v napjatých chvílích víc slyšet, ne přehlušený.
 
+### Stres zpomaluje čas do úsvitu
+
+Horor efekt: čím vyšší stres, tím pomaleji ubývá "Čas do úsvitu" — subjektivně se noc
+vleče. Stres 0 = normální rychlost, stres 100 = odpočet ubývá poloviční rychlostí
+(`MAX_STRESS_TIME_SLOWDOWN = 0.5`). Lineárně mezi tím (stres 50 = o 25 % pomaleji).
+
+Důležité: **čas nikdy neskáče nahoru** — jen se zpomalí, jak rychle ubývá. Když stres
+klesne, odpočet se postupně vrátí k normální rychlosti, ale zpátky nic nepřidá (žádné
+"ztracené" sekundy se nevrací). Efekt je jemný horor prvek, ne frustrující trest — hráč má
+motivaci se uklidnit (přestat sledovat monstrum, vyřešit situaci), protože ve stresu noc
+trvá subjektivně déle, ne aby ho to nespravedlivě penalizovalo.
+
+Jde vypnout (`STRESS_TIME_SLOWDOWN_ENABLED = false`) nebo doladit
+(`MAX_STRESS_TIME_SLOWDOWN`) jedním přepnutím v `game/balancing/constants.ts`.
+
 ## Generátor
 
 První zvuková gameplay mechanika — normální stav není ticho, ale pravidelné

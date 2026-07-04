@@ -72,6 +72,13 @@ export const BACKUP_POWER_STRESS_BONUS = 20;
 // bonus je vyšší — vyšší stres za vlastní chybu, ne za skutečnou poruchu.
 export const GENERATOR_RESTART_STRESS_BONUS = 40;
 
+// Horor efekt: při vyšším stresu ubývá "Čas do úsvitu" pomaleji (subjektivně
+// se noc vleče) — viz game/core/stressTimeScale.ts#computeStressTimeScale.
+// Nikdy neskáče čas nahoru, jen zpomaluje odpočet; 0 = normální rychlost,
+// MAX_STRESS_TIME_SLOWDOWN = maximální zpomalení při stresu 100 %.
+export const STRESS_TIME_SLOWDOWN_ENABLED = true;
+export const MAX_STRESS_TIME_SLOWDOWN = 0.5;
+
 // Sekvence útoku/smrti (viz app/play/page.tsx, efekt na state.screen ===
 // "death", AUDIO_DESIGN.md "Ticho před lekačkou"): ambience plynule ztlumí
 // přes AMBIENCE_DEATH_FADE_MS, pak JUMPSCARE_SILENT_GAP_MS ticha, teprve

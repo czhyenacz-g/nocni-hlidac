@@ -38,8 +38,15 @@ export default function PlayPage() {
   // game/core/survivedNights.ts) — na rozdíl od deathCount se smrtí vynuluje.
   const [survivedNights, setSurvivedNights] = useState(() => getSurvivedNights());
 
-  useGameLoop({ isRunning: state.isRunning, enemyTickMs: night.enemyTickMs, dispatch });
+  // "Nejnovější hodnota" ref pro stress (viz stressTimeScale.ts přes TICK) —
+  // gameLoop.ts jím jen čte .current uvnitř setInterval, ať se interval
+  // nemusí kvůli rychle se měnícímu stresu (~10×/s) pořád rušit a zakládat
+  // znovu. Aktualizuje se níže po useHeartbeatStress, obyčejné přiřazení při
+  // renderu (ne efekt) — stejný "latest ref" vzor jako jinde v Reactu.
+  const stressLevelRef = useRef(0);
+  useGameLoop({ isRunning: state.isRunning, enemyTickMs: night.enemyTickMs, dispatch, stressLevelRef });
   const heartbeatStress = useHeartbeatStress(state, night);
+  stressLevelRef.current = heartbeatStress;
 
   const prevScreenRef = useRef(state.screen);
   const prevDoorRef = useRef(state.doorClosed);

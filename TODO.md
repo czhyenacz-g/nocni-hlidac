@@ -230,6 +230,11 @@
       heartbeat o dalších 30 % hlasitěji (`HEARTBEAT_VOLUME_MULTIPLIER` 1.2 -> 1.56)
 - [x] Textový spoiler "POSTAVA V DOSAHU"/"žádný pohyb" odstraněný z `CameraView.tsx`
       (problikával přes fotku) — stejná informace teď jen v `DebugPanel.tsx`
+- [x] Horor efekt: stres zpomaluje "Čas do úsvitu" (`game/core/stressTimeScale.ts`,
+      `MAX_STRESS_TIME_SLOWDOWN = 0.5`, jde vypnout `STRESS_TIME_SLOWDOWN_ENABLED`) —
+      `remainingMs` teď nezávisle ubývá o `deltaMs * timeScale` místo odvození z
+      `elapsedMs`, nikdy neskáče nahoru. Testy v `stressTimeScale.test.ts` a
+      `tickStressTimeScale.test.ts`.
 - [x] `right_hallway` teď má vlastní monster snímky (03/05/07/10 přejmenované,
       `CAMERA_ASSETS` aktualizováno) — dřív mělo prázdné `monster: []`
 - [x] Generátor `restarting` (omylem restartovaný funkční generátor) teď pípá stejně
