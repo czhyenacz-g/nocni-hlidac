@@ -89,10 +89,10 @@ describe("computeHeartbeatVolumes", () => {
     expect(fastVolume).toBe(0);
   });
 
-  it("plays only fast at max stress, boosted by HEARTBEAT_VOLUME_MULTIPLIER", () => {
+  it("plays only fast at max stress, clamped to full volume by the boost multiplier", () => {
     const { slowVolume, fastVolume } = computeHeartbeatVolumes(100);
     expect(slowVolume).toBe(0);
-    expect(fastVolume).toBeCloseTo(0.7 * HEARTBEAT_VOLUME_MULTIPLIER, 5);
+    expect(fastVolume).toBeCloseTo(Math.min(1, 0.7 * HEARTBEAT_VOLUME_MULTIPLIER), 5);
   });
 
   it("crossfades between slow and fast between stress 60 and 80", () => {
@@ -132,9 +132,12 @@ describe("computeGeneratorStressBonus", () => {
     expect(computeGeneratorStressBonus("criticalBeeping")).toBe(20);
   });
 
-  it("adds nothing for normal/silentFault/restarting", () => {
+  it("adds +40 while the generator is restarting (self-inflicted, higher than criticalBeeping)", () => {
+    expect(computeGeneratorStressBonus("restarting")).toBe(40);
+  });
+
+  it("adds nothing for normal/silentFault", () => {
     expect(computeGeneratorStressBonus("normal")).toBe(0);
     expect(computeGeneratorStressBonus("silentFault")).toBe(0);
-    expect(computeGeneratorStressBonus("restarting")).toBe(0);
   });
 });

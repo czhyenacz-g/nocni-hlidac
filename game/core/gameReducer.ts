@@ -117,7 +117,10 @@ function updateGenerator(state: GameState, night: NightDefinition, elapsedMs: nu
     }
   }
 
-  if (generatorState === "normal" || generatorState === "criticalBeeping") {
+  // "restarting" pípá stejně rychle jako "criticalBeeping" — obojí má
+  // stejnou zrychlenou spotřebu energie (viz applyPowerDelta), hráč to má
+  // slyšet v obou případech, ne jen tiše sledovat rychle klesající energii.
+  if (generatorState === "normal" || generatorState === "criticalBeeping" || generatorState === "restarting") {
     if (elapsedMs >= generatorNextBeepAtMs) {
       generatorBeepSeq += 1;
       const interval = generatorState === "normal" ? cfg.beepIntervalMs : cfg.criticalBeepIntervalMs;
@@ -315,6 +318,10 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             generatorState: "restarting",
             generatorRestartUntilMs: state.elapsedMs + night.generator.restartPenaltyMs,
             generatorSilentSinceMs: null,
+            // Stejné rychlé pípání jako criticalBeeping (viz updateGenerator)
+            // — energie během "restarting" utíká stejně rychle, hráč to má
+            // slyšet hned, ne až při dalším přirozeném pípnutí.
+            generatorNextBeepAtMs: state.elapsedMs,
           };
         }
 

@@ -461,14 +461,14 @@ byl málo slyšet i po +12dB boostu souborů, viz `assets/audio/README.md`) a ca
 přes `clamp01` (`audio.volume` je 0..1, přestřelení by/nemělo žádný efekt navíc).
 
 **`computeGeneratorStressBonus(generatorState): number`** (`heartbeatStress.ts`) — plochý
-`BACKUP_POWER_STRESS_BONUS` (20), pokud `generatorState === "criticalBeeping"`, jinak 0.
-Čistě odvozené z aktuálního `state.generatorState` každý tik (žádný `xStressApplied` flag v
-`GameState`) — bonus se tím pádem nikdy neakumuluje (zůstává +20, dokud fáze trvá) a mizí
-sám, jakmile fáze skončí (restart generátoru resetuje `generatorState` na `"normal"`,
-restart směny přes `createInitialGameState`). `useHeartbeatStress` ho sečte s
-`computeHeartbeatTargetStress` (`Math.min(100, locationStress + generatorBonus)`) — jen
-`criticalBeeping` (skutečná porucha, rychlá spotřeba nouzové energie), ne `restarting`
-(trest za zbytečný restart FUNKČNÍHO generátoru — to není porucha).
+bonus podle fáze: `BACKUP_POWER_STRESS_BONUS` (20) pro `"criticalBeeping"`,
+`GENERATOR_RESTART_STRESS_BONUS` (40) pro `"restarting"` (vlastní chyba, vyšší bonus než
+skutečná porucha), jinak 0. Čistě odvozené z aktuálního `state.generatorState` každý tik
+(žádný `xStressApplied` flag v `GameState`) — bonus se tím pádem nikdy neakumuluje (zůstává
+na stejné hodnotě, dokud fáze trvá) a mizí sám, jakmile fáze skončí (restart dokončen,
+`generatorState` zpět na `"normal"`; restart směny přes `createInitialGameState`).
+`useHeartbeatStress` ho sečte s `computeHeartbeatTargetStress` (`Math.min(100,
+locationStress + generatorBonus)`).
 
 **`computeAmbientStressMultiplier(stressNormalized): number`** (`heartbeatStress.ts`) —
 `1 - stress * (1 - MIN_AMBIENT_STRESS_MULTIPLIER)`, lineárně 1.0 (stres 0) až
@@ -509,26 +509,30 @@ ticha, časové okno poruchy, délka `restarting` penalizace) je v `NightDefinit
   která podle `elapsedMs`: spustí poruchu (nejvýš `generator.faultMaxPerShift`
   za směnu), po `silentGraceMs` přepne ticho na kritické pípání, ukončí
   `restarting` penalizaci po `restartPenaltyMs`, a plánuje další pípnutí
-  (`beepIntervalMs` v `normal`, `criticalBeepIntervalMs` v `criticalBeeping`,
-  žádné v `silentFault`/`restarting`) přes `generatorNextBeepAtMs`. Žádné audio
-  se tu nevolá.
+  (`beepIntervalMs` v `normal`, `criticalBeepIntervalMs` v `criticalBeeping`
+  **i** `restarting` — playtest: energie mizela stejně rychle jako u
+  `criticalBeeping`, ale bylo potichu, matoucí; teď pípá stejně) přes
+  `generatorNextBeepAtMs`. Žádné audio se tu nevolá.
 - `generatorBeepSeq` se při každém pípnutí zvýší o 1 — `app/play/page.tsx`
   sleduje jeho změnu přes `useRef` (stejný vzor jako `doorClosed`/`lightOn`) a
-  vždy přehraje `generatorBeep` (stejný zvuk v `normal` i `criticalBeeping`, jen
-  jiné tempo přes `beepIntervalMs`/`criticalBeepIntervalMs` — viz `AUDIO_DESIGN.md`).
+  vždy přehraje `generatorBeep` (stejný zvuk v `normal`/`criticalBeeping`/
+  `restarting`, jen jiné tempo přes `beepIntervalMs`/`criticalBeepIntervalMs`
+  — viz `AUDIO_DESIGN.md`).
 - Šipka "Zkontrolovat generátor →" v `DeskView.tsx` bliká podle
   `isGeneratorArrowUrgent(state, night.generator)` (`game/core/generatorUrgency.ts`,
-  čistá derived-state funkce) — okamžitě v `silentFault`, ale v `criticalBeeping` až
+  čistá derived-state funkce) — **jen** v `criticalBeeping`, a i tam až
   po `GENERATOR_URGENT_BLINK_DELAY_MS` (2000 ms) od vstupu do stavu (dopočítáno z
   `generatorSilentSinceMs + silentGraceMs`, žádné nové pole v `GameState`). Rychlé
   pípání + rychlý pokles energie mají být jediná okamžitá signalizace, blikající
-  tlačítko je až druhotné potvrzení o chvíli později. V `restarting` nebliká vůbec.
+  tlačítko je až druhotné potvrzení o chvíli později. V `silentFault` (ticho samo
+  je signál) ani `restarting` nebliká vůbec.
 - `RESTART_GENERATOR`: v `silentFault`/`criticalBeeping` vrátí `normal` a naplánuje
   další normální pípnutí za `beepIntervalMs` od teď (beze změny). V `normal` NENÍ
-  no-op — nastaví `generatorState: "restarting"` a `generatorRestartUntilMs:
-  elapsedMs + restartPenaltyMs` (extra spotřeba energie stejná jako
-  `criticalBeeping`, viz `applyPowerDelta`). V `restarting` je no-op (druhý klik
-  penalizaci neprodlužuje).
+  no-op — nastaví `generatorState: "restarting"`, `generatorRestartUntilMs:
+  elapsedMs + restartPenaltyMs` a `generatorNextBeepAtMs: elapsedMs` (pípnutí
+  hned, stejně jako přechod `silentFault` -> `criticalBeeping`) — extra spotřeba
+  energie stejná jako `criticalBeeping`, viz `applyPowerDelta`. V `restarting` je
+  no-op (druhý klik penalizaci neprodlužuje).
 - `applyPowerDelta`'s `generatorExtraDrain` platí pro `criticalBeeping` i
   `restarting` stejně — jedna podmínka, ne duplicitní výpočet.
 

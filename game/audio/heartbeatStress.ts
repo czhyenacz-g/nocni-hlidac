@@ -1,6 +1,7 @@
 import { CameraDefinition, CameraId, EnemyStage, GeneratorState, PlayerView } from "../core/types";
 import {
   BACKUP_POWER_STRESS_BONUS,
+  GENERATOR_RESTART_STRESS_BONUS,
   HEARTBEAT_VOLUME_MULTIPLIER,
   MIN_AMBIENT_STRESS_MULTIPLIER,
 } from "../balancing/constants";
@@ -50,18 +51,21 @@ export function computeHeartbeatTargetStress(input: ComputeHeartbeatTargetStress
 }
 
 /**
- * Jednorázový (stavově řízený, ne akumulující se) bonus stresu, dokud je
- * generátor ve fázi `criticalBeeping` — porucha se protáhla přes reakční
- * čas, generátor teď rychle spotřebovává nouzovou energii (viz
- * `applyPowerDelta` v gameReducer.ts, `generatorExtraDrain`). Vrací se
- * čerstvě z `state.generatorState` každý tik, ne z uloženého "applied" flagu
- * — dokud fáze trvá, bonus zůstává stejných +20 (nesčítá se), a jakmile fáze
- * skončí (restart generátoru, restart směny), zmizí sám od sebe beze
- * zvláštního resetu. `restarting` (trest za zbytečný restart FUNKČNÍHO
- * generátoru) bonus nedostává — to není porucha, jen sebepoškození hráče.
+ * Jednorázový (stavově řízený, ne akumulující se) bonus stresu, dokud
+ * generátor rychle spotřebovává nouzovou energii — `criticalBeeping`
+ * (skutečná porucha protáhlá přes reakční čas) i `restarting` (hráč omylem
+ * restartoval FUNKČNÍ generátor, stejná zrychlená spotřeba jako
+ * `criticalBeeping`, viz `applyPowerDelta`/`generatorExtraDrain` v
+ * gameReducer.ts) mají stejně rychlé pípání i rychlý pokles energie —
+ * `restarting` o to víc, že je to vlastní chyba, ne náhoda. Vrací se čerstvě
+ * z `state.generatorState` každý tik, ne z uloženého "applied" flagu — dokud
+ * fáze trvá, bonus zůstává stejný (nesčítá se), a jakmile skončí (restart
+ * dokončen, restart směny), zmizí sám od sebe beze zvláštního resetu.
  */
 export function computeGeneratorStressBonus(generatorState: GeneratorState): number {
-  return generatorState === "criticalBeeping" ? BACKUP_POWER_STRESS_BONUS : 0;
+  if (generatorState === "criticalBeeping") return BACKUP_POWER_STRESS_BONUS;
+  if (generatorState === "restarting") return GENERATOR_RESTART_STRESS_BONUS;
+  return 0;
 }
 
 export interface HeartbeatVolumes {

@@ -226,6 +226,13 @@
       generátor v `criticalBeeping` přidává plochý +20 stresu
       (`BACKUP_POWER_STRESS_BONUS`, `computeGeneratorStressBonus` — odvozené z
       `generatorState`, ne akumulující se čítač)
+- [x] Druhé kolo audio tuningu: ambient o dalších 15 % tišší (0.2975 -> 0.252875),
+      heartbeat o dalších 30 % hlasitěji (`HEARTBEAT_VOLUME_MULTIPLIER` 1.2 -> 1.56)
+- [x] `right_hallway` teď má vlastní monster snímky (03/05/07/10 přejmenované,
+      `CAMERA_ASSETS` aktualizováno) — dřív mělo prázdné `monster: []`
+- [x] Generátor `restarting` (omylem restartovaný funkční generátor) teď pípá stejně
+      rychle jako `criticalBeeping` (dřív potichu) a přidává vyšší stres bonus (+40,
+      `GENERATOR_RESTART_STRESS_BONUS`) než skutečná porucha (+20) — vlastní chyba bolí víc
 - [ ] Playtest a doladění balancu (šance postupu nepřítele, retreatChance, spotřeba
       energie, rychlost dobíjení, časové okno poruchy generátoru, tempo kritického
       pípání, rozsah doorHoldRangeMs, doorLightRepelRequiredMs, restartPenaltyMs,

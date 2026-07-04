@@ -51,9 +51,10 @@ export const HEARTBEAT_STRESS_FALL_MS = 35000;
 export const STRESS_DEV_HUD_ENABLED = true;
 
 // Playtest feedback: heartbeat byl pořád moc tichý i po +12dB boostu souborů
-// (viz assets/audio/README.md) — o dalších ~20 % hlasitěji přes tenhle
-// násobič na výsledné computeHeartbeatVolumes (viz heartbeatStress.ts).
-export const HEARTBEAT_VOLUME_MULTIPLIER = 1.2;
+// (viz assets/audio/README.md) — o 20 % hlasitěji, pak po dalším kole ještě o
+// 30 % navrch (1.2 -> 1.56) přes tenhle násobič na výsledné
+// computeHeartbeatVolumes (viz heartbeatStress.ts).
+export const HEARTBEAT_VOLUME_MULTIPLIER = 1.56;
 
 // Ambient (ambience_loop) se má při vysokém stresu ztišit, ať heartbeat víc
 // vynikne — na maximu stresu klesne na tenhle podíl své základní hlasitosti
@@ -64,6 +65,12 @@ export const MIN_AMBIENT_STRESS_MULTIPLIER = 0.2;
 // "criticalBeeping" (porucha, rychlé pípání + rychlý pokles nouzové energie)
 // — viz computeGeneratorStressBonus v heartbeatStress.ts.
 export const BACKUP_POWER_STRESS_BONUS = 20;
+
+// Stejný princip pro "restarting" (hráč omylem restartoval FUNKČNÍ generátor)
+// — energie mizí stejně rychle jako u criticalBeeping (viz applyPowerDelta),
+// navíc pípání teď taky slyšet (viz updateGenerator v gameReducer.ts), takže
+// bonus je vyšší — vyšší stres za vlastní chybu, ne za skutečnou poruchu.
+export const GENERATOR_RESTART_STRESS_BONUS = 40;
 
 // Sekvence útoku/smrti (viz app/play/page.tsx, efekt na state.screen ===
 // "death", AUDIO_DESIGN.md "Ticho před lekačkou"): ambience plynule ztlumí

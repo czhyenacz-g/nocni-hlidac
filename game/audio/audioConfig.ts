@@ -34,8 +34,8 @@ export interface AudioClipConfig {
 // I kdyby soubor chyběl, AudioManager selhání přehrání tiše ignoruje (viz audioManager.ts),
 // případně použije fallbackSynth, pokud je definovaný.
 export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
-  // O 15 % tišší na žádost po playtestu (0.35 -> 0.2975).
-  [AUDIO_EVENTS.ambienceLoop]: { src: "/assets/audio/ambience_loop.mp3", volume: 0.2975, loop: true },
+  // O 15 % tišší po dvou koleček playtestu (0.35 -> 0.2975 -> 0.252875).
+  [AUDIO_EVENTS.ambienceLoop]: { src: "/assets/audio/ambience_loop.mp3", volume: 0.252875, loop: true },
   // Zvuk překvapení, když je nepřítel právě na kameře nejblíž hráči (viz
   // app/play/page.tsx handleSelectCamera) — tlukot srdce místo generického
   // šumu, ať je to čitelnější jako "leknutí", ne jako rušení signálu.

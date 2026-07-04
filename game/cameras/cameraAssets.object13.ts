@@ -26,9 +26,9 @@ interface CameraAssetsEntry {
 // pak spadne zpět na dosavadní textový/placeholder vzhled (viz
 // getCameraImageSrc níže).
 //
-// right_hallway zatím nemá žádný "monster" snímek (CCTV set bez záběru s
-// monstrem) — getCameraImageSrc na to reaguje fallbackem na "normal" snímky
-// místo pádu/prázdné obrazovky.
+// Prázdné/chybějící "monster" pole u libovolné kamery je stále platný stav —
+// getCameraImageSrc na to reaguje fallbackem na "normal" snímky místo pádu/
+// prázdné obrazovky (right_hallway dřív žádné monster snímky nemělo, teď má).
 export const CAMERA_ASSETS: Record<CameraId, CameraAssetsEntry> = {
   outer_yard: {
     default: {
@@ -53,16 +53,17 @@ export const CAMERA_ASSETS: Record<CameraId, CameraAssetsEntry> = {
       normal: [
         "/object_13/camera/right_hallway/right_hallway_01.webp",
         "/object_13/camera/right_hallway/right_hallway_02.webp",
-        "/object_13/camera/right_hallway/right_hallway_03.webp",
         "/object_13/camera/right_hallway/right_hallway_04.webp",
-        "/object_13/camera/right_hallway/right_hallway_05.webp",
         "/object_13/camera/right_hallway/right_hallway_06.webp",
-        "/object_13/camera/right_hallway/right_hallway_07.webp",
         "/object_13/camera/right_hallway/right_hallway_08.webp",
         "/object_13/camera/right_hallway/right_hallway_09.webp",
-        "/object_13/camera/right_hallway/right_hallway_10.webp",
       ],
-      monster: [],
+      monster: [
+        "/object_13/camera/right_hallway/right_hallway_03_monster.webp",
+        "/object_13/camera/right_hallway/right_hallway_05_monster.webp",
+        "/object_13/camera/right_hallway/right_hallway_07_monster.webp",
+        "/object_13/camera/right_hallway/right_hallway_10_monster.webp",
+      ],
     },
   },
   left_hallway: {

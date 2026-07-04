@@ -235,9 +235,10 @@ Detail kamery (viz "Overview / detail" výše) ukazuje reálný snímek z
 - Text "POSTAVA V DOSAHU" / "— žádný pohyb —" zůstává navrch beze změny. Overview mřížka
   (malé monitory) obraz pořád neukazuje — to je pořád jen detail.
 
-Zatím má fotky s monstrem `outer_yard`, `left_hallway` a `door_hallway` (obojí varianta,
-se světlem i bez); `right_hallway` zatím jen fotky bez monstra (fallback na ně funguje i
-když je na kameře monstrum — žádná rozbitá/prázdná obrazovka).
+Všechny čtyři kamery teď mají fotky s monstrem (`outer_yard`, `left_hallway`,
+`right_hallway`, `door_hallway` obojí varianta, se světlem i bez) — kdyby některé kameře
+přesto chyběly, fallback na "normal" fotky funguje i tak (žádná rozbitá/prázdná
+obrazovka).
 
 ## Stres a heartbeat
 
@@ -257,11 +258,13 @@ monstrum je:
 - Chodba před dveřmi (`door_hallway`), dveře **otevřené** → 100 — nejvyšší ohrožení,
   otevřené dveře + monstrum těsně u nich
 
-Navrch se přičítá **+20** (`BACKUP_POWER_STRESS_BONUS`), dokud je generátor ve fázi
-`criticalBeeping` — porucha se protáhla přes reakční čas, generátor teď rychle
-spotřebovává nouzovou energii (rychlé pípání + rychlý pokles energie, viz "Generátor"
-níže). Bonus je plochý, ne akumulující se (zůstává +20, dokud fáze trvá, nesčítá se každý
-tik) a zmizí sám, jakmile fáze skončí (restart generátoru). Součet (lokace + generátor) je
+Navrch se přičítá bonus, dokud generátor rychle spotřebovává nouzovou energii (rychlé
+pípání + rychlý pokles energie, viz "Generátor" níže): **+20**
+(`BACKUP_POWER_STRESS_BONUS`) ve fázi `criticalBeeping` (skutečná porucha protáhlá přes
+reakční čas), **+40** (`GENERATOR_RESTART_STRESS_BONUS`) ve fázi `restarting` (hráč omylem
+restartoval funkční generátor — vlastní chyba bolí víc než náhodná porucha). Bonus je
+plochý, ne akumulující se (zůstává na stejné hodnotě, dokud fáze trvá, nesčítá se každý
+tik) a zmizí sám, jakmile fáze skončí (restart dokončen). Součet (lokace + generátor) je
 capnutý na 100.
 
 Skutečná (zobrazovaná i slyšitelná) hodnota stresu neskáče na cíl okamžitě — plynule se k
@@ -299,10 +302,13 @@ pípání. Čtyři stavy (`GeneratorState`):
   ne hned. Trvá, dokud generátor hráč nerestartuje.
 - **restarting** — trest za zbytečný klik: pokud hráč restartuje generátor, který
   byl v pořádku (`normal`), na `generator.restartPenaltyMs` (5 s) se sám vyřadí —
-  potichu (žádné pípání) a se stejnou extra spotřebou energie jako
-  `criticalBeeping`. Po vypršení se automaticky vrátí do `normal` s novým
-  pípáním. Cíl: naučit hráče nekontrolovat generátor naslepo, jen když k tomu
-  má důvod (ticho, nebo rychlé pípání).
+  se stejným rychlým pípáním (2×/s) a stejnou extra spotřebou energie jako
+  `criticalBeeping` (na žádost po playtestu — dřív bylo potichu, ale energie
+  přitom mizela stejně rychle, takže to bylo matoucí). Navíc přidává vyšší
+  stres než skutečná porucha (+40 vs. +20, viz "Stres a heartbeat" výše) —
+  vlastní chyba bolí víc. Po vypršení se automaticky vrátí do `normal` s
+  novým pípáním. Cíl: naučit hráče nekontrolovat generátor naslepo, jen když k
+  tomu má důvod (ticho, nebo rychlé pípání).
 
 Restart: hráč se musí otočit do GeneratorView (šipka z DeskView) a kliknout na
 generátor — z obou poruchových stavů funguje bez postihu (i během ticha), z
