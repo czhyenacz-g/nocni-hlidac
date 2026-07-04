@@ -344,10 +344,9 @@ konfigurační, ne natvrdo napsané v jednotlivých screen komponentách:
   velmi tmavé (záměrná hororová atmoška) a text stojí v `.pixel-panel` boxech s vlastním
   poloprůhledným pozadím — `overlay` proto NENÍ hlavní zdroj čitelnosti textu, jen jemné
   doladění kontrastu (bug: původní `0.55-0.8` opacity overlay obrázky prakticky spálil na
-  černo, vypadalo to jako "žádné pozadí"; opraveno na `0.05-0.3`). Reálné `frames` má
-  `menu`/`play`/`win` (2 snímky každá) a `loading`/`about` (1 snímek) — `death` má zatím
-  `frames: []` (SceneBackground nic nevykreslí), připravené na budoucí art bez zásahu do
-  komponent.
+  černo, vypadalo to jako "žádné pozadí"; opraveno na `0.05-0.3`). Všech 6 scén má reálné
+  `frames` — `menu`/`play`/`win` po 2 snímcích (crossfade), `loading`/`death`/`about` po 1
+  (statické).
 - `components/SceneBackground.tsx` (`"use client"`) vykreslí scénu: víc snímků se prolíná
   (crossfade) — každý snímek je vlastní absolutně umístěný `<div>` s `background-image` a
   `opacity` transition (`transition: opacity {crossfadeMs}ms`), přepínání aktivního indexu řeší
@@ -360,8 +359,23 @@ konfigurační, ne natvrdo napsané v jednotlivých screen komponentách:
 - Použití: `<SceneBackground scene={BACKGROUND_SCENES.xxx} />` jako první potomek `<main
   className="relative ...">` (rodič musí mít `position: relative`, `SceneBackground` je
   `absolute inset-0 -z-10`, ostatní obsah zůstává v normálním flow nad ním). V `GameScreen.tsx`
-  se renderuje jen podmíněně (`state.playerView === "desk" && state.gameStatus !== "blackout"`)
-  — DoorView/GeneratorView/BlackoutView mají zůstat vizuálně čisté bez atmosférického pozadí.
+  se renderuje pro všechny tři herní pohledy (control_room/desk, doors, generator), jen ne
+  během blackoutu (`state.gameStatus !== "blackout"`) — `BlackoutView` má vlastní atmosféru.
+  Všechny tři sdílejí zatím stejnou scénu (`BACKGROUND_SCENES.play`); až budou mít vlastní
+  obrázky, půjde jen o přepnutí podle `state.playerView` na tomtéž místě.
+- **Dvě chyby, na které si dát pozor při použití `SceneBackground` (obě se objevily a byly
+  opravené):**
+  1. `<main>` nesmí mít VLASTNÍ `bg-*` třídu na stejném elementu jako `SceneBackground`
+     potomka. `position: relative` samo o sobě nezakládá nový stacking context (chybí
+     `z-index`/`opacity`/`transform`), takže `main`ovo vlastní pozadí by se vykreslilo AŽ PO
+     (tedy nad) `-z-10` potomkem a úplně by ho zakrylo. `<body>` má `bg-gray-900` jako
+     univerzální fallback, není potřeba ho opakovat na `<main>`.
+  2. `SceneBackground` musí být přímým potomkem toho `<main>`, které pokrývá **celou šířku
+     obrazovky** — ne uvnitř vnitřního `max-w-md mx-auto` obalu. `GameScreen.tsx` proto má
+     `<main className="relative min-h-screen p-4">` bez `max-w-md`, a samotný herní obsah
+     (ShiftTimer/PowerMeter/DeskView/atd.) je až ve vnitřním `<div className="max-w-md
+     mx-auto ...">` — jinak by pozadí pokrylo jen užší centrovaný sloupec a zbytek širší
+     obrazovky by zůstal holý `<body>` background.
 - `preloadBackgroundImages()` (stejný soubor) natvrdo stáhne všechny nakonfigurované snímky
   napříč všemi scénami přes `new Image()` — volá se z `LoadingScreen.tsx` při mountu, ať jsou
   hotové v cache prohlížeče, než je hráč reálně potřebuje (viz "LoadingScreen" výše).

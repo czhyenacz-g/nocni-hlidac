@@ -8,8 +8,12 @@ interface MainMenuScreenProps {
 }
 
 export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
+  // Bez bg-* třídy na <main> záměrně — main nezakládá vlastní stacking context
+  // (žádný z-index/opacity/transform), takže vlastní background-color by se
+  // vykreslil PŘED (nad) SceneBackground potomkem s -z-10 a úplně by ho
+  // zakryl. <body> má bg-gray-900 jako fallback, což stačí.
   return (
-    <main className="relative min-h-screen flex flex-col items-center justify-center p-4 bg-gray-900">
+    <main className="relative min-h-screen flex flex-col items-center justify-center p-4">
       <SceneBackground scene={BACKGROUND_SCENES.menu} />
 
       <div className="w-full max-w-md text-center pixel-panel p-8">

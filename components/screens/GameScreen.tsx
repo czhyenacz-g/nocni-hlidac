@@ -43,58 +43,67 @@ export default function GameScreen({
   onDebugToggleDoor,
   onDebugRestartGenerator,
 }: GameScreenProps) {
-  // Pozadí jen ve fázi "vidím ty 4 monitory" (DeskView, mimo blackout, kdy
-  // BlackoutView stejně celou obrazovku nahrazuje) — DoorView/GeneratorView
-  // mají zůstat vizuálně čisté close-up pohledy bez atmosférického pozadí.
-  const showPlayBackground = state.playerView === "desk" && state.gameStatus !== "blackout";
+  // Pozadí pro všechny tři herní pohledy (control_room/desk, doors,
+  // generator) — jen mimo blackout, kdy BlackoutView stejně celou obrazovku
+  // nahrazuje vlastní atmosférou. Všechny tři sdílejí zatím stejnou scénu
+  // (BACKGROUND_SCENES.play); až budou mít vlastní obrázky, půjde jen o
+  // přepnutí podle state.playerView tady, žádný zásah jinde.
+  const showPlayBackground = state.gameStatus !== "blackout";
 
   return (
-    <main className="relative min-h-screen p-4 flex flex-col gap-4 max-w-md mx-auto">
+    // <main> je bez bg-* třídy a bez max-w-md — SceneBackground (potomek s
+    // -z-10) musí sedět přímo v <main>, jinak by ho buď zakrylo vlastní
+    // pozadí <main>u (viz MainMenuScreen.tsx), nebo by byl omezený na užší
+    // sloupec (viz max-w-md níže) a zbytek širší obrazovky by zůstal holý
+    // <body> background. Herní obsah je proto v samostatném vnitřním divu.
+    <main className="relative min-h-screen p-4">
       {showPlayBackground && <SceneBackground scene={BACKGROUND_SCENES.play} />}
 
-      <div className="flex justify-between items-center">
-        <ShiftTimer remainingMs={state.remainingMs} />
-        <AudioToggle muted={state.audioMuted} onToggle={onToggleAudio} />
+      <div className="flex flex-col gap-4 max-w-md mx-auto">
+        <div className="flex justify-between items-center">
+          <ShiftTimer remainingMs={state.remainingMs} />
+          <AudioToggle muted={state.audioMuted} onToggle={onToggleAudio} />
+        </div>
+
+        <PowerMeter power={state.power} />
+
+        {state.gameStatus === "blackout" ? (
+          <BlackoutView blackoutElapsedMs={state.blackoutElapsedMs} blackout={night.blackout} />
+        ) : (
+          <>
+            {state.playerView === "desk" && (
+              <DeskView
+                state={state}
+                night={night}
+                onToggleLight={onToggleLight}
+                onSelectCamera={onSelectCamera}
+                onCloseCameras={onCloseCameras}
+                onLookAtDoor={onLookAtDoor}
+                onLookAtGenerator={onLookAtGenerator}
+              />
+            )}
+            {state.playerView === "door" && (
+              <DoorView doorClosed={state.doorClosed} onToggleDoor={onToggleDoor} onLookAtDesk={onLookAtDesk} />
+            )}
+            {state.playerView === "generator" && (
+              <GeneratorView
+                generatorState={state.generatorState}
+                beepSeq={state.generatorBeepSeq}
+                onRestartGenerator={onRestartGenerator}
+                onLookAtDesk={onLookAtDesk}
+              />
+            )}
+          </>
+        )}
+
+        <DebugPanel
+          state={state}
+          night={night}
+          tensionLevel={tensionLevel}
+          onDebugToggleDoor={onDebugToggleDoor}
+          onDebugRestartGenerator={onDebugRestartGenerator}
+        />
       </div>
-
-      <PowerMeter power={state.power} />
-
-      {state.gameStatus === "blackout" ? (
-        <BlackoutView blackoutElapsedMs={state.blackoutElapsedMs} blackout={night.blackout} />
-      ) : (
-        <>
-          {state.playerView === "desk" && (
-            <DeskView
-              state={state}
-              night={night}
-              onToggleLight={onToggleLight}
-              onSelectCamera={onSelectCamera}
-              onCloseCameras={onCloseCameras}
-              onLookAtDoor={onLookAtDoor}
-              onLookAtGenerator={onLookAtGenerator}
-            />
-          )}
-          {state.playerView === "door" && (
-            <DoorView doorClosed={state.doorClosed} onToggleDoor={onToggleDoor} onLookAtDesk={onLookAtDesk} />
-          )}
-          {state.playerView === "generator" && (
-            <GeneratorView
-              generatorState={state.generatorState}
-              beepSeq={state.generatorBeepSeq}
-              onRestartGenerator={onRestartGenerator}
-              onLookAtDesk={onLookAtDesk}
-            />
-          )}
-        </>
-      )}
-
-      <DebugPanel
-        state={state}
-        night={night}
-        tensionLevel={tensionLevel}
-        onDebugToggleDoor={onDebugToggleDoor}
-        onDebugRestartGenerator={onDebugRestartGenerator}
-      />
     </main>
   );
 }

@@ -7,8 +7,10 @@ interface WinScreenProps {
 }
 
 export default function WinScreen({ onRetry }: WinScreenProps) {
+  // Bez bg-* na <main> — viz stejná poznámka v MainMenuScreen.tsx (main by
+  // jinak vlastním pozadím zakryl SceneBackground potomka s -z-10).
   return (
-    <main className="relative min-h-screen flex items-center justify-center p-4 bg-gray-900">
+    <main className="relative min-h-screen flex items-center justify-center p-4">
       <SceneBackground scene={BACKGROUND_SCENES.win} />
 
       <div className="w-full max-w-md text-center pixel-panel p-8">

@@ -47,7 +47,11 @@ funkce, abstrakce ani konfigurovatelnost, které aktuální směna nepotřebuje.
   vždy `components/SceneBackground.tsx` — nová screen komponenta jen přidá `<SceneBackground
   scene={BACKGROUND_SCENES.xxx} />` jako první potomek `<main className="relative ...">`, žádnou
   vlastní crossfade/flicker logiku. Přidání/výměna obrázku nebo efektu (víc snímků, `flicker`)
-  je vždy jen datová změna v `BACKGROUND_SCENES`.
+  je vždy jen datová změna v `BACKGROUND_SCENES`. Dvě pravidla, jejichž porušení pozadí
+  neviditelným (viz TECH_DESIGN.md "Scénová pozadí"): (1) to `<main>` nesmí mít vlastní `bg-*`
+  třídu (main bez vlastního `z-index` nezakládá stacking context, takže vlastní pozadí by
+  `SceneBackground` potomka s `-z-10` zakrylo); (2) `SceneBackground` musí být v `<main>`, které
+  pokrývá celou šířku obrazovky, ne uvnitř vnitřního `max-w-md` obalu.
 - Texty pro LoadingScreen (a jakýkoliv další "hint"/servisní obsah) patří do
   `content/loadingHints.ts` (nebo obdobného content souboru), nikdy natvrdo do
   `LoadingScreen.tsx`. Výběr/filtrování hintů (`selectLoadingHints`) je čistá funkce v

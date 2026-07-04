@@ -78,7 +78,15 @@
       `/about`) — `game/visuals/backgroundImages.ts` (`BACKGROUND_SCENES`,
       `SceneBackgroundConfig`: 1-3 snímky s crossfade + volitelný flicker/dimming),
       `components/SceneBackground.tsx` vykresluje. Čistě datová konfigurace, žádný zásah do
-      komponent při přidání/výměně obrázku nebo efektu. Zatím obrázek jen u menu/play/win.
+      komponent při přidání/výměně obrázku nebo efektu. Všech 6 obrazovek má teď reálný obrázek.
+- [x] Oprava: pozadí bylo na několika obrazovkách prakticky neviditelné —
+      (1) `MainMenuScreen`/`WinScreen` měly `bg-gray-900` přímo na `<main>`, které nezakládá
+      stacking context, takže vlastní pozadí zakrylo `SceneBackground` potomka s `-z-10`
+      (odstraněno, `<body>` má `bg-gray-900` jako fallback); (2) `GameScreen.tsx` mělo
+      `SceneBackground` uvnitř `<main className="max-w-md mx-auto">`, takže pozadí pokrývalo
+      jen užší centrovaný sloupec, ne celou šířku obrazovky (přesunuto — `<main>` teď na celou
+      šířku, herní obsah ve vnitřním `max-w-md` divu); (3) pozadí na `/play` se navíc zobrazovalo
+      jen v `DeskView`, teď je stejné (`play`) i v `DoorView`/`GeneratorView`.
 - [x] `/dev-sound` — dev stránka se seznamem všech audio eventů (`game/audio/audioEvents.ts`),
       popisem, souborem/fallbackem a tlačítkem přehrát (`app/dev-sound/`, gatované
       `DEBUG_PANEL_ENABLED`)
