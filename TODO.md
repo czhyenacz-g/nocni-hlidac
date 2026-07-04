@@ -197,6 +197,8 @@
       popisem, souborem/fallbackem a tlačítkem přehrát (`app/dev-sound/`, gatované
       `DEBUG_PANEL_ENABLED`)
 - [x] Generátor pípání o 30 % tišší (`generator_beep` 0.6/0.8 -> 0.42/0.56)
+- [x] Generátor pípání znovu o 30 % tišší po dalším playtestu (`generator_beep` 0.42/0.56 ->
+      0.294/0.392); ambience loop o 15 % tišší (`ambience_loop` 0.35 -> 0.2975)
 - [x] Útok u dveří: krok slyšet zřetelně před jumpscare, ne najednou (`enemy_step` ->
       ~220 ms odklad -> `jumpscare`, viz AUDIO_DESIGN.md "Útok u dveří")
 - [x] Odstraněna neplatná mobilní hláška „otoč telefon na šířku“ (`MobileLandscapeHint.tsx`
