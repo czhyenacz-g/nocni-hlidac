@@ -19,3 +19,8 @@ export const DEBUG_PANEL_ENABLED = true;
 // LoadingScreen.tsx a content/loadingHints.ts. Kolik hintů se z nich vybere.
 export const LOADING_SCREEN_DURATION_MS = 4000;
 export const LOADING_SCREEN_HINT_COUNT = 3;
+
+// Krátký "reveal" moment před finalizací smrti "door_open_at_attack" — hráč
+// uvidí monstrum ve dveřích (door_open_death_0), teprve pak DeathScreen. Viz
+// GameState.doorDeathRevealUntilMs, gameReducer.ts ENEMY_ADVANCE/TICK.
+export const DOOR_DEATH_REVEAL_DURATION_MS = 700;

@@ -55,6 +55,7 @@ export function createInitialGameState(night: NightDefinition): GameState {
     monsterRetreatRoarSeq: 0,
 
     deathReason: null,
+    doorDeathRevealUntilMs: null,
 
     isRunning: false,
     audioMuted: false,

@@ -69,6 +69,11 @@ funkce, abstrakce ani konfigurovatelnost, které aktuální směna nepotřebuje.
   view komponentu (`BlackoutView.tsx`), která nahrazuje DeskView/DoorView/GeneratorView
   vcelku — nerozpadávej blackout na dílčí "blackout mód" uvnitř každé view komponenty
   zvlášť.
+- `GameState.doorDeathRevealUntilMs` (krátký ~700ms "reveal" před finalizací smrti
+  `door_open_at_attack`, viz TECH_DESIGN.md "Útok u dveří má krátký reveal") je záměrně
+  jednoúčelový lokální mezistav jen pro tenhle jeden případ — NEZOBECŇUJ ho na univerzální
+  "pre-death"/"attack warning" mezistav pro všechny způsoby smrti. Blackout i jakákoli budoucí
+  jiná smrt musí dál nastavovat `screen: "death"` přímo, beze změny.
 
 ## Povinnost držet audio odděleně
 

@@ -273,6 +273,22 @@ Dva důvody (`DeathReason`), s odlišným textem na `DeathScreen` (`content/copy
 
 Zobrazí se krátký jumpscare overlay a `DeathScreen` s možností okamžitého restartu směny.
 
+### Smrt u dveří — krátký "reveal" před DeathScreen
+
+`door_open_at_attack` má navíc krátký (~700 ms) moment těsně před `DeathScreen`, kdy hráč
+uvidí monstrum přímo ve dveřích (obrázek `door_open_death_0`), místo aby smrt přišla úplně
+instantně:
+
+- Pokud už byl hráč v pohledu na dveře (otevřené), obraz dveří se krátce crossfade přepne
+  na monstrum ve dveřích, a teprve pak přijde `DeathScreen`.
+- Pokud byl hráč zrovna u kamer/generátoru, hra ho v tu chvíli automaticky "otočí" ke dveřím
+  (`playerView: "door"`) a ukáže stejný krátký obrázek — hráč tak vždy uvidí, co ho zabilo,
+  ne jen náhlý skok na death screen.
+
+Je to čistě tenhle jeden speciální případ, ne univerzální "pre-death" mezistav pro všechny
+smrti — `blackout_timeout` i běžné hraní (kamery/generátor bez téhle situace) se chovají
+beze změny, smrt přijde stejně instantně jako dřív.
+
 ## Výhra
 
 Když `remainingMs` klesne na 0 a hráč je stále naživu (i uprostřed blackoutu — viz

@@ -188,6 +188,37 @@ zůstalo `true`. Kvůli tomu `LOOK_AT_DOOR`/`LOOK_AT_GENERATOR` teď navíc rovn
 (`cameraOpen: false, activeCameraId: null`) — při odchodu od stolu nezůstane žádná "otevřená"
 na pozadí, ani vizuálně, ani ve výpočtu sledování/energie.
 
+### Útok u dveří má krátký "reveal" (`doorDeathRevealUntilMs`)
+
+Dřív `ENEMY_ADVANCE` při `isAtDoorStage(state) && !state.doorClosed` nastavilo `screen:
+"death"` okamžitě ve stejném dispatchi jako `enemyStage: "attack"`. Teď se smrt nefinalizuje
+hned:
+
+- `ENEMY_ADVANCE` nastaví `enemyStage: "attack"`, `deathReason: "door_open_at_attack"`,
+  vynutí `playerView: "door"` (+ zavře kamery stejně jako `LOOK_AT_DOOR`) a nastaví
+  `doorDeathRevealUntilMs = state.elapsedMs + DOOR_DEATH_REVEAL_DURATION_MS` (700 ms,
+  `game/balancing/constants.ts`). `isRunning`/`screen` zůstávají beze změny (`true`/`"playing"`).
+- `TICK` má na začátku větev pro `doorDeathRevealUntilMs !== null` (před blackout větví) —
+  jen počítá `elapsedMs`/`remainingMs` dál, nic jiného (generátor/energie/door-light repel se
+  nepočítají, hra je fakticky rozhodnutá). Jakmile `elapsedMs >= doorDeathRevealUntilMs`,
+  finalizuje `isRunning: false, screen: "death"` (`deathReason` už je nastavený).
+- Dokud `doorDeathRevealUntilMs !== null`, `TOGGLE_DOOR`/`TOGGLE_LIGHT`/`OPEN_CAMERA`/
+  `RESTART_GENERATOR`/`LOOK_AT_DOOR`/`LOOK_AT_DESK`/`LOOK_AT_GENERATOR` jsou no-op (stejný
+  guard-styl jako existující `blackout` kontroly, přidaný vedle nich, ne místo nich —
+  blackoutové chování se nemění). `ENEMY_ADVANCE` je taky no-op (nepřítel je už "attack",
+  žádný další postup nedává smysl).
+- Vizuálně: `GameScreen.tsx` počítá `doorBackgroundIndex = isDoorDeathReveal ? 2 :
+  (state.doorClosed ? 1 : 0)` pro scénu `BACKGROUND_SCENES.door` (3 snímky: otevřené/
+  zavřené/monstrum) — protože je pořád stejná scéna/instance `SceneBackground`, přepnutí na
+  index 2 crossfade prolne (`crossfadeMs: 350` u téhle scény, kratší než jinde, ať se stihne
+  doprolínat během 700 ms revealu). Pokud hráč nebyl v `DoorView` (byl u kamer/generátoru),
+  vynucené `playerView: "door"` ho tam ve STEJNÉM renderu přepne — přechod ze desk/generator
+  scény na door scénu je tvrdý střih (různé `SceneBackground` instance), jen samotný nástup
+  reveal snímku uvnitř door scény je crossfade.
+- Je to čistě lokální mezistav pro tenhle jeden případ (`doorDeathRevealUntilMs`), ne
+  univerzální "pre-death" obrazovka — `blackout_timeout` (a jakákoli budoucí jiná smrt) přes
+  něj vůbec neprochází, `screen: "death"` se pro ně nastavuje přímo jako dřív.
+
 ## Game loop
 
 `game/core/gameLoop.ts#useGameLoop` je React hook, který za běhu směny (`isRunning`)

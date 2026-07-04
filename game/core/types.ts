@@ -256,6 +256,17 @@ export interface GameState {
   monsterRetreatRoarSeq: number;
 
   deathReason: DeathReason | null;
+  /**
+   * elapsedMs, kdy se má finalizovat smrt "door_open_at_attack" — null mimo
+   * tenhle konkrétní krátký "reveal" moment. Nastaví ho ENEMY_ADVANCE místo
+   * okamžitého přechodu na `screen: "death"` (hráč se navíc automaticky
+   * "otočí" ke dveřím, `playerView: "door"`), TICK ho pak po
+   * DOOR_DEATH_REVEAL_DURATION_MS finalizuje. Lokální mezistav jen pro tenhle
+   * jeden případ (viz GAME_DESIGN.md "Smrt u dveří") — blackout i ostatní
+   * smrti (žádná jiná dnes neexistuje) zůstávají beze změny, screen přejde na
+   * "death" rovnou jako dřív.
+   */
+  doorDeathRevealUntilMs: number | null;
 
   isRunning: boolean;
   audioMuted: boolean;

@@ -90,11 +90,16 @@
 - [x] Vlastní pozadí pro `DoorView` (otevřené/zavřené dveře, `door_open_0.webp`/
       `door_closed_0.webp`) — `SceneBackground` dostal nový prop `activeIndexOverride`, který
       přebije automatické cyklení a nechá aktivní snímek řídit `GameScreen.tsx` podle
-      `state.doorClosed`, ať se obrázky prohodí přesně při přepnutí dveří (crossfade), ne
-      časovačem. Smrt `door_open_at_attack` (dveře otevřené + útok) nemá samostatnou
-      vykreslenou fázi (reducer nastaví `enemyStage: "attack"` a `screen: "death"` ve stejném
-      dispatchi) — `door_open_death_0.webp` proto slouží jako pozadí přímo `DeathScreen`u pro
-      tenhle konkrétní `deathReason` (`BACKGROUND_SCENES.deathDoorAttack`).
+      herního stavu, ať se obrázky prohodí přesně při přepnutí dveří (crossfade), ne
+      časovačem. `door_open_death_0.webp` je i pozadí samotného `DeathScreen`u pro
+      `deathReason === "door_open_at_attack"` (`BACKGROUND_SCENES.deathDoorAttack`).
+- [x] Krátký "reveal" (~700 ms) před finalizací smrti u dveří — `door_open_death_0` se krátce
+      crossfade ukáže (jako 3. snímek `BACKGROUND_SCENES.door`) ještě PŘED `DeathScreen`em,
+      místo instantního skoku. Funguje v obou situacích: hráč už kouká na otevřené dveře, nebo
+      je zrovna u kamer/generátoru a hra ho automaticky "otočí" ke dveřím
+      (`GameState.doorDeathRevealUntilMs`, `DOOR_DEATH_REVEAL_DURATION_MS` v
+      `game/balancing/constants.ts`). Čistě lokální mezistav jen pro tenhle případ — blackout a
+      běžná smrt beze změny.
 - [x] `/dev-sound` — dev stránka se seznamem všech audio eventů (`game/audio/audioEvents.ts`),
       popisem, souborem/fallbackem a tlačítkem přehrát (`app/dev-sound/`, gatované
       `DEBUG_PANEL_ENABLED`)

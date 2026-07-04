@@ -54,9 +54,10 @@ export type BackgroundSceneId =
 // — stejný obraz, jemně jiná varianta, např. jinak kouřící komín), které
 // SceneBackground plynule prolíná automaticky po holdMs. about/loading/death/
 // deathDoorAttack mají zatím jen 1 snímek (statické pozadí, bez střídání).
-// `door` má 2 snímky (otevřené/zavřené dveře), ale NEcyklují se samy —
-// DoorView.tsx řídí aktivní index přes SceneBackground.activeIndexOverride
-// podle state.doorClosed, viz komponenta.
+// `door` má 3 snímky (otevřené/zavřené dveře + monstrum ve dveřích), ale
+// NEcyklují se samy — GameScreen.tsx řídí aktivní index přes
+// SceneBackground.activeIndexOverride podle state.doorClosed/
+// state.doorDeathRevealUntilMs, viz komponenta i TECH_DESIGN.md.
 export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig> = {
   menu: {
     frames: [{ src: "/background/menu_bg_0.webp" }, { src: "/background/menu_bg_1.webp" }],
@@ -76,12 +77,18 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
     crossfadeMs: DEFAULT_CROSSFADE_MS,
     overlay: "linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.3))",
   },
-  // Index 0 = otevřené, index 1 = zavřené — DoorView.tsx nastavuje
-  // activeIndexOverride podle state.doorClosed, viz SceneBackground.tsx.
+  // Index 0 = otevřené, index 1 = zavřené, index 2 = monstrum ve dveřích
+  // (jen během krátkého doorDeathReveal, viz gameReducer ENEMY_ADVANCE/TICK a
+  // GameScreen.tsx). crossfadeMs je tu kratší než jinde — reveal má trvat jen
+  // DOOR_DEATH_REVEAL_DURATION_MS (700 ms) celkem, ať se stihne doprolínat.
   door: {
-    frames: [{ src: "/background/door_open_0.webp" }, { src: "/background/door_closed_0.webp" }],
+    frames: [
+      { src: "/background/door_open_0.webp" },
+      { src: "/background/door_closed_0.webp" },
+      { src: "/background/door_open_death_0.webp" },
+    ],
     holdMs: DEFAULT_HOLD_MS,
-    crossfadeMs: DEFAULT_CROSSFADE_MS,
+    crossfadeMs: 350,
     overlay: "linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.3))",
   },
   death: {

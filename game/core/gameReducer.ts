@@ -1,7 +1,7 @@
 import { GameAction } from "./gameActions";
 import { createInitialGameState } from "./gameState";
 import { EnemyDefinition, GameState, NightDefinition } from "./types";
-import { MAX_POWER } from "../balancing/constants";
+import { DOOR_DEATH_REVEAL_DURATION_MS, MAX_POWER } from "../balancing/constants";
 import { getBlackoutPhaseIndex } from "../visuals/blackoutPhase";
 
 function clamp(value: number, min: number, max: number): number {
@@ -207,17 +207,26 @@ export function createGameReducer(night: NightDefinition) {
         // Dveře jde přepnout jen v pohledu na dveře — hráč se tam musí nejdřív
         // otočit (LOOK_AT_DOOR). Debug panel simuluje oba kroky najednou.
         // V blackoutu zámek povolil — dveře jsou vždy "otevřené" a nejdou zavřít.
-        if (!state.isRunning || state.playerView !== "door" || state.gameStatus === "blackout") return state;
+        // Během doorDeathReveal (viz ENEMY_ADVANCE/TICK) je hra fakticky u konce —
+        // dveře se nedají přepnout, ať hráč "neuteče" z už rozhodnuté smrti.
+        if (
+          !state.isRunning ||
+          state.playerView !== "door" ||
+          state.gameStatus === "blackout" ||
+          state.doorDeathRevealUntilMs !== null
+        )
+          return state;
         return { ...state, doorClosed: !state.doorClosed };
 
       case "TOGGLE_LIGHT":
-        if (!state.isRunning || state.gameStatus === "blackout") return state;
+        if (!state.isRunning || state.gameStatus === "blackout" || state.doorDeathRevealUntilMs !== null)
+          return state;
         return { ...state, lightOn: !state.lightOn };
 
       case "LOOK_AT_DOOR":
         // Kamery se při odchodu od stolu vždy zavřou — hráč se nedívá na dveře
         // a zároveň na kameru, žádná nezůstane "otevřená" na pozadí.
-        if (!state.isRunning) return state;
+        if (!state.isRunning || state.doorDeathRevealUntilMs !== null) return state;
         return {
           ...state,
           playerView: "door",
@@ -228,11 +237,11 @@ export function createGameReducer(night: NightDefinition) {
         };
 
       case "LOOK_AT_DESK":
-        if (!state.isRunning) return state;
+        if (!state.isRunning || state.doorDeathRevealUntilMs !== null) return state;
         return { ...state, playerView: "desk" };
 
       case "LOOK_AT_GENERATOR":
-        if (!state.isRunning) return state;
+        if (!state.isRunning || state.doorDeathRevealUntilMs !== null) return state;
         return {
           ...state,
           playerView: "generator",
@@ -244,7 +253,8 @@ export function createGameReducer(night: NightDefinition) {
 
       case "RESTART_GENERATOR": {
         // V blackoutu generátor úplně chcípl — standardní restart ho nevzkřísí.
-        if (!state.isRunning || state.gameStatus === "blackout") return state;
+        if (!state.isRunning || state.gameStatus === "blackout" || state.doorDeathRevealUntilMs !== null)
+          return state;
 
         // Omylem restartovaný funkční generátor — zbytečný klik ho na chvíli
         // vyřadí (stejná extra spotřeba jako criticalBeeping), místo aby byl no-op.
@@ -272,7 +282,8 @@ export function createGameReducer(night: NightDefinition) {
         // V blackoutu jsou kamery mrtvé — nejdou zapnout ani přepnout.
         // Klik na monitor v overview mřížce -> zoom do detailu dané kamery;
         // teprve tady se počítá jako aktivní sledování (viz isEnemyBeingWatched).
-        if (!state.isRunning || state.gameStatus === "blackout") return state;
+        if (!state.isRunning || state.gameStatus === "blackout" || state.doorDeathRevealUntilMs !== null)
+          return state;
         return {
           ...state,
           cameraOpen: true,
@@ -299,6 +310,19 @@ export function createGameReducer(night: NightDefinition) {
 
         const elapsedMs = state.elapsedMs + action.deltaMs;
         const remainingMs = clamp(night.durationMs - elapsedMs, 0, night.durationMs);
+
+        // ── Krátký "reveal" moment před finalizací smrti u dveří (viz
+        // ENEMY_ADVANCE) — hráč vidí monstrum ve dveřích (door_open_death_0,
+        // SceneBackground v GameScreen.tsx), teprve pak se dokončí přechod na
+        // DeathScreen. Lokální mezistav jen pro tenhle jeden případ, nic jiného
+        // se tu nepočítá (generátor/energie/door-light repel jsou beztak
+        // irelevantní, hra je fakticky rozhodnutá).
+        if (state.doorDeathRevealUntilMs !== null) {
+          if (elapsedMs >= state.doorDeathRevealUntilMs) {
+            return { ...state, elapsedMs, remainingMs, isRunning: false, screen: "death" };
+          }
+          return { ...state, elapsedMs, remainingMs };
+        }
 
         // ── Blackout: baterie na nule, všechny systémy mrtvé — vlastní, mnohem
         // jednodušší časování. Generátor/door-light repel/energie se tu vůbec
@@ -386,8 +410,11 @@ export function createGameReducer(night: NightDefinition) {
 
       case "ENEMY_ADVANCE": {
         // V blackoutu je pozice nepřítele zamrzlá — hrozbu odteď representuje
-        // blackoutElapsedMs v TICKu, ne další postup po trase.
-        if (!state.isRunning || state.gameStatus === "blackout") return state;
+        // blackoutElapsedMs v TICKu, ne další postup po trase. Během
+        // doorDeathReveal je útok už rozhodnutý (viz níže) — žádný další
+        // postup/rozhodnutí nepřítele už nemá smysl počítat.
+        if (!state.isRunning || state.gameStatus === "blackout" || state.doorDeathRevealUntilMs !== null)
+          return state;
 
         const route = state.enemyRoute;
         const currentIndex = route.indexOf(state.enemyStage);
@@ -420,14 +447,23 @@ export function createGameReducer(night: NightDefinition) {
             };
           }
 
-          // Dveře otevřené a nepřítel je u nich -> útok.
+          // Dveře otevřené a nepřítel je u nich -> útok. Smrt se nefinalizuje
+          // hned (isRunning/screen zůstávají beze změny) — nejdřív krátký
+          // doorDeathReveal moment (viz TICK výše), který dokončí přechod na
+          // "death" po DOOR_DEATH_REVEAL_DURATION_MS. Hráč se navíc
+          // automaticky "otočí" ke dveřím (playerView: "door", kamery se
+          // zavřou stejně jako u LOOK_AT_DOOR), i kdyby byl zrovna u
+          // kamer/generátoru — viz GAME_DESIGN.md "Smrt u dveří".
           return {
             ...state,
             enemyStage: "attack",
             lastEnemyDecision: "attack",
-            isRunning: false,
-            screen: "death",
+            playerView: "door",
+            cameraOpen: false,
+            activeCameraId: null,
+            cameraFocusUntilMs: null,
             deathReason: "door_open_at_attack",
+            doorDeathRevealUntilMs: state.elapsedMs + DOOR_DEATH_REVEAL_DURATION_MS,
           };
         }
 

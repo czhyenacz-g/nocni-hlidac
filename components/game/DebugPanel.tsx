@@ -27,6 +27,9 @@ export default function DebugPanel({ state, night, tensionLevel, onDebugToggleDo
             ` (${state.blackoutElapsedMs.toFixed(0)} / ${night.blackout.durationMs} ms, phase ${getBlackoutPhaseIndex(state.blackoutElapsedMs, night.blackout)}, seq ${state.blackoutPhaseSeq})`}
         </div>
         <div>enemyStage: {state.enemyStage} ({state.lastEnemyDecision})</div>
+        {state.doorDeathRevealUntilMs !== null && (
+          <div>doorDeathReveal: {(state.doorDeathRevealUntilMs - state.elapsedMs).toFixed(0)} ms zbývá</div>
+        )}
         <div>tension: {tensionLevel.toFixed(2)}</div>
         <div>power: {state.power.toFixed(1)}</div>
         <div>playerView: {state.playerView}</div>
