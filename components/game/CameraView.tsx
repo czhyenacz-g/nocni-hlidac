@@ -39,7 +39,7 @@ export default function CameraView({ camera, enemyStage, focused, lightOn, elaps
   const imageSrc = getCameraImageSrc(camera.id, enemyVisible, lightOn, elapsedMs);
 
   return (
-    <div className="pixel-panel h-40 flex flex-col items-center justify-center relative overflow-hidden">
+    <div className="pixel-panel h-40 flex flex-col items-center justify-center relative overflow-hidden group">
       {imageSrc && (
         <img src={imageSrc} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" />
       )}
@@ -50,7 +50,13 @@ export default function CameraView({ camera, enemyStage, focused, lightOn, elaps
       <div className="absolute inset-0 pixel-screen-static" />
       <span className="absolute top-1 left-2 text-[10px] text-gray-500">
         {camera.label}
-        {camera.description && <span className="block text-gray-600">{camera.description}</span>}
+        {/* Popis kamery se schová, dokud hráč nenajede myší na obraz — ať
+            neplete štítek, ale poradí, když o to zájem je. */}
+        {camera.description && (
+          <span className="block text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+            {camera.description}
+          </span>
+        )}
       </span>
       <span className="absolute top-1 right-2 text-[10px] text-red-500 animate-pulse">● REC</span>
       {enemyVisible ? (
