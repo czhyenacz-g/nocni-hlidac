@@ -14,8 +14,9 @@ export const NIGHT_01: NightDefinition = {
     cameraOpen: 0.2,
     idle: 0.15,
   },
-  // 1 % za 3 s = 1/3 % za sekundu — viz GAME_DESIGN.md "Energie".
-  rechargePerSecondWhenIdle: 1 / 3,
+  // 1 % za 12 s = 1/12 % za sekundu (čtvrtina původní rychlosti 1/3) —
+  // viz GAME_DESIGN.md "Energie".
+  rechargePerSecondWhenIdle: 1 / 12,
   enemy: BASIC_INTRUDER,
   cameras: OBJECT13_CAMERAS,
   defaultCameraId: "outer_yard",

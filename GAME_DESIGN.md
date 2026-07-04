@@ -99,10 +99,12 @@ kamera), nebo ne:
 - **Sleduje kamery** — energie jen ubývá: pasivní odběr (idle) + spotřeba otevřené
   kamery.
 - **Nesleduje kamery** (DoorView, nebo DeskView bez otevřené kamery) — energie se
-  pomalu **dobíjí**, cca 1 % za 3 sekundy (`rechargePerSecondWhenIdle` v definici
-  směny). Zavřené dveře a/nebo rozsvícené světlo ale dál spotřebovávají energii a
-  tato spotřeba dobíjení přebíjí — se zavřenými dveřmi je čistý efekt pořád úbytek,
-  jen pomalejší než při sledování kamer.
+  pomalu **dobíjí**, cca 1 % za 12 sekund (`rechargePerSecondWhenIdle` v definici
+  směny — čtvrtina původní rychlosti, dobíjení mimo kamery má být znatelně pomalejší
+  pojistka, ne pohodlný způsob, jak energii snadno doplnit). Zavřené dveře a/nebo
+  rozsvícené světlo ale dál spotřebovávají energii a tato spotřeba dobíjení přebíjí
+  — se zavřenými dveřmi je čistý efekt pořád úbytek, jen pomalejší než při
+  sledování kamer.
 - **Kritický stav generátoru** (viz "Generátor" níže) navrch přidá pevnou extra
   spotřebu — jako kdyby byly zavřené dvoje dveře a svítilo světlo (2×
   `doorClosed` sazba + `lightOn` sazba) — bez ohledu na to, jestli jsou skutečně
