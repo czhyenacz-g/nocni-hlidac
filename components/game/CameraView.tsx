@@ -16,7 +16,7 @@ interface CameraViewProps {
 export default function CameraView({ camera, enemyStage, focused, lightOn, elapsedMs }: CameraViewProps) {
   if (!camera) {
     return (
-      <div className="pixel-panel pixel-screen-static h-40 flex items-center justify-center text-gray-500 text-sm">
+      <div className="pixel-panel pixel-screen-static h-48 flex items-center justify-center text-gray-500 text-sm">
         Žádná kamera vybrána
       </div>
     );
@@ -24,7 +24,7 @@ export default function CameraView({ camera, enemyStage, focused, lightOn, elaps
 
   if (!focused) {
     return (
-      <div className="pixel-panel pixel-screen-static camera-static h-40 flex flex-col items-center justify-center relative overflow-hidden">
+      <div className="pixel-panel pixel-screen-static camera-static h-48 flex flex-col items-center justify-center relative overflow-hidden">
         <span className="absolute top-1 left-2 text-[10px] text-gray-500">{camera.label}</span>
         <span className="text-gray-500 text-xs animate-pulse">{COPY.game.cameraFocusingLabel}</span>
       </div>
@@ -39,7 +39,7 @@ export default function CameraView({ camera, enemyStage, focused, lightOn, elaps
   const imageSrc = getCameraImageSrc(camera.id, enemyVisible, lightOn, elapsedMs);
 
   return (
-    <div className="pixel-panel h-40 flex flex-col items-center justify-center relative overflow-hidden group">
+    <div className="pixel-panel h-48 flex flex-col items-center justify-center relative overflow-hidden group">
       {imageSrc && (
         <img src={imageSrc} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" />
       )}

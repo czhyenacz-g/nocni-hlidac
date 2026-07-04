@@ -188,6 +188,11 @@
       `GENERATOR_URGENT_BLINK_DELAY_MS` (2 s) od vstupu do stavu
       (`game/core/generatorUrgency.ts#isGeneratorArrowUrgent`, čistá derived-state funkce,
       žádné nové pole v `GameState`).
+- [x] Herní sloupec (desk/generator/blackout) o 20 % širší — `GameScreen.tsx`
+      `max-w-md` (28rem) -> `max-w-[33.6rem]` — hlavně kvůli detailu kamery, který díky tomu
+      může být větší (`CameraView.tsx` `h-40` -> `h-48`, stejný poměr). DoorView (vlastní
+      `DoorSceneFrame` šířka) a ostatní obrazovky (menu/about/win/death/loading/terms) beze
+      změny.
 - [x] `/dev-sound` — dev stránka se seznamem všech audio eventů (`game/audio/audioEvents.ts`),
       popisem, souborem/fallbackem a tlačítkem přehrát (`app/dev-sound/`, gatované
       `DEBUG_PANEL_ENABLED`)

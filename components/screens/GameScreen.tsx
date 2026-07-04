@@ -63,13 +63,15 @@ export default function GameScreen({
     <main className="relative min-h-screen p-4">
       {showPlayBackground && <SceneBackground scene={BACKGROUND_SCENES.play} />}
 
-      {/* DoorView schválně NENÍ v max-w-md — dveřní scéna (DoorSceneFrame)
+      {/* DoorView schválně NENÍ v max-w-[33.6rem] — dveřní scéna (DoorSceneFrame)
           má využít co nejvíc dostupné plochy viewportu (viz .door-scene-frame,
-          styles/pixel.css), ne být omezená na stejný úzký sloupec jako
-          desk/generator. DoorView si samo zabaluje tlačítko zpět do vlastního
-          max-w-md, ať nezůstane přes celou šířku (viz DoorView.tsx). Desk/
-          generator/blackout layout je beze změny. */}
-      <div className={`flex flex-col gap-4 ${isDoorView ? "" : "max-w-md mx-auto"}`}>
+          styles/pixel.css), ne být omezená na stejný sloupec jako desk/generator.
+          DoorView si samo zabaluje tlačítko zpět do vlastního max-w-md (užší,
+          beze změny), ať nezůstane přes celou šířku (viz DoorView.tsx).
+          Desk/generator/blackout sloupec je o 20 % širší než dřívější max-w-md
+          (28rem -> 33.6rem) — hlavně kvůli kamerovému detailu (CameraView),
+          který díky tomu může být po "ladění signálu" větší. */}
+      <div className={`flex flex-col gap-4 ${isDoorView ? "" : "max-w-[33.6rem] mx-auto"}`}>
         {/* V DoorView schválně nerenderujeme čas/zvuk/energii vůbec (ne jen
             skryté přes CSS) — hráč se má soustředit na dveře, ne na obecné
             HUD. Desk/generator zůstávají beze změny. */}
