@@ -27,7 +27,7 @@ export const COPY = {
     generatorViewHint: "Klikni pro restart.",
     generatorStateLabels: {
       normal: "Generátor běží.",
-      silentFault: "Generátor mlčí...",
+      silentFault: "Generátor ztichl.",
       criticalBeeping: "PORUCHA! Restartuj generátor!",
       restarting: "Restartuje se...",
     },
