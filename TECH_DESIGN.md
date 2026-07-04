@@ -586,6 +586,25 @@ rerenderu, ne při kliknutí na tlačítko restartu (`handleRestart` jen dispatc
 `DeathScreen.tsx` jako `deathCount` prop — `DeathScreen` sám žádný `localStorage` nečte,
 jen zobrazuje `COPY.death.previousGuardsLabel` s dosazeným číslem.
 
+## Survival streak aktuálního hlídače (`game/core/survivedNights.ts`)
+
+Stejný vzor jako `deathCount.ts` výše (`localStorage`, klíč
+`nocni-hlidac:object13:survived-nights`, bezpečné mimo prohlížeč/bez `localStorage`), ale
+**per-hlídač**, ne celkový součet: `getSurvivedNights()` / `incrementSurvivedNights()` /
+`resetSurvivedNights()`. `app/play/page.tsx` ve stejném screen-transition efektu jako
+`deathCount`:
+
+- `screen === "win"` → `setSurvivedNights(incrementSurvivedNights())`.
+- `screen === "death"` → `setSurvivedNights(resetSurvivedNights())` — aktuální hlídač
+  skončil, streak jde na 0. `deathCount` (celkový součet) tím není dotčen, počítá se dál
+  nezávisle vedle toho.
+
+Stejný `prevScreenRef` diffing zaručuje "přesně jednou za skutečný přechod", ne opakovaně
+při rerenderu ani při kliknutí na tlačítko. Výsledek se posílá do `WinScreen.tsx` jako
+`survivedNights` prop; skloňování noc/noci/nocí (1 / 2-4 / jinak) řeší malá čistá funkce
+`formatSurvivedNights` přímo v `WinScreen.tsx`, ne v `content/copy.ts` (ten drží jen tři
+tvary textu s `{count}` placeholderem).
+
 ## Jak přidat další směnu později
 
 1. Vytvoř `game/nights/night02.ts` s vlastní `NightDefinition` (může mít jiné kamery,

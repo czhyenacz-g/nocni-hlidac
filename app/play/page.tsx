@@ -18,11 +18,12 @@ import { atmosphereStyleToCssVars, tensionToAtmosphereStyle } from "@/game/visua
 import { getBlackoutPhaseIndex } from "@/game/visuals/blackoutPhase";
 import { LOADING_SCREEN_DURATION_MS } from "@/game/balancing/constants";
 import { getDeathCount, incrementDeathCount } from "@/game/core/deathCount";
+import { getSurvivedNights, incrementSurvivedNights, resetSurvivedNights } from "@/game/core/survivedNights";
 
 const night = NIGHT_01;
 const gameReducer = createGameReducer(night);
 
-// Kamera nejblíž hráči (nejvyšší order) — používá se pro podmíněný camera_noise
+// Kamera nejblíž hráči (nejvyšší order) — používá se pro podmíněný heartbeat
 // při výběru kamery, viz handleSelectCamera níže.
 const nearestCamera = [...night.cameras].sort((a, b) => (b.order ?? 0) - (a.order ?? 0))[0];
 
@@ -32,6 +33,9 @@ export default function PlayPage() {
   // counter (viz game/core/deathCount.ts), nezávislý na herním stavu/reduceru.
   // Lazy initializer čte aktuální hodnotu jen jednou při prvním mountu.
   const [deathCount, setDeathCount] = useState(() => getDeathCount());
+  // Kolik nocí v řadě aktuální hlídač přežil bez smrti (viz
+  // game/core/survivedNights.ts) — na rozdíl od deathCount se smrtí vynuluje.
+  const [survivedNights, setSurvivedNights] = useState(() => getSurvivedNights());
 
   useGameLoop({ isRunning: state.isRunning, enemyTickMs: night.enemyTickMs, dispatch });
 
@@ -67,6 +71,9 @@ export default function PlayPage() {
       // Tenhle efekt už díky prevScreenRef diffingu (viz podmínka nahoře)
       // firuje jen jednou za skutečný přechod, ne při každém rerenderu.
       setDeathCount(incrementDeathCount());
+      // Aktuální hlídač skončil — survival streak jde na 0 (viz
+      // game/core/survivedNights.ts), death counter nahoře tím není dotčený.
+      setSurvivedNights(resetSurvivedNights());
       if (state.deathReason === "door_open_at_attack") {
         // Poslední krok těsně u dveří musí být zřetelně slyšet PŘED
         // jumpscare zvukem, ne zamíchaně přes sebe — proto krátký odklad,
@@ -80,6 +87,9 @@ export default function PlayPage() {
     if (state.screen === "win") {
       audioManager.stopLoop(AUDIO_EVENTS.ambienceLoop);
       audioManager.play(AUDIO_EVENTS.shiftWin);
+      // Stejný "zvyš přesně jednou při přechodu" vzor jako deathCount výše —
+      // ne při kliknutí na tlačítko, ne opakovaně při rerenderu.
+      setSurvivedNights(incrementSurvivedNights());
     }
     prevScreenRef.current = state.screen;
 
@@ -286,7 +296,7 @@ export default function PlayPage() {
       {state.screen === "death" && (
         <DeathScreen reason={state.deathReason} deathCount={deathCount} onRetry={handleRestart} />
       )}
-      {state.screen === "win" && <WinScreen onRetry={handleRestart} />}
+      {state.screen === "win" && <WinScreen survivedNights={survivedNights} onRetry={handleRestart} />}
     </div>
   );
 }

@@ -158,6 +158,20 @@
       dobrovolné a na vlastní odpovědnost, ne skutečný právní dokument). Stejné pozadí jako
       menu (`BACKGROUND_SCENES.menu`), text ve scrollovatelném panelu (`max-h-[55vh]
       overflow-y-auto`), odkaz zpět na `/play`.
+- [x] Zvuk překvapení na kameře přejmenován/přeznačen na `heartbeat` (tlukot srdce místo
+      generického šumu `camera_noise`) — zatím jen syntetizovaný fallback (dvě nízké
+      "lub-dub" noty), stejné podmínky spuštění jako dřív (jen jednou za "návštěvu"
+      nepřítele na nejbližší kameře).
+- [x] WinScreen: "Aktuální hlídač vydržel: X nocí" — `game/core/survivedNights.ts`
+      (`getSurvivedNights`/`incrementSurvivedNights`/`resetSurvivedNights`, localStorage
+      klíč `nocni-hlidac:object13:survived-nights`, stejný bezpečný vzor jako
+      `deathCount.ts`). Zvyšuje se při přechodu na `screen === "win"`, vynuluje se při
+      přechodu na `screen === "death"` (aktuální hlídač skončil — `deathCount` tím není
+      dotčen, počítá se dál nezávisle) — obojí ve stejném screen-transition efektu v
+      `app/play/page.tsx` jako `deathCount`, takže se nezvyšuje/nemaže opakovaně při
+      rerenderu. Skloňování noc/noci/nocí řeší malá čistá funkce přímo ve `WinScreen.tsx`.
+      DeathScreen: firemní hláška a "Předchozí hlídači" zesvětleny (`gray-500/600` ->
+      `gray-300/400`) — byly na tmavém pozadí špatně čitelné.
 - [x] `/dev-sound` — dev stránka se seznamem všech audio eventů (`game/audio/audioEvents.ts`),
       popisem, souborem/fallbackem a tlačítkem přehrát (`app/dev-sound/`, gatované
       `DEBUG_PANEL_ENABLED`)

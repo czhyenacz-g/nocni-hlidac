@@ -71,6 +71,12 @@ export const COPY = {
     title: "Přežil jsi směnu.",
     subtitle: "Slunce vychází. Objekt 13 je zatím v klidu.",
     retryButton: "Pokračovat další nocí",
+    // {count} se nahradí ve WinScreen.tsx — skloňování noc/noci/nocí podle počtu.
+    survivedNightsLabel: {
+      one: "Aktuální hlídač vydržel: {count} noc",
+      few: "Aktuální hlídač vydržel: {count} noci",
+      many: "Aktuální hlídač vydržel: {count} nocí",
+    },
   },
   loading: {
     title: "OBJEKT 13 — SERVISNÍ TERMINÁL",

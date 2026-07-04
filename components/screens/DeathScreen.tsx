@@ -36,8 +36,8 @@ export default function DeathScreen({ reason, deathCount, onRetry }: DeathScreen
       <div className="w-full max-w-md text-center pixel-panel p-8 relative z-10">
         <h1 className="text-2xl font-bold mb-2 text-red-500">{COPY.death.title}</h1>
         <p className="text-sm text-gray-400 mb-4">{reason ? COPY.death.reasons[reason] : ""}</p>
-        <p className="text-xs text-gray-500 mb-2 italic">{corporateMessage}</p>
-        <p className="text-xs text-gray-600 mb-8">
+        <p className="text-xs text-gray-300 mb-2 italic">{corporateMessage}</p>
+        <p className="text-xs text-gray-400 mb-8">
           {COPY.death.previousGuardsLabel.replace("{count}", String(deathCount))}
         </p>
         <button className="pixel-button tap-target px-6 py-3 text-sm w-full" onClick={onRetry}>
