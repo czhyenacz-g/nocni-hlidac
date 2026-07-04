@@ -37,12 +37,15 @@ const DEFAULT_OVERLAY = "linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.75))";
 
 export type BackgroundSceneId = "menu" | "loading" | "play" | "death" | "win" | "about";
 
-// Zatím má vlastní obrázek jen menu/play/win (viz public/*.webp) — loading/death/about
-// mají prázdné frames (žádné pozadí), infrastruktura je ale připravená pro všechny:
-// stačí sem přidat frames (a případně flicker), nikam jinam se sahat nemusí.
+// menu/play/win mají teď 2 varianty snímků (public/background/*_0.webp,
+// *_1.webp — stejný obraz, jemně jiná varianta, např. jinak kouřící komín),
+// které SceneBackground plynule prolíná. loading/death/about mají zatím
+// prázdné frames (žádné pozadí), infrastruktura je ale připravená pro
+// všechny: stačí sem přidat frames (a případně flicker), nikam jinam se
+// sahat nemusí.
 export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig> = {
   menu: {
-    frames: [{ src: "/menu_bg.webp" }],
+    frames: [{ src: "/background/menu_bg_0.webp" }, { src: "/background/menu_bg_1.webp" }],
     holdMs: DEFAULT_HOLD_MS,
     crossfadeMs: DEFAULT_CROSSFADE_MS,
     overlay: DEFAULT_OVERLAY,
@@ -54,7 +57,7 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
     overlay: DEFAULT_OVERLAY,
   },
   play: {
-    frames: [{ src: "/play_background.webp" }],
+    frames: [{ src: "/background/play_bg_universal_0.webp" }, { src: "/background/play_bg_universal_1.webp" }],
     holdMs: DEFAULT_HOLD_MS,
     crossfadeMs: DEFAULT_CROSSFADE_MS,
     overlay: "linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.8))",
@@ -66,7 +69,7 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
     overlay: DEFAULT_OVERLAY,
   },
   win: {
-    frames: [{ src: "/win1_background.webp" }],
+    frames: [{ src: "/background/win_bg_0.webp" }, { src: "/background/win_bg_1.webp" }],
     holdMs: DEFAULT_HOLD_MS,
     crossfadeMs: DEFAULT_CROSSFADE_MS,
     overlay: "linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.7))",
