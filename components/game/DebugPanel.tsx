@@ -38,6 +38,14 @@ export default function DebugPanel({ state, night, tensionLevel, onDebugToggleDo
         <div>tension: {tensionLevel.toFixed(2)}</div>
         <div>power: {state.power.toFixed(1)}</div>
         <div>playerView: {state.playerView}</div>
+        {state.cameraOpen && state.activeCameraId && (
+          <div>
+            kamera-detekce: {state.activeCameraId} →{" "}
+            {night.cameras.find((c) => c.id === state.activeCameraId)?.enemyVisibleAtStage === state.enemyStage
+              ? "POSTAVA V DOSAHU"
+              : "žádný pohyb"}
+          </div>
+        )}
         <div>door: {state.doorClosed ? "closed" : "open"}</div>
         <div>light: {state.lightOn ? "on" : "off"}</div>
         <div>

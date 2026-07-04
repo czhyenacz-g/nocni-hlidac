@@ -228,6 +228,8 @@
       `generatorState`, ne akumulující se čítač)
 - [x] Druhé kolo audio tuningu: ambient o dalších 15 % tišší (0.2975 -> 0.252875),
       heartbeat o dalších 30 % hlasitěji (`HEARTBEAT_VOLUME_MULTIPLIER` 1.2 -> 1.56)
+- [x] Textový spoiler "POSTAVA V DOSAHU"/"žádný pohyb" odstraněný z `CameraView.tsx`
+      (problikával přes fotku) — stejná informace teď jen v `DebugPanel.tsx`
 - [x] `right_hallway` teď má vlastní monster snímky (03/05/07/10 přejmenované,
       `CAMERA_ASSETS` aktualizováno) — dřív mělo prázdné `monster: []`
 - [x] Generátor `restarting` (omylem restartovaný funkční generátor) teď pípá stejně

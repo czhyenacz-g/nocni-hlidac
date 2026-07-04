@@ -153,8 +153,10 @@ napsaný v komponentě:
   ne na stejném elementu — `background-image` z `.pixel-screen-static` by se jinak přepsal
   inline stylem `<img>`u (obojí je stejná CSS vlastnost na jednom elementu, vyhrál by jen
   jeden) a šum by úplně zmizel. Bez obrázku (`imageSrc === null`) je vrstva se šumem jediná,
-  vizuálně identické s dřívějším stavem. Text "POSTAVA V DOSAHU" / "— žádný pohyb —" zůstává
-  beze změny.
+  vizuálně identické s dřívějším stavem. Textový spoiler "POSTAVA V DOSAHU" / "— žádný
+  pohyb —" byl z `CameraView.tsx` odstraněný (playtest: problikával přes fotku, prozrazoval
+  monstrum dřív, než ho hráč sám najde) — `enemyVisible` se teď vypisuje jen v
+  `DebugPanel.tsx` ("kamera-detekce"), ne v samotné komponentě kamery.
 - Rozšíření na další kameru/objekt je čistě datová změna v `CAMERA_ASSETS` — žádná
   komponenta se kvůli tomu měnit nemusí.
 

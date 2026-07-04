@@ -232,8 +232,10 @@ Detail kamery (viz "Overview / detail" výše) ukazuje reálný snímek z
   nepůsobí jako jedna mrtvá fotka — ale žádná rychlá animace/blikání.
 - `door_hallway` má navíc jinou sadu fotek podle toho, jestli je zapnuté světlo do chodby —
   jasnější/tmavší chodba podle skutečného stavu.
-- Text "POSTAVA V DOSAHU" / "— žádný pohyb —" zůstává navrch beze změny. Overview mřížka
-  (malé monitory) obraz pořád neukazuje — to je pořád jen detail.
+- Textový spoiler "POSTAVA V DOSAHU" / "— žádný pohyb —" byl z `CameraView.tsx` odstraněný
+  (problikával přes fotku a prozrazoval monstrum dřív, než ho hráč sám najde) — hráč teď
+  pozná monstrum jen z fotky samotné. Stejná informace zůstává jen v DebugPanelu ("kamera-
+  detekce"). Overview mřížka (malé monitory) obraz pořád neukazuje — to je pořád jen detail.
 
 Všechny čtyři kamery teď mají fotky s monstrem (`outer_yard`, `left_hallway`,
 `right_hallway`, `door_hallway` obojí varianta, se světlem i bez) — kdyby některé kameře

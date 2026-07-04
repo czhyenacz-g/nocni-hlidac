@@ -59,11 +59,10 @@ export default function CameraView({ camera, enemyStage, focused, lightOn, elaps
         )}
       </span>
       <span className="absolute top-1 right-2 text-[10px] text-red-500 animate-pulse">● REC</span>
-      {enemyVisible ? (
-        <span className="text-red-500 text-sm font-bold">POSTAVA V DOSAHU</span>
-      ) : (
-        <span className="text-gray-600 text-xs">— žádný pohyb —</span>
-      )}
+      {/* "POSTAVA V DOSAHU"/"žádný pohyb" textový spoiler byl schovaný ze
+          skutečné hry (problikával přes obrázek, prozrazoval monstrum dřív,
+          než ho hráč sám najde) — stejná informace (enemyVisible) je teď
+          vidět jen v DebugPanel.tsx, ne tady. */}
     </div>
   );
 }
