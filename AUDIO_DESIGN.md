@@ -12,8 +12,10 @@ tagy rozházené po komponentách.
 Definováno v `game/audio/audioEvents.ts` a nakonfigurováno v `game/audio/audioConfig.ts`:
 
 - `ambience_loop` — tiché pozadí, hraje smyčkou po celou dobu směny
-- `camera_noise` — zvuk překvapení: hraje jen když je nepřítel zrovna na kameře
-  nejblíž hráči, a jen jednou za tuto "návštěvu" (viz "Zvukové události" níže)
+- `heartbeat` — zvuk překvapení (tlukot srdce, ne generický šum): hraje jen když je
+  nepřítel zrovna na kameře nejblíž hráči, a jen jednou za tuto "návštěvu" (viz
+  "Zvukové události" níže). Zatím jen syntetizovaný fallback (dvě nízké "lub-dub"
+  noty), žádný reálný soubor.
 - `door_close` / `door_open` — cvaknutí dveří
 - `light_click` — cvaknutí světla
 - `enemy_step` — kroky/pohyb nepřítele na trase
@@ -57,7 +59,7 @@ Herní logika a UI komponenty nevolají `new Audio()` přímo — volají
 konkrétní herní stav je v `app/play/page.tsx`: `useEffect` hooky sledují změny stavu
 (obrazovka, dveře, světlo, energie, stage nepřítele) a podle nich spouští odpovídající zvuk.
 
-`camera_noise` je výjimka z jednoduchého "one state → one sound" vzoru: hraje se přímo v
+`heartbeat` je výjimka z jednoduchého "one state → one sound" vzoru: hraje se přímo v
 `handleSelectCamera` (ne v `useEffect`, protože je vázaný na akci kliknutí, ne na změnu
 stavu), a navíc si drží vlastní "už jsem překvapil" flag
 (`hasPlayedNearCameraSurpriseRef`) — jinak by hrál při každém kliknutí na kameru, dokud tam

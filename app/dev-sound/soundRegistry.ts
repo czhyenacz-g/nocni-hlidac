@@ -21,11 +21,11 @@ export const SOUND_REGISTRY: Record<AudioEventId, SoundRegistryEntry> = {
     guess: "Nízký dron/šum elektroinstalace, atmosférický podklad.",
     usedIn: 'app/play/page.tsx — startLoop na screen "playing", stopLoop na "death"/"win".',
   },
-  [AUDIO_EVENTS.cameraNoise]: {
-    id: AUDIO_EVENTS.cameraNoise,
-    label: "Camera noise (překvapení)",
+  [AUDIO_EVENTS.heartbeat]: {
+    id: AUDIO_EVENTS.heartbeat,
+    label: "Heartbeat (překvapení)",
     description: 'Zahraje jen když je nepřítel právě na kameře nejblíž hráči ("door_hallway").',
-    guess: "Krátký statický šum/lekací zvuk kamery.",
+    guess: "Krátký tlukot srdce (lub-dub), leknutí místo generického šumu.",
     usedIn: "app/play/page.tsx — handleSelectCamera (jednou za návštěvu nepřítele na té kameře).",
   },
   [AUDIO_EVENTS.doorClose]: {

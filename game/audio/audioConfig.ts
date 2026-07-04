@@ -35,7 +35,24 @@ export interface AudioClipConfig {
 // případně použije fallbackSynth, pokud je definovaný.
 export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   [AUDIO_EVENTS.ambienceLoop]: { src: "/assets/audio/ambience_loop.mp3", volume: 0.35, loop: true },
-  [AUDIO_EVENTS.cameraNoise]: { src: "/assets/audio/camera_noise.mp3", volume: 0.5, loop: false },
+  // Zvuk překvapení, když je nepřítel právě na kameře nejblíž hráči (viz
+  // app/play/page.tsx handleSelectCamera) — tlukot srdce místo generického
+  // šumu, ať je to čitelnější jako "leknutí", ne jako rušení signálu.
+  // Žádný reálný soubor zatím neexistuje, spadne vždy na syntetizovaný
+  // fallback (dvě nízké "lub-dub" noty).
+  [AUDIO_EVENTS.heartbeat]: {
+    src: "/assets/audio/heartbeat.mp3",
+    volume: 0.6,
+    loop: false,
+    fallbackSynth: {
+      notes: [
+        { frequency: 90, durationMs: 90, gapMs: 90 },
+        { frequency: 70, durationMs: 110 },
+      ],
+      volume: 0.5,
+      waveform: "sine",
+    },
+  },
   [AUDIO_EVENTS.doorClose]: { src: "/assets/audio/door_close.mp3", volume: 0.7, loop: false },
   [AUDIO_EVENTS.doorOpen]: { src: "/assets/audio/door_open.mp3", volume: 0.7, loop: false },
   [AUDIO_EVENTS.lightClick]: { src: "/assets/audio/light_click.mp3", volume: 0.6, loop: false },

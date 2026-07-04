@@ -1,7 +1,7 @@
 // Jmenné konstanty zvukových událostí. UI a herní logika je používají místo syrových řetězců.
 export const AUDIO_EVENTS = {
   ambienceLoop: "ambience_loop",
-  cameraNoise: "camera_noise",
+  heartbeat: "heartbeat",
   doorClose: "door_close",
   doorOpen: "door_open",
   lightClick: "light_click",

@@ -162,8 +162,8 @@ hráče (`order`, nižší = dál venku):
 Otevřená kamera stojí malou energii a dočasně zpomaluje postup nepřítele, pokud
 je na ní právě vidět. Kamery nejsou instantní taby — po každém výběru/přepnutí
 kamera ~700 ms (`cameraFocusMs`) jen "ladí signál" (šum, žádný obsah), teprve
-pak ukáže ostrý obraz. Kliknutí na kameru navíc krátce zašumí (`camera_noise`) —
-zvuk překvapení, ne obyčejný UI klik: hraje **jen** když je nepřítel zrovna na
+pak ukáže ostrý obraz. Kliknutí na kameru navíc krátce ozve tlukotem srdce
+(`heartbeat`) — zvuk překvapení/leknutí, ne obyčejný UI klik: hraje **jen** když je nepřítel zrovna na
 kameře nejblíž hráči (`door_hallway`), a **jen jednou** za tuto "návštěvu" —
 dokud tam nepřítel je, další klikání (třeba přes jinou kameru a zpátky) ho
 neopakuje. Zvuk se "odjistí" znovu, až nepřítel z `door_hallway` odejde.

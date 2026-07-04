@@ -227,11 +227,11 @@ export default function PlayPage() {
   }
 
   function handleSelectCamera(cameraId: CameraId) {
-    // camera_noise je zvuk překvapení: hraje jen když je nepřítel právě na
+    // heartbeat je zvuk překvapení: hraje jen když je nepřítel právě na
     // kameře nejblíž hráči, a jen poprvé za tuto "návštěvu" — další kliknutí
     // (třeba na jinou kameru a zpátky), dokud tam pořád je, ho neopakuje.
     if (state.enemyStage === nearestCamera.enemyVisibleAtStage && !hasPlayedNearCameraSurpriseRef.current) {
-      audioManager.play(AUDIO_EVENTS.cameraNoise);
+      audioManager.play(AUDIO_EVENTS.heartbeat);
       hasPlayedNearCameraSurpriseRef.current = true;
     }
     dispatch({ type: "OPEN_CAMERA", cameraId });
