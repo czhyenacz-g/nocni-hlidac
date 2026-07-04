@@ -218,6 +218,8 @@
       růst/pokles, crossfade mezi `heartbeat_slow_reverb`/`heartbeat_fast_reverb` (CC0,
       OpenGameArt). Dev HUD "Stres: X" vedle energie (`STRESS_DEV_HUD_ENABLED`, časem
       schovat). Testy ve `game/audio/heartbeatStress.test.ts`.
+- [x] LoadingScreen teď přednačítá i kamerové snímky (`preloadCameraImages` v
+      `game/cameras/cameraAssets.object13.ts`), ne jen pozadí obrazovek
 - [ ] Playtest a doladění balancu (šance postupu nepřítele, retreatChance, spotřeba
       energie, rychlost dobíjení, časové okno poruchy generátoru, tempo kritického
       pípání, rozsah doorHoldRangeMs, doorLightRepelRequiredMs, restartPenaltyMs,

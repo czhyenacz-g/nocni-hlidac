@@ -121,6 +121,23 @@ export const CAMERA_ASSETS: Record<CameraId, CameraAssetsEntry> = {
   },
 };
 
+// Stáhne všechny kamerové snímky do cache prohlížeče na LoadingScreen (stejný
+// vzor jako preloadBackgroundImages v game/visuals/backgroundImages.ts) — ať
+// se detail kamery při první návštěvě dané kamery/stavu (monstrum/světlo)
+// nezobrazí s prodlevou/probliknutím, i na horším připojení.
+export function preloadCameraImages(): void {
+  if (typeof window === "undefined") return;
+  for (const entry of Object.values(CAMERA_ASSETS)) {
+    for (const set of [entry.default, entry.lightOn]) {
+      if (!set) continue;
+      for (const src of [...set.normal, ...set.monster]) {
+        const img = new Image();
+        img.src = src;
+      }
+    }
+  }
+}
+
 function resolveAssetSet(cameraId: CameraId, lightOn: boolean): CameraAssetSet {
   const entry = CAMERA_ASSETS[cameraId];
   if (lightOn && entry.lightOn) return entry.lightOn;

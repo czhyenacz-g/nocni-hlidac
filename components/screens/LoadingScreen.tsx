@@ -5,6 +5,7 @@ import { COPY } from "@/content/copy";
 import { selectLoadingHints } from "@/content/loadingHints";
 import { LOADING_SCREEN_DURATION_MS, LOADING_SCREEN_HINT_COUNT } from "@/game/balancing/constants";
 import { preloadBackgroundImages, BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
+import { preloadCameraImages } from "@/game/cameras/cameraAssets.object13";
 import SceneBackground from "@/components/SceneBackground";
 
 // Rozdělí hint na věty (podle .!? následovaného mezerou/koncem) — LoadingScreen
@@ -17,10 +18,10 @@ function splitSentences(text: string): string[] {
 }
 
 // Falešný briefing screen mezi hlavním menu a startem směny — žádné skutečné
-// technické načítání navenek, ale skutečně stáhne pozadí obrazovek do cache
-// prohlížeče (viz preloadBackgroundImages), ať se pak zobrazí okamžitě i při
-// zhoršeném připojení později ve směně. Atmosférický servisní terminál
-// Objektu 13 zatím nejde přeskočit (viz TODO.md).
+// technické načítání navenek, ale skutečně stáhne pozadí obrazovek i kamerové
+// snímky do cache prohlížeče (viz preloadBackgroundImages, preloadCameraImages),
+// ať se pak zobrazí okamžitě i při zhoršeném připojení později ve směně.
+// Atmosférický servisní terminál Objektu 13 zatím nejde přeskočit (viz TODO.md).
 export default function LoadingScreen() {
   const [hint] = useState(() => selectLoadingHints(LOADING_SCREEN_HINT_COUNT)[0]);
   const sentences = useMemo(() => (hint ? splitSentences(hint.text) : []), [hint]);
@@ -28,6 +29,7 @@ export default function LoadingScreen() {
 
   useEffect(() => {
     preloadBackgroundImages();
+    preloadCameraImages();
   }, []);
 
   useEffect(() => {

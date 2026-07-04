@@ -573,6 +573,14 @@ Falešný briefing mezi menu a startem směny — žádné skutečné technické
   dvě věty (většina jich má), nejdřív se objeví první, pak druhá, ne dvě různé hlášky vedle
   sebe. Jedna věta bez tečky uprostřed (např. s pomlčkou) se zobrazí najednou. Self-contained,
   `app/play/page.tsx` o výběru hintu nic neví.
+- `LoadingScreen` má ještě jeden `useEffect` (mount, prázdné deps), který zavolá
+  `preloadBackgroundImages()` (`game/visuals/backgroundImages.ts`) a
+  `preloadCameraImages()` (`game/cameras/cameraAssets.object13.ts`) — obojí jen `new
+  Image().src = ...` pro každý soubor (žádné čekání na výsledek, žádný stav), ať je
+  prohlížeč stihne stáhnout do cache dřív, než je hráč skutečně potřebuje (kamerový
+  detail, pozadí obrazovek). `preloadCameraImages` prochází `CAMERA_ASSETS` (`default` i
+  `lightOn` sadu u každé kamery, `normal` i `monster` snímky) — stejný vzor, nová funkce
+  vedle existující `preloadBackgroundImages`, ne sloučené do jedné.
 
 ## Struktura assetů podle mapy/objektu (`public/<map>/...`)
 
