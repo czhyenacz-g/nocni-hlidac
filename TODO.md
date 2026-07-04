@@ -220,6 +220,12 @@
       schovat). Testy ve `game/audio/heartbeatStress.test.ts`.
 - [x] LoadingScreen teď přednačítá i kamerové snímky (`preloadCameraImages` v
       `game/cameras/cameraAssets.object13.ts`), ne jen pozadí obrazovek
+- [x] Audio/stres tuning po playtestu: heartbeat o 20 % hlasitěji
+      (`HEARTBEAT_VOLUME_MULTIPLIER`), ambient se při vyšším stresu plynule ztišuje až na
+      20 % (`MIN_AMBIENT_STRESS_MULTIPLIER`, `computeAmbientStressMultiplier`), vypadlý
+      generátor v `criticalBeeping` přidává plochý +20 stresu
+      (`BACKUP_POWER_STRESS_BONUS`, `computeGeneratorStressBonus` — odvozené z
+      `generatorState`, ne akumulující se čítač)
 - [ ] Playtest a doladění balancu (šance postupu nepřítele, retreatChance, spotřeba
       energie, rychlost dobíjení, časové okno poruchy generátoru, tempo kritického
       pípání, rozsah doorHoldRangeMs, doorLightRepelRequiredMs, restartPenaltyMs,

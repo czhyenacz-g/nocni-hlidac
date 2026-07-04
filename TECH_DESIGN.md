@@ -456,7 +456,31 @@ zvukem od začátku, přesně čemu se má zabránit).
 podle GAME_DESIGN.md) vynásobené crossfade faktorem: `fadeToFast = clamp01((stress - 60) /
 20)` (0 pod 60, 1 nad 80, lineární přechod mezi), `fadeSlow = 1 - fadeToFast`. Pod stresem 60
 hraje jen slow, nad 80 jen fast, 60–80 je plynulý přechod — žádné tvrdé cvaknutí mezi
-soubory.
+soubory. Výsledek se navíc násobí `HEARTBEAT_VOLUME_MULTIPLIER` (1.2, playtest: heartbeat
+byl málo slyšet i po +12dB boostu souborů, viz `assets/audio/README.md`) a capuje na 1.0
+přes `clamp01` (`audio.volume` je 0..1, přestřelení by/nemělo žádný efekt navíc).
+
+**`computeGeneratorStressBonus(generatorState): number`** (`heartbeatStress.ts`) — plochý
+`BACKUP_POWER_STRESS_BONUS` (20), pokud `generatorState === "criticalBeeping"`, jinak 0.
+Čistě odvozené z aktuálního `state.generatorState` každý tik (žádný `xStressApplied` flag v
+`GameState`) — bonus se tím pádem nikdy neakumuluje (zůstává +20, dokud fáze trvá) a mizí
+sám, jakmile fáze skončí (restart generátoru resetuje `generatorState` na `"normal"`,
+restart směny přes `createInitialGameState`). `useHeartbeatStress` ho sečte s
+`computeHeartbeatTargetStress` (`Math.min(100, locationStress + generatorBonus)`) — jen
+`criticalBeeping` (skutečná porucha, rychlá spotřeba nouzové energie), ne `restarting`
+(trest za zbytečný restart FUNKČNÍHO generátoru — to není porucha).
+
+**`computeAmbientStressMultiplier(stressNormalized): number`** (`heartbeatStress.ts`) —
+`1 - stress * (1 - MIN_AMBIENT_STRESS_MULTIPLIER)`, lineárně 1.0 (stres 0) až
+`MIN_AMBIENT_STRESS_MULTIPLIER` (0.2, stres 1). `useHeartbeatStress` ho každý tik násobí se
+`BASE_AMBIENT_VOLUME` (= `AUDIO_CONFIG[AUDIO_EVENTS.ambienceLoop].volume`, čteno jednou při
+načtení modulu) a nastaví přes `audioManager.setVolume(ambienceLoop, ...)` — používá stejnou
+plynulou hodnotu `next` jako heartbeat, takže duck/návrat ambience je stejně pozvolný jako
+samotný stres, ne skokový. Při `!state.isRunning` se ambience volume resetuje zpátky na
+`BASE_AMBIENT_VOLUME` (příští spuštění směny nezačne s "duckovanou" hlasitostí od
+předchozí) — u smrti tohle běží ve stejném renderu těsně před `fadeOutLoop` (viz "Ticho před
+lekačkou" v AUDIO_DESIGN.md), takže fade i tak začíná od plné hlasitosti, ne od zbytku
+ducku.
 
 Dev HUD: `useHeartbeatStress` vrací aktuální (ne cílovou) stress hodnotu 0..1,
 `app/play/page.tsx` ji předá do `GameScreen` → `PowerMeter` jako `stressPercent =
@@ -465,7 +489,9 @@ je `true` — jedno místo k vypnutí, až logika bude odladěná, beze změny `
 (`stressPercent?: number`, `undefined` = nezobrazovat).
 
 Testy: `game/audio/heartbeatStress.test.ts` (Vitest) — `computeHeartbeatTargetStress` pro
-všechny lokace/stavy dveří/overview-vs-detail, `computeHeartbeatVolumes` pro crossfade.
+všechny lokace/stavy dveří/overview-vs-detail, `computeHeartbeatVolumes` pro crossfade a
+boost multiplier, `computeAmbientStressMultiplier` pro duck křivku,
+`computeGeneratorStressBonus` pro všechny `GeneratorState` hodnoty.
 
 ## Generátor
 

@@ -1,4 +1,9 @@
-import { CameraDefinition, CameraId, EnemyStage, PlayerView } from "../core/types";
+import { CameraDefinition, CameraId, EnemyStage, GeneratorState, PlayerView } from "../core/types";
+import {
+  BACKUP_POWER_STRESS_BONUS,
+  HEARTBEAT_VOLUME_MULTIPLIER,
+  MIN_AMBIENT_STRESS_MULTIPLIER,
+} from "../balancing/constants";
 
 export interface ComputeHeartbeatTargetStressInput {
   playerView: PlayerView;
@@ -42,6 +47,21 @@ export function computeHeartbeatTargetStress(input: ComputeHeartbeatTargetStress
     default:
       return 0;
   }
+}
+
+/**
+ * Jednorázový (stavově řízený, ne akumulující se) bonus stresu, dokud je
+ * generátor ve fázi `criticalBeeping` — porucha se protáhla přes reakční
+ * čas, generátor teď rychle spotřebovává nouzovou energii (viz
+ * `applyPowerDelta` v gameReducer.ts, `generatorExtraDrain`). Vrací se
+ * čerstvě z `state.generatorState` každý tik, ne z uloženého "applied" flagu
+ * — dokud fáze trvá, bonus zůstává stejných +20 (nesčítá se), a jakmile fáze
+ * skončí (restart generátoru, restart směny), zmizí sám od sebe beze
+ * zvláštního resetu. `restarting` (trest za zbytečný restart FUNKČNÍHO
+ * generátoru) bonus nedostává — to není porucha, jen sebepoškození hráče.
+ */
+export function computeGeneratorStressBonus(generatorState: GeneratorState): number {
+  return generatorState === "criticalBeeping" ? BACKUP_POWER_STRESS_BONUS : 0;
 }
 
 export interface HeartbeatVolumes {
@@ -97,5 +117,22 @@ export function computeHeartbeatVolumes(stress0to100: number): HeartbeatVolumes 
   const slowVolume = stress <= 0 ? 0 : lerpCurve(SLOW_VOLUME_CURVE, stress) * fadeSlow;
   const fastVolume = fadeToFast <= 0 ? 0 : lerpCurve(FAST_VOLUME_CURVE, stress) * fadeToFast;
 
-  return { slowVolume, fastVolume };
+  // Playtest feedback: pořád moc tichý i po +12dB boostu souborů (viz
+  // assets/audio/README.md) — o dalších ~20 % hlasitěji (HEARTBEAT_VOLUME_MULTIPLIER),
+  // capnuté na 1.0, ať nepřestřelí a nezkreslí (audio.volume je 0..1).
+  return {
+    slowVolume: clamp01(slowVolume * HEARTBEAT_VOLUME_MULTIPLIER),
+    fastVolume: clamp01(fastVolume * HEARTBEAT_VOLUME_MULTIPLIER),
+  };
+}
+
+/**
+ * Ambient (ambience_loop) při vyšším stresu plynule ztiší, ať heartbeat víc
+ * vynikne — lineárně od 100 % (stress 0) do `MIN_AMBIENT_STRESS_MULTIPLIER`
+ * (stress 100 %). Násobí se základní `AUDIO_CONFIG` hlasitostí ambience v
+ * useHeartbeatStress.ts, tahle funkce jen vrací multiplikátor (0..1).
+ */
+export function computeAmbientStressMultiplier(stressNormalized: number): number {
+  const stress = clamp01(stressNormalized);
+  return 1 - stress * (1 - MIN_AMBIENT_STRESS_MULTIPLIER);
 }

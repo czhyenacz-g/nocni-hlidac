@@ -1,9 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { audioManager } from "./audioManager";
 import { AUDIO_EVENTS } from "./audioEvents";
-import { computeHeartbeatTargetStress, computeHeartbeatVolumes } from "./heartbeatStress";
+import { AUDIO_CONFIG } from "./audioConfig";
+import {
+  computeAmbientStressMultiplier,
+  computeGeneratorStressBonus,
+  computeHeartbeatTargetStress,
+  computeHeartbeatVolumes,
+} from "./heartbeatStress";
 import { GameState, NightDefinition } from "../core/types";
 import { HEARTBEAT_STRESS_FALL_MS, HEARTBEAT_STRESS_RISE_MS } from "../balancing/constants";
+
+const BASE_AMBIENT_VOLUME = AUDIO_CONFIG[AUDIO_EVENTS.ambienceLoop].volume;
 
 /**
  * Spravuje plynulou hladinu stresu (0..1) a řídí podle ní dva heartbeat
@@ -33,10 +41,11 @@ export function useHeartbeatStress(state: GameState, night: NightDefinition): nu
       }
       audioManager.setVolume(AUDIO_EVENTS.heartbeatStressSlow, 0);
       audioManager.setVolume(AUDIO_EVENTS.heartbeatStressFast, 0);
+      audioManager.setVolume(AUDIO_EVENTS.ambienceLoop, BASE_AMBIENT_VOLUME);
       return;
     }
 
-    const targetStress = computeHeartbeatTargetStress({
+    const locationStress = computeHeartbeatTargetStress({
       playerView: state.playerView,
       isCameraDetailOpen: state.cameraOpen && state.cameraViewMode === "detail",
       activeCameraId: state.activeCameraId,
@@ -44,6 +53,12 @@ export function useHeartbeatStress(state: GameState, night: NightDefinition): nu
       doorClosed: state.doorClosed,
       cameras: night.cameras,
     });
+    // Vypadlý generátor v "criticalBeeping" (rychlé pípání + rychlý pokles
+    // nouzové energie, viz applyPowerDelta v gameReducer.ts) přidává plochý
+    // +20 bonus, dokud fáze trvá — čerstvě odvozený z generatorState každý
+    // tik (viz computeGeneratorStressBonus), ne akumulující se čítač.
+    const generatorBonus = computeGeneratorStressBonus(state.generatorState);
+    const targetStress = Math.min(100, locationStress + generatorBonus);
 
     const deltaMs = Math.max(0, state.elapsedMs - lastElapsedRef.current);
     lastElapsedRef.current = state.elapsedMs;
@@ -67,6 +82,13 @@ export function useHeartbeatStress(state: GameState, night: NightDefinition): nu
     const { slowVolume, fastVolume } = computeHeartbeatVolumes(next * 100);
     audioManager.setVolume(AUDIO_EVENTS.heartbeatStressSlow, slowVolume);
     audioManager.setVolume(AUDIO_EVENTS.heartbeatStressFast, fastVolume);
+
+    // Ambient plynule ztiší při vyšším stresu, ať heartbeat víc vynikne (viz
+    // GAME_DESIGN.md "Stres a heartbeat") — násobí se stejnou plynulou
+    // hodnotou "next", ne cílovou, takže duck/návrat je stejně pozvolný jako
+    // samotný stres.
+    const ambientMultiplier = computeAmbientStressMultiplier(next);
+    audioManager.setVolume(AUDIO_EVENTS.ambienceLoop, BASE_AMBIENT_VOLUME * ambientMultiplier);
   }, [
     state.isRunning,
     state.elapsedMs,
@@ -76,6 +98,7 @@ export function useHeartbeatStress(state: GameState, night: NightDefinition): nu
     state.activeCameraId,
     state.enemyStage,
     state.doorClosed,
+    state.generatorState,
     night.cameras,
   ]);
 

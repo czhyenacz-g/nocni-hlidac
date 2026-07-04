@@ -257,6 +257,13 @@ monstrum je:
 - Chodba před dveřmi (`door_hallway`), dveře **otevřené** → 100 — nejvyšší ohrožení,
   otevřené dveře + monstrum těsně u nich
 
+Navrch se přičítá **+20** (`BACKUP_POWER_STRESS_BONUS`), dokud je generátor ve fázi
+`criticalBeeping` — porucha se protáhla přes reakční čas, generátor teď rychle
+spotřebovává nouzovou energii (rychlé pípání + rychlý pokles energie, viz "Generátor"
+níže). Bonus je plochý, ne akumulující se (zůstává +20, dokud fáze trvá, nesčítá se každý
+tik) a zmizí sám, jakmile fáze skončí (restart generátoru). Součet (lokace + generátor) je
+capnutý na 100.
+
 Skutečná (zobrazovaná i slyšitelná) hodnota stresu neskáče na cíl okamžitě — plynule se k
 němu přibližuje, rychleji nahoru (~1 s) než dolů (~35 s, po playtestu zpomaleno z
 původních ~7 s — pokles se předtím zdál moc rychlý): leknutí přijde rychle,
@@ -266,7 +273,11 @@ odvrátí), stres nezmizí hned — dloube se dolů k 0 a heartbeat s ním postu
 Podle stresu hrají dva nekonečné heartbeat loopy (`heartbeat_slow_reverb.mp3` /
 `heartbeat_fast_reverb.mp3`, CC0 z OpenGameArt.org — viz `assets/audio/README.md`):
 slabší/střední stres = pomalejší tlukot, nejvyšší stres = rychlý, hlasitější tlukot.
-Přechod mezi nimi je plynulý crossfade (~60–80 stresu), ne tvrdé přepnutí.
+Přechod mezi nimi je plynulý crossfade (~60–80 stresu), ne tvrdé přepnutí. Po playtestu
+(heartbeat byl málo slyšet) je hlasitost obou loopů o 20 % vyšší
+(`HEARTBEAT_VOLUME_MULTIPLIER`) a ambientní pozadí se naopak při vyšším stresu plynule
+ztišuje — od plné hlasitosti (stres 0) až na 20 % (`MIN_AMBIENT_STRESS_MULTIPLIER`, stres
+100), ať je heartbeat v napjatých chvílích víc slyšet, ne přehlušený.
 
 ## Generátor
 
