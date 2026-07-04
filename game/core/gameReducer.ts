@@ -1,8 +1,9 @@
 import { GameAction } from "./gameActions";
 import { createInitialGameState } from "./gameState";
-import { EnemyDefinition, GameState, NightDefinition } from "./types";
+import { EnemyDefinition, EnemyStage, GameState, NightDefinition } from "./types";
 import { DOOR_DEATH_REVEAL_DURATION_MS, MAX_POWER } from "../balancing/constants";
 import { getBlackoutPhaseIndex } from "../visuals/blackoutPhase";
+import { DEFAULT_DIFFICULTY, DIFFICULTY_RULES, Difficulty } from "../difficulty/difficultyConfig";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -30,6 +31,18 @@ function isAtDoorStage(state: GameState): boolean {
 function rollDoorHoldTargetMs(enemy: EnemyDefinition): number {
   const { min, max } = enemy.doorHoldRangeMs;
   return min + Math.random() * (max - min);
+}
+
+// Kam nepřítel odejde, když se u zavřených dveří "vzdá" čekání (viz
+// ENEMY_ADVANCE "gave_up") — vybírá jen z lokací, které jsou skutečně v
+// aktivní trase dané směny (routeVariants má vždy jen JEDNU z left_hallway/
+// right_hallway), ať pozdější route.indexOf(...) nikdy nedostane -1.
+const MONSTER_RETREAT_CANDIDATES: EnemyStage[] = ["outer_yard", "left_hallway", "right_hallway"];
+
+function pickMonsterRetreatLocation(route: EnemyStage[]): EnemyStage {
+  const candidates = MONSTER_RETREAT_CANDIDATES.filter((stage) => route.includes(stage));
+  if (candidates.length === 0) return "outside";
+  return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
 // Když hráč aktivně sleduje kamery (otevřená kamera v pohledu na stůl), energie
@@ -174,8 +187,15 @@ function updateDoorLightRepel(state: GameState, night: NightDefinition, deltaMs:
   };
 }
 
-/** Reducer je čistá funkce (state, action) -> state; herní pravidla dané směny přijímá jako parametr. */
-export function createGameReducer(night: NightDefinition) {
+/**
+ * Reducer je čistá funkce (state, action) -> state; herní pravidla dané směny
+ * přijímá jako parametr. Obtížnost je zatím jen interní (žádné UI/query
+ * parametr, viz game/difficulty/difficultyConfig.ts) — herní logika níže nikdy
+ * nerozesetá `if (difficulty === "hard")`, jen čte konkrétní pravidla z `rules`.
+ */
+export function createGameReducer(night: NightDefinition, difficulty: Difficulty = DEFAULT_DIFFICULTY) {
+  const rules = DIFFICULTY_RULES[difficulty];
+
   return function gameReducer(state: GameState, action: GameAction): GameState {
     switch (action.type) {
       case "START_LOADING":
@@ -216,7 +236,38 @@ export function createGameReducer(night: NightDefinition) {
           state.doorDeathRevealUntilMs !== null
         )
           return state;
-        return { ...state, doorClosed: !state.doorClosed };
+
+        // Otevírání (ne zavírání) dveří, kdy monstrum předtím "vzdalo" čekání
+        // (viz ENEMY_ADVANCE "gave_up") a hráč ještě neověřil kamerou, kam
+        // odešlo: na easy (rules.monster_check_or_return vypnuté) je vždy
+        // bezpečné. Na medium/hard bez ověření se monstrum okamžitě vrátí
+        // zpět ke dveřím — trest, ne okamžitá smrt, viz GAME_DESIGN.md
+        // "Odchod monstra od dveří".
+        if (
+          state.doorClosed &&
+          rules.monster_check_or_return &&
+          state.monsterRetreatedTo !== null &&
+          !state.monsterRetreatVerified
+        ) {
+          return {
+            ...state,
+            doorClosed: false,
+            enemyStage: "at_door",
+            lastEnemyDecision: "returned_unverified",
+            enemyAtDoorSinceMs: state.elapsedMs,
+            enemyDoorHoldTargetMs: null,
+            enemyDoorHoldProgressMs: 0,
+            monsterRetreatedTo: null,
+            monsterRetreatVerified: false,
+          };
+        }
+
+        return {
+          ...state,
+          doorClosed: !state.doorClosed,
+          monsterRetreatedTo: null,
+          monsterRetreatVerified: false,
+        };
 
       case "TOGGLE_LIGHT":
         if (!state.isRunning || state.gameStatus === "blackout" || state.doorDeathRevealUntilMs !== null)
@@ -284,6 +335,16 @@ export function createGameReducer(night: NightDefinition) {
         // teprve tady se počítá jako aktivní sledování (viz isEnemyBeingWatched).
         if (!state.isRunning || state.gameStatus === "blackout" || state.doorDeathRevealUntilMs !== null)
           return state;
+
+        // Hráč právě uviděl kameru, kam monstrum odešlo po "vzdání se" čekání
+        // u dveří (viz ENEMY_ADVANCE "gave_up") -> potvrzeno, otevření dveří
+        // je teď bezpečné (viz TOGGLE_DOOR).
+        const camera = night.cameras.find((c) => c.id === action.cameraId);
+        const monsterRetreatVerified =
+          state.monsterRetreatedTo !== null && camera?.enemyVisibleAtStage === state.enemyStage
+            ? true
+            : state.monsterRetreatVerified;
+
         return {
           ...state,
           cameraOpen: true,
@@ -292,6 +353,7 @@ export function createGameReducer(night: NightDefinition) {
           // Nová "ladění signálu" perioda při každém výběru/přepnutí kamery —
           // CameraView zobrazí šum, dokud state.elapsedMs nedosáhne tohoto času.
           cameraFocusUntilMs: state.elapsedMs + night.cameraFocusMs,
+          monsterRetreatVerified,
         };
 
       case "CLOSE_CAMERAS":
@@ -429,13 +491,19 @@ export function createGameReducer(night: NightDefinition) {
             const progress = state.enemyDoorHoldProgressMs + night.enemyTickMs;
 
             if (progress >= target) {
+              const retreatedTo = pickMonsterRetreatLocation(route);
               return {
                 ...state,
-                enemyStage: "outside",
+                enemyStage: retreatedTo,
                 lastEnemyDecision: "gave_up",
                 enemyAtDoorSinceMs: null,
                 enemyDoorHoldTargetMs: null,
                 enemyDoorHoldProgressMs: 0,
+                monsterRetreatedTo: retreatedTo,
+                // easy (rules.monster_check_or_return vypnuté) nepotřebuje
+                // ověření kamerou -> rovnou "ověřeno", dveře jdou otevřít bez
+                // dalšího kroku (viz TOGGLE_DOOR).
+                monsterRetreatVerified: !rules.monster_check_or_return,
               };
             }
             return {

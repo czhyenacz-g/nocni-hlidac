@@ -27,7 +27,8 @@ export type EnemyMoveDecision =
   | "waiting_at_door"
   | "gave_up"
   | "light_repelled"
-  | "attack";
+  | "attack"
+  | "returned_unverified";
 
 export type ScreenId = "menu" | "loading" | "playing" | "death" | "win";
 
@@ -254,6 +255,22 @@ export interface GameState {
   doorLightRepelMs: number;
   /** Zvyšuje se při každém repelu — UI podle změny spouští monsterRetreatRoar (viz app/play/page.tsx). */
   monsterRetreatRoarSeq: number;
+
+  /**
+   * Kam monstrum odešlo poté, co se u zavřených dveří "vzdalo" čekání
+   * (ENEMY_ADVANCE "gave_up") — `null` mimo tenhle stav. Na `medium`/`hard`
+   * (`DIFFICULTY_RULES.monster_check_or_return`) musí hráč tohle místo najít
+   * na kameře (`monsterRetreatVerified`), než je bezpečné dveře otevřít —
+   * viz GAME_DESIGN.md "Odchod monstra od dveří".
+   */
+  monsterRetreatedTo: EnemyStage | null;
+  /**
+   * Jestli hráč už na kameře viděl, kam monstrum odešlo. `true` rovnou na
+   * `easy` (pravidlo vypnuté, žádné ověřování není potřeba). Dokud je
+   * `monsterRetreatedTo` nastavené a tohle `false`, otevření dveří pošle
+   * monstrum okamžitě zpátky ke dveřím (TOGGLE_DOOR).
+   */
+  monsterRetreatVerified: boolean;
 
   deathReason: DeathReason | null;
   /**

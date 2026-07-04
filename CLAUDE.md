@@ -88,6 +88,17 @@ funkce, abstrakce ani konfigurovatelnost, které aktuální směna nepotřebuje.
   `DoorView` (na výslovnou žádost — tenhle případ má dostat vlastní obrazovku později, ne
   být narvaný do DoorView flow).
 
+## Obtížnost patří do `game/difficulty/`, nikdy rozeseté podmínky
+
+Herní pravidla, která se liší podle obtížnosti (`game/difficulty/difficultyConfig.ts`,
+`Difficulty = "easy" | "medium" | "hard"`, výchozí `medium`), jsou plochý objekt booleanů/
+hodnot v `DIFFICULTY_RULES`, ne rozesetá `if (difficulty === "hard")` po `gameReducer.ts`.
+`createGameReducer(night, difficulty)` si jednou spočítá `rules = DIFFICULTY_RULES[difficulty]`
+a dál v reduceru se čte jen `rules.nazev_pravidla`. Nové obtížnostní pravidlo = nový klíč v
+`DifficultyRules`, ne nová větev podle `difficulty` přímo. Zatím žádné UI ani query parametr
+pro výběr obtížnosti — jen interní `DEFAULT_DIFFICULTY` v konfiguraci, dokud projekt neopustí
+early vývoj (viz TECH_DESIGN.md "Obtížnost").
+
 ## Povinnost držet audio odděleně
 
 Veškerá audio logika žije v `game/audio/` (`audioManager.ts`, `audioEvents.ts`,

@@ -77,9 +77,12 @@ to je stav pro DoorView, ne kameru. (Existuje ještě `breach` — připravená 
   - jinak **zůstává** na místě
   - Poslední rozhodnutí (`advance`/`stay`/`retreat`/...) je vidět v DebugPanelu.
 - Když je u dveří (`at_door`):
-  - dveře zavřené → po náhodné době 6–8 s se vzdá a vrátí úplně na začátek trasy
+  - dveře zavřené → po náhodné době 6–8 s se vzdá a odejde na jednu z chodeb
+    (`right_hallway`/`left_hallway`) nebo na venkovní vstup (`outer_yard`) —
+    vždy jen tam, kudy skutečně vede aktivní trasa dané směny
     (`doorHoldRangeMs`) — nezávisle na světle, viz "Světlo a dveře" níže pro
-    mnohem rychlejší kombinovaný efekt
+    mnohem rychlejší kombinovaný efekt a "Obtížnost" níže pro to, co musí hráč
+    udělat, než je bezpečné dveře otevřít
   - dveře otevřené → zaútočí na nejbližším vyhodnocení (do ~2 s) → jumpscare → smrt
 
 ## Energie
@@ -147,6 +150,25 @@ potvrzující nástroj navrch, ne náhrada za zavření dveří.
 Časovač se počítá v `TICK` (běžný herní tik, ~100 ms), ne v `ENEMY_ADVANCE`
 (~2 s) — proto repel přijde předvídatelně kolem 1,5 s, ne v hrubých skocích po
 celých `enemyTickMs`.
+
+## Obtížnost
+
+Interní, zatím bez UI ani query parametru (viz TECH_DESIGN.md "Obtížnost") —
+tři úrovně, `easy`/`medium`/`hard`, výchozí `medium`. Ovlivňuje jediné aktuální
+pravidlo, **odchod monstra od dveří**:
+
+Když monstrum u zavřených dveří "vzdá" čekání (viz "Nepřítel" výše) a odejde na
+jednu z chodeb nebo na venkovní vstup:
+
+- **easy** — jakmile monstrum odejde, je bezpečné dveře otevřít rovnou.
+- **medium/hard** — nestačí počkat. Hráč musí monstrum nejdřív najít na správné
+  kameře (ta, která odpovídá místu, kam odešlo), teprve pak je bezpečné dveře
+  otevřít. Pokud hráč otevře dřív, monstrum se okamžitě vrátí zpátky ke dveřím
+  — není to okamžitá smrt, ale trest a návrat hrozby: dveře je potřeba znovu
+  zavřít a situaci vyřešit správně.
+
+`medium` a `hard` se dnes chovají stejně — `hard` je připravené místo pro
+budoucí přísnější pravidla, ne duplicitní kopie `medium`.
 
 ## Kamery
 

@@ -205,6 +205,11 @@
       `/about` — ne na herních obrazovkách, ať nic neruší
 - [x] `/about` stránka — kdo za projektem stojí, pocta nočním pracovníkům, textová
       avizace budoucí důstojné inzerce/sponzoringu (žádný formulář/backend)
+- [x] Interní systém obtížnosti (`game/difficulty/difficultyConfig.ts`, zatím bez UI/query
+      parametru, výchozí `medium`) — první pravidlo `monster_check_or_return`: na
+      `medium`/`hard` musí hráč po "vzdání se" monstra u dveří ověřit kamerou, kam odešlo,
+      než je bezpečné dveře otevřít, jinak se monstrum vrátí zpět; na `easy` stačí počkat.
+      Testy ve `game/core/difficulty.test.ts` (Vitest, `npm run test`).
 - [ ] Playtest a doladění balancu (šance postupu nepřítele, retreatChance, spotřeba
       energie, rychlost dobíjení, časové okno poruchy generátoru, tempo kritického
       pípání, rozsah doorHoldRangeMs, doorLightRepelRequiredMs, restartPenaltyMs,

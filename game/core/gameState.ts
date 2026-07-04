@@ -53,6 +53,8 @@ export function createInitialGameState(night: NightDefinition): GameState {
     enemyDoorHoldProgressMs: 0,
     doorLightRepelMs: 0,
     monsterRetreatRoarSeq: 0,
+    monsterRetreatedTo: null,
+    monsterRetreatVerified: false,
 
     deathReason: null,
     doorDeathRevealUntilMs: null,
