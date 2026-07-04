@@ -71,6 +71,9 @@
       cesty centralizované v `game/visuals/backgroundImages.ts` (`BACKGROUND_IMAGES`),
       `preloadBackgroundImages()` je natvrdo stáhne do cache prohlížeče při
       `LoadingScreen.tsx`, ať se pak zobrazí okamžitě i při zhoršeném připojení
+      (oprava: `.pixel-panel`/`.pixel-button` měly plné neprůhledné pozadí, takže
+      prakticky celý DeskView pozadí zakrýval — přepnuto na poloprůhledné `rgba(...)`
+      v `styles/pixel.css`, aby bylo skutečně vidět skrz mezery i skrz panely)
 - [x] `/dev-sound` — dev stránka se seznamem všech audio eventů (`game/audio/audioEvents.ts`),
       popisem, souborem/fallbackem a tlačítkem přehrát (`app/dev-sound/`, gatované
       `DEBUG_PANEL_ENABLED`)
