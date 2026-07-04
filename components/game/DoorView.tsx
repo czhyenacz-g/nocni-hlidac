@@ -9,20 +9,29 @@ interface DoorViewProps {
 
 // Pohled na dveře: jediné místo, odkud jde dveře zavřít/otevřít. Hráč se sem
 // musí nejdřív otočit z DeskView (viz gameActions.ts LOOK_AT_DOOR).
+//
+// Klikací plocha (.door-hotspot, styles/pixel.css) je průhledný hotspot
+// posazený procentuálně na samotné dveře ve SceneBackground obrázku (viz
+// GameScreen.tsx BACKGROUND_SCENES.door) — žádný neprůhledný panel přes
+// scénu, ať má hráč pocit, že kliká přímo na dveře, ne na UI tlačítko.
+// Stav dveří (otevřeno/zavřeno) je vidět přímo v obrázku (elektronický
+// zámek vpravo), takže tu není potřeba velký textový popisek.
 export default function DoorView({ doorClosed, onToggleDoor, onLookAtDesk }: DoorViewProps) {
   return (
     <div className="flex flex-col gap-3">
-      <ViewSwitchArrow label={COPY.game.lookAtDeskLabel} onClick={onLookAtDesk} align="left" />
+      <div className="relative h-64 w-full">
+        <button
+          className="door-hotspot tap-target-critical absolute flex items-end justify-center"
+          style={{ left: "30%", top: "14%", width: "40%", height: "70%" }}
+          data-active={doorClosed}
+          onClick={onToggleDoor}
+          aria-label={doorClosed ? "Otevřít dveře" : "Zavřít dveře"}
+        >
+          <span className="door-hotspot-label">{COPY.game.doorViewHint}</span>
+        </button>
+      </div>
 
-      <button
-        className="pixel-button pixel-screen-static tap-target-critical h-48 w-full flex flex-col items-center justify-center gap-2 text-sm"
-        data-active={doorClosed}
-        onClick={onToggleDoor}
-        aria-label={doorClosed ? "Otevřít dveře" : "Zavřít dveře"}
-      >
-        <span>{doorClosed ? COPY.game.doorClosedLabel : COPY.game.doorOpenLabel}</span>
-        <span className="text-[10px] text-gray-400">{COPY.game.doorViewHint}</span>
-      </button>
+      <ViewSwitchArrow label={COPY.game.lookAtDeskLabel} onClick={onLookAtDesk} align="left" />
     </div>
   );
 }

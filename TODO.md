@@ -99,6 +99,12 @@
       okamžiku útoku (`GameState.doorDeathRevealUntilMs`, `DOOR_DEATH_REVEAL_DURATION_MS` v
       `game/balancing/constants.ts`). Smrt u kamer/generátoru zůstává záměrně beze změny
       (instantní, žádné vynucené přepnutí na `DoorView`) — dostane vlastní řešení později.
+- [x] DoorView doladění: velký neprůhledný panel přes dveře nahrazen průhledným hotspotem
+      (`.door-hotspot`, opacity ~0.1, procentuální pozice přes samotné dveře v obrázku) —
+      hráč má pocit, že kliká přímo na dveře, ne na UI tlačítko. Velký text stavu dveří pryč
+      (stav je vidět v obrázku), zůstala jen malá cedulka. Horní HUD (čas/zvuk/energie) se v
+      `DoorView` vůbec nerenderuje (ne jen CSS skrytí), "Zpět k panelu" přesunuto dolů pod
+      dveře. Desk/generator beze změny.
       Čistě lokální mezistav jen pro tenhle případ — blackout beze změny.
 - [x] `/dev-sound` — dev stránka se seznamem všech audio eventů (`game/audio/audioEvents.ts`),
       popisem, souborem/fallbackem a tlačítkem přehrát (`app/dev-sound/`, gatované

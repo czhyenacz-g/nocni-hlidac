@@ -149,6 +149,45 @@
   min-width: 56px;
 }
 
+/* ── Průhledný hotspot dveří (DoorView.tsx) ──────────────────────────────
+ * Klikací plocha posazená přímo na dveře ve SceneBackground obrázku (ne
+ * neprůhledný UI panel přes celou scénu) — hráč má mít pocit, že kliká na
+ * dveře samotné. Opacity záměrně nízká (~0.08-0.18), jen aby hotspot byl
+ * vůbec vnímatelný a klikatelný, ne aby vypadal jako tlačítko. Velikost se
+ * nastavuje inline stylem v procentech (viz DoorView.tsx), ne tady — jen
+ * vzhled. .tap-target-critical (min. 56×56 px) hlídá minimální dotykovou
+ * plochu i kdyby procenta na malém displeji vyšla menší. */
+.door-hotspot {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.door-hotspot:hover,
+.door-hotspot:focus-visible {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.4);
+  outline: none;
+}
+
+/* Zavřené dveře — jemný zelenavý nádech rámečku místo výrazné barvy, ať
+ * hotspot zůstane nenápadný. */
+.door-hotspot[data-active="true"] {
+  border-color: rgba(74, 222, 128, 0.35);
+}
+
+.door-hotspot-label {
+  font-size: 9px;
+  color: rgba(229, 231, 235, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  margin-bottom: 4px;
+  background: rgba(17, 24, 39, 0.45);
+  border-radius: 2px;
+}
+
 /* Šipky/hotspoty pro přepnutí pohledu (stůl <-> dveře/generátor). */
 .view-hotspot {
   min-height: 48px;

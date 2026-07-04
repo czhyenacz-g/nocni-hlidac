@@ -68,12 +68,19 @@ export default function GameScreen({
       )}
 
       <div className="flex flex-col gap-4 max-w-md mx-auto">
-        <div className="flex justify-between items-center">
-          <ShiftTimer remainingMs={state.remainingMs} />
-          <AudioToggle muted={state.audioMuted} onToggle={onToggleAudio} />
-        </div>
+        {/* V DoorView schválně nerenderujeme čas/zvuk/energii vůbec (ne jen
+            skryté přes CSS) — hráč se má soustředit na dveře, ne na obecné
+            HUD. Desk/generator zůstávají beze změny. */}
+        {!isDoorView && (
+          <>
+            <div className="flex justify-between items-center">
+              <ShiftTimer remainingMs={state.remainingMs} />
+              <AudioToggle muted={state.audioMuted} onToggle={onToggleAudio} />
+            </div>
 
-        <PowerMeter power={state.power} />
+            <PowerMeter power={state.power} />
+          </>
+        )}
 
         {state.gameStatus === "blackout" ? (
           <BlackoutView blackoutElapsedMs={state.blackoutElapsedMs} blackout={night.blackout} />

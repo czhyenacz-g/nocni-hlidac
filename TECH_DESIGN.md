@@ -254,7 +254,19 @@ klikatelné — nejde jen o vizuální přepínač: `TOGGLE_DOOR` funguje jen kd
   generátor (`ViewSwitchArrow`). Dveře ani generátor tu nejsou vůbec vykreslené.
   Šipka na generátor dostává `urgent={state.generatorState !== "normal"}`.
 - `components/game/DoorView.tsx` — samotné dveře (klik = `TOGGLE_DOOR`) + šipka
-  zpět na stůl.
+  zpět na stůl. Klikací plocha je `.door-hotspot` (`styles/pixel.css`) — průhledný
+  hotspot (opacity ~0.1, jemně viditelnější na hover/focus) posazený inline stylem
+  v procentech (`left`/`top`/`width`/`height`) přímo na dveře ve `SceneBackground`
+  obrázku (`BACKGROUND_SCENES.door`), ne neprůhledný panel přes celou scénu —
+  hráč má mít pocit, že kliká na dveře samotné, ne na UI tlačítko. Velký textový
+  popisek stavu dveří je záměrně pryč (stav je vidět přímo v obrázku — elektronický
+  zámek vpravo), zůstala jen malá nenápadná cedulka (`.door-hotspot-label`) s
+  `COPY.game.doorViewHint`. `.tap-target-critical` (min. 56×56 px) hlídá minimální
+  dotykovou plochu, i kdyby procenta na malém displeji vyšla menší. `ViewSwitchArrow`
+  zpět na stůl je teď dole pod dveřmi, ne nahoře — vizuálně méně dominantní než
+  samotné dveře. `GameScreen.tsx` navíc v `DoorView` vůbec nerenderuje horní HUD
+  (`ShiftTimer`/`AudioToggle`/`PowerMeter`) — `!isDoorView &&` podmínka, ne jen CSS
+  skrytí — ať se hráč soustředí na dveře; desk/generator zůstávají beze změny.
 - `components/game/GeneratorView.tsx` — generátor s vizuální kontrolkou
   (`.pixel-indicator` v `styles/pixel.css`, stav podle `data-state`), klik =
   `RESTART_GENERATOR` + šipka zpět na stůl.
