@@ -48,3 +48,11 @@ export const HEARTBEAT_STRESS_FALL_MS = 7000;
 // Dočasné dev zobrazení "Stres: X" v HUDu vedle energie (viz PowerMeter.tsx,
 // app/play/page.tsx) — jde vypnout jedním přepnutím, až logika bude ověřená.
 export const STRESS_DEV_HUD_ENABLED = true;
+
+// Sekvence útoku/smrti (viz app/play/page.tsx, efekt na state.screen ===
+// "death", AUDIO_DESIGN.md "Ticho před lekačkou"): ambience plynule ztlumí
+// přes AMBIENCE_DEATH_FADE_MS, pak JUMPSCARE_SILENT_GAP_MS ticha, teprve
+// potom zahraje jumpscare — ticho těsně před lekačkou je součást efektu, ne
+// jen okamžik navíc.
+export const AMBIENCE_DEATH_FADE_MS = 300;
+export const JUMPSCARE_SILENT_GAP_MS = 200;

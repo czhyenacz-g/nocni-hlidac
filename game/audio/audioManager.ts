@@ -84,6 +84,36 @@ class AudioManager {
     audio.currentTime = 0;
   }
 
+  /**
+   * Plynule ztlumí běžící loop k tichu přes `durationMs`, pak ho zastaví a
+   * vrátí na výchozí hlasitost z configu (pro příští `startLoop`) — na
+   * rozdíl od `stopLoop` (okamžité, tvrdé zastavení). Používá se před
+   * jumpscare/smrtí, viz app/play/page.tsx a AUDIO_DESIGN.md "Ticho před
+   * lekačkou".
+   */
+  fadeOutLoop(id: AudioEventId, durationMs: number): void {
+    const audio = this.elements.get(id);
+    if (!audio) return;
+
+    const config = AUDIO_CONFIG[id];
+    const startVolume = audio.volume;
+    const startedAt = performance.now();
+
+    const step = () => {
+      const elapsed = performance.now() - startedAt;
+      const t = Math.min(1, elapsed / durationMs);
+      audio.volume = startVolume * (1 - t);
+      if (t < 1) {
+        requestAnimationFrame(step);
+      } else {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.volume = config.volume;
+      }
+    };
+    requestAnimationFrame(step);
+  }
+
   stopAll(): void {
     for (const audio of this.elements.values()) {
       audio.pause();

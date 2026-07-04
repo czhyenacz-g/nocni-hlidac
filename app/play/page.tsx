@@ -16,7 +16,7 @@ import { AUDIO_EVENTS } from "@/game/audio/audioEvents";
 import { computeTensionLevel } from "@/game/visuals/atmosphereState";
 import { atmosphereStyleToCssVars, tensionToAtmosphereStyle } from "@/game/visuals/visualEffects";
 import { getBlackoutPhaseIndex } from "@/game/visuals/blackoutPhase";
-import { LOADING_SCREEN_DURATION_MS } from "@/game/balancing/constants";
+import { AMBIENCE_DEATH_FADE_MS, JUMPSCARE_SILENT_GAP_MS, LOADING_SCREEN_DURATION_MS } from "@/game/balancing/constants";
 import { getDeathCount, incrementDeathCount } from "@/game/core/deathCount";
 import { getSurvivedNights, incrementSurvivedNights, resetSurvivedNights } from "@/game/core/survivedNights";
 import { useHeartbeatStress } from "@/game/audio/useHeartbeatStress";
@@ -67,7 +67,12 @@ export default function PlayPage() {
       audioManager.startLoop(AUDIO_EVENTS.ambienceLoop);
     }
     if (state.screen === "death") {
-      audioManager.stopLoop(AUDIO_EVENTS.ambienceLoop);
+      // Útok/smrt má vlastní tříbeatovou sekvenci, ne okamžité zastavení
+      // ambience + hned jumpscare: (1) ambience plynule ztiší přes
+      // AMBIENCE_DEATH_FADE_MS, (2) JUMPSCARE_SILENT_GAP_MS naprostého ticha,
+      // (3) teprve pak jumpscare — ticho těsně před lekačkou je součást
+      // efektu (viz AUDIO_DESIGN.md "Ticho před lekačkou").
+      audioManager.fadeOutLoop(AUDIO_EVENTS.ambienceLoop, AMBIENCE_DEATH_FADE_MS);
       // Counter se zvyšuje přesně tady — při přechodu hry do "death" stavu,
       // ne při kliknutí na tlačítko restartu (handleRestart) a ne při výhře.
       // Tenhle efekt už díky prevScreenRef diffingu (viz podmínka nahoře)
@@ -77,14 +82,14 @@ export default function PlayPage() {
       // game/core/survivedNights.ts), death counter nahoře tím není dotčený.
       setSurvivedNights(resetSurvivedNights());
       if (state.deathReason === "door_open_at_attack") {
-        // Poslední krok těsně u dveří musí být zřetelně slyšet PŘED
-        // jumpscare zvukem, ne zamíchaně přes sebe — proto krátký odklad,
-        // ne current instantní přehrání obou najednou.
+        // Poslední krok těsně u dveří hraje hned (stihne doznít dávno před
+        // jumpscare, viz gap níže) — zřetelně odděleně, ne zamíchaně přes sebe.
         audioManager.play(AUDIO_EVENTS.enemyStep);
-        jumpscareTimeout = setTimeout(() => audioManager.play(AUDIO_EVENTS.jumpscare), 220);
-      } else {
-        audioManager.play(AUDIO_EVENTS.jumpscare);
       }
+      jumpscareTimeout = setTimeout(
+        () => audioManager.play(AUDIO_EVENTS.jumpscare),
+        AMBIENCE_DEATH_FADE_MS + JUMPSCARE_SILENT_GAP_MS,
+      );
     }
     if (state.screen === "win") {
       audioManager.stopLoop(AUDIO_EVENTS.ambienceLoop);

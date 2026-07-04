@@ -81,25 +81,38 @@ nepřítel je, místo jednou za jeho "návštěvu". Reset flagu má vlastní `us
 
 ## Ticho před lekačkou
 
-Definice lekaček (`game/jumpscares/jumpscares.object13.ts`) obsahuje `silenceBeforeMs` —
-záměrné krátké ticho před `jumpscare` zvukem. V první verzi je hodnota připravená v datech;
-samotné vizuální/zvukové zpoždění lze doladit later bez zásahu do herní logiky.
+Přechod na `state.screen === "death"` (`app/play/page.tsx`) spouští jednotnou tříbeatovou
+sekvenci pro **oba** důvody smrti (`door_open_at_attack` i `blackout_timeout`), ne okamžité
+zastavení ambience a hned `jumpscare`:
+
+1. **Ambience plynule ztiší** — `audioManager.fadeOutLoop(AUDIO_EVENTS.ambienceLoop,
+   AMBIENCE_DEATH_FADE_MS)` (300 ms, `game/balancing/constants.ts`), ne tvrdé
+   `stopLoop`. `fadeOutLoop` (viz `audioManager.ts`) po dojetí fadu loop zastaví a vrátí mu
+   výchozí hlasitost z configu pro příští spuštění.
+2. **Ticho** — `JUMPSCARE_SILENT_GAP_MS` (200 ms) naprostého ticha, žádný zvuk nehraje.
+3. **`jumpscare`** — zahraje přesně `AMBIENCE_DEATH_FADE_MS + JUMPSCARE_SILENT_GAP_MS`
+   (500 ms) od vstupu do "death" (`setTimeout` uvnitř efektu, s cleanupem přes
+   `clearTimeout` při dalším přechodu obrazovky).
+
+Definice lekaček (`game/jumpscares/jumpscares.object13.ts`, `silenceBeforeMs`) je zatím
+nepoužitá připravená data — skutečné časování řídí konstanty výše, ne tenhle soubor.
 
 ## Útok u dveří — krok před jumpscare, ne najednou
 
-Smrt `door_open_at_attack` má vlastní krátkou zvukovou sekvenci, ať zní jako "poslední
-krok, pak útok", ne jako dva zvuky přehrané naráz přes sebe. `app/play/page.tsx`:
+Smrt `door_open_at_attack` má navíc krok navíc, ať zní jako "poslední krok, pak útok", ne
+jako dva zvuky přehrané naráz přes sebe:
 
 - `state.enemyStage === "at_door"` (nepřítel došel ke dveřím, standoff začíná) — hraje
   `enemy_near`, jako dřív.
 - Přechod na `state.enemyStage === "attack"` (dveře byly otevřené) sám o sobě **nic
   nepřehrává** — jen `enemy_step`/`enemy_near` efekt ho záměrně přeskakuje, aby se
   nepřekrýval se sekvencí níže.
-- Skutečná sekvence běží v efektu na `state.screen === "death"`: pro
-  `deathReason === "door_open_at_attack"` se nejdřív přehraje `enemy_step` (poslední krok
-  těsně za dveřmi) a až po ~220 ms `jumpscare` — `setTimeout` uvnitř efektu, s cleanupem
-  (`clearTimeout`) při dalším přechodu obrazovky. Pro `blackout_timeout` (a `win`) se
-  žádné zpoždění nepřidává, `jumpscare`/`shift_win` hraje instantně jako dřív.
+- Skutečná sekvence běží v efektu na `state.screen === "death"` (viz "Ticho před lekačkou"
+  výše): pro `deathReason === "door_open_at_attack"` se `enemy_step` (poslední krok těsně
+  za dveřmi) přehraje hned na vstupu do "death", souběžně se startem ambience fadu — stihne
+  doznít dávno předtím, než po 500 ms přijde `jumpscare`, takže zůstávají zřetelně oddělené.
+  Pro `blackout_timeout` se `enemy_step` nehraje, jen fade → ticho → `jumpscare`. `win`
+  (`shift_win`) zůstává beze změny, instantní, žádný fade/gap.
 
 ## Jak funguje AudioManager
 
