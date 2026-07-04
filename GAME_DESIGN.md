@@ -247,7 +247,8 @@ obrazovka).
 Obraz v detailu kamery navíc velmi jemně "dýchá" — pomalý pohyb zleva doprava (a mírně
 nahoru/dolů) a zpátky, jako by kamera nebyla úplně statická (`game/cameras/
 cameraMotionConfig.ts`). Žádné rychlé třesení ani glitch, jen sotva postřehnutelný drift na
-pozadí — cyklus tam a zpátky trvá ~18 sekund. Konfigurovatelné/vypnutelné na jednom místě,
+pozadí — cyklus tam a zpátky trvá ~25 sekund (~12,6 s na směr, po playtestu o 30 % zrychleno
+z původních ~18 s). Konfigurovatelné/vypnutelné na jednom místě,
 případně jde nastavit jinak per kamera (zatím žádná výjimka).
 
 ## Stres a heartbeat

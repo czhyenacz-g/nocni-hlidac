@@ -238,9 +238,12 @@
 - [x] `right_hallway` teď má vlastní monster snímky (03/05/07/10 přejmenované,
       `CAMERA_ASSETS` aktualizováno) — dřív mělo prázdné `monster: []`
 - [x] Jemný kamerový drift v detailu kamery (`game/cameras/cameraMotionConfig.ts`,
-      `.camera-image-motion` v `styles/pixel.css`) — pomalý pan+zoom tam a zpátky (~18 s),
+      `.camera-image-motion` v `styles/pixel.css`) — pomalý pan+zoom tam a zpátky,
       vypnutelné/laditelné jedním configem, bezpečné díky `object-cover` + `overflow:
       hidden`, který `CameraView.tsx` už měl
+- [x] Kamerový drift doladěný po playtestu: o 30 % rychlejší (18000 -> 12600 ms na směr) a
+      větší horizontální posun (`panXPercent` 1.5 -> 2.2, `zoom` 1.03 -> 1.05, aby zůstala
+      zachovaná bezpečná rezerva)
 - [x] Generátor `restarting` (omylem restartovaný funkční generátor) teď pípá stejně
       rychle jako `criticalBeeping` (dřív potichu) a přidává vyšší stres bonus (+40,
       `GENERATOR_RESTART_STRESS_BONUS`) než skutečná porucha (+20) — vlastní chyba bolí víc

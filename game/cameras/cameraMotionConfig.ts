@@ -18,10 +18,15 @@ export interface CameraMotionConfig {
 // vypnutí/doladění, ne rozeseté konstanty po komponentě.
 export const CAMERA_MOTION_CONFIG: CameraMotionConfig = {
   enabled: true,
-  zoom: 1.03,
-  panXPercent: 1.5,
+  // Zoom zvýšený spolu s panXPercent níže — bezpečná max hranice pro pan je
+  // zhruba (zoom - 1) * 100 / 2 %, jinak by translate odkryl okraj obrázku
+  // (viz TECH_DESIGN.md "Kamerový drift").
+  zoom: 1.05,
+  // O trochu větší horizontální posun na žádost po playtestu (1.5 -> 2.2).
+  panXPercent: 2.2,
   panYPercent: 0.5,
-  durationMs: 18000,
+  // O 30 % rychlejší na žádost po playtestu (18000 -> 12600 ms na jeden směr).
+  durationMs: 12600,
   easing: "ease-in-out",
 };
 
