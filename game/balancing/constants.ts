@@ -79,6 +79,14 @@ export const GENERATOR_RESTART_STRESS_BONUS = 40;
 export const STRESS_TIME_SLOWDOWN_ENABLED = true;
 export const MAX_STRESS_TIME_SLOWDOWN = 0.5;
 
+// Progresivní ztěžování podle počtu přežitých nocí aktuálního hlídače (ne
+// podle difficulty easy/medium/hard — to je nezávislá vrstva, viz
+// game/difficulty/nightScaling.ts). "Pressure" (noc - 1) je capnutá na tuhle
+// hodnotu, ať žádný modifikátor neroste donekonečna.
+export const NIGHT_SCALING_MAX_PRESSURE = 4;
+// Kolik % navíc energy drain za každý bod "pressure" (noc 2 = +5 %, noc 3 = +10 %, ...).
+export const NIGHT_SCALING_ENERGY_DRAIN_STEP = 0.05;
+
 // Sekvence útoku/smrti (viz app/play/page.tsx, efekt na state.screen ===
 // "death", AUDIO_DESIGN.md "Ticho před lekačkou"): ambience plynule ztlumí
 // přes AMBIENCE_DEATH_FADE_MS, pak JUMPSCARE_SILENT_GAP_MS ticha, teprve

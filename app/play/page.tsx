@@ -37,6 +37,10 @@ export default function PlayPage() {
   // Kolik nocí v řadě aktuální hlídač přežil bez smrti (viz
   // game/core/survivedNights.ts) — na rozdíl od deathCount se smrtí vynuluje.
   const [survivedNights, setSurvivedNights] = useState(() => getSurvivedNights());
+  // Jediný zdroj "kolikátá noc" — používá ho HUD (ShiftTimer přes nightNumber
+  // prop níže) i night scaling (game/difficulty/nightScaling.ts), ne dva
+  // paralelní výpočty.
+  const currentNight = survivedNights + 1;
 
   // "Nejnovější hodnota" ref pro stress (viz stressTimeScale.ts přes TICK) —
   // gameLoop.ts jím jen čte .current uvnitř setInterval, ať se interval
@@ -44,7 +48,13 @@ export default function PlayPage() {
   // znovu. Aktualizuje se níže po useHeartbeatStress, obyčejné přiřazení při
   // renderu (ne efekt) — stejný "latest ref" vzor jako jinde v Reactu.
   const stressLevelRef = useRef(0);
-  useGameLoop({ isRunning: state.isRunning, enemyTickMs: night.enemyTickMs, dispatch, stressLevelRef });
+  useGameLoop({
+    isRunning: state.isRunning,
+    enemyTickMs: night.enemyTickMs,
+    dispatch,
+    stressLevelRef,
+    currentNight,
+  });
   const heartbeatStress = useHeartbeatStress(state, night);
   stressLevelRef.current = heartbeatStress;
 
@@ -297,7 +307,7 @@ export default function PlayPage() {
           night={night}
           tensionLevel={tensionLevel}
           heartbeatStress={heartbeatStress}
-          nightNumber={survivedNights + 1}
+          nightNumber={currentNight}
           onToggleDoor={handleToggleDoor}
           onToggleLight={handleToggleLight}
           onSelectCamera={handleSelectCamera}

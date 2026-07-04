@@ -120,6 +120,20 @@ kamera), nebo ne:
 
 Výpočet je celý v `gameReducer.ts` (`applyPowerDelta`), UI jen zobrazuje výsledek.
 
+### Ztěžování podle noci (night scaling)
+
+Nezávisle na zvolené obtížnosti (easy/medium/hard, viz "Obtížnost" výše) se Objekt 13
+postupně zhoršuje podle toho, kolikátou noc v řadě aktuální hlídač slouží
+(`survivedNights + 1`, viz "Survival streak" v TECH_DESIGN.md): energie ubývá mírně
+rychleji. Noc 1 beze změny, pak +5 % za každou další noc, capnuté na +20 % od 5. noci dál
+(noc 5, 6, 7, ... mají všechny stejný strop, neroste to donekonečna). Škáluje se jen
+spotřeba (drain), dobíjení energie zůstává vždy stejné.
+
+Tohle je první pravidlo v samostatné "night scaling" vrstvě
+(`game/difficulty/nightScaling.ts`), oddělené od difficulty — časem přibudou další
+modifikátory podle noci (aktivnější monstrum, dřívější porucha generátoru, ...), zatím jen
+tenhle jeden.
+
 ## Dveře
 
 Přepínatelné jen v pohledu na dveře (DoorView) — viz "Pohled hráče" výše. Zavřené

@@ -4,6 +4,7 @@ import { EnemyDefinition, EnemyStage, GameState, NightDefinition } from "./types
 import { DOOR_DEATH_REVEAL_DURATION_MS, MAX_POWER } from "../balancing/constants";
 import { getBlackoutPhaseIndex } from "../visuals/blackoutPhase";
 import { DEFAULT_DIFFICULTY, DIFFICULTY_RULES, Difficulty } from "../difficulty/difficultyConfig";
+import { computeNightScaling, NightScaling } from "../difficulty/nightScaling";
 import { computeStressTimeScale } from "./stressTimeScale";
 
 function clamp(value: number, min: number, max: number): number {
@@ -51,7 +52,12 @@ function pickMonsterRetreatLocation(route: EnemyStage[]): EnemyStage {
 // zavřených dveří / rozsvíceného světla dobíjení dál přebíjí — viz GAME_DESIGN.md.
 // Kritický stav generátoru navrch přidá pevnou extra spotřebu (jako 2x zavřené
 // dveře + rozsvícené světlo), bez ohledu na to, jestli jsou skutečně zapnuté.
-function applyPowerDelta(state: GameState, night: NightDefinition, deltaMs: number): number {
+function applyPowerDelta(
+  state: GameState,
+  night: NightDefinition,
+  deltaMs: number,
+  nightScaling: NightScaling,
+): number {
   const seconds = deltaMs / 1000;
   const rates = night.powerDrainPerSecond;
   const watchingCameras = state.cameraOpen && state.playerView === "desk";
@@ -60,14 +66,19 @@ function applyPowerDelta(state: GameState, night: NightDefinition, deltaMs: numb
       ? 2 * rates.doorClosed + rates.lightOn
       : 0;
 
+  // Night scaling (viz game/difficulty/nightScaling.ts) škáluje jen spotřebu
+  // (drain), nikdy dobíjení (rechargePerSecondWhenIdle níže) — spočítej base
+  // drain a znásob jednou, na obou větvích, ne po jednotlivých položkách.
   if (watchingCameras) {
-    const drain = rates.idle + rates.cameraOpen + generatorExtraDrain;
+    const baseDrain = rates.idle + rates.cameraOpen + generatorExtraDrain;
+    const drain = baseDrain * nightScaling.energyDrainMultiplier;
     return clamp(state.power - drain * seconds, 0, MAX_POWER);
   }
 
-  let drain = generatorExtraDrain;
-  if (state.doorClosed) drain += rates.doorClosed;
-  if (state.lightOn) drain += rates.lightOn;
+  let baseDrain = generatorExtraDrain;
+  if (state.doorClosed) baseDrain += rates.doorClosed;
+  if (state.lightOn) baseDrain += rates.lightOn;
+  const drain = baseDrain * nightScaling.energyDrainMultiplier;
   const delta = (night.rechargePerSecondWhenIdle - drain) * seconds;
   return clamp(state.power + delta, 0, MAX_POWER);
 }
@@ -388,6 +399,13 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         const stressTimeScale = computeStressTimeScale(action.stressLevel ?? 0);
         const remainingMs = clamp(state.remainingMs - action.deltaMs * stressTimeScale, 0, night.durationMs);
 
+        // Night scaling (viz game/difficulty/nightScaling.ts) — nezávislé na
+        // Difficulty (easy/medium/hard), progresivně škáluje jen energy
+        // drain podle toho, kolikátou noc v řadě hlídač slouží (action.currentNight
+        // = survivedNights + 1 z app/play/page.tsx). Chybějící/neplatná
+        // hodnota se bere jako noc 1 (žádné ztěžování).
+        const nightScaling = computeNightScaling(action.currentNight ?? 1);
+
         // ── Krátký "reveal" moment před finalizací smrti u dveří (viz
         // ENEMY_ADVANCE) — hráč vidí monstrum ve dveřích (door_open_death_0,
         // SceneBackground v GameScreen.tsx), teprve pak se dokončí přechod na
@@ -445,7 +463,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
 
         const generatorUpdate = updateGenerator(state, night, elapsedMs);
         const doorLightRepelUpdate = updateDoorLightRepel(state, night, action.deltaMs);
-        const power = applyPowerDelta({ ...state, ...generatorUpdate }, night, action.deltaMs);
+        const power = applyPowerDelta({ ...state, ...generatorUpdate }, night, action.deltaMs, nightScaling);
 
         if (power <= 0) {
           // Baterie na nule -> blackout, ne okamžitá smrt. Zámek povolí (dveře

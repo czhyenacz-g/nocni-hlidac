@@ -350,6 +350,46 @@ hned:
   univerzální "pre-death" obrazovka — `blackout_timeout` (a jakákoli budoucí jiná smrt) přes
   něj vůbec neprochází, `screen: "death"` se pro ně nastavuje přímo jako dřív.
 
+## Night scaling (`game/difficulty/nightScaling.ts`)
+
+Samostatná vrstva vedle `difficultyConfig.ts`, ne uvnitř ní — `Difficulty` (easy/medium/
+hard) je zvolený režim hry, night scaling je nezávislý modifikátor podle toho, kolikátou noc
+v řadě aktuální hlídač slouží (`survivedNights + 1`). Obojí platí zároveň, jedno druhé
+neovlivňuje.
+
+- **`computeNightScaling(currentNight): NightScaling`** — čistá funkce.
+  `NightScaling = { currentNight: number; energyDrainMultiplier: number }`. Neplatný vstup
+  (`< 1`, `NaN`, necelé číslo se zaokrouhlí dolů) se bezpečně bere jako noc 1. `pressure =
+  clamp(safeNight - 1, 0, NIGHT_SCALING_MAX_PRESSURE)` (4), `energyDrainMultiplier = 1 +
+  pressure * NIGHT_SCALING_ENERGY_DRAIN_STEP` (0.05) — noc 1 → 1.00, noc 2 → 1.05, ..., noc 5
+  a dál → capnuté na 1.20. Obě konstanty v `game/balancing/constants.ts`, ne natvrdo ve
+  funkci.
+- **Rozšiřitelnost**: `NightScaling` je připravené na další pole (`monsterActivityMultiplier`,
+  `generatorFaultTimingMultiplier`, `cameraNoiseMultiplier`, ...), ale žádné z nich zatím
+  neexistuje — přidají se, až budou mít skutečné využití, ne jako předem připravené nepoužité
+  hodnoty.
+- **Napojení na energii**: `gameReducer.ts#applyPowerDelta` dostal čtvrtý parametr
+  `nightScaling: NightScaling`. V obou větvích (sledování kamer / idle) se nejdřív spočítá
+  `baseDrain` (idle/cameraOpen/doorClosed/lightOn/generatorExtraDrain sečtené jako dřív), pak
+  se **jednou** vynásobí `nightScaling.energyDrainMultiplier` — žádné násobení po
+  jednotlivých položkách. Dobíjení (`night.rechargePerSecondWhenIdle`) se multiplierem nikdy
+  nenásobí, zůstává mimo `baseDrain`/`drain` výpočet úplně.
+- **Odkud `currentNight` přichází**: `TICK` (`gameActions.ts`) má nové volitelné pole
+  `currentNight?: number` — stejný vzor jako `stressLevel` (viz "Stres zpomaluje odpočet"
+  výše). `useGameLoop` (`gameLoop.ts`) ho na rozdíl od `stressLevel` bere jako obyčejnou
+  hodnotu v `options`, ne přes ref: `currentNight` se mění jen mezi směnami (win/death), ne
+  desetkrát za sekundu jako stres, takže je v pořádku mít ho v dependency poli efektu (žádné
+  zbytečné rušení/zakládání intervalu za běhu). `app/play/page.tsx` počítá `const
+  currentNight = survivedNights + 1;` na jednom místě — použije ho `useGameLoop` i
+  `nightNumber` prop pro `ShiftTimer` (HUD), žádný druhý paralelní výpočet noci.
+- Reducer uvnitř `TICK` case spočítá `const nightScaling = computeNightScaling(action.currentNight
+  ?? 1);` a předá ho do `applyPowerDelta` — chybějící pole (cokoliv jiného než `useGameLoop`
+  dispatchující `TICK`) se chová jako noc 1, žádné ztěžování.
+
+Testy: `game/difficulty/nightScaling.test.ts` (čistá funkce, všechny prahové noci + capping +
+neplatný vstup), `game/core/tickNightScaling.test.ts` (reducer-level — `TICK` s různým
+`currentNight`, ověřuje že recharge zůstává nedotčené).
+
 ## Game loop
 
 `game/core/gameLoop.ts#useGameLoop` je React hook, který za běhu směny (`isRunning`)
