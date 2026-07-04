@@ -381,8 +381,15 @@ ticha, časové okno poruchy, délka `restarting` penalizace) je v `NightDefinit
   se tu nevolá.
 - `generatorBeepSeq` se při každém pípnutí zvýší o 1 — `app/play/page.tsx`
   sleduje jeho změnu přes `useRef` (stejný vzor jako `doorClosed`/`lightOn`) a
-  podle aktuálního `generatorState` přehraje `generatorBeep` nebo
-  `generatorWarningBeep` (viz `AUDIO_DESIGN.md`).
+  vždy přehraje `generatorBeep` (stejný zvuk v `normal` i `criticalBeeping`, jen
+  jiné tempo přes `beepIntervalMs`/`criticalBeepIntervalMs` — viz `AUDIO_DESIGN.md`).
+- Šipka "Zkontrolovat generátor →" v `DeskView.tsx` bliká podle
+  `isGeneratorArrowUrgent(state, night.generator)` (`game/core/generatorUrgency.ts`,
+  čistá derived-state funkce) — okamžitě v `silentFault`, ale v `criticalBeeping` až
+  po `GENERATOR_URGENT_BLINK_DELAY_MS` (2000 ms) od vstupu do stavu (dopočítáno z
+  `generatorSilentSinceMs + silentGraceMs`, žádné nové pole v `GameState`). Rychlé
+  pípání + rychlý pokles energie mají být jediná okamžitá signalizace, blikající
+  tlačítko je až druhotné potvrzení o chvíli později. V `restarting` nebliká vůbec.
 - `RESTART_GENERATOR`: v `silentFault`/`criticalBeeping` vrátí `normal` a naplánuje
   další normální pípnutí za `beepIntervalMs` od teď (beze změny). V `normal` NENÍ
   no-op — nastaví `generatorState: "restarting"` a `generatorRestartUntilMs:

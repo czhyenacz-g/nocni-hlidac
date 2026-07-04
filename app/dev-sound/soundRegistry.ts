@@ -98,16 +98,11 @@ export const SOUND_REGISTRY: Record<AudioEventId, SoundRegistryEntry> = {
   [AUDIO_EVENTS.generatorBeep]: {
     id: AUDIO_EVENTS.generatorBeep,
     label: "Generator beep",
-    description: "Normální pípnutí generátoru každých ~5 s (vše v pořádku).",
+    description:
+      "Normální pípnutí generátoru každých ~5 s (vše v pořádku). V criticalBeeping stavu " +
+      "stejný zvuk, jen rychlejší tempo (~2×/s) — jediná signalizace kromě rychlého poklesu energie.",
     guess: "Krátké elektronické pípnutí.",
-    usedIn: "app/play/page.tsx — efekt na state.generatorBeepSeq, když generatorState !== criticalBeeping.",
-  },
-  [AUDIO_EVENTS.generatorWarningBeep]: {
-    id: AUDIO_EVENTS.generatorWarningBeep,
-    label: "Generator warning beep",
-    description: "Rychlé varovné pípání v kritickém stavu generátoru.",
-    guess: "Rychlejší/naléhavější varianta pípnutí.",
-    usedIn: "app/play/page.tsx — efekt na state.generatorBeepSeq, když generatorState === criticalBeeping.",
+    usedIn: "app/play/page.tsx — efekt na state.generatorBeepSeq.",
   },
   [AUDIO_EVENTS.monsterRetreatRoar]: {
     id: AUDIO_EVENTS.monsterRetreatRoar,

@@ -31,3 +31,9 @@ export const DOOR_DEATH_REVEAL_DURATION_MS = 700;
 // viz game/cameras/cameraAssets.object13.ts#getCameraImageSrc. Záměrně
 // pomalé (ne animace) — jen ať obraz kamery nepůsobí jako jedna mrtvá fotka.
 export const CAMERA_IMAGE_CYCLE_MS = 4000;
+
+// O kolik ms se zpozdí blikání šipky "Zkontrolovat generátor" po vstupu do
+// generatorState "criticalBeeping" — viz game/core/generatorUrgency.ts.
+// Rychlé pípání + rychlý pokles energie mají být jediná okamžitá
+// signalizace; blikající tlačítko je až druhotné potvrzení o chvíli později.
+export const GENERATOR_URGENT_BLINK_DELAY_MS = 2000;

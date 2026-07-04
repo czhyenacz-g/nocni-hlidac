@@ -229,9 +229,12 @@ pípání. Čtyři stavy (`GeneratorState`):
   `faultLatestAtMs`). Generátor **ztichne** na 10 sekund
   (`generator.silentGraceMs`) — to je férový reakční čas, žádná extra spotřeba
   energie zatím neběží. Ticho samo o sobě je signál, že se něco děje.
-- **criticalBeeping** — když hráč nestihne restartovat do 10 s, spustí se rychlé
-  varovné pípání (`generator.criticalBeepIntervalMs`) a dodatečná spotřeba
-  energie (viz "Energie" výše). Trvá, dokud generátor hráč nerestartuje.
+- **criticalBeeping** — když hráč nestihne restartovat do 10 s, spustí se **stejné**
+  pípnutí jako v `normal`, jen 2×/s (`generator.criticalBeepIntervalMs`, 500 ms) —
+  žádný samostatný "poplachový" zvuk — a dodatečná spotřeba energie (viz "Energie"
+  výše). To rychlé pípání + rychlý pokles energie jsou jediná okamžitá
+  signalizace; šipka na generátor v DeskView začne blikat až se zpožděním (~2 s),
+  ne hned. Trvá, dokud generátor hráč nerestartuje.
 - **restarting** — trest za zbytečný klik: pokud hráč restartuje generátor, který
   byl v pořádku (`normal`), na `generator.restartPenaltyMs` (5 s) se sám vyřadí —
   potichu (žádné pípání) a se stejnou extra spotřebou energie jako

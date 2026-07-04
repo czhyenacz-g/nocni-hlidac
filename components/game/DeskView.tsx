@@ -1,6 +1,7 @@
 import { COPY } from "@/content/copy";
 import { CameraId, GameState, NightDefinition } from "@/game/core/types";
 import { isCameraFocused } from "@/game/core/cameraFocus";
+import { isGeneratorArrowUrgent } from "@/game/core/generatorUrgency";
 import CameraPanel from "./CameraPanel";
 import LightControl from "./LightControl";
 import ViewSwitchArrow from "./ViewSwitchArrow";
@@ -51,7 +52,7 @@ export default function DeskView({
           label={COPY.game.lookAtGeneratorLabel}
           onClick={onLookAtGenerator}
           align="right"
-          urgent={state.generatorState !== "normal"}
+          urgent={isGeneratorArrowUrgent(state, night.generator)}
         />
       </div>
     </div>

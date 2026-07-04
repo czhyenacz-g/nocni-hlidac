@@ -24,8 +24,8 @@ Definováno v `game/audio/audioEvents.ts` a nakonfigurováno v `game/audio/audio
 - `jumpscare` — zvuk při útoku/smrti
 - `shift_win` — zvuk při přežití směny
 - `ui_click` — obecný UI klik (např. tlačítko Start, otočení mezi pohledy)
-- `generator_beep` — normální pípnutí generátoru každých 5 s (viz "Generátor" níže)
-- `generator_warning_beep` — rychlé varovné pípání v kritickém stavu generátoru
+- `generator_beep` — pípnutí generátoru: normálně každých 5 s, v kritickém stavu
+  (`criticalBeeping`) stejný zvuk 2×/s (viz "Generátor" níže) — žádný samostatný "warning" zvuk
 - `monster_retreat_roar` — jednorázový řev při door-light repelu (viz "Světlo a dveře" v
   `GAME_DESIGN.md`) — hraje přesně jednou za repel, nikdy opakovaně na tik
 - `blackout_howl` — vzdálené zavytí jednou na začátku blackoutu (viz "Blackout" v
@@ -47,10 +47,17 @@ Normální stav generátoru není ticho, ale pravidelné pípání (`generator_b
 každých 5 s) — to je hráčovi jediný signál, že je vše v pořádku. Když se
 generátor porouchá, na 10 sekund úplně ztichne (žádný zvuk, ne jiný zvuk) — ticho
 samo je varování a dává hráči férový reakční čas. Pokud nezareaguje, spustí se
-rychlé, hlasitější `generator_warning_beep` (viz `generator.criticalBeepIntervalMs`
-v `night01.ts`) a zůstane, dokud hráč generátor v `GeneratorView` nerestartuje.
-Vizuální kontrolka v `GeneratorView.tsx` (stabilní/zhaslá/blikající) je jen
-pomocná — hlavní signál má být zvuk, viz `GAME_DESIGN.md` sekce "Generátor".
+**stejné** `generator_beep`, jen 2×/s (`night.generator.criticalBeepIntervalMs`,
+500 ms) — žádný samostatný "warning" zvuk, ať je jasné, že jde o tentýž generátor,
+jen v naléhavějším tempu — a zůstane, dokud hráč generátor v `GeneratorView`
+nerestartuje. Rychlé pípání + rychlý pokles energie na `PowerMeter` (extra
+spotřeba v `criticalBeeping`, viz "Výpočet energie" v `TECH_DESIGN.md`) je
+záměrně **jediná okamžitá** signalizace — šipka "Zkontrolovat generátor →" v
+`DeskView.tsx` začne blikat až se zpožděním (`GENERATOR_URGENT_BLINK_DELAY_MS`,
+`game/core/generatorUrgency.ts`), ne hned. Vizuální kontrolka v
+`GeneratorView.tsx` (stabilní/zhaslá/blikající) je jen pomocná, vidět jen když
+se hráč na generátor přímo dívá — hlavní signál má být zvuk, viz
+`GAME_DESIGN.md` sekce "Generátor".
 
 ## Zvukové události
 
@@ -127,8 +134,9 @@ explicitní a na jednom místě, ne rozeseta po komponentách.
 Generátor je ukázka stejného vzoru pro periodický, ne jen jednorázový zvuk:
 `gameReducer.ts` při každém pípnutí zvýší `generatorBeepSeq` o 1 (čistá herní logika,
 žádné volání audia), a `app/play/page.tsx` na tuto změnu reaguje přehráním `generator_beep`
-nebo `generator_warning_beep` podle aktuálního `generatorState` — reducer o zvuku neví nic,
-jen "oznámí", že nastal beep.
+— stejný zvuk v `normal` i `criticalBeeping`, jen s jiným tempem (`beepIntervalMs` vs.
+`criticalBeepIntervalMs` v `night01.ts`, viz reducer) — reducer o zvuku neví nic, jen
+"oznámí", že nastal beep.
 
 `monster_retreat_roar` funguje stejně: `gameReducer.ts#updateDoorLightRepel` (volané z
 `TICK`, ne `ENEMY_ADVANCE` — viz TECH_DESIGN.md) při repelu zvýší `monsterRetreatRoarSeq` o 1
@@ -166,7 +174,7 @@ nepřehrál (viz GAME_DESIGN.md "Blackout").
 
 ## Syntetizovaný fallback (bez čekání na audio soubory)
 
-`generator_beep`, `generator_warning_beep`, `monster_retreat_roar`, `blackout_howl` a
+`generator_beep`, `monster_retreat_roar`, `heartbeat`, `blackout_howl` a
 `blackout_door_hit` mají v `audioConfig.ts` navíc `fallbackSynth` — krátkou sekvenci tónů (frekvence, délka,
 tvar vlny) syntetizovanou přes nativní Web Audio API, žádná externí knihovna.
 `AudioManager.play()` ho spustí automaticky, když `audio.play()` na chybějící/nenačtený

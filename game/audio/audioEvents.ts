@@ -12,7 +12,6 @@ export const AUDIO_EVENTS = {
   shiftWin: "shift_win",
   uiClick: "ui_click",
   generatorBeep: "generator_beep",
-  generatorWarningBeep: "generator_warning_beep",
   monsterRetreatRoar: "monster_retreat_roar",
   blackoutHowl: "blackout_howl",
   blackoutDoorHit: "blackout_door_hit",

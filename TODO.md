@@ -181,6 +181,13 @@
       (`splitSentences`), ne dvě různé hlášky vedle sebe.
 - [x] Dveřní hotspot mnohem průhlednější mimo hover/focus (`~0.03-0.05` místo `~0.1-0.18`) —
       v klidu skoro neviditelný, zřetelný až při najetí myší/focusu.
+- [x] Generátor v `criticalBeeping`: stejné pípnutí jako `normal` (`generatorWarningBeep`
+      zvuk zcela zrušen, byl duplicitní), jen 2×/s (`criticalBeepIntervalMs` 700 -> 500 ms) —
+      jediná okamžitá signalizace kromě rychlého poklesu energie. Šipka "Zkontrolovat
+      generátor →" bliká hned v `silentFault`, ale v `criticalBeeping` až po
+      `GENERATOR_URGENT_BLINK_DELAY_MS` (2 s) od vstupu do stavu
+      (`game/core/generatorUrgency.ts#isGeneratorArrowUrgent`, čistá derived-state funkce,
+      žádné nové pole v `GameState`).
 - [x] `/dev-sound` — dev stránka se seznamem všech audio eventů (`game/audio/audioEvents.ts`),
       popisem, souborem/fallbackem a tlačítkem přehrát (`app/dev-sound/`, gatované
       `DEBUG_PANEL_ENABLED`)
@@ -211,7 +218,7 @@
 - Skutečná pixel-art grafika (sprity pro místnost, kamery, nepřítele, generátor)
 - Vlastní/kvalitnější audio místo Kenney.nl CC0 placeholderů (zejména `ambience_loop`,
   který teď je jen krátký smyčkovaný efekt, ne skutečná ambientní kompozice); doplnit
-  reálné soubory `generator_beep.mp3`, `generator_warning_beep.mp3`,
+  reálné soubory `generator_beep.mp3`, `heartbeat.mp3`,
   `monster_retreat_roar.mp3`, `blackout_howl.mp3` a `blackout_door_hit.mp3` (zatím jen
   konfigurace + syntetizovaný fallback, viz `assets/audio/README.md`)
 - Druhá směna (`night02.ts`) s jiným nepřítelem/balancem

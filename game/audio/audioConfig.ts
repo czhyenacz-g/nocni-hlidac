@@ -75,13 +75,6 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
       waveform: "square",
     },
   },
-  // Hlasitější a časté (viz night.generator.criticalBeepIntervalMs) — má znít stresově.
-  [AUDIO_EVENTS.generatorWarningBeep]: {
-    src: "/assets/audio/generator_warning_beep.mp3",
-    volume: 0.6,
-    loop: false,
-    fallbackSynth: { notes: [{ frequency: 1400, durationMs: 70 }], volume: 0.3, waveform: "square" },
-  },
   // Krátký, výrazný řev při door-light repelu (viz GAME_DESIGN.md "Světlo a dveře").
   [AUDIO_EVENTS.monsterRetreatRoar]: {
     src: "/assets/audio/monster_retreat_roar.mp3",

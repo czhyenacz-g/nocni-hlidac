@@ -121,13 +121,15 @@ export default function PlayPage() {
   }, [state.power]);
 
   useEffect(() => {
+    // Stejné pípnutí jako normální provoz, i v criticalBeeping — jen rychlejší
+    // tempo (viz night.generator.criticalBeepIntervalMs). Jediná signalizace
+    // rychlého úbytku energie kromě samotného poklesu na PowerMeter, viz
+    // game/core/generatorUrgency.ts pro zpožděné blikání šipky na generátor.
     if (prevGeneratorBeepSeqRef.current !== state.generatorBeepSeq) {
-      audioManager.play(
-        state.generatorState === "criticalBeeping" ? AUDIO_EVENTS.generatorWarningBeep : AUDIO_EVENTS.generatorBeep,
-      );
+      audioManager.play(AUDIO_EVENTS.generatorBeep);
       prevGeneratorBeepSeqRef.current = state.generatorBeepSeq;
     }
-  }, [state.generatorBeepSeq, state.generatorState]);
+  }, [state.generatorBeepSeq]);
 
   useEffect(() => {
     // "attack" má vlastní zvukovou sekvenci (krok -> jumpscare, viz efekt na

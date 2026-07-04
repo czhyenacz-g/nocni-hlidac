@@ -24,7 +24,10 @@ export const NIGHT_01: NightDefinition = {
   cameraFocusMs: 700,
   generator: {
     beepIntervalMs: 5000,
-    criticalBeepIntervalMs: 700,
+    // Dvakrát za sekundu — stejné pípnutí jako normální provoz (viz
+    // app/play/page.tsx), jen rychlejší tempo. Jediná signalizace kromě
+    // rychlého poklesu energie, viz game/core/generatorUrgency.ts.
+    criticalBeepIntervalMs: 500,
     silentGraceMs: 10000,
     faultMaxPerShift: 1,
     faultEarliestAtMs: 45000,
