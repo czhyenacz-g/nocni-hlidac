@@ -121,17 +121,17 @@ export const COPY = {
       "Podmínky noční služby v Objektu 13 — napůl herní lore, napůl disclaimer k hororové hře Noční hlídač.",
     heading: "Podmínky noční služby",
     paragraphs: [
-      "Nástupem na směnu v Objektu 13 potvrzuješ, že vstupuješ do služby dobrovolně, " +
+      "Nástupem na směnu v Objektu 13 potvrzujete, že vstupujete do služby dobrovolně, " +
         "při vědomí a na vlastní odpovědnost.",
-      "Bereš na vědomí, že během směny může dojít k výpadkům proudu, ztrátě orientace, " +
+      "Berete na vědomí, že během směny může dojít k výpadkům proudu, ztrátě orientace, " +
         "pohybu neznámých osob na kamerovém systému, zvukům za dveřmi a dalším jevům, " +
         "které provozovatel nemusí být schopen uspokojivě vysvětlit.",
-      "Hráč dále bere na vědomí, že Noční hlídač je hororová hra. Obsahuje napětí, tmu, " +
+      "Dále berete na vědomí, že Noční hlídač je hororová hra. Obsahuje napětí, tmu, " +
         "náhlé zvuky, lekačky, znepokojivé obrazy a další prvky, které mohou být nevhodné " +
         "pro citlivé osoby, osoby se srdečními obtížemi, epilepsií, úzkostmi nebo jinou " +
         "zdravotní zátěží.",
-      "Pokud trpíš zdravotními obtížemi, hraješ unavený, ve stresu, sám v temné místnosti " +
-        "nebo s příliš hlasitými sluchátky, činíš tak na vlastní odpovědnost.",
+      "Pokud trpíte zdravotními obtížemi, hrajete unavení, ve stresu, sami v temné místnosti " +
+        "nebo s příliš hlasitými sluchátky, činíte tak na vlastní odpovědnost.",
       "Provozovatel hry ani společnost odpovědná za provoz Objektu 13 nenese odpovědnost " +
         "za následky vzniklé dobrovolným nástupem na směnu, včetně úleku, ztráty spánku, " +
         "podezřelého pohledu do chodby, náhlé potřeby rozsvítit, ani za rozhodnutí nezavřít " +
