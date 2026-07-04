@@ -70,35 +70,20 @@ export const COPY = {
   about: {
     seoTitle: "O projektu | Noční hlídač",
     seoDescription:
-      "Noční hlídač je browserová hororová hra o noční službě a postupně vznikající prostor " +
-      "pro důstojnou inzerci nočních provozů.",
+      "Noční hlídač je malá browserová hororová hra o noční směně a pocta lidem, " +
+      "kteří opravdu pracují v noci.",
     heading: "O projektu Noční hlídač",
     paragraphs: [
-      "Noční hlídač je malá browserová hororová hra o noční službě v objektu, který sotva " +
-        "drží pohromadě. Hráč sleduje kamery, šetří energii, kontroluje dveře, poslouchá " +
-        "generátor a snaží se přežít směnu do rána.",
-      "Projekt vzniká jako indie hra, ale zároveň i jako pocta lidem, kteří skutečně pracují " +
-        "v noci: hlídačům, vrátným, pracovníkům ostrahy, recepčním, skladníkům, technikům a " +
-        "všem, kdo drží provoz, když ostatní spí.",
-      "Horor ve hře je fikce. Skutečná noční práce je často tichá, nenápadná a nedoceněná. " +
-        "Právě proto chci, aby kolem projektu postupně vznikl i praktický prostor pro noční " +
-        "provozy.",
-      "Cílem není zaplnit web agresivní reklamou. Cílem je propojit tematickou hru, noční " +
-        "atmosféru a užitečné nabídky pro lidi a firmy, kterých se noční provoz opravdu týká.",
+      "Noční hlídač je malá browserová hororová hra o noční směně v rozpadajícím se objektu. " +
+        "Hráč sleduje kamery, hlídá energii, kontroluje dveře a snaží se přežít do rána.",
+      "Projekt je zároveň poctou lidem, kteří opravdu pracují v noci — hlídačům, ostraze, " +
+        "vrátným, recepčním, skladníkům, technikům a dalším.",
+      "Horor ve hře je fikce. Skutečná noční práce je často tichá, nenápadná a nedoceněná.",
+      "Do budoucna chci web propojit i s užitečnými nabídkami pro noční provozy: prací, " +
+        "službami, partnerstvím nebo sponzoringem.",
     ],
-    futureListHeading: "Do budoucna připravuji možnost důstojné inzerce:",
-    futureList: [
-      "nabídky práce pro noční hlídače, ostrahu, vrátné a recepční",
-      "nabídky pro noční sklady, provozy a technické služby",
-      "partnerství se službami, které dávají smysl lidem pracujícím v noci",
-      "sponzoring hry nebo konkrétních částí webu",
-    ],
-    closingParagraph:
-      "Pokud hledáte netradiční, ale důstojné místo pro inzerci nebo sponzoring, projekt " +
-      "Noční hlídač je otevřený spolupráci.",
-    ctaHeading: "Máte nabídku práce pro noční provoz?",
-    ctaSubheading: "Hledáte partnerství nebo sponzoring?",
-    ctaAction: "Ozvěte se.",
+    ctaHeading: "Máte nabídku práce, nápad na spolupráci nebo zájem o sponzoring?",
+    ctaAction: "Ozvěte se:",
     backToGameLabel: "← Zpět ke hře",
   },
 } as const;

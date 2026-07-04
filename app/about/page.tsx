@@ -23,20 +23,8 @@ export default function AboutPage() {
           ))}
         </div>
 
-        <div className="mt-6">
-          <p className="text-sm text-gray-300 font-bold mb-2">{COPY.about.futureListHeading}</p>
-          <ul className="list-disc list-inside flex flex-col gap-1 text-sm text-gray-400">
-            {COPY.about.futureList.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </div>
-
-        <p className="mt-6 text-sm text-gray-400 leading-relaxed">{COPY.about.closingParagraph}</p>
-
         <div className="mt-8 pixel-panel p-4 text-center">
-          <p className="text-sm text-gray-300">{COPY.about.ctaHeading}</p>
-          <p className="text-sm text-gray-300 mb-3">{COPY.about.ctaSubheading}</p>
+          <p className="text-sm text-gray-300 mb-3">{COPY.about.ctaHeading}</p>
           <a
             href={`mailto:${COPY.menu.authorEmail}`}
             className="pixel-button tap-target inline-block px-6 py-3 text-sm"
