@@ -449,11 +449,16 @@ Falešný briefing mezi menu a startem směny — žádné skutečné technické
 - `content/loadingHints.ts` — `LoadingHint` (id, category, text, volitelně `minNight`/
   `maxNight`/`weight`) + `LOADING_HINTS` data + `selectLoadingHints(count, night?)`: jednoduchý
   weighted random bez opakování, `minNight`/`maxNight` filtrování je připravené, ale
-  nevyužité (jedna směna zatím). `LOADING_SCREEN_HINT_COUNT` (3) řídí, kolik hintů se vybere.
-- `components/screens/LoadingScreen.tsx` si hinty vybere sám (`useState(() =>
-  selectLoadingHints(...))`, počítáno jednou při mountu) a postupně je odkrývá vlastním
-  `useInterval`-stylem efektem (`LOADING_SCREEN_DURATION_MS / hints.length` na hint) —
-  self-contained, `app/play/page.tsx` o výběru hintů nic neví.
+  nevyužité (jedna směna zatím). `LOADING_SCREEN_HINT_COUNT` (**1**) řídí, kolik hintů se
+  vybere — `LoadingScreen` ukazuje vždy jen JEDEN hint, ne víc různých najednou (dřív 3, ale
+  na 4 s `LOADING_SCREEN_DURATION_MS` se dřív stihly zobrazit jen 2, ne všechny 3).
+- `components/screens/LoadingScreen.tsx` si hint vybere sám (`useState(() =>
+  selectLoadingHints(1)[0])`, počítáno jednou při mountu), přes `splitSentences()` (regex na
+  `.!?` + mezera/konec) ho rozdělí na věty a postupně je odkrývá stejným `setInterval`
+  efektem jako dřív (`LOADING_SCREEN_DURATION_MS / sentences.length` na větu) — pokud má hint
+  dvě věty (většina jich má), nejdřív se objeví první, pak druhá, ne dvě různé hlášky vedle
+  sebe. Jedna věta bez tečky uprostřed (např. s pomlčkou) se zobrazí najednou. Self-contained,
+  `app/play/page.tsx` o výběru hintu nic neví.
 
 ## Struktura assetů podle mapy/objektu (`public/<map>/...`)
 

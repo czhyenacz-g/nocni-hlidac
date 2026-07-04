@@ -176,6 +176,11 @@
       survivedNights + 1`, poslané z `app/play/page.tsx` do `GameScreen.tsx` ->
       `ShiftTimer.tsx`) — kolikátá noc v řadě aktuálního hlídače, stejné číslo jako survival
       streak na WinScreen, jen o jednu dřív (aktuální rozdělaná noc).
+- [x] LoadingScreen ukazuje jen 1 hint místo 3 (dřív se do `LOADING_SCREEN_DURATION_MS`
+      nestihly zobrazit všechny) — pokud má hint dvě věty, odhalí je postupně
+      (`splitSentences`), ne dvě různé hlášky vedle sebe.
+- [x] Dveřní hotspot mnohem průhlednější mimo hover/focus (`~0.03-0.05` místo `~0.1-0.18`) —
+      v klidu skoro neviditelný, zřetelný až při najetí myší/focusu.
 - [x] `/dev-sound` — dev stránka se seznamem všech audio eventů (`game/audio/audioEvents.ts`),
       popisem, souborem/fallbackem a tlačítkem přehrát (`app/dev-sound/`, gatované
       `DEBUG_PANEL_ENABLED`)

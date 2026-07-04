@@ -16,9 +16,11 @@ export const FLASHLIGHT_DURATION_MS = 2000;
 export const DEBUG_PANEL_ENABLED = true;
 
 // Falešný briefing/loading screen mezi menu a startem směny — viz
-// LoadingScreen.tsx a content/loadingHints.ts. Kolik hintů se z nich vybere.
+// LoadingScreen.tsx a content/loadingHints.ts. Kolik hintů se vybere — jen 1
+// (LoadingScreen ukazuje vždy jeden hint, ne víc různých najednou; pokud má
+// dvě věty, odhalí je postupně, viz LoadingScreen.tsx#splitSentences).
 export const LOADING_SCREEN_DURATION_MS = 4000;
-export const LOADING_SCREEN_HINT_COUNT = 3;
+export const LOADING_SCREEN_HINT_COUNT = 1;
 
 // Krátký "reveal" moment před finalizací smrti "door_open_at_attack" — hráč
 // uvidí monstrum ve dveřích (door_open_death_0), teprve pak DeathScreen. Viz

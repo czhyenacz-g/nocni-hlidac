@@ -172,22 +172,24 @@
 /* ── Průhledný hotspot dveří (DoorView.tsx) ──────────────────────────────
  * Klikací plocha posazená přímo na dveře v DoorSceneFrame obrázku (ne
  * neprůhledný UI panel přes celou scénu) — hráč má mít pocit, že kliká na
- * dveře samotné. Opacity záměrně nízká (~0.08-0.18), jen aby hotspot byl
- * vůbec vnímatelný a klikatelný, ne aby vypadal jako tlačítko. Velikost se
- * nastavuje inline stylem v procentech (viz DoorView.tsx), ne tady — jen
- * vzhled. .tap-target-critical (min. 56×56 px) hlídá minimální dotykovou
- * plochu i kdyby procenta na malém displeji vyšla menší. */
+ * dveře samotné. Mimo hover/focus skoro neviditelná (~0.03-0.05), jen ať
+ * hotspot v klidu nepůsobí jako viditelný rámeček přes scénu — zřetelně
+ * viditelný je až při najetí myší/focusu, kdy funguje jako potvrzení "tady
+ * se dá kliknout". Velikost se nastavuje inline stylem v procentech (viz
+ * DoorView.tsx), ne tady — jen vzhled. .tap-target-critical (min. 56×56 px)
+ * hlídá minimální dotykovou plochu i kdyby procenta na malém displeji vyšla
+ * menší. */
 .door-hotspot {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 4px;
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .door-hotspot:hover,
 .door-hotspot:focus-visible {
-  background: rgba(255, 255, 255, 0.18);
-  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.45);
   outline: none;
 }
 
