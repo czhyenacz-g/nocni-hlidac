@@ -393,6 +393,21 @@ Falešný briefing mezi menu a startem směny — žádné skutečné technické
   `useInterval`-stylem efektem (`LOADING_SCREEN_DURATION_MS / hints.length` na hint) —
   self-contained, `app/play/page.tsx` o výběru hintů nic neví.
 
+## Struktura assetů podle mapy/objektu (`public/<map>/...`)
+
+Obrázkové assety jsou v `public/` rozdělené po mapách/objektech, ne v jedné ploché složce —
+připraveno na to, až přibude druhá mapa/směna vedle Objektu 13:
+
+- `public/object_13/background/` — atmosférická pozadí obrazovek (viz "Scénová pozadí" níže),
+  `*.png` (zdrojové, z generování) + `*.webp` (skutečně použité, konvertované přes `cwebp`,
+  viz CLAUDE.md "Povolení: konverze obrázků do WebP").
+- `public/object_13/camera/` — obrázky pro obsah kamer (viz "Kamerové assety" níže).
+
+`game/visuals/backgroundImages.ts` má konstantu `OBJECT_13_BACKGROUND_PATH =
+"/object_13/background"`, ze které se skládají všechny `src` cesty šablonovými literály —
+až přibude druhá mapa, přibude vlastní `<MAP>_BACKGROUND_PATH` konstanta a vlastní sada scén,
+ne přepisování týž `BACKGROUND_SCENES`.
+
 ## Scénová pozadí (SceneBackground)
 
 Atmosférické pozadí obrazovek (menu, loading, `/play` desk fáze, death, win, `/about`) je

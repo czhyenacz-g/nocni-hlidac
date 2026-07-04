@@ -113,6 +113,10 @@
       mohl rozjet, protože `bg-cover` škáluje obrázek podle celé šířky obrazovky nezávisle na
       vnitřním obsahu). `GameScreen.tsx` pro `playerView === "door"` `SceneBackground` vůbec
       nerenderuje. Ostatní obrazovky (menu/about/win/death/loading/desk/generator) beze změny.
+- [x] Přesun obrázkových assetů z ploché `public/background/` do `public/object_13/background/`
+      — příprava na budoucí druhou mapu/objekt (`public/<map>/...`). Cesty přepsané na
+      `OBJECT_13_BACKGROUND_PATH` konstantu v `game/visuals/backgroundImages.ts`, žádná
+      komponenta se nemusela měnit.
 - [x] `/dev-sound` — dev stránka se seznamem všech audio eventů (`game/audio/audioEvents.ts`),
       popisem, souborem/fallbackem a tlačítkem přehrát (`app/dev-sound/`, gatované
       `DEBUG_PANEL_ENABLED`)

@@ -33,12 +33,19 @@ export interface SceneBackgroundConfig {
 
 const DEFAULT_HOLD_MS = 6000;
 const DEFAULT_CROSSFADE_MS = 1500;
-// Zdrojové obrázky (public/background/*.png) jsou samy o sobě velmi tmavé
-// (záměrně, hororová atmosféra) — text stojí v `.pixel-panel` boxech, které
-// mají vlastní poloprůhledné pozadí (viz styles/pixel.css), takže overlay tu
-// není kvůli čitelnosti textu, jen jemné doladění kontrastu. Původní 0.55-0.8
-// overlay obrázky prakticky úplně "spálil" na černo — proto jen slabý spodní gradient.
+// Zdrojové obrázky jsou samy o sobě velmi tmavé (záměrně, hororová atmosféra)
+// — text stojí v `.pixel-panel` boxech, které mají vlastní poloprůhledné
+// pozadí (viz styles/pixel.css), takže overlay tu není kvůli čitelnosti
+// textu, jen jemné doladění kontrastu. Původní 0.55-0.8 overlay obrázky
+// prakticky úplně "spálil" na černo — proto jen slabý spodní gradient.
 const DEFAULT_OVERLAY = "linear-gradient(rgba(0,0,0,0.05), rgba(0,0,0,0.25))";
+
+// Assety jsou rozdělené po mapách/objektech (`public/<map>/background/...`,
+// `public/<map>/camera/...`) — připraveno na to, až přibude druhá mapa vedle
+// Objektu 13. BACKGROUND_SCENES níže zatím obsluhuje jen tenhle jeden objekt;
+// až přibude další noc s jinou mapou, přibude vlastní sada scén se stejným
+// vzorem (vlastní `<MAP>_BACKGROUND_PATH` konstanta + vlastní frames).
+const OBJECT_13_BACKGROUND_PATH = "/object_13/background";
 
 export type BackgroundSceneId =
   | "menu"
@@ -50,9 +57,10 @@ export type BackgroundSceneId =
   | "win"
   | "about";
 
-// menu/play/win mají 2 varianty snímků (public/background/*_0.webp, *_1.webp
-// — stejný obraz, jemně jiná varianta, např. jinak kouřící komín), které
-// SceneBackground plynule prolíná automaticky po holdMs. about/loading/death/
+// menu/play/win mají 2 varianty snímků (*_0.webp, *_1.webp v
+// public/object_13/background/ — stejný obraz, jemně jiná varianta, např.
+// jinak kouřící komín), které SceneBackground plynule prolíná automaticky po
+// holdMs. about/loading/death/
 // deathDoorAttack mají zatím jen 1 snímek (statické pozadí, bez střídání).
 // `door` má 3 snímky (otevřené/zavřené dveře + monstrum ve dveřích), ale
 // NEcyklují se samy — GameScreen.tsx řídí aktivní index přes
@@ -60,19 +68,25 @@ export type BackgroundSceneId =
 // state.doorDeathRevealUntilMs, viz komponenta i TECH_DESIGN.md.
 export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig> = {
   menu: {
-    frames: [{ src: "/background/menu_bg_0.webp" }, { src: "/background/menu_bg_1.webp" }],
+    frames: [
+      { src: `${OBJECT_13_BACKGROUND_PATH}/menu_bg_0.webp` },
+      { src: `${OBJECT_13_BACKGROUND_PATH}/menu_bg_1.webp` },
+    ],
     holdMs: DEFAULT_HOLD_MS,
     crossfadeMs: DEFAULT_CROSSFADE_MS,
     overlay: DEFAULT_OVERLAY,
   },
   loading: {
-    frames: [{ src: "/background/loading_bg_0.webp" }],
+    frames: [{ src: `${OBJECT_13_BACKGROUND_PATH}/loading_bg_0.webp` }],
     holdMs: DEFAULT_HOLD_MS,
     crossfadeMs: DEFAULT_CROSSFADE_MS,
     overlay: DEFAULT_OVERLAY,
   },
   play: {
-    frames: [{ src: "/background/play_bg_universal_0.webp" }, { src: "/background/play_bg_universal_1.webp" }],
+    frames: [
+      { src: `${OBJECT_13_BACKGROUND_PATH}/play_bg_universal_0.webp` },
+      { src: `${OBJECT_13_BACKGROUND_PATH}/play_bg_universal_1.webp` },
+    ],
     holdMs: DEFAULT_HOLD_MS,
     crossfadeMs: DEFAULT_CROSSFADE_MS,
     overlay: "linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.3))",
@@ -83,16 +97,16 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
   // DOOR_DEATH_REVEAL_DURATION_MS (700 ms) celkem, ať se stihne doprolínat.
   door: {
     frames: [
-      { src: "/background/door_open_0.webp" },
-      { src: "/background/door_closed_0.webp" },
-      { src: "/background/door_open_death_0.webp" },
+      { src: `${OBJECT_13_BACKGROUND_PATH}/door_open_0.webp` },
+      { src: `${OBJECT_13_BACKGROUND_PATH}/door_closed_0.webp` },
+      { src: `${OBJECT_13_BACKGROUND_PATH}/door_open_death_0.webp` },
     ],
     holdMs: DEFAULT_HOLD_MS,
     crossfadeMs: 350,
     overlay: "linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.3))",
   },
   death: {
-    frames: [{ src: "/background/death_bg_0.webp" }],
+    frames: [{ src: `${OBJECT_13_BACKGROUND_PATH}/death_bg_0.webp` }],
     holdMs: DEFAULT_HOLD_MS,
     crossfadeMs: DEFAULT_CROSSFADE_MS,
     overlay: DEFAULT_OVERLAY,
@@ -103,19 +117,22 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
   // DeathScreen. Tenhle obrázek proto slouží jako pozadí death screenu pro
   // tuhle konkrétní deathReason, viz DeathScreen.tsx.
   deathDoorAttack: {
-    frames: [{ src: "/background/door_open_death_0.webp" }],
+    frames: [{ src: `${OBJECT_13_BACKGROUND_PATH}/door_open_death_0.webp` }],
     holdMs: DEFAULT_HOLD_MS,
     crossfadeMs: DEFAULT_CROSSFADE_MS,
     overlay: DEFAULT_OVERLAY,
   },
   win: {
-    frames: [{ src: "/background/win_bg_0.webp" }, { src: "/background/win_bg_1.webp" }],
+    frames: [
+      { src: `${OBJECT_13_BACKGROUND_PATH}/win_bg_0.webp` },
+      { src: `${OBJECT_13_BACKGROUND_PATH}/win_bg_1.webp` },
+    ],
     holdMs: DEFAULT_HOLD_MS,
     crossfadeMs: DEFAULT_CROSSFADE_MS,
     overlay: "linear-gradient(rgba(0,0,0,0.05), rgba(0,0,0,0.25))",
   },
   about: {
-    frames: [{ src: "/background/about_bg_0.webp" }],
+    frames: [{ src: `${OBJECT_13_BACKGROUND_PATH}/about_bg_0.webp` }],
     holdMs: DEFAULT_HOLD_MS,
     crossfadeMs: DEFAULT_CROSSFADE_MS,
     overlay: DEFAULT_OVERLAY,
