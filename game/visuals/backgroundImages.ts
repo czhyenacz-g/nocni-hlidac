@@ -44,10 +44,10 @@ export type BackgroundSceneId = "menu" | "loading" | "play" | "death" | "win" | 
 
 // menu/play/win mají 2 varianty snímků (public/background/*_0.webp, *_1.webp
 // — stejný obraz, jemně jiná varianta, např. jinak kouřící komín), které
-// SceneBackground plynule prolíná. about/loading mají zatím jen 1 snímek
-// (statické pozadí, bez střídání). death má zatím prázdné frames (žádné
-// pozadí), infrastruktura je ale připravená: stačí sem přidat frames (a
-// případně flicker), nikam jinam se sahat nemusí.
+// SceneBackground plynule prolíná. about/loading/death mají zatím jen 1
+// snímek (statické pozadí, bez střídání) — infrastruktura na víc snímků nebo
+// flicker je ale připravená: stačí sem přidat frames/flicker, nikam jinam se
+// sahat nemusí.
 export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig> = {
   menu: {
     frames: [{ src: "/background/menu_bg_0.webp" }, { src: "/background/menu_bg_1.webp" }],
@@ -68,7 +68,7 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
     overlay: "linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.3))",
   },
   death: {
-    frames: [],
+    frames: [{ src: "/background/death_bg_0.webp" }],
     holdMs: DEFAULT_HOLD_MS,
     crossfadeMs: DEFAULT_CROSSFADE_MS,
     overlay: DEFAULT_OVERLAY,
