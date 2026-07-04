@@ -143,6 +143,14 @@
       s prázdnými závislostmi při vstupu na DeathScreen — komponenta se mountuje znovu při
       každé smrti, takže se hláška nemění při rerenderu, ale při další smrti může vyjít jiná).
       Tlačítko restartu přejmenováno na "Přijmout nového hlídače" (dřív "Zkusit znovu").
+- [x] Počítadlo "Předchozí hlídači: X" na DeathScreen — `game/core/deathCount.ts`
+      (`getDeathCount`/`incrementDeathCount`, localStorage klíč
+      `nocni-hlidac:object13:death-count`, bezpečné mimo prohlížeč i bez localStorage —
+      spadne na 0, hra nespadne). Zvyšuje se výhradně v `app/play/page.tsx` uvnitř
+      existujícího screen-transition efektu (`prevScreenRef` diffing, stejný vzor jako
+      jinde) při přechodu na `screen === "death"` — ne při kliknutí na tlačítko restartu,
+      ne při výhře, ne opakovaně při rerenderu. Refresh stránky counter nesmaže
+      (localStorage přežívá), restart směny ho nesnižuje ani nemaže.
 - [x] `/dev-sound` — dev stránka se seznamem všech audio eventů (`game/audio/audioEvents.ts`),
       popisem, souborem/fallbackem a tlačítkem přehrát (`app/dev-sound/`, gatované
       `DEBUG_PANEL_ENABLED`)

@@ -51,6 +51,8 @@ export const COPY = {
       "Objekt neeviduje žádnou mimořádnou událost.",
       "Další hlídač bude seznámen se stejnými podmínkami.",
     ],
+    /** {count} se nahradí ve DeathScreen.tsx. */
+    previousGuardsLabel: "Předchozí hlídači: {count}",
   },
   blackout: {
     // Čtyři atmosférické fáze podle game/visuals/blackoutPhase.ts#getBlackoutPhaseIndex.

@@ -565,7 +565,26 @@ nepřesunula do CSS a nevznikla samostatná mobilní verze komponent.
 ## Restart směny
 
 Akce `RESTART_SHIFT` vytvoří nový `createInitialGameState(night)` (zachová jen nastavení
-zvuku — `audioMuted`) a rovnou přepne obrazovku na `playing`.
+zvuku — `audioMuted`) a rovnou přepne obrazovku na `playing`. Lore: restart neznamená, že
+se hráč "znovu narodil" nebo nahrál save — znamená to, že na stejné místo nastoupil další
+noční hlídač (viz DeathScreen "Přijmout nového hlídače" a počítadlo níže).
+
+## Počítadlo předchozích hlídačů (`game/core/deathCount.ts`)
+
+Čistě lokální `localStorage` counter (klíč `nocni-hlidac:object13:death-count`), žádný
+backend/login/databáze — `getDeathCount()` / `incrementDeathCount()`, obojí bezpečné mimo
+prohlížeč (SSR) i bez dostupného `localStorage` (`try/catch`, fallback na `0`, hra nikdy
+nespadne kvůli tomu).
+
+`incrementDeathCount()` se volá výhradně v `app/play/page.tsx`, uvnitř existujícího
+screen-transition `useEffect` (ten samý, co spouští jumpscare/audio na `screen === "death"`)
+— díky `prevScreenRef` diffingu (stejný vzor jako `generatorBeepSeq`/`blackoutPhaseSeq`
+jinde v kódu) firuje přesně jednou za skutečný přechod do `"death"`, ne při každém
+rerenderu, ne při kliknutí na tlačítko restartu (`handleRestart` jen dispatchuje
+`RESTART_SHIFT`) a ne při výhře. Výsledek se uloží do lokálního `useState<number>`
+(inicializovaného lazy `getDeathCount()` při mountu `PlayPage`) a posílá se do
+`DeathScreen.tsx` jako `deathCount` prop — `DeathScreen` sám žádný `localStorage` nečte,
+jen zobrazuje `COPY.death.previousGuardsLabel` s dosazeným číslem.
 
 ## Jak přidat další směnu později
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useReducer, useRef } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import MainMenuScreen from "@/components/screens/MainMenuScreen";
 import LoadingScreen from "@/components/screens/LoadingScreen";
 import GameScreen from "@/components/screens/GameScreen";
@@ -17,6 +17,7 @@ import { computeTensionLevel } from "@/game/visuals/atmosphereState";
 import { atmosphereStyleToCssVars, tensionToAtmosphereStyle } from "@/game/visuals/visualEffects";
 import { getBlackoutPhaseIndex } from "@/game/visuals/blackoutPhase";
 import { LOADING_SCREEN_DURATION_MS } from "@/game/balancing/constants";
+import { getDeathCount, incrementDeathCount } from "@/game/core/deathCount";
 
 const night = NIGHT_01;
 const gameReducer = createGameReducer(night);
@@ -27,6 +28,10 @@ const nearestCamera = [...night.cameras].sort((a, b) => (b.order ?? 0) - (a.orde
 
 export default function PlayPage() {
   const [state, dispatch] = useReducer(gameReducer, undefined, () => createInitialGameState(night));
+  // Kolik hlídačů už na týhle pozici selhalo — čistě lokální localStorage
+  // counter (viz game/core/deathCount.ts), nezávislý na herním stavu/reduceru.
+  // Lazy initializer čte aktuální hodnotu jen jednou při prvním mountu.
+  const [deathCount, setDeathCount] = useState(() => getDeathCount());
 
   useGameLoop({ isRunning: state.isRunning, enemyTickMs: night.enemyTickMs, dispatch });
 
@@ -57,6 +62,11 @@ export default function PlayPage() {
     }
     if (state.screen === "death") {
       audioManager.stopLoop(AUDIO_EVENTS.ambienceLoop);
+      // Counter se zvyšuje přesně tady — při přechodu hry do "death" stavu,
+      // ne při kliknutí na tlačítko restartu (handleRestart) a ne při výhře.
+      // Tenhle efekt už díky prevScreenRef diffingu (viz podmínka nahoře)
+      // firuje jen jednou za skutečný přechod, ne při každém rerenderu.
+      setDeathCount(incrementDeathCount());
       if (state.deathReason === "door_open_at_attack") {
         // Poslední krok těsně u dveří musí být zřetelně slyšet PŘED
         // jumpscare zvukem, ne zamíchaně přes sebe — proto krátký odklad,
@@ -273,7 +283,9 @@ export default function PlayPage() {
           onDebugRestartGenerator={handleDebugRestartGenerator}
         />
       )}
-      {state.screen === "death" && <DeathScreen reason={state.deathReason} onRetry={handleRestart} />}
+      {state.screen === "death" && (
+        <DeathScreen reason={state.deathReason} deathCount={deathCount} onRetry={handleRestart} />
+      )}
       {state.screen === "win" && <WinScreen onRetry={handleRestart} />}
     </div>
   );
