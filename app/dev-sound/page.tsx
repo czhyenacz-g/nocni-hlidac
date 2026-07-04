@@ -85,6 +85,63 @@ export default function DevSoundPage() {
           </tbody>
         </table>
       </div>
+
+      <h2 className="text-lg font-bold text-green-400 mt-8 mb-1">Kandidáti — heartbeat (OpenGameArt, CC0)</h2>
+      <p className="text-xs text-gray-500 mb-4">
+        Zatím nikam nezapojené varianty ke zvážení jako náhrada za syntetizovaný `heartbeat`
+        fallback (viz <code className="text-gray-400">assets/audio/downloads/opengameart/heartbeat/</code>
+        pro originální soubory a licenci). Přehrávač níže je jen dev náhled, ne herní audio systém.
+      </p>
+      <div className="overflow-x-auto pixel-panel">
+        <table className="w-full border-collapse text-xs">
+          <thead>
+            <tr className="text-left text-gray-400 border-b border-gray-700">
+              <th className="p-2">Varianta</th>
+              <th className="p-2">Zdroj</th>
+              <th className="p-2">Přehrát</th>
+            </tr>
+          </thead>
+          <tbody>
+            {HEARTBEAT_CANDIDATES.map((candidate) => (
+              <tr key={candidate.file} className="border-b border-gray-800 align-top">
+                <td className="p-2 text-amber-400 whitespace-nowrap">{candidate.label}</td>
+                <td className="p-2 text-gray-500">{candidate.source}</td>
+                <td className="p-2">
+                  <audio controls src={`/dev-sound-candidates/heartbeat/${candidate.file}`} className="h-8" />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </main>
   );
 }
+
+const HEARTBEAT_CANDIDATES = [
+  {
+    file: "heartbeat_slow_0.mp3",
+    label: "Slow",
+    source: "opengameart.org/content/heartbeat-sounds",
+  },
+  {
+    file: "heartbeat_fast_0.mp3",
+    label: "Fast",
+    source: "opengameart.org/content/heartbeat-sounds",
+  },
+  {
+    file: "heartbeat_slow_reverb.mp3",
+    label: "Slow (reverb)",
+    source: "opengameart.org/content/heartbeat-sounds",
+  },
+  {
+    file: "heartbeat_fast_reverb.mp3",
+    label: "Fast (reverb)",
+    source: "opengameart.org/content/heartbeat-sounds",
+  },
+  {
+    file: "heartbeat_single.mp3",
+    label: "Single beat",
+    source: "opengameart.org/content/heartbeat-single-sound",
+  },
+];
