@@ -40,14 +40,23 @@ const DEFAULT_CROSSFADE_MS = 1500;
 // overlay obrázky prakticky úplně "spálil" na černo — proto jen slabý spodní gradient.
 const DEFAULT_OVERLAY = "linear-gradient(rgba(0,0,0,0.05), rgba(0,0,0,0.25))";
 
-export type BackgroundSceneId = "menu" | "loading" | "play" | "death" | "win" | "about";
+export type BackgroundSceneId =
+  | "menu"
+  | "loading"
+  | "play"
+  | "door"
+  | "death"
+  | "deathDoorAttack"
+  | "win"
+  | "about";
 
 // menu/play/win mají 2 varianty snímků (public/background/*_0.webp, *_1.webp
 // — stejný obraz, jemně jiná varianta, např. jinak kouřící komín), které
-// SceneBackground plynule prolíná. about/loading/death mají zatím jen 1
-// snímek (statické pozadí, bez střídání) — infrastruktura na víc snímků nebo
-// flicker je ale připravená: stačí sem přidat frames/flicker, nikam jinam se
-// sahat nemusí.
+// SceneBackground plynule prolíná automaticky po holdMs. about/loading/death/
+// deathDoorAttack mají zatím jen 1 snímek (statické pozadí, bez střídání).
+// `door` má 2 snímky (otevřené/zavřené dveře), ale NEcyklují se samy —
+// DoorView.tsx řídí aktivní index přes SceneBackground.activeIndexOverride
+// podle state.doorClosed, viz komponenta.
 export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig> = {
   menu: {
     frames: [{ src: "/background/menu_bg_0.webp" }, { src: "/background/menu_bg_1.webp" }],
@@ -67,8 +76,27 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
     crossfadeMs: DEFAULT_CROSSFADE_MS,
     overlay: "linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.3))",
   },
+  // Index 0 = otevřené, index 1 = zavřené — DoorView.tsx nastavuje
+  // activeIndexOverride podle state.doorClosed, viz SceneBackground.tsx.
+  door: {
+    frames: [{ src: "/background/door_open_0.webp" }, { src: "/background/door_closed_0.webp" }],
+    holdMs: DEFAULT_HOLD_MS,
+    crossfadeMs: DEFAULT_CROSSFADE_MS,
+    overlay: "linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.3))",
+  },
   death: {
     frames: [{ src: "/background/death_bg_0.webp" }],
+    holdMs: DEFAULT_HOLD_MS,
+    crossfadeMs: DEFAULT_CROSSFADE_MS,
+    overlay: DEFAULT_OVERLAY,
+  },
+  // Smrt "door_open_at_attack" nastává ve stejném reducer dispatchi, kdy
+  // enemyStage přejde na "attack" a screen na "death" zároveň — hráč tedy
+  // nikdy neuvidí samostatnou "útok probíhá" fázi v DoorView, jen rovnou
+  // DeathScreen. Tenhle obrázek proto slouží jako pozadí death screenu pro
+  // tuhle konkrétní deathReason, viz DeathScreen.tsx.
+  deathDoorAttack: {
+    frames: [{ src: "/background/door_open_death_0.webp" }],
     holdMs: DEFAULT_HOLD_MS,
     crossfadeMs: DEFAULT_CROSSFADE_MS,
     overlay: DEFAULT_OVERLAY,

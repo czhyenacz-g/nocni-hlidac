@@ -45,10 +45,14 @@ export default function GameScreen({
 }: GameScreenProps) {
   // Pozadí pro všechny tři herní pohledy (control_room/desk, doors,
   // generator) — jen mimo blackout, kdy BlackoutView stejně celou obrazovku
-  // nahrazuje vlastní atmosférou. Všechny tři sdílejí zatím stejnou scénu
-  // (BACKGROUND_SCENES.play); až budou mít vlastní obrázky, půjde jen o
-  // přepnutí podle state.playerView tady, žádný zásah jinde.
+  // nahrazuje vlastní atmosférou. desk/generator sdílejí BACKGROUND_SCENES.play;
+  // door má vlastní scénu se 2 snímky (otevřené/zavřené), jejichž aktivní
+  // index řídíme podle state.doorClosed, ne časovačem (viz SceneBackground.tsx
+  // activeIndexOverride) — obrázky se tak plynule prohodí přesně v okamžiku
+  // přepnutí dveří, ne nahodile.
   const showPlayBackground = state.gameStatus !== "blackout";
+  const isDoorView = state.playerView === "door";
+  const playBackgroundScene = isDoorView ? BACKGROUND_SCENES.door : BACKGROUND_SCENES.play;
 
   return (
     // <main> je bez bg-* třídy a bez max-w-md — SceneBackground (potomek s
@@ -57,7 +61,12 @@ export default function GameScreen({
     // sloupec (viz max-w-md níže) a zbytek širší obrazovky by zůstal holý
     // <body> background. Herní obsah je proto v samostatném vnitřním divu.
     <main className="relative min-h-screen p-4">
-      {showPlayBackground && <SceneBackground scene={BACKGROUND_SCENES.play} />}
+      {showPlayBackground && (
+        <SceneBackground
+          scene={playBackgroundScene}
+          activeIndexOverride={isDoorView ? (state.doorClosed ? 1 : 0) : undefined}
+        />
+      )}
 
       <div className="flex flex-col gap-4 max-w-md mx-auto">
         <div className="flex justify-between items-center">

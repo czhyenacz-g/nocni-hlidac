@@ -9,9 +9,15 @@ interface DeathScreenProps {
 }
 
 export default function DeathScreen({ reason, onRetry }: DeathScreenProps) {
+  // door_open_at_attack nemá samostatnou "útok probíhá" fázi (reducer
+  // přepíná enemyStage na "attack" a screen na "death" ve stejném dispatchi,
+  // viz gameReducer.ts ENEMY_ADVANCE) — deathDoorAttack je proto pozadí
+  // přímo pro tenhle death screen, ne pro nějaký mezikrok v DoorView.
+  const scene = reason === "door_open_at_attack" ? BACKGROUND_SCENES.deathDoorAttack : BACKGROUND_SCENES.death;
+
   return (
     <main className="relative min-h-screen flex items-center justify-center p-4">
-      <SceneBackground scene={BACKGROUND_SCENES.death} />
+      <SceneBackground scene={scene} />
       <div className="jumpscare-overlay" />
       <div className="w-full max-w-md text-center pixel-panel p-8 relative z-10">
         <h1 className="text-2xl font-bold mb-2 text-red-500">{COPY.death.title}</h1>

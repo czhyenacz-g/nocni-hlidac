@@ -87,6 +87,14 @@
       jen užší centrovaný sloupec, ne celou šířku obrazovky (přesunuto — `<main>` teď na celou
       šířku, herní obsah ve vnitřním `max-w-md` divu); (3) pozadí na `/play` se navíc zobrazovalo
       jen v `DeskView`, teď je stejné (`play`) i v `DoorView`/`GeneratorView`.
+- [x] Vlastní pozadí pro `DoorView` (otevřené/zavřené dveře, `door_open_0.webp`/
+      `door_closed_0.webp`) — `SceneBackground` dostal nový prop `activeIndexOverride`, který
+      přebije automatické cyklení a nechá aktivní snímek řídit `GameScreen.tsx` podle
+      `state.doorClosed`, ať se obrázky prohodí přesně při přepnutí dveří (crossfade), ne
+      časovačem. Smrt `door_open_at_attack` (dveře otevřené + útok) nemá samostatnou
+      vykreslenou fázi (reducer nastaví `enemyStage: "attack"` a `screen: "death"` ve stejném
+      dispatchi) — `door_open_death_0.webp` proto slouží jako pozadí přímo `DeathScreen`u pro
+      tenhle konkrétní `deathReason` (`BACKGROUND_SCENES.deathDoorAttack`).
 - [x] `/dev-sound` — dev stránka se seznamem všech audio eventů (`game/audio/audioEvents.ts`),
       popisem, souborem/fallbackem a tlačítkem přehrát (`app/dev-sound/`, gatované
       `DEBUG_PANEL_ENABLED`)

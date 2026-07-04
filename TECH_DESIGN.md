@@ -336,33 +336,47 @@ Atmosférické pozadí obrazovek (menu, loading, `/play` desk fáze, death, win,
 konfigurační, ne natvrdo napsané v jednotlivých screen komponentách:
 
 - `game/visuals/backgroundImages.ts` — `BACKGROUND_SCENES: Record<BackgroundSceneId,
-  SceneBackgroundConfig>`, jeden záznam na obrazovku (`"menu" | "loading" | "play" | "death" |
-  "win" | "about"`). `SceneBackgroundConfig` = `frames: BackgroundFrame[]` (0-3 obrázky),
-  `holdMs`/`crossfadeMs` (časování prolínání mezi snímky), volitelný `flicker`
-  (`minBrightness`/`maxBrightness`/`periodMs` — jemné blikání/ztlumení nezávislé na počtu
-  snímků) a `overlay` (jemný tmavý gradient přes obrázek). Zdrojové obrázky jsou samy o sobě
-  velmi tmavé (záměrná hororová atmoška) a text stojí v `.pixel-panel` boxech s vlastním
-  poloprůhledným pozadím — `overlay` proto NENÍ hlavní zdroj čitelnosti textu, jen jemné
-  doladění kontrastu (bug: původní `0.55-0.8` opacity overlay obrázky prakticky spálil na
-  černo, vypadalo to jako "žádné pozadí"; opraveno na `0.05-0.3`). Všech 6 scén má reálné
-  `frames` — `menu`/`play`/`win` po 2 snímcích (crossfade), `loading`/`death`/`about` po 1
-  (statické).
+  SceneBackgroundConfig>`, jeden záznam na obrazovku/stav (`"menu" | "loading" | "play" |
+  "door" | "death" | "deathDoorAttack" | "win" | "about"`). `SceneBackgroundConfig` =
+  `frames: BackgroundFrame[]` (0-3 obrázky), `holdMs`/`crossfadeMs` (časování prolínání mezi
+  snímky), volitelný `flicker` (`minBrightness`/`maxBrightness`/`periodMs` — jemné
+  blikání/ztlumení nezávislé na počtu snímků) a `overlay` (jemný tmavý gradient přes obrázek).
+  Zdrojové obrázky jsou samy o sobě velmi tmavé (záměrná hororová atmoška) a text stojí v
+  `.pixel-panel` boxech s vlastním poloprůhledným pozadím — `overlay` proto NENÍ hlavní zdroj
+  čitelnosti textu, jen jemné doladění kontrastu (bug: původní `0.55-0.8` opacity overlay
+  obrázky prakticky spálil na černo, vypadalo to jako "žádné pozadí"; opraveno na `0.05-0.3`).
 - `components/SceneBackground.tsx` (`"use client"`) vykreslí scénu: víc snímků se prolíná
   (crossfade) — každý snímek je vlastní absolutně umístěný `<div>` s `background-image` a
-  `opacity` transition (`transition: opacity {crossfadeMs}ms`), přepínání aktivního indexu řeší
-  `setInterval` po `holdMs`. To je nutné, protože CSS neumí interpolovat mezi dvěma
-  `background-image` hodnotami na jednom elementu (byl by to tvrdý střih) — proto dva reálné
-  DOM elementy nad sebou, ne inline `style.backgroundImage` na `<main>`. `flicker` se aplikuje
-  jako `filter: brightness(...)` animace (`@keyframes scene-background-flicker` v
-  `styles/pixel.css`) na obalový `div`, nezávisle na prolínání snímků — obojí jde kombinovat.
-  Prázdné `frames` → komponenta vrátí `null`.
+  `opacity` transition (`transition: opacity {crossfadeMs}ms`). Aktivní index řídí buď
+  automatický `setInterval` po `holdMs` (menu/play/win — časové cyklení mezi variantami), nebo
+  volitelný prop `activeIndexOverride`, který přebije auto-cyklení úplně a nechá index řídit
+  rodiče podle herního stavu (`door` scéna — `GameScreen.tsx` nastavuje
+  `activeIndexOverride={state.doorClosed ? 1 : 0}`, takže se otevřené/zavřené dveře prohodí
+  přesně v okamžiku přepnutí, ne nahodile časovačem). To je nutné, protože CSS neumí
+  interpolovat mezi dvěma `background-image` hodnotami na jednom elementu (byl by to tvrdý
+  střih) — proto dva reálné DOM elementy nad sebou, ne inline `style.backgroundImage` na
+  `<main>`. `flicker` se aplikuje jako `filter: brightness(...)` animace (`@keyframes
+  scene-background-flicker` v `styles/pixel.css`) na obalový `div`, nezávisle na prolínání
+  snímků — obojí jde kombinovat. Prázdné `frames` → komponenta vrátí `null`.
 - Použití: `<SceneBackground scene={BACKGROUND_SCENES.xxx} />` jako první potomek `<main
   className="relative ...">` (rodič musí mít `position: relative`, `SceneBackground` je
   `absolute inset-0 -z-10`, ostatní obsah zůstává v normálním flow nad ním). V `GameScreen.tsx`
   se renderuje pro všechny tři herní pohledy (control_room/desk, doors, generator), jen ne
   během blackoutu (`state.gameStatus !== "blackout"`) — `BlackoutView` má vlastní atmosféru.
-  Všechny tři sdílejí zatím stejnou scénu (`BACKGROUND_SCENES.play`); až budou mít vlastní
-  obrázky, půjde jen o přepnutí podle `state.playerView` na tomtéž místě.
+  desk/generator sdílí `BACKGROUND_SCENES.play`, `door` má vlastní scénu se 2 snímky
+  (otevřené/zavřené dveře, viz výše). `DeathScreen.tsx` navíc vybírá scénu podle
+  `deathReason` — `door_open_at_attack` → `deathDoorAttack` (viz "Smrt u dveří má vlastní
+  pozadí" níže), cokoliv jiného (`blackout_timeout`) → obecná `death`.
+
+### Smrt u dveří má vlastní pozadí (`deathDoorAttack`)
+
+`ENEMY_ADVANCE` v `gameReducer.ts` nastaví `enemyStage: "attack"` a `screen: "death"` ve
+**stejném** dispatchi (viz "Definice nepřítele" výše) — hráč tedy nikdy neuvidí samostatnou
+"dveře otevřené, monstrum útočí" fázi vykreslenou v `DoorView.tsx`, jen rovnou `DeathScreen`.
+`BACKGROUND_SCENES.deathDoorAttack` (`door_open_death_0.webp`) proto slouží jako pozadí přímo
+death screenu pro `deathReason === "door_open_at_attack"`, ne pro nějaký mezikrok v `DoorView`.
+Pokud by v budoucnu přibyla skutečná "útok probíhá" fáze (např. krátké zpoždění mezi `at_door`
+standoffem a smrtí), obrázek by se dal přesunout/duplikovat tam — zatím to není potřeba.
 - **Dvě chyby, na které si dát pozor při použití `SceneBackground` (obě se objevily a byly
   opravené):**
   1. `<main>` nesmí mít VLASTNÍ `bg-*` třídu na stejném elementu jako `SceneBackground`
