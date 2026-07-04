@@ -151,6 +151,13 @@
       jinde) při přechodu na `screen === "death"` — ne při kliknutí na tlačítko restartu,
       ne při výhře, ne opakovaně při rerenderu. Refresh stránky counter nesmaže
       (localStorage přežívá), restart směny ho nesnižuje ani nemaže.
+- [x] Win screen: tlačítko "Znovu" -> "Pokračovat další nocí"
+- [x] Úvodní tlačítko "Spustit směnu" -> "Nastoupit na směnu" + malý odkaz "Podmínky noční
+      služby" pod ním na `/terms`
+- [x] `/terms` — "Podmínky noční služby", napůl lore napůl disclaimer (hororová hra, hraní
+      dobrovolné a na vlastní odpovědnost, ne skutečný právní dokument). Stejné pozadí jako
+      menu (`BACKGROUND_SCENES.menu`), text ve scrollovatelném panelu (`max-h-[55vh]
+      overflow-y-auto`), odkaz zpět na `/play`.
 - [x] `/dev-sound` — dev stránka se seznamem všech audio eventů (`game/audio/audioEvents.ts`),
       popisem, souborem/fallbackem a tlačítkem přehrát (`app/dev-sound/`, gatované
       `DEBUG_PANEL_ENABLED`)

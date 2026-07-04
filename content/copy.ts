@@ -4,7 +4,8 @@ export const COPY = {
     title: "Noční hlídač",
     subtitle: "Objekt 13: První směna",
     intro: "Sedíš v malé místnosti. Kamery šumí. Dveře nevydrží věčně. Přežij do rána.",
-    startButton: "Spustit směnu",
+    startButton: "Nastoupit na směnu",
+    termsLinkLabel: "Podmínky noční služby",
     authorEmail: "hynek@darbujan.cz",
   },
   game: {
@@ -99,5 +100,42 @@ export const COPY = {
     ctaHeading: "Máte nabídku práce, nápad na spolupráci nebo zájem o sponzoring?",
     ctaAction: "Ozvěte se:",
     backToGameLabel: "← Zpět ke hře",
+  },
+  terms: {
+    seoTitle: "Podmínky noční služby | Noční hlídač",
+    seoDescription:
+      "Podmínky noční služby v Objektu 13 — napůl herní lore, napůl disclaimer k hororové hře Noční hlídač.",
+    heading: "Podmínky noční služby",
+    paragraphs: [
+      "Nástupem na směnu v Objektu 13 potvrzuješ, že vstupuješ do služby dobrovolně, " +
+        "při vědomí a na vlastní odpovědnost.",
+      "Bereš na vědomí, že během směny může dojít k výpadkům proudu, ztrátě orientace, " +
+        "pohybu neznámých osob na kamerovém systému, zvukům za dveřmi a dalším jevům, " +
+        "které provozovatel nemusí být schopen uspokojivě vysvětlit.",
+      "Hráč dále bere na vědomí, že Noční hlídač je hororová hra. Obsahuje napětí, tmu, " +
+        "náhlé zvuky, lekačky, znepokojivé obrazy a další prvky, které mohou být nevhodné " +
+        "pro citlivé osoby, osoby se srdečními obtížemi, epilepsií, úzkostmi nebo jinou " +
+        "zdravotní zátěží.",
+      "Pokud trpíš zdravotními obtížemi, hraješ unavený, ve stresu, sám v temné místnosti " +
+        "nebo s příliš hlasitými sluchátky, činíš tak na vlastní odpovědnost.",
+      "Provozovatel hry ani společnost odpovědná za provoz Objektu 13 nenese odpovědnost " +
+        "za následky vzniklé dobrovolným nástupem na směnu, včetně úleku, ztráty spánku, " +
+        "podezřelého pohledu do chodby, náhlé potřeby rozsvítit, ani za rozhodnutí nezavřít " +
+        "dveře včas.",
+      "Noční hlídač je povinen sledovat kamerový systém, šetřit energii, kontrolovat dveře " +
+        "a nevyvozovat unáhlené závěry z toho, že se něco pohnulo tam, kde podle záznamů " +
+        "nic být nemělo.",
+      "Opuštění stanoviště během směny se nedoporučuje. Opuštění stanoviště bez těla se " +
+        "neeviduje jako pracovní úraz.",
+      "V případě zmizení, předčasného ukončení směny nebo jiné provozní komplikace může " +
+        "být pozice bez zbytečného odkladu obsazena dalším hlídačem.",
+      "Tlačítko „Přijmout nového hlídače“ neznamená návrat původního zaměstnance do " +
+        "služby. Znamená pouze, že provoz pokračuje.",
+      "Veškeré události v Objektu 13 jsou fiktivní. Hra neslouží jako skutečný " +
+        "pracovněprávní dokument, lékařské doporučení ani bezpečnostní školení.",
+      "Hra je fikce. Noční práce je skutečná. Skuteční lidé pracující v noci si zaslouží " +
+        "respekt, světlo, klid a férovou mzdu.",
+    ],
+    backLabel: "← Zpět na nástup",
   },
 } as const;
