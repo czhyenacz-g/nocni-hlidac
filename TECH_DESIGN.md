@@ -340,9 +340,13 @@ konfigurační, ne natvrdo napsané v jednotlivých screen komponentách:
   "win" | "about"`). `SceneBackgroundConfig` = `frames: BackgroundFrame[]` (0-3 obrázky),
   `holdMs`/`crossfadeMs` (časování prolínání mezi snímky), volitelný `flicker`
   (`minBrightness`/`maxBrightness`/`periodMs` — jemné blikání/ztlumení nezávislé na počtu
-  snímků) a `overlay` (tmavý gradient přes obrázek pro čitelnost textu). Zatím mají reálné
-  `frames` jen `menu`/`play`/`win` (1 snímek každá, žádný `flicker`) — `loading`/`death`/`about`
-  mají `frames: []` (SceneBackground nic nevykreslí), připravené na budoucí art bez zásahu do
+  snímků) a `overlay` (jemný tmavý gradient přes obrázek). Zdrojové obrázky jsou samy o sobě
+  velmi tmavé (záměrná hororová atmoška) a text stojí v `.pixel-panel` boxech s vlastním
+  poloprůhledným pozadím — `overlay` proto NENÍ hlavní zdroj čitelnosti textu, jen jemné
+  doladění kontrastu (bug: původní `0.55-0.8` opacity overlay obrázky prakticky spálil na
+  černo, vypadalo to jako "žádné pozadí"; opraveno na `0.05-0.3`). Reálné `frames` má
+  `menu`/`play`/`win` (2 snímky každá) a `loading`/`about` (1 snímek) — `death` má zatím
+  `frames: []` (SceneBackground nic nevykreslí), připravené na budoucí art bez zásahu do
   komponent.
 - `components/SceneBackground.tsx` (`"use client"`) vykreslí scénu: víc snímků se prolíná
   (crossfade) — každý snímek je vlastní absolutně umístěný `<div>` s `background-image` a

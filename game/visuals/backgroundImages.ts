@@ -33,7 +33,12 @@ export interface SceneBackgroundConfig {
 
 const DEFAULT_HOLD_MS = 6000;
 const DEFAULT_CROSSFADE_MS = 1500;
-const DEFAULT_OVERLAY = "linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.75))";
+// Zdrojové obrázky (public/background/*.png) jsou samy o sobě velmi tmavé
+// (záměrně, hororová atmosféra) — text stojí v `.pixel-panel` boxech, které
+// mají vlastní poloprůhledné pozadí (viz styles/pixel.css), takže overlay tu
+// není kvůli čitelnosti textu, jen jemné doladění kontrastu. Původní 0.55-0.8
+// overlay obrázky prakticky úplně "spálil" na černo — proto jen slabý spodní gradient.
+const DEFAULT_OVERLAY = "linear-gradient(rgba(0,0,0,0.05), rgba(0,0,0,0.25))";
 
 export type BackgroundSceneId = "menu" | "loading" | "play" | "death" | "win" | "about";
 
@@ -60,7 +65,7 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
     frames: [{ src: "/background/play_bg_universal_0.webp" }, { src: "/background/play_bg_universal_1.webp" }],
     holdMs: DEFAULT_HOLD_MS,
     crossfadeMs: DEFAULT_CROSSFADE_MS,
-    overlay: "linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.8))",
+    overlay: "linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.3))",
   },
   death: {
     frames: [],
@@ -72,7 +77,7 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
     frames: [{ src: "/background/win_bg_0.webp" }, { src: "/background/win_bg_1.webp" }],
     holdMs: DEFAULT_HOLD_MS,
     crossfadeMs: DEFAULT_CROSSFADE_MS,
-    overlay: "linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.7))",
+    overlay: "linear-gradient(rgba(0,0,0,0.05), rgba(0,0,0,0.25))",
   },
   about: {
     frames: [{ src: "/background/about_bg_0.webp" }],
