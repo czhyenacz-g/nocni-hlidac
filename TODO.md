@@ -105,7 +105,14 @@
       (stav je vidět v obrázku), zůstala jen malá cedulka. Horní HUD (čas/zvuk/energie) se v
       `DoorView` vůbec nerenderuje (ne jen CSS skrytí), "Zpět k panelu" přesunuto dolů pod
       dveře. Desk/generator beze změny.
-      Čistě lokální mezistav jen pro tenhle případ — blackout beze změny.
+- [x] DoorView přestal používat viewport `SceneBackground`/`bg-cover` pro vlastní obrázek —
+      nová lokální komponenta `components/game/DoorSceneFrame.tsx` (reálný `<img>`, pevný
+      `aspect-video`, `object-contain`, max. šířka `min(100%, 1100px)`) drží obrázek dveří a
+      hotspot ve stejném procentuálním souřadnicovém systému, takže hotspot při zoomu
+      prohlížeče / resize okna / libovolném poměru stran zůstává přesně na dveřích (dřív se
+      mohl rozjet, protože `bg-cover` škáluje obrázek podle celé šířky obrazovky nezávisle na
+      vnitřním obsahu). `GameScreen.tsx` pro `playerView === "door"` `SceneBackground` vůbec
+      nerenderuje. Ostatní obrazovky (menu/about/win/death/loading/desk/generator) beze změny.
 - [x] `/dev-sound` — dev stránka se seznamem všech audio eventů (`game/audio/audioEvents.ts`),
       popisem, souborem/fallbackem a tlačítkem přehrát (`app/dev-sound/`, gatované
       `DEBUG_PANEL_ENABLED`)

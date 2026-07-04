@@ -212,13 +212,15 @@ hned:
   guard-styl jako existující `blackout` kontroly, přidaný vedle nich, ne místo nich —
   blackoutové chování se nemění). `ENEMY_ADVANCE` je taky no-op (nepřítel je už "attack",
   žádný další postup nedává smysl).
-- Vizuálně: `GameScreen.tsx` počítá `doorBackgroundIndex = isDoorDeathReveal ? 2 :
-  (state.doorClosed ? 1 : 0)` pro scénu `BACKGROUND_SCENES.door` (3 snímky: otevřené/
-  zavřené/monstrum) — protože je pořád stejná scéna/instance `SceneBackground`, přepnutí na
-  index 2 crossfade prolne (`crossfadeMs: 350` u téhle scény, kratší než jinde, ať se stihne
-  doprolínat během 700 ms revealu). `doorDeathRevealUntilMs` se nastavuje jen když je hráč už
-  v `DoorView`, takže `isDoorView` je v tu chvíli vždy `true` — žádný přechod mezi scénami
-  (desk/generator → door) se během revealu neděje.
+- Vizuálně: `DoorView.tsx` počítá `activeIndex = isDoorDeathReveal ? 2 : (doorClosed ? 1 :
+  0)` pro `BACKGROUND_SCENES.door.frames`, vykreslené přes lokální `DoorSceneFrame.tsx`
+  (viz "Pohled hráče" níže — DoorView už nepoužívá `SceneBackground`/`GameScreen.tsx` pro
+  vlastní obrázek). Protože jsou všechny 3 snímky (otevřené/zavřené/monstrum) pořád součástí
+  téhož `DoorSceneFrame`, přepnutí na index 2 plynule crossfade prolne (`crossfadeMs: 350` u
+  téhle scény, kratší než jinde, ať se stihne doprolínat během 700 ms revealu).
+  `doorDeathRevealUntilMs` se nastavuje jen když je hráč už v `DoorView`, takže `isDoorView`
+  je v tu chvíli vždy `true` — žádný přechod mezi pohledy (desk/generator → door) se během
+  revealu neděje.
 - Je to čistě lokální mezistav pro tenhle jeden případ (`doorDeathRevealUntilMs`), ne
   univerzální "pre-death" obrazovka — `blackout_timeout` (a jakákoli budoucí jiná smrt) přes
   něj vůbec neprochází, `screen: "death"` se pro ně nastavuje přímo jako dřív.
@@ -254,19 +256,33 @@ klikatelné — nejde jen o vizuální přepínač: `TOGGLE_DOOR` funguje jen kd
   generátor (`ViewSwitchArrow`). Dveře ani generátor tu nejsou vůbec vykreslené.
   Šipka na generátor dostává `urgent={state.generatorState !== "normal"}`.
 - `components/game/DoorView.tsx` — samotné dveře (klik = `TOGGLE_DOOR`) + šipka
-  zpět na stůl. Klikací plocha je `.door-hotspot` (`styles/pixel.css`) — průhledný
-  hotspot (opacity ~0.1, jemně viditelnější na hover/focus) posazený inline stylem
-  v procentech (`left`/`top`/`width`/`height`) přímo na dveře ve `SceneBackground`
-  obrázku (`BACKGROUND_SCENES.door`), ne neprůhledný panel přes celou scénu —
-  hráč má mít pocit, že kliká na dveře samotné, ne na UI tlačítko. Velký textový
-  popisek stavu dveří je záměrně pryč (stav je vidět přímo v obrázku — elektronický
-  zámek vpravo), zůstala jen malá nenápadná cedulka (`.door-hotspot-label`) s
-  `COPY.game.doorViewHint`. `.tap-target-critical` (min. 56×56 px) hlídá minimální
+  zpět na stůl. **Na rozdíl od** DeskView/GeneratorView (sdílejí `SceneBackground`
+  přes `GameScreen.tsx`, viz "Scénová pozadí" výše) má DoorView vlastní lokální
+  `components/game/DoorSceneFrame.tsx` — reálný `<img>` uvnitř wrapperu s pevným
+  `aspect-video` (16:9) a `object-contain`, max. šířka `min(100%, 1100px)`, ne
+  viewport CSS `background-image` přes `bg-cover`. Důvod: `bg-cover` škáluje/ořezává
+  obrázek podle CELÉ šířky obrazovky nezávisle na vnitřním obsahu, takže procentuálně
+  pozicovaný hotspot by se při zoomu/resize/jiném poměru stran rozjel od obrázku.
+  `DoorSceneFrame` drží obrázek i hotspot ve STEJNÉM souřadnicovém systému (procenta
+  vůči vlastnímu wrapperu), takže se škálují vždy spolu. `GameScreen.tsx` proto pro
+  `playerView === "door"` `SceneBackground` vůbec nerenderuje (`showPlayBackground =
+  gameStatus !== "blackout" && !isDoorView`) — `DoorView` si obrázek řeší sám.
+  `DoorSceneFrame` dostává stejná data jako dřív (`BACKGROUND_SCENES.door.frames`,
+  3 snímky: otevřené/zavřené/monstrum, `crossfadeMs: 350`) — `DoorView.tsx` počítá
+  `activeIndex` podle `doorClosed`/`isDoorDeathReveal` a crossfade mezi snímky (stejný
+  princip jako `SceneBackground`, jen na `<img opacity>` místo `background-image`).
+  Klikací plocha je `.door-hotspot` (`styles/pixel.css`) — průhledný hotspot (opacity
+  ~0.1, jemně viditelnější na hover/focus) posazený inline stylem v procentech
+  (`left`/`top`/`width`/`height`) vůči `DoorSceneFrame` wrapperu, ne neprůhledný panel
+  přes celou scénu — hráč má mít pocit, že kliká na dveře samotné, ne na UI tlačítko.
+  Velký textový popisek stavu dveří je záměrně pryč (stav je vidět přímo v obrázku —
+  elektronický zámek vpravo), zůstala jen malá nenápadná cedulka (`.door-hotspot-label`)
+  s `COPY.game.doorViewHint`. `.tap-target-critical` (min. 56×56 px) hlídá minimální
   dotykovou plochu, i kdyby procenta na malém displeji vyšla menší. `ViewSwitchArrow`
-  zpět na stůl je teď dole pod dveřmi, ne nahoře — vizuálně méně dominantní než
-  samotné dveře. `GameScreen.tsx` navíc v `DoorView` vůbec nerenderuje horní HUD
-  (`ShiftTimer`/`AudioToggle`/`PowerMeter`) — `!isDoorView &&` podmínka, ne jen CSS
-  skrytí — ať se hráč soustředí na dveře; desk/generator zůstávají beze změny.
+  zpět na stůl je pod dveřmi, ne nahoře — vizuálně méně dominantní než samotné dveře.
+  `GameScreen.tsx` navíc v `DoorView` vůbec nerenderuje horní HUD (`ShiftTimer`/
+  `AudioToggle`/`PowerMeter`) — `!isDoorView &&` podmínka, ne jen CSS skrytí — ať se
+  hráč soustředí na dveře; desk/generator zůstávají beze změny.
 - `components/game/GeneratorView.tsx` — generátor s vizuální kontrolkou
   (`.pixel-indicator` v `styles/pixel.css`, stav podle `data-state`), klik =
   `RESTART_GENERATOR` + šipka zpět na stůl.
@@ -408,12 +424,14 @@ konfigurační, ne natvrdo napsané v jednotlivých screen komponentách:
 - Použití: `<SceneBackground scene={BACKGROUND_SCENES.xxx} />` jako první potomek `<main
   className="relative ...">` (rodič musí mít `position: relative`, `SceneBackground` je
   `absolute inset-0 -z-10`, ostatní obsah zůstává v normálním flow nad ním). V `GameScreen.tsx`
-  se renderuje pro všechny tři herní pohledy (control_room/desk, doors, generator), jen ne
-  během blackoutu (`state.gameStatus !== "blackout"`) — `BlackoutView` má vlastní atmosféru.
-  desk/generator sdílí `BACKGROUND_SCENES.play`, `door` má vlastní scénu se 2 snímky
-  (otevřené/zavřené dveře, viz výše). `DeathScreen.tsx` navíc vybírá scénu podle
-  `deathReason` — `door_open_at_attack` → `deathDoorAttack` (viz "Smrt u dveří má vlastní
-  pozadí" níže), cokoliv jiného (`blackout_timeout`) → obecná `death`.
+  se renderuje pro desk/generator (`BACKGROUND_SCENES.play`), jen ne během blackoutu
+  (`state.gameStatus !== "blackout"`) — `BlackoutView` má vlastní atmosféru. **`DoorView`
+  je výjimka** — vlastní obrázek řeší lokálně přes `DoorSceneFrame.tsx` (reálný `<img>`,
+  ne viewport `bg-cover`), viz "Pohled hráče (DeskView / DoorView / GeneratorView)" níže;
+  `GameScreen.tsx` proto pro `playerView === "door"` `SceneBackground` vůbec nerenderuje.
+  `DeathScreen.tsx` navíc vybírá scénu podle `deathReason` — `door_open_at_attack` →
+  `deathDoorAttack` (viz "Smrt u dveří má vlastní pozadí" níže), cokoliv jiného
+  (`blackout_timeout`) → obecná `death`.
 
 ### Smrt u dveří má vlastní pozadí (`deathDoorAttack`)
 

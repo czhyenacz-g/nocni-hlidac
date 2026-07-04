@@ -43,18 +43,13 @@ export default function GameScreen({
   onDebugToggleDoor,
   onDebugRestartGenerator,
 }: GameScreenProps) {
-  // Pozadí pro všechny tři herní pohledy (control_room/desk, doors,
-  // generator) — jen mimo blackout, kdy BlackoutView stejně celou obrazovku
-  // nahrazuje vlastní atmosférou. desk/generator sdílejí BACKGROUND_SCENES.play;
-  // door má vlastní scénu se 3 snímky (otevřené/zavřené/monstrum ve dveřích),
-  // jejichž aktivní index řídíme podle herního stavu, ne časovačem (viz
-  // SceneBackground.tsx activeIndexOverride) — obrázky se tak plynule
-  // prohodí přesně v okamžiku přepnutí dveří nebo doorDeathRevealu.
-  const showPlayBackground = state.gameStatus !== "blackout";
+  // Pozadí pro desk/generator (BACKGROUND_SCENES.play) — jen mimo blackout,
+  // kdy BlackoutView stejně celou obrazovku nahrazuje vlastní atmosférou.
+  // DoorView má vlastní lokální řešení (DoorSceneFrame, viz DoorView.tsx) —
+  // NErenderuje se tu přes SceneBackground, aby dveřní hotspot nezávisel na
+  // viewport bg-cover škálování (viz DoorSceneFrame.tsx pro zdůvodnění).
   const isDoorView = state.playerView === "door";
-  const isDoorDeathReveal = state.doorDeathRevealUntilMs !== null;
-  const playBackgroundScene = isDoorView ? BACKGROUND_SCENES.door : BACKGROUND_SCENES.play;
-  const doorBackgroundIndex = isDoorDeathReveal ? 2 : state.doorClosed ? 1 : 0;
+  const showPlayBackground = state.gameStatus !== "blackout" && !isDoorView;
 
   return (
     // <main> je bez bg-* třídy a bez max-w-md — SceneBackground (potomek s
@@ -63,9 +58,7 @@ export default function GameScreen({
     // sloupec (viz max-w-md níže) a zbytek širší obrazovky by zůstal holý
     // <body> background. Herní obsah je proto v samostatném vnitřním divu.
     <main className="relative min-h-screen p-4">
-      {showPlayBackground && (
-        <SceneBackground scene={playBackgroundScene} activeIndexOverride={isDoorView ? doorBackgroundIndex : undefined} />
-      )}
+      {showPlayBackground && <SceneBackground scene={BACKGROUND_SCENES.play} />}
 
       <div className="flex flex-col gap-4 max-w-md mx-auto">
         {/* V DoorView schválně nerenderujeme čas/zvuk/energii vůbec (ne jen
@@ -98,7 +91,12 @@ export default function GameScreen({
               />
             )}
             {state.playerView === "door" && (
-              <DoorView doorClosed={state.doorClosed} onToggleDoor={onToggleDoor} onLookAtDesk={onLookAtDesk} />
+              <DoorView
+                doorClosed={state.doorClosed}
+                isDoorDeathReveal={state.doorDeathRevealUntilMs !== null}
+                onToggleDoor={onToggleDoor}
+                onLookAtDesk={onLookAtDesk}
+              />
             )}
             {state.playerView === "generator" && (
               <GeneratorView
