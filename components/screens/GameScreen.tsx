@@ -1,5 +1,6 @@
 import { CameraId, GameState, NightDefinition } from "@/game/core/types";
-import { BACKGROUND_IMAGES } from "@/game/visuals/backgroundImages";
+import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
+import SceneBackground from "@/components/SceneBackground";
 import DeskView from "../game/DeskView";
 import DoorView from "../game/DoorView";
 import GeneratorView from "../game/GeneratorView";
@@ -48,16 +49,9 @@ export default function GameScreen({
   const showPlayBackground = state.playerView === "desk" && state.gameStatus !== "blackout";
 
   return (
-    <main
-      className="min-h-screen p-4 flex flex-col gap-4 max-w-md mx-auto bg-cover bg-center"
-      style={
-        showPlayBackground
-          ? {
-              backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.8)), url(${BACKGROUND_IMAGES.play})`,
-            }
-          : undefined
-      }
-    >
+    <main className="relative min-h-screen p-4 flex flex-col gap-4 max-w-md mx-auto">
+      {showPlayBackground && <SceneBackground scene={BACKGROUND_SCENES.play} />}
+
       <div className="flex justify-between items-center">
         <ShiftTimer remainingMs={state.remainingMs} />
         <AudioToggle muted={state.audioMuted} onToggle={onToggleAudio} />

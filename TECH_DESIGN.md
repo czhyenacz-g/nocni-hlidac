@@ -330,6 +330,40 @@ Falešný briefing mezi menu a startem směny — žádné skutečné technické
   `useInterval`-stylem efektem (`LOADING_SCREEN_DURATION_MS / hints.length` na hint) —
   self-contained, `app/play/page.tsx` o výběru hintů nic neví.
 
+## Scénová pozadí (SceneBackground)
+
+Atmosférické pozadí obrazovek (menu, loading, `/play` desk fáze, death, win, `/about`) je
+konfigurační, ne natvrdo napsané v jednotlivých screen komponentách:
+
+- `game/visuals/backgroundImages.ts` — `BACKGROUND_SCENES: Record<BackgroundSceneId,
+  SceneBackgroundConfig>`, jeden záznam na obrazovku (`"menu" | "loading" | "play" | "death" |
+  "win" | "about"`). `SceneBackgroundConfig` = `frames: BackgroundFrame[]` (0-3 obrázky),
+  `holdMs`/`crossfadeMs` (časování prolínání mezi snímky), volitelný `flicker`
+  (`minBrightness`/`maxBrightness`/`periodMs` — jemné blikání/ztlumení nezávislé na počtu
+  snímků) a `overlay` (tmavý gradient přes obrázek pro čitelnost textu). Zatím mají reálné
+  `frames` jen `menu`/`play`/`win` (1 snímek každá, žádný `flicker`) — `loading`/`death`/`about`
+  mají `frames: []` (SceneBackground nic nevykreslí), připravené na budoucí art bez zásahu do
+  komponent.
+- `components/SceneBackground.tsx` (`"use client"`) vykreslí scénu: víc snímků se prolíná
+  (crossfade) — každý snímek je vlastní absolutně umístěný `<div>` s `background-image` a
+  `opacity` transition (`transition: opacity {crossfadeMs}ms`), přepínání aktivního indexu řeší
+  `setInterval` po `holdMs`. To je nutné, protože CSS neumí interpolovat mezi dvěma
+  `background-image` hodnotami na jednom elementu (byl by to tvrdý střih) — proto dva reálné
+  DOM elementy nad sebou, ne inline `style.backgroundImage` na `<main>`. `flicker` se aplikuje
+  jako `filter: brightness(...)` animace (`@keyframes scene-background-flicker` v
+  `styles/pixel.css`) na obalový `div`, nezávisle na prolínání snímků — obojí jde kombinovat.
+  Prázdné `frames` → komponenta vrátí `null`.
+- Použití: `<SceneBackground scene={BACKGROUND_SCENES.xxx} />` jako první potomek `<main
+  className="relative ...">` (rodič musí mít `position: relative`, `SceneBackground` je
+  `absolute inset-0 -z-10`, ostatní obsah zůstává v normálním flow nad ním). V `GameScreen.tsx`
+  se renderuje jen podmíněně (`state.playerView === "desk" && state.gameStatus !== "blackout"`)
+  — DoorView/GeneratorView/BlackoutView mají zůstat vizuálně čisté bez atmosférického pozadí.
+- `preloadBackgroundImages()` (stejný soubor) natvrdo stáhne všechny nakonfigurované snímky
+  napříč všemi scénami přes `new Image()` — volá se z `LoadingScreen.tsx` při mountu, ať jsou
+  hotové v cache prohlížeče, než je hráč reálně potřebuje (viz "LoadingScreen" výše).
+- Přidat/vyměnit pozadí nebo přidat efekt (víc snímků, `flicker`) je čistě datová změna v
+  `BACKGROUND_SCENES` — žádná komponenta se kvůli tomu měnit nemusí.
+
 ## Mobilní tap targety
 
 Stabilizační vrstva nad existujícím UI, ne nový design — cíl je, aby se na mobilu dalo

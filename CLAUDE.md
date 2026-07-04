@@ -41,6 +41,13 @@ funkce, abstrakce ani konfigurovatelnost, které aktuální směna nepotřebuje.
   zpět. Overview se nikdy nepočítá jako aktivní sledování (`cameraOpen` je `true` jen v
   detailu) — nepřidávej cestu, jak by šlo sledovat nepřítele jen z přehledu, to by
   rozbilo herní důvod, proč overview/detail vůbec existuje (viz GAME_DESIGN.md "Kamery").
+- Atmosférická pozadí obrazovek (menu, loading, hraní, smrt, výhra, `/about`) patří do
+  `game/visuals/backgroundImages.ts` (`BACKGROUND_SCENES`), nikdy natvrdo (URL obrázku, počet
+  snímků, gradient) v `MainMenuScreen.tsx`/`GameScreen.tsx`/`WinScreen.tsx`/atd. Vykresluje je
+  vždy `components/SceneBackground.tsx` — nová screen komponenta jen přidá `<SceneBackground
+  scene={BACKGROUND_SCENES.xxx} />` jako první potomek `<main className="relative ...">`, žádnou
+  vlastní crossfade/flicker logiku. Přidání/výměna obrázku nebo efektu (víc snímků, `flicker`)
+  je vždy jen datová změna v `BACKGROUND_SCENES`.
 - Texty pro LoadingScreen (a jakýkoliv další "hint"/servisní obsah) patří do
   `content/loadingHints.ts` (nebo obdobného content souboru), nikdy natvrdo do
   `LoadingScreen.tsx`. Výběr/filtrování hintů (`selectLoadingHints`) je čistá funkce v

@@ -278,6 +278,17 @@ Zobrazí se krátký jumpscare overlay a `DeathScreen` s možností okamžitého
 Když `remainingMs` klesne na 0 a hráč je stále naživu (i uprostřed blackoutu — viz
 výše), zobrazí se `WinScreen`.
 
+## Atmosférická pozadí
+
+Menu, loading, hraní (fáze u stolu se 4 monitory), smrt, výhra i `/about` mají vlastní
+konfigurovatelné pozadí (`game/visuals/backgroundImages.ts`, vykresluje
+`components/SceneBackground.tsx`). Pozadí může být 1-3 snímky, které se plynule prolínají
+(žádný tvrdý skok — např. stejný obraz, jen jinak kouřící komín), a/nebo jemný efekt
+blikání/ztlumení světla nezávislý na snímcích (blikající kontrolka, ztlumené osvětlení).
+Jde o čistě datovou konfiguraci — přidat/vyměnit obrázek nebo změnit efekt nevyžaduje zásah
+do žádné screen komponenty. Zatím mají reálný obrázek jen menu, hraní a výhra; smrt/loading/
+`/about` jsou připravené, ale zatím bez vlastního snímku.
+
 ## Pozdější možné rozšíření
 
 - Další směny (`night02.ts`, ...) s vlastním nepřítelem, kamerami, balancem

@@ -1,6 +1,7 @@
 import { COPY } from "@/content/copy";
 import Footer from "@/components/Footer";
-import { BACKGROUND_IMAGES } from "@/game/visuals/backgroundImages";
+import SceneBackground from "@/components/SceneBackground";
+import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 
 interface MainMenuScreenProps {
   onStart: () => void;
@@ -8,12 +9,9 @@ interface MainMenuScreenProps {
 
 export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
   return (
-    <main
-      className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-900 bg-cover bg-center"
-      style={{
-        backgroundImage: `linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.75)), url(${BACKGROUND_IMAGES.menu})`,
-      }}
-    >
+    <main className="relative min-h-screen flex flex-col items-center justify-center p-4 bg-gray-900">
+      <SceneBackground scene={BACKGROUND_SCENES.menu} />
+
       <div className="w-full max-w-md text-center pixel-panel p-8">
         <h1 className="text-3xl font-bold mb-1 text-red-500">{COPY.menu.title}</h1>
         <p className="text-gray-400 mb-6">{COPY.menu.subtitle}</p>

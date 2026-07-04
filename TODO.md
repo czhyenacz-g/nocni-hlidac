@@ -74,6 +74,11 @@
       (oprava: `.pixel-panel`/`.pixel-button` měly plné neprůhledné pozadí, takže
       prakticky celý DeskView pozadí zakrýval — přepnuto na poloprůhledné `rgba(...)`
       v `styles/pixel.css`, aby bylo skutečně vidět skrz mezery i skrz panely)
+- [x] Příprava scénových pozadí pro všechny obrazovky (menu, loading, hraní, smrt, výhra,
+      `/about`) — `game/visuals/backgroundImages.ts` (`BACKGROUND_SCENES`,
+      `SceneBackgroundConfig`: 1-3 snímky s crossfade + volitelný flicker/dimming),
+      `components/SceneBackground.tsx` vykresluje. Čistě datová konfigurace, žádný zásah do
+      komponent při přidání/výměně obrázku nebo efektu. Zatím obrázek jen u menu/play/win.
 - [x] `/dev-sound` — dev stránka se seznamem všech audio eventů (`game/audio/audioEvents.ts`),
       popisem, souborem/fallbackem a tlačítkem přehrát (`app/dev-sound/`, gatované
       `DEBUG_PANEL_ENABLED`)

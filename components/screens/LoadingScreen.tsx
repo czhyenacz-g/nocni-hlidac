@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { COPY } from "@/content/copy";
 import { selectLoadingHints } from "@/content/loadingHints";
 import { LOADING_SCREEN_DURATION_MS, LOADING_SCREEN_HINT_COUNT } from "@/game/balancing/constants";
-import { preloadBackgroundImages } from "@/game/visuals/backgroundImages";
+import { preloadBackgroundImages, BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
+import SceneBackground from "@/components/SceneBackground";
 
 // Falešný briefing screen mezi hlavním menu a startem směny — žádné skutečné
 // technické načítání navenek, ale skutečně stáhne pozadí obrazovek do cache
@@ -29,7 +30,9 @@ export default function LoadingScreen() {
   }, [hints]);
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-4">
+    <main className="relative min-h-screen flex items-center justify-center p-4">
+      <SceneBackground scene={BACKGROUND_SCENES.loading} />
+
       <div className="w-full max-w-md pixel-panel pixel-screen-static p-6">
         <h1 className="text-sm font-bold text-green-400 mb-1">{COPY.loading.title}</h1>
         <p className="text-[10px] text-gray-500 mb-4">{COPY.loading.subtitle}</p>

@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { COPY } from "@/content/copy";
 import Footer from "@/components/Footer";
+import SceneBackground from "@/components/SceneBackground";
+import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 
 export const metadata: Metadata = {
   title: COPY.about.seoTitle,
@@ -10,7 +12,8 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <main className="min-h-screen flex flex-col items-center p-4 py-10">
+    <main className="relative min-h-screen flex flex-col items-center p-4 py-10">
+      <SceneBackground scene={BACKGROUND_SCENES.about} />
       <div className="w-full max-w-md pixel-panel p-8">
         <h1 className="text-xl font-bold mb-6 text-red-500">{COPY.about.heading}</h1>
 

@@ -1,9 +1,9 @@
 /* Základní pixel-art / retro vizuální styl. Placeholder grafika, ale připraveno na pixel art assety. */
 
 /* Poloprůhledné pozadí (ne plné #111827/#1f2937) — GameScreen na /play může mít
- * pod sebou atmosférické CSS pozadí (BACKGROUND_IMAGES.play), a plné panely by
- * ho jinak celé zakryly (zbyla by vidět jen tenká mezera přes gap-4). Na
- * obrazovkách bez pozadí (menu/death/loading atd.) je to vizuálně skoro
+ * pod sebou atmosférické pozadí (SceneBackground, viz BACKGROUND_SCENES.play),
+ * a plné panely by ho jinak celé zakryly (zbyla by vidět jen tenká mezera přes
+ * gap-4). Na obrazovkách bez pozadí (loading/death atd.) je to vizuálně skoro
  * nerozeznatelné, protože body má skoro identickou tmavou barvu. */
 .pixel-panel {
   border: 2px solid #4b5563;
@@ -159,5 +159,25 @@
 .pixel-arrow-button {
   display: flex;
   align-items: center;
+}
+
+/* ── Scénové pozadí (SceneBackground.tsx, viz game/visuals/backgroundImages.ts) ──
+ * Volitelný jemný flicker/dimming efekt (blikající kontrolka, ztlumené
+ * světlo) — nezávislý na prolínání mezi snímky, které řeší přímo inline
+ * opacity transition v komponentě. --scene-flicker-min/max nastavuje
+ * SceneBackground podle SceneBackgroundConfig.flicker. */
+@keyframes scene-background-flicker {
+  0%, 100% {
+    filter: brightness(var(--scene-flicker-min, 1));
+  }
+  50% {
+    filter: brightness(var(--scene-flicker-max, 1));
+  }
+}
+
+.scene-background-flicker {
+  animation-name: scene-background-flicker;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
 }
 
