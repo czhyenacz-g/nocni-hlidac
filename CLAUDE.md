@@ -73,7 +73,11 @@ funkce, abstrakce ani konfigurovatelnost, které aktuální směna nepotřebuje.
   `door_open_at_attack`, viz TECH_DESIGN.md "Útok u dveří má krátký reveal") je záměrně
   jednoúčelový lokální mezistav jen pro tenhle jeden případ — NEZOBECŇUJ ho na univerzální
   "pre-death"/"attack warning" mezistav pro všechny způsoby smrti. Blackout i jakákoli budoucí
-  jiná smrt musí dál nastavovat `screen: "death"` přímo, beze změny.
+  jiná smrt musí dál nastavovat `screen: "death"` přímo, beze změny. Nastavuje se navíc jen
+  když je hráč v okamžiku útoku už v `DoorView` (`state.playerView === "door"`) — smrt při
+  sledování kamer/generátoru zůstává klasická/instantní a **nevynucuje** přepnutí na
+  `DoorView` (na výslovnou žádost — tenhle případ má dostat vlastní obrazovku později, ne
+  být narvaný do DoorView flow).
 
 ## Povinnost držet audio odděleně
 

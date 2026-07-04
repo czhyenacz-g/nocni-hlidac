@@ -277,13 +277,13 @@ Zobrazí se krátký jumpscare overlay a `DeathScreen` s možností okamžitého
 
 `door_open_at_attack` má navíc krátký (~700 ms) moment těsně před `DeathScreen`, kdy hráč
 uvidí monstrum přímo ve dveřích (obrázek `door_open_death_0`), místo aby smrt přišla úplně
-instantně:
+instantně — **ale jen když už je hráč v `DoorView`** (dveře otevřené) v okamžiku útoku: obraz
+dveří se krátce crossfade přepne na monstrum ve dveřích, a teprve pak přijde `DeathScreen`.
 
-- Pokud už byl hráč v pohledu na dveře (otevřené), obraz dveří se krátce crossfade přepne
-  na monstrum ve dveřích, a teprve pak přijde `DeathScreen`.
-- Pokud byl hráč zrovna u kamer/generátoru, hra ho v tu chvíli automaticky "otočí" ke dveřím
-  (`playerView: "door"`) a ukáže stejný krátký obrázek — hráč tak vždy uvidí, co ho zabilo,
-  ne jen náhlý skok na death screen.
+Pokud hráč sleduje kamery/generátor v okamžiku útoku, smrt zůstává klasická/instantní —
+záměrně ho nepřepínáme na `DoorView`, jen aby uviděl reveal. Tenhle případ (smrt mimo
+`DoorView`) má do budoucna dostat vlastní řešení/obrazovku, zatím se nijak neliší od chování
+před touhle funkcí.
 
 Je to čistě tenhle jeden speciální případ, ne univerzální "pre-death" mezistav pro všechny
 smrti — `blackout_timeout` i běžné hraní (kamery/generátor bez téhle situace) se chovají

@@ -447,23 +447,32 @@ export function createGameReducer(night: NightDefinition) {
             };
           }
 
-          // Dveře otevřené a nepřítel je u nich -> útok. Smrt se nefinalizuje
-          // hned (isRunning/screen zůstávají beze změny) — nejdřív krátký
-          // doorDeathReveal moment (viz TICK výše), který dokončí přechod na
-          // "death" po DOOR_DEATH_REVEAL_DURATION_MS. Hráč se navíc
-          // automaticky "otočí" ke dveřím (playerView: "door", kamery se
-          // zavřou stejně jako u LOOK_AT_DOOR), i kdyby byl zrovna u
-          // kamer/generátoru — viz GAME_DESIGN.md "Smrt u dveří".
+          // Dveře otevřené a nepřítel je u nich -> útok.
+          if (state.playerView === "door") {
+            // Hráč se dívá přímo na dveře — smrt se nefinalizuje hned
+            // (isRunning/screen zůstávají beze změny), nejdřív krátký
+            // doorDeathReveal moment (viz TICK výše), který dokončí přechod
+            // na "death" po DOOR_DEATH_REVEAL_DURATION_MS. Viz GAME_DESIGN.md
+            // "Smrt u dveří".
+            return {
+              ...state,
+              enemyStage: "attack",
+              lastEnemyDecision: "attack",
+              deathReason: "door_open_at_attack",
+              doorDeathRevealUntilMs: state.elapsedMs + DOOR_DEATH_REVEAL_DURATION_MS,
+            };
+          }
+
+          // Hráč sleduje kamery/generátor, ne dveře — záměrně ho na DoorView
+          // nepřepínáme (na žádost, viz GAME_DESIGN.md), klasická okamžitá
+          // smrt beze změny. Tenhle případ dostane vlastní obrazovku později.
           return {
             ...state,
             enemyStage: "attack",
             lastEnemyDecision: "attack",
-            playerView: "door",
-            cameraOpen: false,
-            activeCameraId: null,
-            cameraFocusUntilMs: null,
+            isRunning: false,
+            screen: "death",
             deathReason: "door_open_at_attack",
-            doorDeathRevealUntilMs: state.elapsedMs + DOOR_DEATH_REVEAL_DURATION_MS,
           };
         }
 

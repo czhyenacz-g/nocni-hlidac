@@ -194,10 +194,15 @@ Dřív `ENEMY_ADVANCE` při `isAtDoorStage(state) && !state.doorClosed` nastavil
 "death"` okamžitě ve stejném dispatchi jako `enemyStage: "attack"`. Teď se smrt nefinalizuje
 hned:
 
-- `ENEMY_ADVANCE` nastaví `enemyStage: "attack"`, `deathReason: "door_open_at_attack"`,
-  vynutí `playerView: "door"` (+ zavře kamery stejně jako `LOOK_AT_DOOR`) a nastaví
-  `doorDeathRevealUntilMs = state.elapsedMs + DOOR_DEATH_REVEAL_DURATION_MS` (700 ms,
-  `game/balancing/constants.ts`). `isRunning`/`screen` zůstávají beze změny (`true`/`"playing"`).
+- `ENEMY_ADVANCE` reaguje jinak podle `state.playerView` v okamžiku útoku:
+  - **`playerView === "door"`** — nastaví `enemyStage: "attack"`,
+    `deathReason: "door_open_at_attack"` a `doorDeathRevealUntilMs = state.elapsedMs +
+    DOOR_DEATH_REVEAL_DURATION_MS` (700 ms, `game/balancing/constants.ts`).
+    `isRunning`/`screen` zůstávají beze změny (`true`/`"playing"`).
+  - **jinak (kamery/generátor)** — záměrně beze změny oproti původnímu chování: `screen:
+    "death"` se nastaví rovnou, žádný reveal, žádné vynucené přepnutí `playerView` na
+    `"door"` (na výslovnou žádost — tenhle případ má do budoucna dostat vlastní obrazovku,
+    zatím zůstává klasický instantní death flow).
 - `TICK` má na začátku větev pro `doorDeathRevealUntilMs !== null` (před blackout větví) —
   jen počítá `elapsedMs`/`remainingMs` dál, nic jiného (generátor/energie/door-light repel se
   nepočítají, hra je fakticky rozhodnutá). Jakmile `elapsedMs >= doorDeathRevealUntilMs`,
@@ -211,10 +216,9 @@ hned:
   (state.doorClosed ? 1 : 0)` pro scénu `BACKGROUND_SCENES.door` (3 snímky: otevřené/
   zavřené/monstrum) — protože je pořád stejná scéna/instance `SceneBackground`, přepnutí na
   index 2 crossfade prolne (`crossfadeMs: 350` u téhle scény, kratší než jinde, ať se stihne
-  doprolínat během 700 ms revealu). Pokud hráč nebyl v `DoorView` (byl u kamer/generátoru),
-  vynucené `playerView: "door"` ho tam ve STEJNÉM renderu přepne — přechod ze desk/generator
-  scény na door scénu je tvrdý střih (různé `SceneBackground` instance), jen samotný nástup
-  reveal snímku uvnitř door scény je crossfade.
+  doprolínat během 700 ms revealu). `doorDeathRevealUntilMs` se nastavuje jen když je hráč už
+  v `DoorView`, takže `isDoorView` je v tu chvíli vždy `true` — žádný přechod mezi scénami
+  (desk/generator → door) se během revealu neděje.
 - Je to čistě lokální mezistav pro tenhle jeden případ (`doorDeathRevealUntilMs`), ne
   univerzální "pre-death" obrazovka — `blackout_timeout` (a jakákoli budoucí jiná smrt) přes
   něj vůbec neprochází, `screen: "death"` se pro ně nastavuje přímo jako dřív.

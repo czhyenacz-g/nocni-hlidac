@@ -95,11 +95,11 @@
       `deathReason === "door_open_at_attack"` (`BACKGROUND_SCENES.deathDoorAttack`).
 - [x] Krátký "reveal" (~700 ms) před finalizací smrti u dveří — `door_open_death_0` se krátce
       crossfade ukáže (jako 3. snímek `BACKGROUND_SCENES.door`) ještě PŘED `DeathScreen`em,
-      místo instantního skoku. Funguje v obou situacích: hráč už kouká na otevřené dveře, nebo
-      je zrovna u kamer/generátoru a hra ho automaticky "otočí" ke dveřím
-      (`GameState.doorDeathRevealUntilMs`, `DOOR_DEATH_REVEAL_DURATION_MS` v
-      `game/balancing/constants.ts`). Čistě lokální mezistav jen pro tenhle případ — blackout a
-      běžná smrt beze změny.
+      místo instantního skoku, ale **jen** když je hráč už v `DoorView` (dveře otevřené) v
+      okamžiku útoku (`GameState.doorDeathRevealUntilMs`, `DOOR_DEATH_REVEAL_DURATION_MS` v
+      `game/balancing/constants.ts`). Smrt u kamer/generátoru zůstává záměrně beze změny
+      (instantní, žádné vynucené přepnutí na `DoorView`) — dostane vlastní řešení později.
+      Čistě lokální mezistav jen pro tenhle případ — blackout beze změny.
 - [x] `/dev-sound` — dev stránka se seznamem všech audio eventů (`game/audio/audioEvents.ts`),
       popisem, souborem/fallbackem a tlačítkem přehrát (`app/dev-sound/`, gatované
       `DEBUG_PANEL_ENABLED`)
