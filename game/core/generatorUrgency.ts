@@ -3,15 +3,16 @@ import { GENERATOR_URGENT_BLINK_DELAY_MS } from "../balancing/constants";
 
 /**
  * Jestli má blikat šipka "Zkontrolovat generátor →" v DeskView.tsx — čistě
- * odvozený stav, žádný vlastní TICK. `silentFault` bliká okamžitě (tichý
- * generátor je jediný náznak, že se něco děje, dokud nevyprší reakční čas).
- * `criticalBeeping` (rychlé pípání + rychlý pokles energie) blikat začne až
- * po `GENERATOR_URGENT_BLINK_DELAY_MS` — hráč má nejdřív zaregistrovat pípání
- * a klesající energii, ne hned i blikající tlačítko (viz GAME_DESIGN.md
- * "Generátor"). `restarting` (tichý trest za zbytečný restart) nebliká vůbec.
+ * odvozený stav, žádný vlastní TICK. Pořadí signálů je záměrně tohle: (1)
+ * `silentFault` (ticho) NEbliká vůbec — ticho samo je jediný náznak, dokud
+ * nevyprší reakční čas; (2) `criticalBeeping` (rychlé pípání + rychlý pokles
+ * energie) je první skutečná signalizace, hned jak nastane; (3) šipka začne
+ * blikat až s odstupem `GENERATOR_URGENT_BLINK_DELAY_MS` po jejím startu —
+ * trest za to, že hráč pípání i klesající energii přeslechl/přehlédl (typicky
+ * vypnutý zvuk), ne zdroj informace navíc pro každého. Viz GAME_DESIGN.md
+ * "Generátor". `restarting` (tichý trest za zbytečný restart) nebliká vůbec.
  */
 export function isGeneratorArrowUrgent(state: GameState, generator: GeneratorDefinition): boolean {
-  if (state.generatorState === "silentFault") return true;
   if (state.generatorState !== "criticalBeeping") return false;
   if (state.generatorSilentSinceMs === null) return true;
 

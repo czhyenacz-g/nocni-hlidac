@@ -268,10 +268,12 @@ Restart: hráč se musí otočit do GeneratorView (šipka z DeskView) a kliknout
 generátor — z obou poruchových stavů funguje bez postihu (i během ticha), z
 `normal` spustí penalizaci `restarting` výše. Vizuální kontrolka
 (stabilní/zhaslá/blikající červeně/blikající žlutě) je jen pomocná — hlavní
-signál má být zvuk. Šipka "Zkontrolovat generátor" v DeskView navíc bliká,
-dokud je generátor v jakémkoliv nenormálním stavu (`silentFault`,
-`criticalBeeping`, `restarting`), jako drobná pomůcka pro hráče, který zrovna
-kouká do kamer a zvuk mu unikl.
+signál má být zvuk. Šipka "Zkontrolovat generátor" v DeskView bliká **jen**
+během `criticalBeeping`, a i tam až se zpožděním ~2 s
+(`GENERATOR_URGENT_BLINK_DELAY_MS`, `game/core/generatorUrgency.ts`) — nebliká
+během tichého `silentFault` ani během `restarting`. Pořadí signálů je záměrně
+zvuk → energie → (až pak) blikání: šipka je trest za přeslechnuté/přehlédnuté
+pípání a klesající energii (typicky vypnutý zvuk), ne náhrada za ně.
 
 ## Blackout
 
