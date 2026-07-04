@@ -44,7 +44,13 @@ export default function DoorView({ doorClosed, isDoorDeathReveal, onToggleDoor, 
         </button>
       </DoorSceneFrame>
 
-      <ViewSwitchArrow label={COPY.game.lookAtDeskLabel} onClick={onLookAtDesk} align="left" />
+      {/* Scéna nahoře smí být přes celou dostupnou šířku (viz GameScreen.tsx,
+          DoorView na rozdíl od desk/generator není v max-w-md) — tlačítko
+          zpět ale zůstává v úzkém sloupci jako všude jinde, ať není přes
+          celou šířku obrazovky a působí jako méně dominantní spodní lišta. */}
+      <div className="w-full max-w-md mx-auto">
+        <ViewSwitchArrow label={COPY.game.lookAtDeskLabel} onClick={onLookAtDesk} align="left" />
+      </div>
     </div>
   );
 }

@@ -305,15 +305,30 @@ klikatelné — nejde jen o vizuální přepínač: `TOGGLE_DOOR` funguje jen kd
   zpět na stůl. **Na rozdíl od** DeskView/GeneratorView (sdílejí `SceneBackground`
   přes `GameScreen.tsx`, viz "Scénová pozadí" výše) má DoorView vlastní lokální
   `components/game/DoorSceneFrame.tsx` — reálný `<img>` uvnitř wrapperu s pevným
-  `aspect-video` (16:9) a `object-contain`, max. šířka `min(100%, 1100px)`, ne
-  viewport CSS `background-image` přes `bg-cover`. Důvod: `bg-cover` škáluje/ořezává
+  poměrem stran (16:9, `.door-scene-frame` v `styles/pixel.css`) a `object-contain`,
+  ne viewport CSS `background-image` přes `bg-cover`. Důvod: `bg-cover` škáluje/ořezává
   obrázek podle CELÉ šířky obrazovky nezávisle na vnitřním obsahu, takže procentuálně
   pozicovaný hotspot by se při zoomu/resize/jiném poměru stran rozjel od obrázku.
   `DoorSceneFrame` drží obrázek i hotspot ve STEJNÉM souřadnicovém systému (procenta
   vůči vlastnímu wrapperu), takže se škálují vždy spolu. `GameScreen.tsx` proto pro
   `playerView === "door"` `SceneBackground` vůbec nerenderuje (`showPlayBackground =
   gameStatus !== "blackout" && !isDoorView`) — `DoorView` si obrázek řeší sám.
-  `DoorSceneFrame` dostává stejná data jako dřív (`BACKGROUND_SCENES.door.frames`,
+  - **Velikost scény** (`.door-scene-frame`): `width: min(100%, calc((100vh -
+    var(--door-ui-reserved-height, 180px)) * 16 / 9))` + `aspect-ratio: 16/9` — šířka je
+    to menší ze dvou věcí: dostupná šířka rodiče (`100%`, NE `100vw`, aby nepřetekla přes
+    `<main>`'s `p-4` padding), a šířka odpovídající dostupné VÝŠCE (`100vh` mínus rezerva
+    na tlačítko zpět/DebugPanel/okraje, přepočtená přes 16:9). `aspect-ratio` z vybrané
+    šířky sám dopočítá výšku — nepotřebujeme druhý ruční `min()` na výšku (na rozdíl od
+    čistě `%`-based výpočtu, kde `height: X%` váže na výšku rodiče, ne na šířku, takže by
+    nešlo spolehlivě odvodit z šířky). `--door-ui-reserved-height` (180 px, orientační) jde
+    doladit jako CSS proměnná, kdyby se layout pod scénou změnil.
+  - **`GameScreen.tsx`**: DoorView (na rozdíl od desk/generator) NENÍ zabalený v
+    `max-w-md mx-auto` — vnější obsahový `<div>` tuhle třídu dostává jen podmíněně
+    (`!isDoorView`), ať dveřní scéna může využít celou dostupnou šířku `<main>`u. Aby
+    DebugPanel (a jen ten, `ViewSwitchArrow` zpět si to řeší sám v `DoorView.tsx`) i v
+    tomhle širším layoutu zůstal stejně úzký/centrovaný jako jinde, obaluje se do vlastního
+    `max-w-md mx-auto` divu, jen když `isDoorView`.
+  - `DoorSceneFrame` dostává stejná data jako dřív (`BACKGROUND_SCENES.door.frames`,
   3 snímky: otevřené/zavřené/monstrum, `crossfadeMs: 350`) — `DoorView.tsx` počítá
   `activeIndex` podle `doorClosed`/`isDoorDeathReveal` a crossfade mezi snímky (stejný
   princip jako `SceneBackground`, jen na `<img opacity>` místo `background-image`).
@@ -325,8 +340,9 @@ klikatelné — nejde jen o vizuální přepínač: `TOGGLE_DOOR` funguje jen kd
   elektronický zámek vpravo), zůstala jen malá nenápadná cedulka (`.door-hotspot-label`)
   s `COPY.game.doorViewHint`. `.tap-target-critical` (min. 56×56 px) hlídá minimální
   dotykovou plochu, i kdyby procenta na malém displeji vyšla menší. `ViewSwitchArrow`
-  zpět na stůl je pod dveřmi, ne nahoře — vizuálně méně dominantní než samotné dveře.
-  `GameScreen.tsx` navíc v `DoorView` vůbec nerenderuje horní HUD (`ShiftTimer`/
+  zpět na stůl je pod dveřmi (ve vlastním `max-w-md`, ne přes celou šířku), ne nahoře —
+  vizuálně méně dominantní než samotné dveře. `GameScreen.tsx` navíc v `DoorView` vůbec
+  nerenderuje horní HUD (`ShiftTimer`/
   `AudioToggle`/`PowerMeter`) — `!isDoorView &&` podmínka, ne jen CSS skrytí — ať se
   hráč soustředí na dveře; desk/generator zůstávají beze změny.
 - `components/game/GeneratorView.tsx` — generátor s vizuální kontrolkou

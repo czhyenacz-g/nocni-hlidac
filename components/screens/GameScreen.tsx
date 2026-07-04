@@ -60,7 +60,13 @@ export default function GameScreen({
     <main className="relative min-h-screen p-4">
       {showPlayBackground && <SceneBackground scene={BACKGROUND_SCENES.play} />}
 
-      <div className="flex flex-col gap-4 max-w-md mx-auto">
+      {/* DoorView schválně NENÍ v max-w-md — dveřní scéna (DoorSceneFrame)
+          má využít co nejvíc dostupné plochy viewportu (viz .door-scene-frame,
+          styles/pixel.css), ne být omezená na stejný úzký sloupec jako
+          desk/generator. DoorView si samo zabaluje tlačítko zpět do vlastního
+          max-w-md, ať nezůstane přes celou šířku (viz DoorView.tsx). Desk/
+          generator/blackout layout je beze změny. */}
+      <div className={`flex flex-col gap-4 ${isDoorView ? "" : "max-w-md mx-auto"}`}>
         {/* V DoorView schválně nerenderujeme čas/zvuk/energii vůbec (ne jen
             skryté přes CSS) — hráč se má soustředit na dveře, ne na obecné
             HUD. Desk/generator zůstávají beze změny. */}
@@ -109,13 +115,15 @@ export default function GameScreen({
           </>
         )}
 
-        <DebugPanel
-          state={state}
-          night={night}
-          tensionLevel={tensionLevel}
-          onDebugToggleDoor={onDebugToggleDoor}
-          onDebugRestartGenerator={onDebugRestartGenerator}
-        />
+        <div className={isDoorView ? "w-full max-w-md mx-auto" : ""}>
+          <DebugPanel
+            state={state}
+            night={night}
+            tensionLevel={tensionLevel}
+            onDebugToggleDoor={onDebugToggleDoor}
+            onDebugRestartGenerator={onDebugRestartGenerator}
+          />
+        </div>
       </div>
     </main>
   );

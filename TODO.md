@@ -107,12 +107,19 @@
       dveře. Desk/generator beze změny.
 - [x] DoorView přestal používat viewport `SceneBackground`/`bg-cover` pro vlastní obrázek —
       nová lokální komponenta `components/game/DoorSceneFrame.tsx` (reálný `<img>`, pevný
-      `aspect-video`, `object-contain`, max. šířka `min(100%, 1100px)`) drží obrázek dveří a
-      hotspot ve stejném procentuálním souřadnicovém systému, takže hotspot při zoomu
-      prohlížeče / resize okna / libovolném poměru stran zůstává přesně na dveřích (dřív se
-      mohl rozjet, protože `bg-cover` škáluje obrázek podle celé šířky obrazovky nezávisle na
-      vnitřním obsahu). `GameScreen.tsx` pro `playerView === "door"` `SceneBackground` vůbec
-      nerenderuje. Ostatní obrazovky (menu/about/win/death/loading/desk/generator) beze změny.
+      poměr stran 16:9, `object-contain`) drží obrázek dveří a hotspot ve stejném
+      procentuálním souřadnicovém systému, takže hotspot při zoomu prohlížeče / resize okna /
+      libovolném poměru stran zůstává přesně na dveřích (dřív se mohl rozjet, protože
+      `bg-cover` škáluje obrázek podle celé šířky obrazovky nezávisle na vnitřním obsahu).
+      `GameScreen.tsx` pro `playerView === "door"` `SceneBackground` vůbec nerenderuje.
+      Ostatní obrazovky (menu/about/win/death/loading/desk/generator) beze změny.
+- [x] Dveřní scéna zvětšena na desktopu — `.door-scene-frame` (styles/pixel.css) dopočítává
+      velikost podle dostupné šířky/výšky viewportu (`width: min(100%, calc((100vh -
+      var(--door-ui-reserved-height, 180px)) * 16/9))` + `aspect-ratio: 16/9`), ne pevná
+      `max-width: 1100px`. `GameScreen.tsx` navíc DoorView (na rozdíl od desk/generator)
+      nezabaluje do `max-w-md` — scéna tak využije celou dostupnou šířku, tlačítko zpět a
+      DebugPanel si svůj úzký `max-w-md` sloupec drží samostatně. Hotspot dál sedí přesně na
+      dveřích při zoomu/resize, jen ve výrazně větší ploše.
 - [x] Přesun obrázkových assetů z ploché `public/background/` do `public/object_13/background/`
       — příprava na budoucí druhou mapu/objekt (`public/<map>/...`). Cesty přepsané na
       `OBJECT_13_BACKGROUND_PATH` konstantu v `game/visuals/backgroundImages.ts`, žádná

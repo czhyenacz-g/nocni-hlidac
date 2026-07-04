@@ -149,8 +149,28 @@
   min-width: 56px;
 }
 
+/* ── Dveřní scéna (DoorSceneFrame.tsx) ───────────────────────────────────
+ * Wrapper obrázku dveří — má být na desktopu co největší (podobně jako
+ * dřívější viewport pozadí), ale pořád jako reálný <img> s pevným 16:9
+ * poměrem stran, ne CSS bg-cover (viz DoorSceneFrame.tsx pro zdůvodnění).
+ * Šířka je min() ze dvou věcí: dostupná šířka rodiče (100%, NE 100vw — ten
+ * by ignoroval main`s p-4 padding a přetekl by) a šířka odpovídající
+ * dostupné VÝŠCE (100vh mínus rezerva na tlačítko zpět/DebugPanel/okraje,
+ * `--door-ui-reserved-height`, přepočtená přes 16:9 na šířku). `aspect-ratio`
+ * pak z vybrané šířky sám dopočítá výšku — nepotřebujeme samostatný min()
+ * na výšku (na rozdíl od čistě CSS-only řešení bez aspect-ratio, kde by
+ * `height: X%` nešlo spolehlivě navázat na šířku rodiče). Radši mírné
+ * letterbox okraje (viz object-contain v DoorSceneFrame.tsx) než rozjetý
+ * hotspot. */
+.door-scene-frame {
+  position: relative;
+  width: min(100%, calc((100vh - var(--door-ui-reserved-height, 180px)) * 16 / 9));
+  aspect-ratio: 16 / 9;
+  margin: 0 auto;
+}
+
 /* ── Průhledný hotspot dveří (DoorView.tsx) ──────────────────────────────
- * Klikací plocha posazená přímo na dveře ve SceneBackground obrázku (ne
+ * Klikací plocha posazená přímo na dveře v DoorSceneFrame obrázku (ne
  * neprůhledný UI panel přes celou scénu) — hráč má mít pocit, že kliká na
  * dveře samotné. Opacity záměrně nízká (~0.08-0.18), jen aby hotspot byl
  * vůbec vnímatelný a klikatelný, ne aby vypadal jako tlačítko. Velikost se
