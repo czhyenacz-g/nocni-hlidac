@@ -14,6 +14,8 @@ interface GameScreenProps {
   state: GameState;
   night: NightDefinition;
   tensionLevel: number;
+  /** Kolikátá noc v řadě aktuálního hlídače (viz game/core/survivedNights.ts) — jen popisek pro ShiftTimer. */
+  nightNumber: number;
   onToggleDoor: () => void;
   onToggleLight: () => void;
   onSelectCamera: (id: CameraId) => void;
@@ -31,6 +33,7 @@ export default function GameScreen({
   state,
   night,
   tensionLevel,
+  nightNumber,
   onToggleDoor,
   onToggleLight,
   onSelectCamera,
@@ -73,7 +76,7 @@ export default function GameScreen({
         {!isDoorView && (
           <>
             <div className="flex justify-between items-center">
-              <ShiftTimer remainingMs={state.remainingMs} />
+              <ShiftTimer remainingMs={state.remainingMs} nightNumber={nightNumber} />
               <AudioToggle muted={state.audioMuted} onToggle={onToggleAudio} />
             </div>
 

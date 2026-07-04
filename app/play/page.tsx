@@ -280,6 +280,7 @@ export default function PlayPage() {
           state={state}
           night={night}
           tensionLevel={tensionLevel}
+          nightNumber={survivedNights + 1}
           onToggleDoor={handleToggleDoor}
           onToggleLight={handleToggleLight}
           onSelectCamera={handleSelectCamera}

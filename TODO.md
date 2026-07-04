@@ -172,6 +172,10 @@
       rerenderu. Skloňování noc/noci/nocí řeší malá čistá funkce přímo ve `WinScreen.tsx`.
       DeathScreen: firemní hláška a "Předchozí hlídači" zesvětleny (`gray-500/600` ->
       `gray-300/400`) — byly na tmavém pozadí špatně čitelné.
+- [x] Herní HUD: "Čas směny" -> "Čas do úsvitu" a vedle něj "Noc X" (`nightNumber =
+      survivedNights + 1`, poslané z `app/play/page.tsx` do `GameScreen.tsx` ->
+      `ShiftTimer.tsx`) — kolikátá noc v řadě aktuálního hlídače, stejné číslo jako survival
+      streak na WinScreen, jen o jednu dřív (aktuální rozdělaná noc).
 - [x] `/dev-sound` — dev stránka se seznamem všech audio eventů (`game/audio/audioEvents.ts`),
       popisem, souborem/fallbackem a tlačítkem přehrát (`app/dev-sound/`, gatované
       `DEBUG_PANEL_ENABLED`)

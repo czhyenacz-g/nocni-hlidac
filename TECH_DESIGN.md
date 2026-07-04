@@ -605,6 +605,11 @@ při rerenderu ani při kliknutí na tlačítko. Výsledek se posílá do `WinSc
 `formatSurvivedNights` přímo v `WinScreen.tsx`, ne v `content/copy.ts` (ten drží jen tři
 tvary textu s `{count}` placeholderem).
 
+`app/play/page.tsx` posílá `nightNumber={survivedNights + 1}` i do `GameScreen.tsx` →
+`ShiftTimer.tsx` — "kolikátá noc" zobrazená vedle odpočtu za směny je tak stejné číslo jako
+"za kolik nocí přijde WinScreen", jen o jednu dřív (aktuální rozdělaná noc). `ShiftTimer` sám
+o sobě žádnou logiku nepočítá, jen zobrazí `COPY.game.nightLabel` s dosazeným číslem.
+
 ## Jak přidat další směnu později
 
 1. Vytvoř `game/nights/night02.ts` s vlastní `NightDefinition` (může mít jiné kamery,

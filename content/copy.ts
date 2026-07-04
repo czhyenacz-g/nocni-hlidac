@@ -14,7 +14,9 @@ export const COPY = {
     lightOnLabel: "Světlo: ZAPNUTO",
     lightOffLabel: "Světlo: VYPNUTO",
     powerLabel: "Energie",
-    timeLabel: "Čas směny",
+    timeLabel: "Čas do úsvitu",
+    // {n} se nahradí ve ShiftTimer.tsx — kolikátou noc v řadě aktuální hlídač slouží.
+    nightLabel: "Noc {n}",
     camerasLabel: "Kamery",
     cameraOverviewHint: "Klikni na monitor pro detail.",
     backToOverviewLabel: "← Zpět na přehled",
