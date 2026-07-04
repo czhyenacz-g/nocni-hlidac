@@ -53,6 +53,21 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
       waveform: "sine",
     },
   },
+  // Stresová heartbeat vrstva (viz game/audio/heartbeatStress.ts,
+  // game/audio/useHeartbeatStress.ts) — dva nekonečné loopy, hlasitost se
+  // NEnastavuje tady (base 0), řídí ji za běhu useHeartbeatStress přes
+  // audioManager.setVolume() podle stressLevel. Nikdy se nespouští přes
+  // opakované play(), vždy jen startLoop() jednou + průběžné setVolume().
+  [AUDIO_EVENTS.heartbeatStressSlow]: {
+    src: "/assets/audio/heartbeat_slow_reverb.mp3",
+    volume: 0,
+    loop: true,
+  },
+  [AUDIO_EVENTS.heartbeatStressFast]: {
+    src: "/assets/audio/heartbeat_fast_reverb.mp3",
+    volume: 0,
+    loop: true,
+  },
   [AUDIO_EVENTS.doorClose]: { src: "/assets/audio/door_close.mp3", volume: 0.7, loop: false },
   [AUDIO_EVENTS.doorOpen]: { src: "/assets/audio/door_open.mp3", volume: 0.7, loop: false },
   [AUDIO_EVENTS.lightClick]: { src: "/assets/audio/light_click.mp3", volume: 0.6, loop: false },

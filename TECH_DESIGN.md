@@ -413,6 +413,59 @@ klikatelné — nejde jen o vizuální přepínač: `TOGGLE_DOOR` funguje jen kd
   Stejný vzor (`LOOK_AT_GENERATOR` + `RESTART_GENERATOR`) má `DebugPanel.tsx` i
   pro generátor.
 
+## Stres a heartbeat (`game/audio/heartbeatStress.ts`, `useHeartbeatStress.ts`)
+
+Záměrně **mimo** `GameState`/`gameReducer.ts` — na rozdíl od herních pravidel (difficulty,
+generátor, ...) je tohle čistě audio/dev-vizualizační vrstva, nemá vliv na žádné jiné
+rozhodování ve hře, takže nepotřebuje projít reducerem a jeho testy. Dvě části:
+
+1. **`computeHeartbeatTargetStress(input): number`** (`heartbeatStress.ts`) — čistá,
+   testovatelná funkce, cílová hodnota 0–100 podle toho, jestli hráč zrovna vidí monstrum v
+   detailu kamery. Bere `{ playerView, isCameraDetailOpen, activeCameraId, enemyStage,
+   doorClosed, cameras }` — `cameras` je `NightDefinition.cameras`, lookup přes
+   `camera.enemyVisibleAtStage === enemyStage` je stejný vzor jako `isEnemyBeingWatched` v
+   `gameReducer.ts` (nikdy nepředpokládá, že conkrétní camera id odpovídá konkrétní stage
+   nepřítele natvrdo — respektuje, že trasa může vést buď `left_hallway`, nebo
+   `right_hallway`). `isCameraDetailOpen` musí volající spočítat jako `state.cameraOpen &&
+   state.cameraViewMode === "detail"` — overview mřížka nikdy stres nezvedá (pro první verzi
+   se řeší jen detail, žádné rozpoznávání přes overview).
+2. **`useHeartbeatStress(state, night): number`** (`useHeartbeatStress.ts`) — React hook,
+   jediné místo, které drží plynulou stress hodnotu (0..1) napříč rendery (`useRef` +
+   `useState`) a řídí podle ní audio. Spouští se v `app/play/page.tsx` vedle `useGameLoop`,
+   efekt běží na stejné frekvenci jako `TICK` (`state.elapsedMs` v dependency array, ~100 ms,
+   viz `GAME_TICK_MS`), plus okamžitě na změnu kamery/pohledu/dveří/stage (rychlejší reakce
+   než čekání na další tik). Growth/decay je exponenciálně-lineární rampa: `maxStep =
+   deltaMs / rateMs`, kde `rateMs` je `HEARTBEAT_STRESS_RISE_MS` (1000 ms) směrem k cíli
+   nahoru, `HEARTBEAT_STRESS_FALL_MS` (7000 ms) dolů (`game/balancing/constants.ts`) — hodnota
+   se posune o `maxStep` směrem k `targetStress / 100`, ale nikdy ho nepřestřelí (`Math.abs(diff)
+   <= maxStep ? target : current + sign(diff) * maxStep`). Mimo běžící směnu (`!state.isRunning`)
+   stress i hlasitosti obou loopů okamžitě spadnou na 0 (žádný heartbeat v menu/death/win).
+
+Audio: dva nové eventy, `AUDIO_EVENTS.heartbeatStressSlow`/`heartbeatStressFast`
+(`heartbeat_slow_reverb.mp3`/`heartbeat_fast_reverb.mp3`, CC0 z OpenGameArt.org — viz
+`assets/audio/README.md`), `loop: true` v `audioConfig.ts` s `volume: 0` (skutečnou
+hlasitost řídí jen `useHeartbeatStress` průběžně). `AudioManager.setVolume(id, volume)`
+(nová metoda) mění `audio.volume` na běžícím i zastaveném elementu — hook volá
+`audioManager.startLoop(...)` **jen jednou** (guard přes `loopsStartedRef`), pak už jen
+`setVolume` každý tik; nikdy `audioManager.play(...)` (to by loop pokaždé restartovalo
+zvukem od začátku, přesně čemu se má zabránit).
+
+**`computeHeartbeatVolumes(stress0to100): { slowVolume, fastVolume }`** (`heartbeatStress.ts`)
+— dvě nezávislé lineární křivky (`SLOW_VOLUME_CURVE`/`FAST_VOLUME_CURVE`, konkrétní body
+podle GAME_DESIGN.md) vynásobené crossfade faktorem: `fadeToFast = clamp01((stress - 60) /
+20)` (0 pod 60, 1 nad 80, lineární přechod mezi), `fadeSlow = 1 - fadeToFast`. Pod stresem 60
+hraje jen slow, nad 80 jen fast, 60–80 je plynulý přechod — žádné tvrdé cvaknutí mezi
+soubory.
+
+Dev HUD: `useHeartbeatStress` vrací aktuální (ne cílovou) stress hodnotu 0..1,
+`app/play/page.tsx` ji předá do `GameScreen` → `PowerMeter` jako `stressPercent =
+Math.round(stress * 100)`, zobrazí se jen když `STRESS_DEV_HUD_ENABLED` (`balancing/constants.ts`)
+je `true` — jedno místo k vypnutí, až logika bude odladěná, beze změny `PowerMeter.tsx` samotného
+(`stressPercent?: number`, `undefined` = nezobrazovat).
+
+Testy: `game/audio/heartbeatStress.test.ts` (Vitest) — `computeHeartbeatTargetStress` pro
+všechny lokace/stavy dveří/overview-vs-detail, `computeHeartbeatVolumes` pro crossfade.
+
 ## Generátor
 
 `GameState.generatorState: "normal" | "silentFault" | "criticalBeeping" | "restarting"` a k

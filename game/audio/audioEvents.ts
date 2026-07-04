@@ -2,6 +2,8 @@
 export const AUDIO_EVENTS = {
   ambienceLoop: "ambience_loop",
   heartbeat: "heartbeat",
+  heartbeatStressSlow: "heartbeat_stress_slow",
+  heartbeatStressFast: "heartbeat_stress_fast",
   doorClose: "door_close",
   doorOpen: "door_open",
   lightClick: "light_click",

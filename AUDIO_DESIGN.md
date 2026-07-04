@@ -16,6 +16,12 @@ Definováno v `game/audio/audioEvents.ts` a nakonfigurováno v `game/audio/audio
   nepřítel zrovna na kameře nejblíž hráči, a jen jednou za tuto "návštěvu" (viz
   "Zvukové události" níže). Zatím jen syntetizovaný fallback (dvě nízké "lub-dub"
   noty), žádný reálný soubor.
+- `heartbeat_stress_slow` / `heartbeat_stress_fast` — nekonečné loopy pro průběžnou
+  stres vrstvu (viz `GAME_DESIGN.md` "Stres a heartbeat", `TECH_DESIGN.md`
+  `game/audio/useHeartbeatStress.ts`), na rozdíl od `heartbeat` výše nejsou
+  jednorázové leknutí, ale plynulý podklad, jehož hlasitost/crossfade se řídí
+  aktuální hladinou stresu. Skutečné soubory (`heartbeat_slow_reverb.mp3` /
+  `heartbeat_fast_reverb.mp3`, CC0, OpenGameArt.org).
 - `door_close` / `door_open` — cvaknutí dveří
 - `light_click` — cvaknutí světla
 - `enemy_step` — kroky/pohyb nepřítele na trase

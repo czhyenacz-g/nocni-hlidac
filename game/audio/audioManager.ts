@@ -70,6 +70,13 @@ class AudioManager {
     }
   }
 
+  /** Průběžná změna hlasitosti běžícího (i zastaveného) loopu — pro plynulé fady, viz useHeartbeatStress.ts. */
+  setVolume(id: AudioEventId, volume: number): void {
+    const audio = this.elements.get(id);
+    if (!audio) return;
+    audio.volume = Math.max(0, Math.min(1, volume));
+  }
+
   stopLoop(id: AudioEventId): void {
     const audio = this.elements.get(id);
     if (!audio) return;

@@ -37,3 +37,14 @@ export const CAMERA_IMAGE_CYCLE_MS = 4000;
 // Rychlé pípání + rychlý pokles energie mají být jediná okamžitá
 // signalizace; blikající tlačítko je až druhotné potvrzení o chvíli později.
 export const GENERATOR_URGENT_BLINK_DELAY_MS = 2000;
+
+// Heartbeat/stres vrstva (viz game/audio/heartbeatStress.ts,
+// game/audio/useHeartbeatStress.ts) — jak rychle se plynulá stress hodnota
+// (0..1) přibližuje k targetStress. Růst rychlejší než pokles: hráč má stres
+// pocítit skoro okamžitě, ale uklidnění má být pozvolné, ne skokové.
+export const HEARTBEAT_STRESS_RISE_MS = 1000;
+export const HEARTBEAT_STRESS_FALL_MS = 7000;
+
+// Dočasné dev zobrazení "Stres: X" v HUDu vedle energie (viz PowerMeter.tsx,
+// app/play/page.tsx) — jde vypnout jedním přepnutím, až logika bude ověřená.
+export const STRESS_DEV_HUD_ENABLED = true;

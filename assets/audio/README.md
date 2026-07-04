@@ -28,3 +28,13 @@ definuje `fallbackSynth` — krátký tón/sekvenci syntetizovanou přímo přes
 (`AudioManager.playFallbackSynth`, žádná externí knihovna), takže i bez hotových
 souborů je slyšet aspoň placeholder pípnutí/řev. Jakmile soubor přibude, fallback se
 přestane používat sám od sebe.
+
+## Heartbeat/stres vrstva
+
+`heartbeat_slow_reverb.mp3` a `heartbeat_fast_reverb.mp3` — dva nekonečné loopy pro
+`AUDIO_EVENTS.heartbeatStressSlow`/`heartbeatStressFast` (viz
+`game/audio/useHeartbeatStress.ts`, `GAME_DESIGN.md` "Stres a heartbeat"). Zdroj:
+[OpenGameArt.org — Heartbeat sounds](https://opengameart.org/content/heartbeat-sounds),
+licence **CC0**. Staženo přes `assets/audio/downloads/opengameart/heartbeat/` (raw
+originály + další nevyužité varianty, viz README tam), tyhle dva soubory zkopírované
+sem jsou skutečně zapojené v `audioConfig.ts`.

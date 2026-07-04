@@ -1,5 +1,6 @@
 import { CameraId, GameState, NightDefinition } from "@/game/core/types";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
+import { STRESS_DEV_HUD_ENABLED } from "@/game/balancing/constants";
 import SceneBackground from "@/components/SceneBackground";
 import DeskView from "../game/DeskView";
 import DoorView from "../game/DoorView";
@@ -14,6 +15,8 @@ interface GameScreenProps {
   state: GameState;
   night: NightDefinition;
   tensionLevel: number;
+  /** Plynulá stress hodnota (0..1) z game/audio/useHeartbeatStress.ts — jen pro dev HUD (PowerMeter), viz STRESS_DEV_HUD_ENABLED. */
+  heartbeatStress: number;
   /** Kolikátá noc v řadě aktuálního hlídače (viz game/core/survivedNights.ts) — jen popisek pro ShiftTimer. */
   nightNumber: number;
   onToggleDoor: () => void;
@@ -33,6 +36,7 @@ export default function GameScreen({
   state,
   night,
   tensionLevel,
+  heartbeatStress,
   nightNumber,
   onToggleDoor,
   onToggleLight,
@@ -82,7 +86,10 @@ export default function GameScreen({
               <AudioToggle muted={state.audioMuted} onToggle={onToggleAudio} />
             </div>
 
-            <PowerMeter power={state.power} />
+            <PowerMeter
+              power={state.power}
+              stressPercent={STRESS_DEV_HUD_ENABLED ? Math.round(heartbeatStress * 100) : undefined}
+            />
           </>
         )}
 

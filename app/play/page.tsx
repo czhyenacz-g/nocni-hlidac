@@ -19,6 +19,7 @@ import { getBlackoutPhaseIndex } from "@/game/visuals/blackoutPhase";
 import { LOADING_SCREEN_DURATION_MS } from "@/game/balancing/constants";
 import { getDeathCount, incrementDeathCount } from "@/game/core/deathCount";
 import { getSurvivedNights, incrementSurvivedNights, resetSurvivedNights } from "@/game/core/survivedNights";
+import { useHeartbeatStress } from "@/game/audio/useHeartbeatStress";
 
 const night = NIGHT_01;
 const gameReducer = createGameReducer(night);
@@ -38,6 +39,7 @@ export default function PlayPage() {
   const [survivedNights, setSurvivedNights] = useState(() => getSurvivedNights());
 
   useGameLoop({ isRunning: state.isRunning, enemyTickMs: night.enemyTickMs, dispatch });
+  const heartbeatStress = useHeartbeatStress(state, night);
 
   const prevScreenRef = useRef(state.screen);
   const prevDoorRef = useRef(state.doorClosed);
@@ -282,6 +284,7 @@ export default function PlayPage() {
           state={state}
           night={night}
           tensionLevel={tensionLevel}
+          heartbeatStress={heartbeatStress}
           nightNumber={survivedNights + 1}
           onToggleDoor={handleToggleDoor}
           onToggleLight={handleToggleLight}

@@ -28,6 +28,20 @@ export const SOUND_REGISTRY: Record<AudioEventId, SoundRegistryEntry> = {
     guess: "Krátký tlukot srdce (lub-dub), leknutí místo generického šumu.",
     usedIn: "app/play/page.tsx — handleSelectCamera (jednou za návštěvu nepřítele na té kameře).",
   },
+  [AUDIO_EVENTS.heartbeatStressSlow]: {
+    id: AUDIO_EVENTS.heartbeatStressSlow,
+    label: "Heartbeat stress (slow loop)",
+    description: "Plynulý heartbeat loop pro nízký/střední stres — hlasitost řídí useHeartbeatStress.",
+    guess: "Pomalejší tlukot srdce s reverbem, jemné napětí.",
+    usedIn: "game/audio/useHeartbeatStress.ts — startLoop jednou, hlasitost přes setVolume podle stressLevel.",
+  },
+  [AUDIO_EVENTS.heartbeatStressFast]: {
+    id: AUDIO_EVENTS.heartbeatStressFast,
+    label: "Heartbeat stress (fast loop)",
+    description: "Plynulý heartbeat loop pro nejvyšší stres (monstrum v door_hallway, otevřené dveře).",
+    guess: "Rychlý, panický tlukot srdce s reverbem.",
+    usedIn: "game/audio/useHeartbeatStress.ts — startLoop jednou, hlasitost přes setVolume podle stressLevel.",
+  },
   [AUDIO_EVENTS.doorClose]: {
     id: AUDIO_EVENTS.doorClose,
     label: "Door close",

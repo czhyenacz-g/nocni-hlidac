@@ -4,9 +4,11 @@ import { PALETTE } from "@/game/visuals/palette";
 
 interface PowerMeterProps {
   power: number;
+  /** Dev-only "Stres: X" vedle energie (viz STRESS_DEV_HUD_ENABLED) — undefined = nezobrazovat. */
+  stressPercent?: number;
 }
 
-export default function PowerMeter({ power }: PowerMeterProps) {
+export default function PowerMeter({ power, stressPercent }: PowerMeterProps) {
   const color =
     power <= CRITICAL_POWER_THRESHOLD
       ? PALETTE.powerCritical
@@ -18,7 +20,12 @@ export default function PowerMeter({ power }: PowerMeterProps) {
     <div className="pixel-panel p-2">
       <div className="flex justify-between text-[10px] text-gray-400 mb-1">
         <span>{COPY.game.powerLabel}</span>
-        <span>{Math.round(power)}%</span>
+        <span>
+          {Math.round(power)}%
+          {stressPercent !== undefined && (
+            <span className="text-gray-500"> · {COPY.game.stressLabel}: {stressPercent}</span>
+          )}
+        </span>
       </div>
       <div className="h-3 bg-gray-800 border border-gray-700">
         <div

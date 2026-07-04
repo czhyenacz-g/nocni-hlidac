@@ -210,6 +210,12 @@
       `medium`/`hard` musí hráč po "vzdání se" monstra u dveří ověřit kamerou, kam odešlo,
       než je bezpečné dveře otevřít, jinak se monstrum vrátí zpět; na `easy` stačí počkat.
       Testy ve `game/core/difficulty.test.ts` (Vitest, `npm run test`).
+- [x] Heartbeat/stres vrstva (`game/audio/heartbeatStress.ts`, `useHeartbeatStress.ts`) —
+      stress 0–100 podle toho, jestli hráč vidí monstrum v detailu kamery a jak blízko je
+      (venku 20, boční chodba 40, chodba před dveřmi 45/100 podle dveří), plynulý
+      růst/pokles, crossfade mezi `heartbeat_slow_reverb`/`heartbeat_fast_reverb` (CC0,
+      OpenGameArt). Dev HUD "Stres: X" vedle energie (`STRESS_DEV_HUD_ENABLED`, časem
+      schovat). Testy ve `game/audio/heartbeatStress.test.ts`.
 - [ ] Playtest a doladění balancu (šance postupu nepřítele, retreatChance, spotřeba
       energie, rychlost dobíjení, časové okno poruchy generátoru, tempo kritického
       pípání, rozsah doorHoldRangeMs, doorLightRepelRequiredMs, restartPenaltyMs,

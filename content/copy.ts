@@ -14,6 +14,8 @@ export const COPY = {
     lightOnLabel: "Světlo: ZAPNUTO",
     lightOffLabel: "Světlo: VYPNUTO",
     powerLabel: "Energie",
+    // Dev-only hodnota vedle energie (viz STRESS_DEV_HUD_ENABLED, PowerMeter.tsx) — časem se skryje.
+    stressLabel: "Stres",
     timeLabel: "Čas do úsvitu",
     // {n} se nahradí ve ShiftTimer.tsx — kolikátou noc v řadě aktuální hlídač slouží.
     nightLabel: "Noc {n}",
