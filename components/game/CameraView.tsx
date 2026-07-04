@@ -1,14 +1,19 @@
 import { COPY } from "@/content/copy";
 import { CameraDefinition, EnemyStage } from "@/game/core/types";
+import { getCameraImageSrc } from "@/game/cameras/cameraAssets.object13";
 
 interface CameraViewProps {
   camera: CameraDefinition | null;
   enemyStage: EnemyStage;
   /** Když false, kamera ještě "ladí signál" (šum) — viz game/core/cameraFocus.ts. */
   focused: boolean;
+  /** Jen door_hallway má na světlo jinou sadu obrázků — viz cameraAssets.object13.ts. */
+  lightOn: boolean;
+  /** Pro pomalé prostřídání "normal" snímků (viz getCameraImageSrc), ne pro herní logiku. */
+  elapsedMs: number;
 }
 
-export default function CameraView({ camera, enemyStage, focused }: CameraViewProps) {
+export default function CameraView({ camera, enemyStage, focused, lightOn, elapsedMs }: CameraViewProps) {
   if (!camera) {
     return (
       <div className="pixel-panel pixel-screen-static h-40 flex items-center justify-center text-gray-500 text-sm">
@@ -27,9 +32,22 @@ export default function CameraView({ camera, enemyStage, focused }: CameraViewPr
   }
 
   const enemyVisible = camera.enemyVisibleAtStage === enemyStage;
+  // Konfigurovaný obrázek (viz game/cameras/cameraAssets.object13.ts) — CameraView
+  // sama žádné názvy souborů nezná, jen zobrazí, co vrátí getCameraImageSrc.
+  // null (kamera bez assetů, nebo prázdné pole pro danou situaci) = dosavadní
+  // textový/placeholder vzhled beze změny.
+  const imageSrc = getCameraImageSrc(camera.id, enemyVisible, lightOn, elapsedMs);
 
   return (
-    <div className="pixel-panel pixel-screen-static h-40 flex flex-col items-center justify-center relative overflow-hidden">
+    <div className="pixel-panel h-40 flex flex-col items-center justify-center relative overflow-hidden">
+      {imageSrc && (
+        <img src={imageSrc} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" />
+      )}
+      {/* Šum/scanline efekt jako samostatná vrstva NAD obrázkem (ne na stejném
+          elementu — background-image z .pixel-screen-static by se přepsal
+          inline stylem <img>u a šum by úplně zmizel). Bez obrázku (imageSrc
+          null) je to jediná vrstva, vizuálně stejné jako dřív. */}
+      <div className="absolute inset-0 pixel-screen-static" />
       <span className="absolute top-1 left-2 text-[10px] text-gray-500">
         {camera.label}
         {camera.description && <span className="block text-gray-600">{camera.description}</span>}

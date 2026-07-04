@@ -117,6 +117,19 @@
       — příprava na budoucí druhou mapu/objekt (`public/<map>/...`). Cesty přepsané na
       `OBJECT_13_BACKGROUND_PATH` konstantu v `game/visuals/backgroundImages.ts`, žádná
       komponenta se nemusela měnit.
+- [x] Skutečné fotky v detailu kamer — `game/cameras/cameraAssets.object13.ts`
+      (`CAMERA_ASSETS`, `getCameraImageSrc(cameraId, hasMonster, lightOn, elapsedMs)`) +
+      `.webp` soubory (konvertované z `.png` přes `cwebp`, `monster` v názvu zachované) v
+      `public/object_13/camera/<kamera>/`. Zapojené všechny 4 kamery (`outer_yard`/
+      `right_hallway`/`left_hallway`/`door_hallway`) — `right_hallway` zatím bez "monster"
+      fotek, fallback na "normal" funguje. Monstrum = deterministický výběr (stejná kamera +
+      stav vždy stejná fotka); bez monstra = pomalé prostřídání mezi "normal" fotkami po
+      `CAMERA_IMAGE_CYCLE_MS` (4000 ms, `game/balancing/constants.ts`), ne animace ani
+      náhodný výběr. `door_hallway` má navíc `lightOn` variantu
+      (`public/object_13/camera/door_hallway_light/`) podle `state.lightOn`. `CameraView.tsx`
+      obrázek jen zobrazuje (`.pixel-screen-static` šum je samostatná vrstva nad obrázkem, ne
+      na stejném elementu), text "POSTAVA V DOSAHU" beze změny. Overview mřížka pořád bez
+      živého obrazu.
 - [x] `/dev-sound` — dev stránka se seznamem všech audio eventů (`game/audio/audioEvents.ts`),
       popisem, souborem/fallbackem a tlačítkem přehrát (`app/dev-sound/`, gatované
       `DEBUG_PANEL_ENABLED`)

@@ -8,6 +8,8 @@ interface CameraPanelProps {
   activeCameraId: CameraId | null;
   enemyStage: EnemyStage;
   focused: boolean;
+  lightOn: boolean;
+  elapsedMs: number;
   onSelectCamera: (id: CameraId) => void;
   onCloseCameras: () => void;
 }
@@ -21,13 +23,22 @@ export default function CameraPanel({
   activeCameraId,
   enemyStage,
   focused,
+  lightOn,
+  elapsedMs,
   onSelectCamera,
   onCloseCameras,
 }: CameraPanelProps) {
   if (cameraViewMode === "detail") {
     const activeCamera = cameras.find((c) => c.id === activeCameraId) ?? null;
     return (
-      <CameraDetailView camera={activeCamera} enemyStage={enemyStage} focused={focused} onBack={onCloseCameras} />
+      <CameraDetailView
+        camera={activeCamera}
+        enemyStage={enemyStage}
+        focused={focused}
+        lightOn={lightOn}
+        elapsedMs={elapsedMs}
+        onBack={onCloseCameras}
+      />
     );
   }
 

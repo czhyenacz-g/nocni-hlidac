@@ -24,3 +24,8 @@ export const LOADING_SCREEN_HINT_COUNT = 3;
 // uvidí monstrum ve dveřích (door_open_death_0), teprve pak DeathScreen. Viz
 // GameState.doorDeathRevealUntilMs, gameReducer.ts ENEMY_ADVANCE/TICK.
 export const DOOR_DEATH_REVEAL_DURATION_MS = 700;
+
+// Jak často (ms) se v detailu kamery pomalu prostřídá obrázek bez monstra —
+// viz game/cameras/cameraAssets.object13.ts#getCameraImageSrc. Záměrně
+// pomalé (ne animace) — jen ať obraz kamery nepůsobí jako jedna mrtvá fotka.
+export const CAMERA_IMAGE_CYCLE_MS = 4000;

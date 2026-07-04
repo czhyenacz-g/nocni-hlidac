@@ -198,6 +198,25 @@ Seznam a počet kamer je čistě konfigurační (`NightDefinition.cameras` +
 `CameraMonitorTile`, `CameraDetailView`, `CameraPanel`) nemá natvrdo napsané,
 viz TECH_DESIGN.md "Kamery jsou konfigurační, nikdy hardcoded".
 
+### Skutečný obraz v detailu kamery
+
+Detail kamery (viz "Overview / detail" výše) ukazuje reálný snímek z
+`public/object_13/camera/<kamera>/`, ne jen text:
+
+- Když je na dané kameře podle `enemyStage` vidět monstrum, ukáže se jedna z fotek s
+  monstrem — vždy **stejná** pro danou kameru (deterministický výběr, ne náhodný), ať se
+  obraz neseká při každém otevření.
+- Jinak se mezi fotkami bez monstra **pomalu prostřídává** (jednou za pár sekund), ať kamera
+  nepůsobí jako jedna mrtvá fotka — ale žádná rychlá animace/blikání.
+- `door_hallway` má navíc jinou sadu fotek podle toho, jestli je zapnuté světlo do chodby —
+  jasnější/tmavší chodba podle skutečného stavu.
+- Text "POSTAVA V DOSAHU" / "— žádný pohyb —" zůstává navrch beze změny. Overview mřížka
+  (malé monitory) obraz pořád neukazuje — to je pořád jen detail.
+
+Zatím má fotky s monstrem `outer_yard`, `left_hallway` a `door_hallway` (obojí varianta,
+se světlem i bez); `right_hallway` zatím jen fotky bez monstra (fallback na ně funguje i
+když je na kameře monstrum — žádná rozbitá/prázdná obrazovka).
+
 ## Generátor
 
 První zvuková gameplay mechanika — normální stav není ticho, ale pravidelné

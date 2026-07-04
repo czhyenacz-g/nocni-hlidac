@@ -36,6 +36,8 @@ export default function DeskView({
           activeCameraId={state.activeCameraId}
           enemyStage={state.enemyStage}
           focused={isCameraFocused(state)}
+          lightOn={state.lightOn}
+          elapsedMs={state.elapsedMs}
           onSelectCamera={onSelectCamera}
           onCloseCameras={onCloseCameras}
         />

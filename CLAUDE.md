@@ -41,6 +41,15 @@ funkce, abstrakce ani konfigurovatelnost, které aktuální směna nepotřebuje.
   zpět. Overview se nikdy nepočítá jako aktivní sledování (`cameraOpen` je `true` jen v
   detailu) — nepřidávej cestu, jak by šlo sledovat nepřítele jen z přehledu, to by
   rozbilo herní důvod, proč overview/detail vůbec existuje (viz GAME_DESIGN.md "Kamery").
+- Obrázky pro obsah detailu kamery (skutečné fotky, ne jen text) patří do
+  `game/cameras/cameraAssets.object13.ts` (`CAMERA_ASSETS`, výběr přes
+  `getCameraImageSrc(cameraId, hasMonster, lightOn, elapsedMs)`), nikdy natvrdo napsaný
+  název souboru v `CameraView.tsx`/`CameraDetailView.tsx`. Soubory samotné jsou `.webp` v
+  `public/object_13/camera/<kamera>/`. Monstrum = deterministický výběr (hash, ne
+  `Math.random()`), ať se obraz neseká; bez monstra = pomalé prostřídání podle `elapsedMs`
+  (`CAMERA_IMAGE_CYCLE_MS`), ne animace ani náhodný výběr při každém renderu. Prázdné pole
+  u kamery (nebo chybějící záznam) musí spadnout zpět na dosavadní textový/placeholder vzhled, nikdy
+  nesmí hru shodit ani zobrazit rozbitý/prázdný obrázek.
 - Atmosférická pozadí obrazovek (menu, loading, hraní, smrt, výhra, `/about`) patří do
   `game/visuals/backgroundImages.ts` (`BACKGROUND_SCENES`), nikdy natvrdo (URL obrázku, počet
   snímků, gradient) v `MainMenuScreen.tsx`/`GameScreen.tsx`/`WinScreen.tsx`/atd. Vykresluje je

@@ -112,6 +112,52 @@ neřeší. `cameraFocusMs` je zatím pevná hodnota v `NightDefinition`, ale je 
 které by bylo potřeba změnit na funkci `(state, night) => number`, kdyby měl focus delay
 později záviset na napětí/energii/generátoru — CameraView by se nemusela měnit vůbec.
 
+### Kamerové assety (`getCameraImageSrc`)
+
+Skutečný obraz v detailu kamery (`CameraView.tsx`, viz "Kamerový panel: overview/detail"
+výše — overview mřížka žádný živý obraz nikdy nedostává) je taky konfigurační, ne natvrdo
+napsaný v komponentě:
+
+- `game/cameras/cameraAssets.object13.ts` — `CAMERA_ASSETS: Record<CameraId,
+  CameraAssetsEntry>`, jeden záznam na kameru. `CameraAssetsEntry = { default:
+  CameraAssetSet; lightOn?: CameraAssetSet }`, `CameraAssetSet = { normal: string[];
+  monster: string[] }` — `normal` obrázky bez monstra, `monster` obrázky s monstrem v
+  záběru. Soubory jsou `.webp` (konvertované z `.png` přes `cwebp`, jméno se zachovaným
+  `monster` v názvu) v `public/object_13/camera/<kamera>/`, rozdělené po mapě/objektu stejně
+  jako pozadí (viz "Struktura assetů podle mapy/objektu" výše). `door_hallway` má navíc
+  `lightOn` variantu (`public/object_13/camera/door_hallway_light/`) — jiná sada snímků, když
+  je zapnuté světlo do chodby (`state.lightOn`), stejné rozdělení `normal`/`monster`.
+  `resolveAssetSet(cameraId, lightOn)` (stejný soubor) vybere `lightOn` sadu, jen pokud
+  existuje a `lightOn === true`, jinak `default`. `right_hallway` má zatím prázdné
+  `monster: []` (CCTV set bez záběru s monstrem) — `getCameraImageSrc` na to reaguje
+  fallbackem na `normal`, ne pádem/prázdnou obrazovkou.
+- `getCameraImageSrc(cameraId, hasMonster, lightOn, elapsedMs)` (stejný soubor) — čistá
+  funkce, žádný React state:
+  - `hasMonster` → **deterministický** výběr (hash `cameraId:monster`, ne `Math.random()`)
+    z `monster` pole — stejná kamera + stejný stav vždy vrátí stejný obrázek. Prázdné
+    `monster` pole (`right_hallway`) → fallback na cyklující `normal` (viz níže), ne `null`.
+  - jinak → **pomalé prostřídání** (`pickCycling`) mezi `normal` obrázky:
+    `Math.floor(elapsedMs / CAMERA_IMAGE_CYCLE_MS) % normal.length` (`CAMERA_IMAGE_CYCLE_MS`
+    = 4000 ms, `game/balancing/constants.ts`) — čistá funkce `elapsedMs`, ne `setInterval`
+    ani React state v komponentě, takže se mění jen jednou za pár sekund (ne animace) a
+    neseká se při každém renderu.
+  - Prázdné pole i po fallbacku (nebo kamera bez záznamu v `CAMERA_ASSETS`) → `null`,
+    `CameraView.tsx` pak zobrazí dosavadní textový/placeholder vzhled beze změny — žádný
+    pád, žádná prázdná/rozbitá obrazovka.
+- `CameraView.tsx` volá `getCameraImageSrc(camera.id, enemyVisible, lightOn, elapsedMs)`
+  (`enemyVisible` je už existující derivovaný stav — `camera.enemyVisibleAtStage ===
+  enemyStage`; `lightOn`/`elapsedMs` jsou nové props protažené z `DeskView.tsx` přes
+  `CameraPanel.tsx`/`CameraDetailView.tsx`) a vykreslí vrácený `src` jako `<img>`
+  (`absolute inset-0 object-cover`) — nikde v komponentě není napsaný konkrétní název
+  souboru. Šum/scanline efekt (`.pixel-screen-static`) je samostatný `<div>` NAD obrázkem,
+  ne na stejném elementu — `background-image` z `.pixel-screen-static` by se jinak přepsal
+  inline stylem `<img>`u (obojí je stejná CSS vlastnost na jednom elementu, vyhrál by jen
+  jeden) a šum by úplně zmizel. Bez obrázku (`imageSrc === null`) je vrstva se šumem jediná,
+  vizuálně identické s dřívějším stavem. Text "POSTAVA V DOSAHU" / "— žádný pohyb —" zůstává
+  beze změny.
+- Rozšíření na další kameru/objekt je čistě datová změna v `CAMERA_ASSETS` — žádná
+  komponenta se kvůli tomu měnit nemusí.
+
 ## Definice nepřítele
 
 `game/enemies/basicIntruder.ts` — `EnemyDefinition` (varianty trasy, šance na postup,
