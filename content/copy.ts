@@ -69,7 +69,7 @@ export const COPY = {
   win: {
     title: "Přežil jsi směnu.",
     subtitle: "Slunce vychází. Objekt 13 je zatím v klidu.",
-    retryButton: "Znovu",
+    retryButton: "Pokračovat další nocí",
   },
   loading: {
     title: "OBJEKT 13 — SERVISNÍ TERMINÁL",
