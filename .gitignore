@@ -4,3 +4,4 @@ node_modules/
 *.tsbuildinfo
 .tokens
 .vercel
+.DS_Store
