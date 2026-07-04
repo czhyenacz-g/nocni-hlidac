@@ -43,7 +43,8 @@ export const GENERATOR_URGENT_BLINK_DELAY_MS = 2000;
 // (0..1) přibližuje k targetStress. Růst rychlejší než pokles: hráč má stres
 // pocítit skoro okamžitě, ale uklidnění má být pozvolné, ne skokové.
 export const HEARTBEAT_STRESS_RISE_MS = 1000;
-export const HEARTBEAT_STRESS_FALL_MS = 7000;
+// Playtest feedback: pokles působil moc rychle — zpomaleno ~5x (7 s -> 35 s).
+export const HEARTBEAT_STRESS_FALL_MS = 35000;
 
 // Dočasné dev zobrazení "Stres: X" v HUDu vedle energie (viz PowerMeter.tsx,
 // app/play/page.tsx) — jde vypnout jedním přepnutím, až logika bude ověřená.

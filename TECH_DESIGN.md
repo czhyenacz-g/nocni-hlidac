@@ -436,7 +436,8 @@ rozhodování ve hře, takže nepotřebuje projít reducerem a jeho testy. Dvě 
    viz `GAME_TICK_MS`), plus okamžitě na změnu kamery/pohledu/dveří/stage (rychlejší reakce
    než čekání na další tik). Growth/decay je exponenciálně-lineární rampa: `maxStep =
    deltaMs / rateMs`, kde `rateMs` je `HEARTBEAT_STRESS_RISE_MS` (1000 ms) směrem k cíli
-   nahoru, `HEARTBEAT_STRESS_FALL_MS` (7000 ms) dolů (`game/balancing/constants.ts`) — hodnota
+   nahoru, `HEARTBEAT_STRESS_FALL_MS` (35000 ms, po playtestu zpomaleno z původních 7000 ms —
+   pokles se zdál moc rychlý) dolů (`game/balancing/constants.ts`) — hodnota
    se posune o `maxStep` směrem k `targetStress / 100`, ale nikdy ho nepřestřelí (`Math.abs(diff)
    <= maxStep ? target : current + sign(diff) * maxStep`). Mimo běžící směnu (`!state.isRunning`)
    stress i hlasitosti obou loopů okamžitě spadnou na 0 (žádný heartbeat v menu/death/win).

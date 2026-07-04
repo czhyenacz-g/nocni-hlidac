@@ -258,7 +258,8 @@ monstrum je:
   otevřené dveře + monstrum těsně u nich
 
 Skutečná (zobrazovaná i slyšitelná) hodnota stresu neskáče na cíl okamžitě — plynule se k
-němu přibližuje, rychleji nahoru (~0,5–1,5 s) než dolů (~5–10 s): leknutí přijde rychle,
+němu přibližuje, rychleji nahoru (~1 s) než dolů (~35 s, po playtestu zpomaleno z
+původních ~7 s — pokles se předtím zdál moc rychlý): leknutí přijde rychle,
 uklidnění je pozvolné. Když monstrum přestane být vidět (odejde z kamery, hráč se
 odvrátí), stres nezmizí hned — dloube se dolů k 0 a heartbeat s ním postupně odezní.
 

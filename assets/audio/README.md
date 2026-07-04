@@ -38,3 +38,8 @@ přestane používat sám od sebe.
 licence **CC0**. Staženo přes `assets/audio/downloads/opengameart/heartbeat/` (raw
 originály + další nevyužité varianty, viz README tam), tyhle dva soubory zkopírované
 sem jsou skutečně zapojené v `audioConfig.ts`.
+
+Originální OpenGameArt soubory byly hodně tiché (mean_volume ~-30 dB, o ~23 dB tišší než
+`ambience_loop.mp3`) — po prvním playtestu (heartbeat nebyl vůbec slyšet) byl na tyhle dvě
+servírované kopie aplikovaný `+12dB` gain (`ffmpeg -af "volume=12dB"`, peak teď ~-2,2 dB).
+Raw originály v `downloads/opengameart/heartbeat/` zůstávají netknuté (nezesílené).
