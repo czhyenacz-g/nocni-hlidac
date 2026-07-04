@@ -137,6 +137,12 @@
       obrázek jen zobrazuje (`.pixel-screen-static` šum je samostatná vrstva nad obrázkem, ne
       na stejném elementu), text "POSTAVA V DOSAHU" beze změny. Overview mřížka pořád bez
       živého obrazu.
+- [x] DeathScreen: firemně-cynický tón místo "Game Over" — titulek "Předčasný konec směny.",
+      `door_open_at_attack` má text "Tvou poslední chybou byly otevřené dveře.", pod důvodem
+      smrti jedna náhodná hláška z `COPY.death.corporateMessages` (vybraná přes `useMemo`
+      s prázdnými závislostmi při vstupu na DeathScreen — komponenta se mountuje znovu při
+      každé smrti, takže se hláška nemění při rerenderu, ale při další smrti může vyjít jiná).
+      Tlačítko restartu přejmenováno na "Přijmout nového hlídače" (dřív "Zkusit znovu").
 - [x] `/dev-sound` — dev stránka se seznamem všech audio eventů (`game/audio/audioEvents.ts`),
       popisem, souborem/fallbackem a tlačítkem přehrát (`app/dev-sound/`, gatované
       `DEBUG_PANEL_ENABLED`)

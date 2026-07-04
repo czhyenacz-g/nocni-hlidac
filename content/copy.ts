@@ -33,12 +33,24 @@ export const COPY = {
     },
   },
   death: {
-    title: "Konec směny.",
-    retryButton: "Zkusit znovu",
+    title: "Předčasný konec směny.",
+    retryButton: "Přijmout nového hlídače",
     reasons: {
-      door_open_at_attack: "Nestihl jsi zavřít dveře.",
+      door_open_at_attack: "Tvou poslední chybou byly otevřené dveře.",
       blackout_timeout: "Nabíjení selhalo. Nouzová baterie vydržela jen pár sekund. Ve tmě povolil zámek.",
     },
+    // Firemně-cynická hláška Objektu 13 po smrti — jedna náhodně vybraná při
+    // vstupu na DeathScreen (viz DeathScreen.tsx), stabilní po dobu zobrazení.
+    corporateMessages: [
+      "Pozice bude obsazena dalším hlídačem.",
+      "Zmizení zaměstnance není důvodem k přerušení provozu.",
+      "Objekt 13 pokračuje v běžném režimu.",
+      "Provoz nebyl incidentem narušen.",
+      "Stanoviště je připraveno pro dalšího uchazeče.",
+      "Nábor na uvolněnou pozici pokračuje.",
+      "Objekt neeviduje žádnou mimořádnou událost.",
+      "Další hlídač bude seznámen se stejnými podmínkami.",
+    ],
   },
   blackout: {
     // Čtyři atmosférické fáze podle game/visuals/blackoutPhase.ts#getBlackoutPhaseIndex.

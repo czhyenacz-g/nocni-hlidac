@@ -1,3 +1,6 @@
+"use client";
+
+import { useMemo } from "react";
 import { COPY } from "@/content/copy";
 import { DeathReason } from "@/game/core/types";
 import SceneBackground from "@/components/SceneBackground";
@@ -15,15 +18,23 @@ export default function DeathScreen({ reason, onRetry }: DeathScreenProps) {
   // přímo pro tenhle death screen, ne pro nějaký mezikrok v DoorView.
   const scene = reason === "door_open_at_attack" ? BACKGROUND_SCENES.deathDoorAttack : BACKGROUND_SCENES.death;
 
+  // DeathScreen se mountuje znovu při každé smrti (podmíněný render podle
+  // state.screen v app/play/page.tsx) — prázdné závislosti tedy stačí na to,
+  // aby se hláška vybrala jednou při vstupu na obrazovku, ne při každém
+  // rerenderu, a při další smrti (nový mount) mohla vyjít jiná.
+  const corporateMessage = useMemo(() => {
+    const messages = COPY.death.corporateMessages;
+    return messages[Math.floor(Math.random() * messages.length)];
+  }, []);
+
   return (
     <main className="relative min-h-screen flex items-center justify-center p-4">
       <SceneBackground scene={scene} />
       <div className="jumpscare-overlay" />
       <div className="w-full max-w-md text-center pixel-panel p-8 relative z-10">
         <h1 className="text-2xl font-bold mb-2 text-red-500">{COPY.death.title}</h1>
-        <p className="text-sm text-gray-400 mb-8">
-          {reason ? COPY.death.reasons[reason] : ""}
-        </p>
+        <p className="text-sm text-gray-400 mb-4">{reason ? COPY.death.reasons[reason] : ""}</p>
+        <p className="text-xs text-gray-500 mb-8 italic">{corporateMessage}</p>
         <button className="pixel-button tap-target px-6 py-3 text-sm w-full" onClick={onRetry}>
           {COPY.death.retryButton}
         </button>
