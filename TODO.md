@@ -241,6 +241,8 @@
       `.camera-image-motion` v `styles/pixel.css`) — pomalý pan+zoom tam a zpátky,
       vypnutelné/laditelné jedním configem, bezpečné díky `object-cover` + `overflow:
       hidden`, který `CameraView.tsx` už měl
+- [x] Nízký konec heartbeat `SLOW_VOLUME_CURVE` zvednutý (stress 20 byl po playtestu úplně
+      neslyšitelný, i po HEARTBEAT_VOLUME_MULTIPLIER) — 0.1/0.22/0.42 -> 0.28/0.38/0.5
 - [x] Kamerový drift doladěný po playtestu: o 30 % rychlejší (18000 -> 12600 ms na směr) a
       větší horizontální posun (`panXPercent` 1.5 -> 2.2, `zoom` 1.03 -> 1.05, aby zůstala
       zachovaná bezpečná rezerva)

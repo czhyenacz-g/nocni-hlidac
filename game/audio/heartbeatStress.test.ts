@@ -85,7 +85,7 @@ describe("computeHeartbeatVolumes", () => {
 
   it("plays only slow below the crossfade window, boosted by HEARTBEAT_VOLUME_MULTIPLIER", () => {
     const { slowVolume, fastVolume } = computeHeartbeatVolumes(40);
-    expect(slowVolume).toBeCloseTo(0.22 * HEARTBEAT_VOLUME_MULTIPLIER, 5);
+    expect(slowVolume).toBeCloseTo(Math.min(1, 0.38 * HEARTBEAT_VOLUME_MULTIPLIER), 5);
     expect(fastVolume).toBe(0);
   });
 

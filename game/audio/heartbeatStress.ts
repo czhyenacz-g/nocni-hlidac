@@ -75,12 +75,15 @@ export interface HeartbeatVolumes {
 
 type CurvePoint = readonly [stress: number, volume: number];
 
+// Nízký konec (stress ~20, outer_yard) byl po playtestu úplně neslyšitelný i
+// po HEARTBEAT_VOLUME_MULTIPLIER — zvednuto výrazně (0.1 -> 0.28 na stress
+// 20, atd.), ať je slabý stres taky znát, ne jen ten nejvyšší.
 const SLOW_VOLUME_CURVE: readonly CurvePoint[] = [
   [0, 0],
-  [20, 0.1],
-  [40, 0.22],
-  [65, 0.42],
-  [100, 0.42],
+  [20, 0.28],
+  [40, 0.38],
+  [65, 0.5],
+  [100, 0.5],
 ];
 
 const FAST_VOLUME_CURVE: readonly CurvePoint[] = [
