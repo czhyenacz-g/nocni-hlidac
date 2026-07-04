@@ -237,6 +237,10 @@
       `tickStressTimeScale.test.ts`.
 - [x] `right_hallway` teď má vlastní monster snímky (03/05/07/10 přejmenované,
       `CAMERA_ASSETS` aktualizováno) — dřív mělo prázdné `monster: []`
+- [x] Jemný kamerový drift v detailu kamery (`game/cameras/cameraMotionConfig.ts`,
+      `.camera-image-motion` v `styles/pixel.css`) — pomalý pan+zoom tam a zpátky (~18 s),
+      vypnutelné/laditelné jedním configem, bezpečné díky `object-cover` + `overflow:
+      hidden`, který `CameraView.tsx` už měl
 - [x] Generátor `restarting` (omylem restartovaný funkční generátor) teď pípá stejně
       rychle jako `criticalBeeping` (dřív potichu) a přidává vyšší stres bonus (+40,
       `GENERATOR_RESTART_STRESS_BONUS`) než skutečná porucha (+20) — vlastní chyba bolí víc

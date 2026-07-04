@@ -1,6 +1,7 @@
 import { COPY } from "@/content/copy";
 import { CameraDefinition, EnemyStage } from "@/game/core/types";
 import { getCameraImageSrc } from "@/game/cameras/cameraAssets.object13";
+import { resolveCameraMotionConfig } from "@/game/cameras/cameraMotionConfig";
 
 interface CameraViewProps {
   camera: CameraDefinition | null;
@@ -37,11 +38,28 @@ export default function CameraView({ camera, enemyStage, focused, lightOn, elaps
   // null (kamera bez assetů, nebo prázdné pole pro danou situaci) = dosavadní
   // textový/placeholder vzhled beze změny.
   const imageSrc = getCameraImageSrc(camera.id, enemyVisible, lightOn, elapsedMs);
+  const motion = resolveCameraMotionConfig(camera.id);
 
   return (
     <div className="pixel-panel h-48 flex flex-col items-center justify-center relative overflow-hidden group">
       {imageSrc && (
-        <img src={imageSrc} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" />
+        <img
+          src={imageSrc}
+          alt=""
+          aria-hidden="true"
+          className={`absolute inset-0 h-full w-full object-cover ${motion.enabled ? "camera-image-motion" : ""}`}
+          style={
+            motion.enabled
+              ? ({
+                  "--camera-motion-zoom": motion.zoom,
+                  "--camera-motion-pan-x": `${motion.panXPercent}%`,
+                  "--camera-motion-pan-y": `${motion.panYPercent}%`,
+                  animationDuration: `${motion.durationMs}ms`,
+                  animationTimingFunction: motion.easing,
+                } as React.CSSProperties)
+              : undefined
+          }
+        />
       )}
       {/* Šum/scanline efekt jako samostatná vrstva NAD obrázkem (ne na stejném
           elementu — background-image z .pixel-screen-static by se přepsal

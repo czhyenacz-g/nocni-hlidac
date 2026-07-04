@@ -128,9 +128,9 @@ napsaný v komponentě:
   `lightOn` variantu (`public/object_13/camera/door_hallway_light/`) — jiná sada snímků, když
   je zapnuté světlo do chodby (`state.lightOn`), stejné rozdělení `normal`/`monster`.
   `resolveAssetSet(cameraId, lightOn)` (stejný soubor) vybere `lightOn` sadu, jen pokud
-  existuje a `lightOn === true`, jinak `default`. `right_hallway` má zatím prázdné
-  `monster: []` (CCTV set bez záběru s monstrem) — `getCameraImageSrc` na to reaguje
-  fallbackem na `normal`, ne pádem/prázdnou obrazovkou.
+  existuje a `lightOn === true`, jinak `default`. Prázdné `monster: []` u libovolné kamery
+  (dřív `right_hallway`, dokud nedostala vlastní monster snímky) je pořád platný stav —
+  `getCameraImageSrc` na to reaguje fallbackem na `normal`, ne pádem/prázdnou obrazovkou.
 - `getCameraImageSrc(cameraId, hasMonster, lightOn, elapsedMs)` (stejný soubor) — čistá
   funkce, žádný React state:
   - `hasMonster` → **deterministický** výběr (hash `cameraId:monster`, ne `Math.random()`)
@@ -157,6 +157,30 @@ napsaný v komponentě:
   pohyb —" byl z `CameraView.tsx` odstraněný (playtest: problikával přes fotku, prozrazoval
   monstrum dřív, než ho hráč sám najde) — `enemyVisible` se teď vypisuje jen v
   `DebugPanel.tsx` ("kamera-detekce"), ne v samotné komponentě kamery.
+
+### Kamerový drift (`game/cameras/cameraMotionConfig.ts`)
+
+Velmi jemný "kamera není úplně statická" efekt na `<img>` v `CameraView.tsx` — bezpečný jen
+díky kombinaci, kterou `<img>` už měl předtím: `object-cover` (obrázek vždy vyplňuje celý
+rám, žádný letterbox) + wrapper `overflow: hidden`. Bez zoom rezervy by jakýkoliv `translate`
+hned odkryl reálný okraj obrázku (`cover` sedí na hraně rámu bez vůle) — proto
+`CameraMotionConfig.zoom` (výchozí `1.03`) musí být > 1 předtím, než se vůbec uvažuje o panu.
+
+- `CameraMotionConfig = { enabled, zoom, panXPercent, panYPercent, durationMs, easing }`,
+  výchozí `CAMERA_MOTION_CONFIG` + volitelné `CAMERA_MOTION_OVERRIDES: Partial<Record<CameraId,
+  Partial<CameraMotionConfig>>>` (zatím prázdné) — `resolveCameraMotionConfig(cameraId)` je
+  jednoduchý shallow merge, žádná komponenta nezná defaulty natvrdo.
+- CSS (`styles/pixel.css`): `.camera-image-motion` + `@keyframes camera-slow-pan` čte
+  `--camera-motion-zoom`/`--camera-motion-pan-x`/`--camera-motion-pan-y` jako CSS custom
+  properties (nastavené inline stylem na `<img>` v `CameraView.tsx`, `animationDuration`/
+  `animationTimingFunction` taky inline) — jedna sada keyframes pro všechny kamery, žádná
+  per-kamera duplicita v CSS. `animation-direction: alternate` dělá plynulé tam-a-zpátky bez
+  trhnutí zpátky na start.
+- Aplikuje se jen na `<img>`, ne na wrapper (ten musí zůstat `overflow: hidden` beze změny,
+  jinak by drift odkrýval okraj mimo rám). `.pixel-screen-static` šumová vrstva zůstává
+  samostatný `<div>` nad obrázkem, drift se jí netýká.
+- `CAMERA_MOTION_CONFIG.enabled === false` (jeden vypínač v configu) → žádná třída, žádný
+  inline transform, přesně dřívější statické chování.
 - Rozšíření na další kameru/objekt je čistě datová změna v `CAMERA_ASSETS` — žádná
   komponenta se kvůli tomu měnit nemusí.
 

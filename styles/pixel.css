@@ -134,6 +134,30 @@
   100% { transform: scale(1); opacity: 1; }
 }
 
+/* Velmi jemný "kamera není úplně statická" drift v detailu kamery —
+ * viz game/cameras/cameraMotionConfig.ts, CameraView.tsx. Jen na <img>,
+ * ne na wrapperu (ten má overflow:hidden, aby drift nikdy neodkryl okraj).
+ * Hodnoty (zoom/pan/durationMs) přicházejí jako CSS custom properties,
+ * žádná per-kamera keyframe duplicita. `alternate` = plynulé tam a zpátky,
+ * žádné trhnutí zpátky na start. */
+.camera-image-motion {
+  animation-name: camera-slow-pan;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  will-change: transform;
+}
+
+@keyframes camera-slow-pan {
+  from {
+    transform: scale(var(--camera-motion-zoom, 1))
+      translate(calc(var(--camera-motion-pan-x, 0%) * -1), calc(var(--camera-motion-pan-y, 0%) * -1));
+  }
+  to {
+    transform: scale(var(--camera-motion-zoom, 1))
+      translate(var(--camera-motion-pan-x, 0%), var(--camera-motion-pan-y, 0%));
+  }
+}
+
 /* ── Mobilní dotykové cíle ─────────────────────────────────────────────────
  * Klikací PLOCHA smí být větší než viditelná pixel-art grafika (přes padding/
  * min-height, ne zvětšením textu). Obecná akce >= 44x44 px, kritická herní
