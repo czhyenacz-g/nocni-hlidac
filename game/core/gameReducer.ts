@@ -1,7 +1,7 @@
 import { GameAction } from "./gameActions";
 import { createInitialGameState } from "./gameState";
 import { EnemyDefinition, EnemyStage, GameState, NightDefinition } from "./types";
-import { DOOR_DEATH_REVEAL_DURATION_MS, MAX_POWER } from "../balancing/constants";
+import { BULB_REPLACE_DURATION_MS, DOOR_DEATH_REVEAL_DURATION_MS, MAX_POWER } from "../balancing/constants";
 import { getBlackoutPhaseIndex } from "../visuals/blackoutPhase";
 import { DEFAULT_DIFFICULTY, DIFFICULTY_RULES, Difficulty } from "../difficulty/difficultyConfig";
 import { computeNightScaling, NightScaling } from "../difficulty/nightScaling";
@@ -231,6 +231,45 @@ function updateRoomBulbs(state: GameState, deltaMs: number): RoomBulbsTickResult
   };
 }
 
+// `roomBulbs` je jen volitelná, ať se nikdy blind-spreadne přes výsledek
+// updateRoomBulbs výše — kdyby tenhle typ vždycky vracel `roomBulbs`
+// (i "beze změny" = `state.roomBulbs`), spread by v TICKu přebil i skutečně
+// spočítaný drain z updateRoomBulbs, protože ten běží nad ORIGINÁLNÍM
+// `state`, ne nad už-updatovaným. Definované jen tehdy, když výměna tenhle
+// tik skutečně dokončí opravu.
+interface BulbReplacementTickResult {
+  bulbReplacement: GameState["bulbReplacement"];
+  roomBulbs?: GameState["roomBulbs"];
+}
+
+// Progres výměny žárovky roste, jen dokud je `active` — nezávislé na
+// updateRoomBulbs výše (ta žárovku nikdy neopraví, jen ji nechá prasknout,
+// dokud běží výměna zůstává `broken: true` a `isNearRoomLightActive` tak dál
+// vrací `false`, žádný konflikt). Po dosažení BULB_REPLACE_DURATION_MS se
+// žárovka opraví na plnou životnost a `bulbReplacement` spadne zpět na
+// neaktivní — jednorázově, ne opakovaně (`active` se dál nekontroluje, jen
+// se jednou přepne na `false`).
+function updateBulbReplacement(state: GameState, deltaMs: number): BulbReplacementTickResult {
+  if (!state.bulbReplacement.active) {
+    return { bulbReplacement: state.bulbReplacement };
+  }
+
+  const progressMs = state.bulbReplacement.progressMs + deltaMs;
+  if (progressMs >= BULB_REPLACE_DURATION_MS) {
+    return {
+      bulbReplacement: { active: false, startedAtMs: null, progressMs: 0 },
+      roomBulbs: {
+        ...state.roomBulbs,
+        nearRoom: { ...state.roomBulbs.nearRoom, remainingMs: state.roomBulbs.nearRoom.maxMs, broken: false },
+      },
+    };
+  }
+
+  return { bulbReplacement: { ...state.bulbReplacement, progressMs } };
+}
+
+const INACTIVE_BULB_REPLACEMENT: GameState["bulbReplacement"] = { active: false, startedAtMs: null, progressMs: 0 };
+
 /**
  * Reducer je čistá funkce (state, action) -> state; herní pravidla dané směny
  * přijímá jako parametr. Obtížnost je zatím jen interní (žádné UI/query
@@ -266,6 +305,22 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
 
       case "TOGGLE_AUDIO_MUTED":
         return { ...state, audioMuted: !state.audioMuted };
+
+      case "START_BULB_REPLACEMENT": {
+        // Riskantní ruční akce — jde jen z DoorView, jen s otevřenými dveřmi,
+        // jen na skutečně prasklou žárovku, a jen jednou (žádná paralelní
+        // druhá výměna). Nesplněná podmínka = tichý no-op, ne chyba.
+        if (!state.isRunning || state.gameStatus === "blackout" || state.doorDeathRevealUntilMs !== null)
+          return state;
+        if (state.playerView !== "door" || state.doorClosed) return state;
+        if (!state.roomBulbs.nearRoom.broken) return state;
+        if (state.bulbReplacement.active) return state;
+
+        return {
+          ...state,
+          bulbReplacement: { active: true, startedAtMs: state.elapsedMs, progressMs: 0 },
+        };
+      }
 
       case "TOGGLE_DOOR":
         // Dveře jde přepnout jen v pohledu na dveře — hráč se tam musí nejdřív
@@ -316,6 +371,11 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           doorClosed: !state.doorClosed,
           monsterRetreatedTo: null,
           monsterRetreatVerified: false,
+          // Výměna žárovky vyžaduje otevřené dveře po celou dobu (riziko musí
+          // trvat, ne jen na startu) — zavření dveří uprostřed výměny ji
+          // zruší beze změny životnosti/broken (viz DoorView.tsx, START_BULB_REPLACEMENT).
+          bulbReplacement:
+            !state.doorClosed && state.bulbReplacement.active ? INACTIVE_BULB_REPLACEMENT : state.bulbReplacement,
         };
 
       case "TOGGLE_LIGHT":
@@ -344,7 +404,14 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
 
       case "LOOK_AT_DESK":
         if (!state.isRunning || state.doorDeathRevealUntilMs !== null) return state;
-        return { ...state, playerView: "desk" };
+        // Odchod z DoorView zruší rozběhnutou výměnu žárovky (beze změny
+        // životnosti/broken) — riziko je "zůstaň u otevřených dveří", ne jen
+        // "klikni a schovej se", viz START_BULB_REPLACEMENT.
+        return {
+          ...state,
+          playerView: "desk",
+          bulbReplacement: state.bulbReplacement.active ? INACTIVE_BULB_REPLACEMENT : state.bulbReplacement,
+        };
 
       case "LOOK_AT_GENERATOR":
         if (!state.isRunning || state.doorDeathRevealUntilMs !== null) return state;
@@ -355,6 +422,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           activeCameraId: null,
           cameraViewMode: "overview",
           cameraFocusUntilMs: null,
+          bulbReplacement: state.bulbReplacement.active ? INACTIVE_BULB_REPLACEMENT : state.bulbReplacement,
         };
 
       case "RESTART_GENERATOR": {
@@ -508,12 +576,18 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         // spotřeba/drain za tenhle tik se ještě počítá, jako by svítila celou
         // dobu; teprve od PŘÍŠTÍHO tiku je lightOn skutečně false.
         const roomBulbsUpdate = updateRoomBulbs(state, action.deltaMs);
+        // Nezávislé na roomBulbsUpdate výše (ta žárovku nikdy neopraví, jen
+        // nechá prasknout) — dokud běží výměna je žárovka pořád `broken`,
+        // takže obě aktualizace roomBulbs se nikdy nepřebíjí protichůdně.
+        const bulbReplacementUpdate = updateBulbReplacement(state, action.deltaMs);
         const power = applyPowerDelta({ ...state, ...generatorUpdate }, night, action.deltaMs, nightScaling);
 
         if (power <= 0) {
           // Baterie na nule -> blackout, ne okamžitá smrt. Zámek povolí (dveře
           // "otevřené"), systémy jdou vypnout — viz TOGGLE_DOOR/TOGGLE_LIGHT/
-          // OPEN_CAMERA/RESTART_GENERATOR guardy výše.
+          // OPEN_CAMERA/RESTART_GENERATOR guardy výše. Rozběhnutá výměna
+          // žárovky se zruší beze změny životnosti/broken — blackout přeruší
+          // i tohle, stejně jako všechno ostatní.
           return {
             ...state,
             ...generatorUpdate,
@@ -530,6 +604,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             activeCameraId: null,
             cameraViewMode: "overview",
             cameraFocusUntilMs: null,
+            bulbReplacement: INACTIVE_BULB_REPLACEMENT,
           };
         }
 
@@ -539,6 +614,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             ...generatorUpdate,
             ...doorLightRepelUpdate,
             ...roomBulbsUpdate,
+            ...bulbReplacementUpdate,
             elapsedMs,
             remainingMs: 0,
             power,
@@ -547,7 +623,16 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           };
         }
 
-        return { ...state, ...generatorUpdate, ...doorLightRepelUpdate, ...roomBulbsUpdate, elapsedMs, remainingMs, power };
+        return {
+          ...state,
+          ...generatorUpdate,
+          ...doorLightRepelUpdate,
+          ...roomBulbsUpdate,
+          ...bulbReplacementUpdate,
+          elapsedMs,
+          remainingMs,
+          power,
+        };
       }
 
       case "ENEMY_ADVANCE": {
@@ -601,12 +686,15 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             // (isRunning/screen zůstávají beze změny), nejdřív krátký
             // doorDeathReveal moment (viz TICK výše), který dokončí přechod
             // na "death" po DOOR_DEATH_REVEAL_DURATION_MS. Viz GAME_DESIGN.md
-            // "Smrt u dveří".
+            // "Smrt u dveří". Ruční výměna žárovky je jediný způsob, jak tu
+            // může být bulbReplacement.active === true (jde jen z DoorView,
+            // jen s otevřenými dveřmi) — dostane vlastní death reason/text
+            // (viz DeathScreen.tsx), zbytek sekvence je stejný.
             return {
               ...state,
               enemyStage: "attack",
               lastEnemyDecision: "attack",
-              deathReason: "door_open_at_attack",
+              deathReason: state.bulbReplacement.active ? "bulb_replacement_attack" : "door_open_at_attack",
               doorDeathRevealUntilMs: state.elapsedMs + DOOR_DEATH_REVEAL_DURATION_MS,
             };
           }

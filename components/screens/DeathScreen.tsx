@@ -18,7 +18,12 @@ export default function DeathScreen({ reason, deathCount, onRetry }: DeathScreen
   // přepíná enemyStage na "attack" a screen na "death" ve stejném dispatchi,
   // viz gameReducer.ts ENEMY_ADVANCE) — deathDoorAttack je proto pozadí
   // přímo pro tenhle death screen, ne pro nějaký mezikrok v DoorView.
-  const scene = reason === "door_open_at_attack" ? BACKGROUND_SCENES.deathDoorAttack : BACKGROUND_SCENES.death;
+  // bulb_replacement_attack prochází stejnou sekvencí (hráč je v DoorView,
+  // dveře otevřené) — jen jiný text, stejné pozadí.
+  const scene =
+    reason === "door_open_at_attack" || reason === "bulb_replacement_attack"
+      ? BACKGROUND_SCENES.deathDoorAttack
+      : BACKGROUND_SCENES.death;
 
   // DeathScreen se mountuje znovu při každé smrti (podmíněný render podle
   // state.screen v app/play/page.tsx) — prázdné závislosti tedy stačí na to,

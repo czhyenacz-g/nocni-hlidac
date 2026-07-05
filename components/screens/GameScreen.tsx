@@ -33,6 +33,7 @@ interface GameScreenProps {
   onRestartGenerator: () => void;
   onDebugToggleDoor: () => void;
   onDebugRestartGenerator: () => void;
+  onStartBulbReplacement: () => void;
 }
 
 export default function GameScreen({
@@ -53,6 +54,7 @@ export default function GameScreen({
   onRestartGenerator,
   onDebugToggleDoor,
   onDebugRestartGenerator,
+  onStartBulbReplacement,
 }: GameScreenProps) {
   // Pozadí pro desk/generator (BACKGROUND_SCENES.play) — jen mimo blackout,
   // kdy BlackoutView stejně celou obrazovku nahrazuje vlastní atmosférou.
@@ -124,8 +126,12 @@ export default function GameScreen({
               <DoorView
                 doorClosed={state.doorClosed}
                 isDoorDeathReveal={state.doorDeathRevealUntilMs !== null}
+                bulbBroken={state.roomBulbs.nearRoom.broken}
+                bulbReplacementActive={state.bulbReplacement.active}
+                bulbReplacementProgressMs={state.bulbReplacement.progressMs}
                 onToggleDoor={onToggleDoor}
                 onLookAtDesk={onLookAtDesk}
+                onStartBulbReplacement={onStartBulbReplacement}
               />
             )}
             {state.playerView === "generator" && (

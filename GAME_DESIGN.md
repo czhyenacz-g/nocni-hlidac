@@ -418,10 +418,13 @@ výpadek energie/timeout, ne přímý útok nepřítele.
 
 ## Smrt
 
-Dva důvody (`DeathReason`), s odlišným textem na `DeathScreen` (`content/copy.ts`
+Tři důvody (`DeathReason`), s odlišným textem na `DeathScreen` (`content/copy.ts`
 `death.reasons`), ať hráč vždy pozná, co ho zabilo:
 - `door_open_at_attack` — nezavřel dveře včas, dokud generátor/baterie fungovaly
 - `blackout_timeout` — blackout doběhl dřív, než skončila směna (viz "Blackout" výše)
+- `bulb_replacement_attack` — zemřel s otevřenými dveřmi uprostřed ruční výměny prasklé
+  žárovky (viz "Žárovky" výše) — mechanicky stejný útok jako `door_open_at_attack` (dveře
+  otevřené, hráč v `DoorView`), jen jiný text
 
 Zobrazí se krátký jumpscare overlay a `DeathScreen` s možností okamžitého restartu směny.
 
@@ -475,11 +478,24 @@ prasklá** žárovka se vymění za náhradní kus ze skladu (počet náhradníc
 údržba řeší jen to, co je opravdu rozbité. Pokud dojdou náhradní kusy, prasklá žárovka
 zůstává prasklá i do další noci.
 
+### Ruční výměna prasklé žárovky (riziko)
+
+Pokud žárovka u dveří praskne, hráč ji může sám vyměnit — ale jen v `DoorView`, jen s
+**otevřenými** dveřmi. To je záměrně riziko, ne pohodlná oprava: otevřené dveře jsou hlavní
+obrana, takže výměna hráče na pár sekund vystaví. Klik na malou ikonku žárovky (viditelná
+jen když jsou dveře otevřené a žárovka je prasklá) spustí 5sekundovou výměnu — hráč vidí
+postup (kruh/lišta + čas), musí ale zůstat u otevřených dveří a v `DoorView` po celou dobu.
+Odchod od dveří (pohled zpátky na stůl/generátor) nebo zavření dveří uprostřed výměny ji
+zruší bez opravy — riziko musí trvat celou dobu, ne se dát obejít schováním. Pokud během
+výměny dojde k útoku monstra, hráč zemře stejně jako při běžném "otevřené dveře" útoku, jen
+s vlastním textem na DeathScreen ("Jít vyměnit tu žárovku nebylo hrdinství, ale poslední
+chyba v tvém životě.") — nadpis a firemní hláška zůstávají stejné. Po úspěšném dokončení se
+žárovka opraví na plnou životnost a světlo jde znovu normálně používat.
+
 ### Co v tomhle kroku ještě není
 
-Ruční výměna žárovky hráčem, ikonka u dveří, držení tlačítka, riziko smrti při výměně,
-nákup žárovek ani sponzoring — žárovka je zatím jen automaticky opotřebovávaný a mezi
-směnami servisovaný stav na pozadí.
+Nákup žárovek, sponzoring — jinak je základní smyčka (praskne → hráč riskuje výměnu nebo
+počká na denní servis) hotová.
 
 ## Atmosférická pozadí
 

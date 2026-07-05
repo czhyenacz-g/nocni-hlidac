@@ -29,4 +29,12 @@ export const OBJECT13_JUMPSCARES: Record<DeathReason, JumpscareDefinition> = {
     silenceBeforeMs: 1000,
     effectDurationMs: 600,
   },
+  bulb_replacement_attack: {
+    id: "bulb_replacement_attack",
+    reason: "bulb_replacement_attack",
+    title: "Výměna žárovky se nestihla dokončit.",
+    message: "Otevřené dveře nepočkaly, až budeš hotový.",
+    silenceBeforeMs: 800,
+    effectDurationMs: 600,
+  },
 };

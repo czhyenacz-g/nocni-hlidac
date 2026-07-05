@@ -87,6 +87,10 @@ export const NIGHT_SCALING_MAX_PRESSURE = 4;
 // Kolik % navíc energy drain za každý bod "pressure" (noc 2 = +5 %, noc 3 = +10 %, ...).
 export const NIGHT_SCALING_ENERGY_DRAIN_STEP = 0.05;
 
+// Ruční výměna prasklé žárovky (viz game/core/types.ts BulbReplacementState,
+// gameReducer.ts, DoorView.tsx) — jak dlouho (ms) trvá, než se žárovka opraví.
+export const BULB_REPLACE_DURATION_MS = 5000;
+
 // Sekvence útoku/smrti (viz app/play/page.tsx, efekt na state.screen ===
 // "death", AUDIO_DESIGN.md "Ticho před lekačkou"): ambience plynule ztlumí
 // přes AMBIENCE_DEATH_FADE_MS, pak JUMPSCARE_SILENT_GAP_MS ticha, teprve

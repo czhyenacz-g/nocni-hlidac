@@ -290,6 +290,11 @@ export default function PlayPage() {
     dispatch({ type: "TOGGLE_LIGHT" });
   }
 
+  function handleStartBulbReplacement() {
+    audioManager.play(AUDIO_EVENTS.uiClick);
+    dispatch({ type: "START_BULB_REPLACEMENT" });
+  }
+
   function handleSelectCamera(cameraId: CameraId) {
     // heartbeat je zvuk překvapení: hraje jen když je nepřítel právě na
     // kameře nejblíž hráči, a jen poprvé za tuto "návštěvu" — další kliknutí
@@ -348,6 +353,7 @@ export default function PlayPage() {
           onRestartGenerator={handleRestartGenerator}
           onDebugToggleDoor={handleDebugToggleDoor}
           onDebugRestartGenerator={handleDebugRestartGenerator}
+          onStartBulbReplacement={handleStartBulbReplacement}
         />
       )}
       {state.screen === "death" && (

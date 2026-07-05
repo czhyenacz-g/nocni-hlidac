@@ -179,7 +179,7 @@ export interface GeneratorDefinition {
   restartPenaltyMs: number;
 }
 
-export type DeathReason = "door_open_at_attack" | "blackout_timeout";
+export type DeathReason = "door_open_at_attack" | "blackout_timeout" | "bulb_replacement_attack";
 
 /**
  * Stav jedné žárovky v místnosti — omezená životnost reálného svícení (viz
@@ -201,6 +201,20 @@ export interface RoomBulbState {
  */
 export interface RoomBulbsState {
   nearRoom: RoomBulbState;
+}
+
+/**
+ * Ruční výměna prasklé žárovky hráčem (viz gameReducer.ts
+ * START_BULB_REPLACEMENT/TICK, DoorView.tsx) — riskantní akce, dveře musí
+ * zůstat otevřené celou dobu. `progressMs` roste v TICKu, dokud `active`;
+ * po dosažení `BULB_REPLACE_DURATION_MS` se žárovka opraví a `active` spadne
+ * zpět na `false`. Zrušeno (bez opravy) při odchodu z DoorView nebo zavření
+ * dveří uprostřed výměny — riziko musí trvat po celou dobu, ne jen na startu.
+ */
+export interface BulbReplacementState {
+  active: boolean;
+  startedAtMs: number | null;
+  progressMs: number;
 }
 
 export type GameStatus = "normal" | "blackout";
@@ -317,6 +331,8 @@ export interface GameState {
   roomBulbs: RoomBulbsState;
   /** Zvyšuje se přesně jednou při prasknutí žárovky — UI podle změny spouští audio (viz app/play/page.tsx). */
   bulbBreakSeq: number;
+  /** Ruční výměna prasklé žárovky (viz BulbReplacementState) — vždy resetováno na novou směnu, nikdy se nepřenáší mezi nocemi. */
+  bulbReplacement: BulbReplacementState;
 
   isRunning: boolean;
   audioMuted: boolean;

@@ -1,4 +1,4 @@
-import { DEBUG_PANEL_ENABLED } from "@/game/balancing/constants";
+import { BULB_REPLACE_DURATION_MS, DEBUG_PANEL_ENABLED } from "@/game/balancing/constants";
 import { GameState, NightDefinition } from "@/game/core/types";
 import { getBlackoutPhaseIndex } from "@/game/visuals/blackoutPhase";
 import { buildEnemyDebugInfo } from "@/game/core/enemyDebugInfo";
@@ -56,6 +56,12 @@ export default function DebugPanel({ state, night, tensionLevel, onDebugToggleDo
           {state.roomBulbs.nearRoom.broken ? " (BROKEN)" : ""} — light active:{" "}
           {isNearRoomLightActive(state) ? "yes" : "no"} (breaks: {state.bulbBreakSeq})
         </div>
+        {state.bulbReplacement.active && (
+          <div>
+            bulb replacement: {(state.bulbReplacement.progressMs / 1000).toFixed(1)}s /{" "}
+            {(BULB_REPLACE_DURATION_MS / 1000).toFixed(1)}s
+          </div>
+        )}
 
         {/* Monster debug — rozšířený diagnostický výpis (viz game/core/enemyDebugInfo.ts).
             Záměrně ukecané, není to finální design, jen ať jde snadno testovat pohyb

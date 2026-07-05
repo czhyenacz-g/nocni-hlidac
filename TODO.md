@@ -289,6 +289,11 @@
       neukáže osvětlenou variantu s prasklou žárovkou. Ruční výměna hráčem/ikonka/
       4s hold/nákup/sponzoring zatím záměrně chybí (další krok). Testy v
       `roomBulbs.test.ts`, `roomBulbsStorage.test.ts`, `tickRoomBulbs.test.ts`.
+- [x] Žárovky krok 3 — ruční výměna prasklé žárovky v `DoorView` (`GameState.bulbReplacement`,
+      `START_BULB_REPLACEMENT`, `BULB_REPLACE_DURATION_MS = 5000`). Jen s otevřenými dveřmi,
+      riziko trvá celou dobu (zavření dveří nebo odchod z `DoorView` výměnu zruší beze
+      opravy). Smrt během výměny má vlastní `bulb_replacement_attack` death reason/text.
+      Nákup žárovek/sponzoring zůstávají mimo rozsah. Testy v `bulbReplacement.test.ts`.
 - [x] Generátor `restarting` (omylem restartovaný funkční generátor) teď pípá stejně
       rychle jako `criticalBeeping` (dřív potichu) a přidává vyšší stres bonus (+40,
       `GENERATOR_RESTART_STRESS_BONUS`) než skutečná porucha (+20) — vlastní chyba bolí víc

@@ -992,6 +992,66 @@ reálném světle, prasknutí, `bulbBreakSeq` se nezvyšuje podruhé, `TOGGLE_LI
 `game/cameras/cameraAssets.object13.test.ts` (rozšířeno o test, že `door_hallway` nikdy
 neukáže osvětlenou variantu, když je žárovka prasklá).
 
+## Žárovky — krok 3: ruční výměna (`GameState.bulbReplacement`)
+
+Na rozdíl od kroků 1–2 je tohle **riskantní hráčská akce řízená reducerem**, ne jen
+persistentní/derivovaný stav — musí jít testovat bez `setTimeout` v komponentě.
+
+- **`BulbReplacementState`** (`game/core/types.ts`) — `{ active: boolean; startedAtMs:
+  number | null; progressMs: number }`. Nikdy se nepřenáší mezi směnami (na rozdíl od
+  `roomBulbs`) — `createInitialGameState` ho vždy nastaví na neaktivní
+  (`{ active: false, startedAtMs: null, progressMs: 0 }`), žádný override parametr jako u
+  `roomBulbsOverride`.
+- **`BULB_REPLACE_DURATION_MS`** (5000 ms, `game/balancing/constants.ts`) — jediné místo s
+  délkou výměny.
+- **`START_BULB_REPLACEMENT`** (`gameActions.ts`, nová akce bez payloadu) —
+  `gameReducer.ts` case s guardy v pořadí: `isRunning`/`!blackout`/`!doorDeathReveal` (stejné
+  jako ostatní akce), pak `playerView === "door"`, `!doorClosed`, `roomBulbs.nearRoom.broken`,
+  `!bulbReplacement.active`. Kterákoliv podmínka neplatí → beze změny (tichý no-op, ne
+  chyba) — druhý klik během už běžící výměny tak nikdy nezaloží druhou paralelní.
+- **`updateBulbReplacement(state, deltaMs)`** (volané z `TICK`, stejné místo jako
+  `updateGenerator`/`updateRoomBulbs`) — dokud `active`, `progressMs += deltaMs`; po dosažení
+  `BULB_REPLACE_DURATION_MS` vrátí `{ bulbReplacement: <neaktivní>, roomBulbs: <nearRoom
+  opravené na maxMs, broken: false> }`. **Důležitá past**: `roomBulbs` pole v návratovém typu
+  je `volitelné`, ne vždy přítomné — kdyby funkce vždycky vracela `roomBulbs` (i beze změny =
+  `state.roomBulbs`), spread `...bulbReplacementUpdate` v `TICK` by přebil skutečně spočítaný
+  drain z `updateRoomBulbs` (ten běží nad původním `state`, ne nad už-updatovaným), protože
+  by v object spreadu přišel až po něm. Tenhle bug se skutečně objevil při první
+  implementaci (3 padající testy) — oprava: `roomBulbs` klíč se v návratu vůbec neobjeví,
+  pokud výměna tenhle tik nekončí.
+- **Riziko musí trvat celou dobu, ne jen na startu** — dva další guardy zajišťují, že se
+  výměna zruší (bez opravy, `roomBulbs` beze změny), kdykoliv přestane platit "otevřené dveře
+  + DoorView":
+  - `TOGGLE_DOOR`: když se dveře PRÁVĚ zavírají (`!state.doorClosed` před přepnutím) a
+    `bulbReplacement.active`, nastaví `bulbReplacement` na neaktivní.
+  - `LOOK_AT_DESK`/`LOOK_AT_GENERATOR`: totéž, když hráč odejde z `DoorView`.
+  - Blackout (`TICK`, `power <= 0` větev) taky force-nuluje `bulbReplacement` — systémy
+    umírají, výměna se nedokončí.
+- **Smrt během výměny** — `ENEMY_ADVANCE`, větev `atDoorStage && !doorClosed &&
+  playerView === "door"` (jediná, kde `bulbReplacement.active` může vůbec být `true`, díky
+  guardám výše): `deathReason: state.bulbReplacement.active ? "bulb_replacement_attack" :
+  "door_open_at_attack"`. Zbytek sekvence (doorDeathReveal, jumpscare timing) beze změny.
+  `DeathReason` má nový člen `bulb_replacement_attack`; `DeathScreen.tsx` pro něj používá
+  stejné pozadí jako `door_open_at_attack` (`BACKGROUND_SCENES.deathDoorAttack`), jen jiný
+  text z `content/copy.ts` `death.reasons`. `game/jumpscares/jumpscares.object13.ts`
+  (nepoužitá připravená data, `Record<DeathReason, ...>`) musela dostat odpovídající záznam,
+  jinak by typecheck spadl na chybějící klíč.
+- **UI** (`DoorView.tsx`) — ikonka (💡 + label, MVP bez nového obrázkového assetu) se
+  zobrazí jen `!doorClosed && bulbBroken`, jako **samostatná absolutní vrstva** uvnitř
+  `DoorSceneFrame` — sourozenec `.door-hotspot`, ne jeho potomek, umístěná mimo hotspotův
+  obdélník (`left: 30–70%, top: 14–84%`) na `left: 84%, top: 48%`, takže se s ním nikdy
+  vizuálně ani klikací plochou nepřekrývá. `onClick` má i tak `event.stopPropagation()` pro
+  jistotu (sourozenci by stejně nebublali do sebe, ale žádné budoucí zanoření to nerozbije).
+  Během `bulbReplacementActive` je tlačítko `disabled` a místo ikonky ukazuje uplynulé
+  sekundy + malou progress lištu (`bulbReplacementProgressMs / BULB_REPLACE_DURATION_MS`).
+  Props (`bulbBroken`, `bulbReplacementActive`, `bulbReplacementProgressMs`,
+  `onStartBulbReplacement`) protažené z `app/play/page.tsx` přes `GameScreen.tsx`.
+
+Testy: `game/core/bulbReplacement.test.ts` — `START_BULB_REPLACEMENT` guardy (broken/door
+open/playerView/no-double-start), `TICK` progress + oprava po 5 s, zrušení při
+`TOGGLE_DOOR`/`LOOK_AT_DESK`, `bulb_replacement_attack` vs. `door_open_at_attack` death
+reason, reset po `RESTART_SHIFT`.
+
 ## Jak přidat další směnu později
 
 1. Vytvoř `game/nights/night02.ts` s vlastní `NightDefinition` (může mít jiné kamery,

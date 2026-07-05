@@ -70,6 +70,9 @@ export function createInitialGameState(night: NightDefinition, roomBulbsOverride
 
     roomBulbs: roomBulbsOverride ?? createDefaultRoomBulbs(),
     bulbBreakSeq: 0,
+    // Nikdy nepřežívá restart/další noc — vždy začíná neaktivní, i kdyby
+    // hráč zemřel uprostřed výměny (viz gameReducer.ts).
+    bulbReplacement: { active: false, startedAtMs: null, progressMs: 0 },
 
     isRunning: false,
     audioMuted: false,

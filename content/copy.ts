@@ -35,6 +35,13 @@ export const COPY = {
     lookAtDoorLabel: "Otočit se ke dveřím →",
     lookAtDeskLabel: "← Zpět k panelu",
     doorViewHint: "Klikni na dveře.",
+    // Ruční výměna prasklé žárovky (viz DoorView.tsx, gameReducer.ts
+    // START_BULB_REPLACEMENT) — jen MVP text, žádný nový obrázkový asset.
+    bulbReplaceLabel: "Vyměnit žárovku",
+    // {seconds} se nahradí v DoorView.tsx (jedno desetinné místo).
+    bulbReplaceInProgressLabel: "Výměna žárovky… {seconds} s",
+    /** Kompaktní varianta pro malou ikonku (viz DoorView.tsx). */
+    bulbReplaceProgressShortLabel: "{seconds} s",
     lookAtGeneratorLabel: "Zkontrolovat generátor →",
     generatorViewHint: "Klikni pro restart.",
     generatorStateLabels: {
@@ -54,6 +61,7 @@ export const COPY = {
     reasons: {
       door_open_at_attack: "Tvou poslední chybou byly otevřené dveře.",
       blackout_timeout: "Nabíjení selhalo. Nouzová baterie vydržela jen pár sekund. Ve tmě povolil zámek.",
+      bulb_replacement_attack: "Jít vyměnit tu žárovku nebylo hrdinství, ale poslední chyba v tvém životě.",
     },
     // Firemně-cynická hláška Objektu 13 po smrti — jedna náhodně vybraná při
     // vstupu na DeathScreen (viz DeathScreen.tsx), stabilní po dobu zobrazení.
