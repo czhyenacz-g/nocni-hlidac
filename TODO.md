@@ -268,6 +268,15 @@
       (`door_hallway_10_monster_at_door.webp` / světlá varianta) — přednost před běžným
       monster/normal cyklováním, viz `getCameraImageSrc` v `cameraAssets.object13.ts`. Testy
       v `cameraAssets.object13.test.ts`.
+- [x] Žárovky krok 2 — životnost žárovky u dveří (`game/core/roomBulbs.ts`,
+      `roomBulbs.nearRoom`, výchozí 30 s z `BULBS_CONFIG.defaultLifetimeMs`). Ubývá jen při
+      reálném svícení (`isNearRoomLightActive`), praskne na 0 (`bulbBreakSeq` audio přes nový
+      `bulb_break` event), přenáší se mezi nocemi beze změny (žádné plošné resetování na
+      30 s). Denní servis po přežité směně vymění jen SKUTEČNĚ prasklé žárovky
+      (`applyDailyBulbService`), ne slabé-ale-neprasklé. Kamera `door_hallway` nikdy
+      neukáže osvětlenou variantu s prasklou žárovkou. Ruční výměna hráčem/ikonka/
+      4s hold/nákup/sponzoring zatím záměrně chybí (další krok). Testy v
+      `roomBulbs.test.ts`, `roomBulbsStorage.test.ts`, `tickRoomBulbs.test.ts`.
 - [x] Generátor `restarting` (omylem restartovaný funkční generátor) teď pípá stejně
       rychle jako `criticalBeeping` (dřív potichu) a přidává vyšší stres bonus (+40,
       `GENERATOR_RESTART_STRESS_BONUS`) než skutečná porucha (+20) — vlastní chyba bolí víc

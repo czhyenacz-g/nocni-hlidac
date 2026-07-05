@@ -19,6 +19,10 @@ export const COPY = {
     // Zatím jen zobrazení campaign hodnoty (viz game/core/bulbInventory.ts) — nikde se
     // ještě nesnižuje, jen se přenáší mezi nocemi. Není finální design.
     bulbsLabel: "Žárovky",
+    // Dev-only stav žárovky u dveří (viz game/core/roomBulbs.ts, PowerMeter.tsx) — přesný
+    // debug údaj v sekundách, ne finální atmosférický text.
+    nearRoomBulbLabel: "Žárovka u dveří",
+    bulbBrokenLabel: "prasklá",
     timeLabel: "Čas do úsvitu",
     // {n} se nahradí ve ShiftTimer.tsx — kolikátou noc v řadě aktuální hlídač slouží.
     nightLabel: "Noc {n}",

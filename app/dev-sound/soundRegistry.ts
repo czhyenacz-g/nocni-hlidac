@@ -139,4 +139,11 @@ export const SOUND_REGISTRY: Record<AudioEventId, SoundRegistryEntry> = {
     guess: "Dech/bouchání/blízký úder do dveří.",
     usedIn: "app/play/page.tsx — efekt na state.blackoutPhaseSeq, fáze 3.",
   },
+  [AUDIO_EVENTS.bulbBreak]: {
+    id: AUDIO_EVENTS.bulbBreak,
+    label: "Bulb break",
+    description: "Žárovka v místnosti (nearRoom) došla na konec životnosti a praskla.",
+    guess: "Krátké prasknutí/cvaknutí skla.",
+    usedIn: "app/play/page.tsx — efekt na state.bulbBreakSeq (viz game/core/roomBulbs.ts).",
+  },
 };

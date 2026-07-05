@@ -6,6 +6,7 @@ import { getBlackoutPhaseIndex } from "../visuals/blackoutPhase";
 import { DEFAULT_DIFFICULTY, DIFFICULTY_RULES, Difficulty } from "../difficulty/difficultyConfig";
 import { computeNightScaling, NightScaling } from "../difficulty/nightScaling";
 import { computeStressTimeScale } from "./stressTimeScale";
+import { isNearRoomLightActive } from "./roomBulbs";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -202,6 +203,34 @@ function updateDoorLightRepel(state: GameState, night: NightDefinition, deltaMs:
   };
 }
 
+type RoomBulbsTickResult = Pick<GameState, "roomBulbs" | "bulbBreakSeq" | "lightOn">;
+
+// Životnost žárovky ubývá jen tehdy, když místnost REÁLNĚ svítí
+// (isNearRoomLightActive — vypínač zapnutý A žárovka ještě funkční), ne
+// podle samotné polohy vypínače. Jakmile dojde na 0, žárovka jednou (ne
+// opakovaně) "praskne": `broken: true`, `lightOn` se vynuluje (vypínač sám
+// od sebe cvakne zpět, prasklá žárovka nic nedává) a `bulbBreakSeq` se
+// zvýší přesně jednou, ať UI spustí zvuk (viz app/play/page.tsx, stejný
+// vzor jako generatorBeepSeq/monsterRetreatRoarSeq).
+function updateRoomBulbs(state: GameState, deltaMs: number): RoomBulbsTickResult {
+  if (!isNearRoomLightActive(state)) {
+    return { roomBulbs: state.roomBulbs, bulbBreakSeq: state.bulbBreakSeq, lightOn: state.lightOn };
+  }
+
+  const bulb = state.roomBulbs.nearRoom;
+  const nextRemainingMs = Math.max(0, bulb.remainingMs - deltaMs);
+  const brokeNow = nextRemainingMs <= 0;
+
+  return {
+    roomBulbs: {
+      ...state.roomBulbs,
+      nearRoom: { ...bulb, remainingMs: nextRemainingMs, broken: brokeNow || bulb.broken },
+    },
+    bulbBreakSeq: brokeNow ? state.bulbBreakSeq + 1 : state.bulbBreakSeq,
+    lightOn: brokeNow ? false : state.lightOn,
+  };
+}
+
 /**
  * Reducer je čistá funkce (state, action) -> state; herní pravidla dané směny
  * přijímá jako parametr. Obtížnost je zatím jen interní (žádné UI/query
@@ -218,7 +247,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
 
       case "START_SHIFT":
         return {
-          ...createInitialGameState(night),
+          ...createInitialGameState(night, action.roomBulbs),
           audioMuted: state.audioMuted,
           screen: "playing",
           isRunning: true,
@@ -226,7 +255,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
 
       case "RESTART_SHIFT":
         return {
-          ...createInitialGameState(night),
+          ...createInitialGameState(night, action.roomBulbs),
           audioMuted: state.audioMuted,
           screen: "playing",
           isRunning: true,
@@ -292,6 +321,12 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
       case "TOGGLE_LIGHT":
         if (!state.isRunning || state.gameStatus === "blackout" || state.doorDeathRevealUntilMs !== null)
           return state;
+        // Prasklá žárovka — vypínač cvakne, ale nic se nestane (viz
+        // game/core/roomBulbs.ts#isNearRoomLightActive). Bez téhle guardy by
+        // šlo "zapnout" lightOn i s prasklou žárovkou, což by porušilo
+        // invariant, na kterém stojí výběr osvětleného snímku kamery i drain
+        // životnosti v TICKu.
+        if (state.roomBulbs.nearRoom.broken) return state;
         return { ...state, lightOn: !state.lightOn };
 
       case "LOOK_AT_DOOR":
@@ -468,6 +503,11 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
 
         const generatorUpdate = updateGenerator(state, night, elapsedMs);
         const doorLightRepelUpdate = updateDoorLightRepel(state, night, action.deltaMs);
+        // Životnost žárovky se počítá z PŘED-tikového state.lightOn (stejně
+        // jako applyPowerDelta níže) — pokud tenhle tik žárovka právě praskne,
+        // spotřeba/drain za tenhle tik se ještě počítá, jako by svítila celou
+        // dobu; teprve od PŘÍŠTÍHO tiku je lightOn skutečně false.
+        const roomBulbsUpdate = updateRoomBulbs(state, action.deltaMs);
         const power = applyPowerDelta({ ...state, ...generatorUpdate }, night, action.deltaMs, nightScaling);
 
         if (power <= 0) {
@@ -478,6 +518,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             ...state,
             ...generatorUpdate,
             ...doorLightRepelUpdate,
+            ...roomBulbsUpdate,
             elapsedMs,
             remainingMs,
             power: 0,
@@ -497,6 +538,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             ...state,
             ...generatorUpdate,
             ...doorLightRepelUpdate,
+            ...roomBulbsUpdate,
             elapsedMs,
             remainingMs: 0,
             power,
@@ -505,7 +547,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           };
         }
 
-        return { ...state, ...generatorUpdate, ...doorLightRepelUpdate, elapsedMs, remainingMs, power };
+        return { ...state, ...generatorUpdate, ...doorLightRepelUpdate, ...roomBulbsUpdate, elapsedMs, remainingMs, power };
       }
 
       case "ENEMY_ADVANCE": {

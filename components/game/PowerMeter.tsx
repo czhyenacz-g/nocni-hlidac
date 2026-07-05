@@ -8,9 +8,15 @@ interface PowerMeterProps {
   stressPercent?: number;
   /** Zatím jen zobrazení (viz game/core/bulbInventory.ts) — undefined = nezobrazovat. */
   bulbsRemaining?: number;
+  /**
+   * Předformátovaný stav žárovky u dveří, např. "23 s" nebo "prasklá" (viz
+   * game/core/roomBulbs.ts) — PowerMeter sama nepočítá sekundy/stav, jen
+   * zobrazí, co dostane. `undefined` = nezobrazovat.
+   */
+  nearRoomBulbLabel?: string;
 }
 
-export default function PowerMeter({ power, stressPercent, bulbsRemaining }: PowerMeterProps) {
+export default function PowerMeter({ power, stressPercent, bulbsRemaining, nearRoomBulbLabel }: PowerMeterProps) {
   const color =
     power <= CRITICAL_POWER_THRESHOLD
       ? PALETTE.powerCritical
@@ -38,6 +44,11 @@ export default function PowerMeter({ power, stressPercent, bulbsRemaining }: Pow
           style={{ width: `${power}%`, backgroundColor: color }}
         />
       </div>
+      {nearRoomBulbLabel !== undefined && (
+        <div className="text-[10px] text-gray-500 mt-1">
+          {COPY.game.nearRoomBulbLabel}: {nearRoomBulbLabel}
+        </div>
+      )}
     </div>
   );
 }

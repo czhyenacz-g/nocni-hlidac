@@ -2,6 +2,7 @@ import { COPY } from "@/content/copy";
 import { CameraId, GameState, NightDefinition } from "@/game/core/types";
 import { isCameraFocused } from "@/game/core/cameraFocus";
 import { isGeneratorArrowUrgent } from "@/game/core/generatorUrgency";
+import { isNearRoomLightActive } from "@/game/core/roomBulbs";
 import CameraPanel from "./CameraPanel";
 import LightControl from "./LightControl";
 import ViewSwitchArrow from "./ViewSwitchArrow";
@@ -37,7 +38,10 @@ export default function DeskView({
           activeCameraId={state.activeCameraId}
           enemyStage={state.enemyStage}
           focused={isCameraFocused(state)}
-          lightOn={state.lightOn}
+          // Kamera musí ukazovat reálný stav světla, ne jen polohu vypínače
+          // (viz game/core/roomBulbs.ts#isNearRoomLightActive) — prasklá
+          // žárovka nesmí dál ukazovat osvětlenou variantu.
+          lightOn={isNearRoomLightActive(state)}
           elapsedMs={state.elapsedMs}
           onSelectCamera={onSelectCamera}
           onCloseCameras={onCloseCameras}

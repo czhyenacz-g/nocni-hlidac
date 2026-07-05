@@ -19,7 +19,8 @@ import { getBlackoutPhaseIndex } from "@/game/visuals/blackoutPhase";
 import { AMBIENCE_DEATH_FADE_MS, JUMPSCARE_SILENT_GAP_MS, LOADING_SCREEN_DURATION_MS } from "@/game/balancing/constants";
 import { getDeathCount, incrementDeathCount } from "@/game/core/deathCount";
 import { getSurvivedNights, incrementSurvivedNights, resetSurvivedNights } from "@/game/core/survivedNights";
-import { getBulbsRemaining } from "@/game/core/bulbInventory";
+import { getBulbsRemaining, setBulbsRemaining } from "@/game/core/bulbInventory";
+import { applyDailyBulbService, getRoomBulbs, setRoomBulbs } from "@/game/core/roomBulbs";
 import { useHeartbeatStress } from "@/game/audio/useHeartbeatStress";
 
 const night = NIGHT_01;
@@ -43,9 +44,9 @@ export default function PlayPage() {
   // paralelní výpočty.
   const currentNight = survivedNights + 1;
   // Campaign počet náhradních žárovek (viz game/core/bulbInventory.ts) —
-  // zatím se nikde ve hře nesnižuje, jen se čte a zobrazuje (persistuje mezi
-  // nocemi beze změny). Lazy initializer, stejný vzor jako deathCount/survivedNights.
-  const [bulbsRemaining] = useState(() => getBulbsRemaining());
+  // teď se může snížit denním servisem prasklých žárovek (viz efekt na
+  // "win" níže). Lazy initializer, stejný vzor jako deathCount/survivedNights.
+  const [bulbsRemaining, setBulbsRemainingState] = useState(() => getBulbsRemaining());
 
   // "Nejnovější hodnota" ref pro stress (viz stressTimeScale.ts přes TICK) —
   // gameLoop.ts jím jen čte .current uvnitř setInterval, ať se interval
@@ -71,6 +72,7 @@ export default function PlayPage() {
   const prevMonsterRetreatRoarSeqRef = useRef(state.monsterRetreatRoarSeq);
   const prevGameStatusRef = useRef(state.gameStatus);
   const prevBlackoutPhaseSeqRef = useRef(state.blackoutPhaseSeq);
+  const prevBulbBreakSeqRef = useRef(state.bulbBreakSeq);
   // Zvuk překvapení na nejbližší kameře smí zaznít jen jednou za "návštěvu" —
   // dokud tam nepřítel je, další kliknutí na kameru (ani na jinou a zpátky) ho
   // znovu nespustí. Resetuje se, až nepřítel z téhle stage odejde (uteče/postoupí).
@@ -103,6 +105,10 @@ export default function PlayPage() {
       // Aktuální hlídač skončil — survival streak jde na 0 (viz
       // game/core/survivedNights.ts), death counter nahoře tím není dotčený.
       setSurvivedNights(resetSurvivedNights());
+      // Žárovka je vlastnost OBJEKTU, ne hlídače — smrt ji jen uloží tak, jak
+      // byla (žádný denní servis, ten běží jen po přežité směně, viz "win"
+      // níže), ať další hlídač pokračuje přesně odtud, kde předchozí skončil.
+      setRoomBulbs(state.roomBulbs);
       if (state.deathReason === "door_open_at_attack") {
         // Poslední krok těsně u dveří hraje hned (stihne doznít dávno před
         // jumpscare, viz gap níže) — zřetelně odděleně, ne zamíchaně přes sebe.
@@ -119,6 +125,13 @@ export default function PlayPage() {
       // Stejný "zvyš přesně jednou při přechodu" vzor jako deathCount výše —
       // ne při kliknutí na tlačítko, ne opakovaně při rerenderu.
       setSurvivedNights(incrementSurvivedNights());
+      // Denní servis: jen SKUTEČNĚ prasklé žárovky se vymění za náhradní kus
+      // ze skladu (viz game/core/roomBulbs.ts#applyDailyBulbService) — slabá,
+      // ale neprasklá žárovka se nedotkne. Běží jen tady (přežitá směna),
+      // nikdy na smrt (viz "death" výše).
+      const serviced = applyDailyBulbService(state.roomBulbs, getBulbsRemaining());
+      setRoomBulbs(serviced.roomBulbs);
+      setBulbsRemainingState(setBulbsRemaining(serviced.bulbsRemaining));
     }
     prevScreenRef.current = state.screen;
 
@@ -187,6 +200,13 @@ export default function PlayPage() {
   }, [state.monsterRetreatRoarSeq]);
 
   useEffect(() => {
+    if (prevBulbBreakSeqRef.current !== state.bulbBreakSeq) {
+      audioManager.play(AUDIO_EVENTS.bulbBreak);
+      prevBulbBreakSeqRef.current = state.bulbBreakSeq;
+    }
+  }, [state.bulbBreakSeq]);
+
+  useEffect(() => {
     if (prevGameStatusRef.current !== "blackout" && state.gameStatus === "blackout") {
       audioManager.play(AUDIO_EVENTS.blackoutHowl);
     }
@@ -211,7 +231,10 @@ export default function PlayPage() {
   // směnu. Zatím nejde přeskočit, viz TODO.md.
   useEffect(() => {
     if (state.screen !== "loading") return;
-    const timeout = setTimeout(() => dispatch({ type: "START_SHIFT" }), LOADING_SCREEN_DURATION_MS);
+    const timeout = setTimeout(
+      () => dispatch({ type: "START_SHIFT", roomBulbs: getRoomBulbs() }),
+      LOADING_SCREEN_DURATION_MS,
+    );
     return () => clearTimeout(timeout);
   }, [state.screen]);
 
@@ -223,7 +246,7 @@ export default function PlayPage() {
 
   function handleRestart() {
     audioManager.play(AUDIO_EVENTS.uiClick);
-    dispatch({ type: "RESTART_SHIFT" });
+    dispatch({ type: "RESTART_SHIFT", roomBulbs: getRoomBulbs() });
   }
 
   function handleToggleDoor() {

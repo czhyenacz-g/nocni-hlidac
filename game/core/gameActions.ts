@@ -1,9 +1,12 @@
-import { CameraId } from "./types";
+import { CameraId, RoomBulbsState } from "./types";
 
 export type GameAction =
   | { type: "START_LOADING" }
-  | { type: "START_SHIFT" }
-  | { type: "RESTART_SHIFT" }
+  // roomBulbs (viz game/core/roomBulbs.ts) je volitelný — app/play/page.tsx
+  // ho posílá načtený z localStorage (persistovaný/denním servisem opravený
+  // stav), chybí-li se použije čerstvý výchozí stav (createDefaultRoomBulbs).
+  | { type: "START_SHIFT"; roomBulbs?: RoomBulbsState }
+  | { type: "RESTART_SHIFT"; roomBulbs?: RoomBulbsState }
   | { type: "TOGGLE_DOOR" }
   | { type: "TOGGLE_LIGHT" }
   | { type: "LOOK_AT_DOOR" }

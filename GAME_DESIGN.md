@@ -441,9 +441,35 @@ výše), zobrazí se `WinScreen`.
 První krok budoucího systému náhradních žárovek: hlídač na začátku kampaně dostane **10**
 náhradních žárovek (`game/core/bulbsConfig.ts`). Počet je **campaign** hodnota, ne per-směna
 — přenáší se beze změny z noci na noc, stejně jako "Předchozí hlídači" nebo survival streak.
-V tomhle kroku se počet nikde nesnižuje (žádné pravidlo zatím žárovky nespotřebovává) —
-zobrazuje se jen "Žárovky: X" vedle energie, aby šlo ověřit, že persistence funguje, než
-přibude skutečná mechanika (docházející/prasklé žárovky, tma na některé kameře, ...).
+
+### Životnost žárovky u dveří
+
+Žárovka v místnosti u dveří (`roomBulbs.nearRoom`) má omezenou životnost reálného svícení —
+výchozí **30 sekund** (`BULBS_CONFIG.defaultLifetimeMs`). Životnost ubývá **jen** když
+světlo skutečně svítí (vypínač zapnutý A žárovka ještě funkční), ne podle samotné polohy
+vypínače. Jakmile dojde na 0, žárovka praskne: vypínač sám cvakne do polohy vypnuto,
+místnost okamžitě zhasne a kamera `door_hallway` přestane používat osvětlenou variantu
+snímku — nemůže nastat stav, že žárovka je prasklá, ale kamera pořád ukazuje rozsvícenou
+chodbu.
+
+Opotřebení žárovky (kolik jí zbývá) se přenáší mezi dny/nocemi stejně jako počet náhradních
+kusů — slabá, ale ještě nepraskla žárovka pokračuje příští noc přesně od stejné hodnoty,
+neresetuje se na plnou životnost jen proto, že začala nová směna.
+
+### Denní servis prasklých žárovek
+
+Po **přežité** směně (ne po smrti — objekt fyzicky zůstává tak, jak ho hlídač opustil,
+další nastoupí přesně tam, kde předchozí skončil) proběhne denní servis: každá **skutečně
+prasklá** žárovka se vymění za náhradní kus ze skladu (počet náhradních žárovek se sníží o
+1) a obnoví se na plnou životnost. Slabá, ale neprasklá žárovka se automaticky nevyměňuje —
+údržba řeší jen to, co je opravdu rozbité. Pokud dojdou náhradní kusy, prasklá žárovka
+zůstává prasklá i do další noci.
+
+### Co v tomhle kroku ještě není
+
+Ruční výměna žárovky hráčem, ikonka u dveří, držení tlačítka, riziko smrti při výměně,
+nákup žárovek ani sponzoring — žárovka je zatím jen automaticky opotřebovávaný a mezi
+směnami servisovaný stav na pozadí.
 
 ## Atmosférická pozadí
 

@@ -885,33 +885,101 @@ posílá ho jako `nightNumber` do `GameScreen.tsx` → `ShiftTimer.tsx` (i do ni
 jako "za kolik nocí přijde WinScreen", jen o jednu dřív (aktuální rozdělaná noc). `ShiftTimer`
 sám o sobě žádnou logiku nepočítá, jen zobrazí `COPY.game.nightLabel` s dosazeným číslem.
 
-## Žárovky — základ persistentního campaign stavu (`game/core/bulbInventory.ts`)
+## Žárovky — krok 1: persistentní campaign počet (`game/core/bulbInventory.ts`)
 
-První krok budoucího systému náhradních žárovek — zatím jen persistentní počet, nikde se
-nesnižuje. Stejný `localStorage` vzor jako `deathCount.ts`/`survivedNights.ts`, ale
-záměrně **bez** reset volání nikde v kódu — na rozdíl od `survivedNights` (reset při smrti)
-se `bulbsRemaining` musí přenášet mezi nocemi **beze změny**, dokud ho nějaké budoucí
-pravidlo výslovně nesníží.
+Persistentní počet, zatím se nikde nesnižuje ve smyslu spotřeby (viz krok 2 níže, kde ho
+poprvé opravdu snižuje denní servis). Stejný `localStorage` vzor jako
+`deathCount.ts`/`survivedNights.ts`, ale záměrně **bez** reset volání nikde v kódu — na
+rozdíl od `survivedNights` (reset při smrti) se `bulbsRemaining` musí přenášet mezi nocemi
+**beze změny**, dokud ho nějaké pravidlo výslovně nesníží.
 
-- `game/core/bulbsConfig.ts` — `BULBS_CONFIG = { startingCount: 10 }`, jediné místo s
-  výchozí hodnotou pro novou kampaň. Žádná per-difficulty odlišnost (viz
-  `difficultyConfig.ts`) zatím není potřeba — `startingCount` musí odpovídat výchozí
-  (medium) obtížnosti.
+- `game/core/bulbsConfig.ts` — `BULBS_CONFIG = { startingCount: 10, defaultLifetimeMs: 30_000 }`,
+  jediné místo s výchozími hodnotami pro novou kampaň. Žádná per-difficulty odlišnost (viz
+  `difficultyConfig.ts`) zatím není potřeba — obě hodnoty musí odpovídat výchozí (medium)
+  obtížnosti.
 - `getBulbsRemaining()` — bez uloženého záznamu (nová kampaň) vrátí
-  `BULBS_CONFIG.startingCount`, jinak uloženou hodnotu. `setBulbsRemaining(count)` — zatím
-  nikde ve hře nevolané, připravené pro budoucí spotřebu.
-- `app/play/page.tsx`: `const [bulbsRemaining] = useState(() => getBulbsRemaining());` —
-  lazy initializer, stejný vzor jako `deathCount`/`survivedNights`, ale bez odpovídajícího
-  `setBulbsRemaining` volání kdekoliv (nic ho zatím nemění).
-- UI: `PowerMeter.tsx` dostal třetí volitelný prop (`bulbsRemaining?: number`, stejný vzor
-  jako `stressPercent`) — `"Žárovky: X"` vedle Energie/Stresu, ne finální design, jen ověření
-  že hodnota persistuje.
+  `BULBS_CONFIG.startingCount`, jinak uloženou hodnotu. `setBulbsRemaining(count)` — teď
+  volané denním servisem (viz krok 2).
+- `app/play/page.tsx`: `const [bulbsRemaining, setBulbsRemainingState] = useState(() =>
+  getBulbsRemaining());` — lazy initializer, stejný vzor jako `deathCount`/`survivedNights`;
+  setter teď použitý v efektu na `screen === "win"` (denní servis).
+- UI: `PowerMeter.tsx` má volitelný prop `bulbsRemaining?: number` (stejný vzor jako
+  `stressPercent`) — `"Žárovky: X"` vedle Energie/Stresu, ne finální design.
 
 Testy: `game/core/bulbInventory.test.ts` — `typeof window === "undefined"` větev nejde
 otestovat s reálným `localStorage` bez jsdom (projekt zatím žádné nemá), takže testy
 simulují `window.localStorage` přes `vi.stubGlobal` (fake in-memory `Map`) — ověřují nová
 kampaň = 10, uložená hodnota přežije opakované čtení (simulace přechodu mezi nocemi), a že
 se nikdy sama neresetuje zpátky na 10.
+
+## Žárovky — krok 2: životnost v místnosti (`game/core/roomBulbs.ts`)
+
+Na rozdíl od kroku 1 (jednoduché číslo v localStorage) tohle **musí žít i uvnitř
+`GameState`** — životnost ubývá kontinuálně během běžící směny podle toho, jestli světlo
+zrovna svítí, což vyžaduje mutaci v `TICK`u (`applyPowerDelta`-like), ne jen čtení/zápis na
+hranicích směny.
+
+- **Typy** (`game/core/types.ts`): `RoomBulbState = { remainingMs, maxMs, broken }`,
+  `RoomBulbsState = { nearRoom: RoomBulbState }` — `Record`-like tvar, připravený na další
+  místnosti beze změny shape. `GameState` má nové `roomBulbs: RoomBulbsState` a
+  `bulbBreakSeq: number` (sekvenční čítač pro audio, stejný vzor jako
+  `generatorBeepSeq`/`monsterRetreatRoarSeq`).
+- **`game/core/roomBulbs.ts`** — čtyři věci v jednom souboru (stejné seskupení jako u
+  jednodušších campaign hodnot):
+  - `createDefaultRoomBulbs()` — nová kampaň, `{ nearRoom: { remainingMs:
+    BULBS_CONFIG.defaultLifetimeMs, maxMs: BULBS_CONFIG.defaultLifetimeMs, broken: false } }`.
+  - `getRoomBulbs()`/`setRoomBulbs()` — `localStorage` (JSON, s validací tvaru při čtení,
+    fallback na default při čemkoliv neplatném) — stejný `typeof window === "undefined"`
+    SSR-safe vzor jako `bulbInventory.ts`.
+  - **`isNearRoomLightActive(state): boolean`** — `state.lightOn && !bulb.broken &&
+    bulb.remainingMs > 0`. Jediné místo pravdy pro "svítí opravdu", používá ho
+    `gameReducer.ts` (drain životnosti) i `DeskView.tsx` (výběr osvětleného snímku kamery) —
+    nikde jinde se tahle podmínka nepočítá zvlášť.
+  - **`applyDailyBulbService(roomBulbs, bulbsRemaining)`** — čistá funkce, iteruje genericky
+    přes `Object.keys(roomBulbs)` (ne natvrdo jen `nearRoom`), vymění za náhradní kus jen
+    SKUTEČNĚ prasklé žárovky (dokud `bulbsRemaining > 0`), slabou-ale-neprasklou nechává
+    beze změny.
+- **Propojení do reduceru bez velkého refaktoru** (stejný problém a stejné řešení jako
+  `currentNight`/`stressLevel` v `TICK` dřív, ale tady je potřeba mutace přes hranici směny,
+  ne jen čtení): `START_SHIFT`/`RESTART_SHIFT` (`gameActions.ts`) mají nové volitelné pole
+  `roomBulbs?: RoomBulbsState`. `createInitialGameState(night, roomBulbsOverride?)` ho použije
+  místo `createDefaultRoomBulbs()`, pokud je předané. `app/play/page.tsx` čte `getRoomBulbs()`
+  při každém dispatchi `START_SHIFT`/`RESTART_SHIFT` a posílá ho jako součást akce.
+- **`gameReducer.ts#updateRoomBulbs(state, deltaMs)`** (volané z `TICK`, stejné místo jako
+  `updateGenerator`/`updateDoorLightRepel`) — dokud `isNearRoomLightActive(state)` (PŘED-tikový
+  stav, stejná konvence jako `applyPowerDelta`), `remainingMs -= deltaMs`; jakmile klesne na
+  0: `broken: true`, `bulbBreakSeq + 1` (přesně jednou — `isNearRoomLightActive` už je `false`
+  v následujících ticích, takže se větev znovu nespustí), a `lightOn: false` (vypínač sám
+  cvakne, viz níže). Spread `...roomBulbsUpdate` je ve všech třech `TICK` return větvích
+  (blackout/win/normal) stejně jako `generatorUpdate`/`doorLightRepelUpdate`.
+- **`TOGGLE_LIGHT` guard** — `if (state.roomBulbs.nearRoom.broken) return state;` před
+  přepnutím `lightOn`. Bez týhle guardy by šlo "zapnout" vypínač i s prasklou žárovkou, což
+  by porušilo invariant, na kterém stojí `isNearRoomLightActive` (že `lightOn === true`
+  nikdy nenastane spolu s `broken === true`).
+- **`applyPowerDelta`/`updateDoorLightRepel` beze změny** — dál čtou syrové `state.lightOn`,
+  ne `isNearRoomLightActive`. Bezpečné díky výše popsanému invariantu: `lightOn` se vždy
+  vynuluje ve stejném ticku, kdy žárovka praskne, takže `state.lightOn` je vždy pravdivé
+  samo o sobě, jakmile `TICK`/`TOGGLE_LIGHT` doběhnou.
+- **Denní servis** (`app/play/page.tsx`, efekt na `screen === "win"`, NIKDY na `"death"`):
+  `applyDailyBulbService(state.roomBulbs, getBulbsRemaining())` → `setRoomBulbs(...)` +
+  `setBulbsRemaining(...)` (localStorage) + `setBulbsRemainingState(...)` (React state).
+  Na `"death"` se místo servisu jen uloží `state.roomBulbs` verbatim (`setRoomBulbs(state.roomBulbs)`)
+  — žárovka je vlastnost objektu, ne hlídače, restart pokračuje přesně odtud.
+- **Audio** — nový event `AUDIO_EVENTS.bulbBreak` (`"bulb_break"`, `audioConfig.ts` +
+  `soundRegistry.ts`), přehraje se v efektu na `state.bulbBreakSeq` (stejný vzor jako
+  `monsterRetreatRoarSeq`).
+- **UI** — `PowerMeter.tsx` dostal čtvrtý volitelný prop `nearRoomBulbLabel?: string`
+  (předformátovaný text, PowerMeter sama nepočítá sekundy) — `GameScreen.tsx` počítá
+  `Math.ceil(remainingMs / 1000) + " s"` nebo `COPY.game.bulbBrokenLabel`. `DebugPanel.tsx`
+  navíc ukazuje syrové `remainingMs`/`maxMs`/`broken`/`isNearRoomLightActive`/`bulbBreakSeq`.
+
+Testy: `game/core/roomBulbs.test.ts` (čisté funkce — `createDefaultRoomBulbs`,
+`isNearRoomLightActive` pro všechny kombinace, `applyDailyBulbService`),
+`game/core/roomBulbsStorage.test.ts` (`vi.stubGlobal` perzistence, stejný vzor jako
+`bulbInventory.test.ts`), `game/core/tickRoomBulbs.test.ts` (reducer-level — drain jen při
+reálném světle, prasknutí, `bulbBreakSeq` se nezvyšuje podruhé, `TOGGLE_LIGHT` guard),
+`game/cameras/cameraAssets.object13.test.ts` (rozšířeno o test, že `door_hallway` nikdy
+neukáže osvětlenou variantu, když je žárovka prasklá).
 
 ## Jak přidat další směnu později
 

@@ -137,4 +137,20 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
       waveform: "sawtooth",
     },
   },
+  // Praskne žárovka v místnosti (viz game/core/roomBulbs.ts) — krátký, ostrý
+  // "cvak/sklo" zvuk, žádný reálný soubor zatím neexistuje, fallback synth
+  // je jen krátký vysoký "prasknutí" tón + tišší dozvuk.
+  [AUDIO_EVENTS.bulbBreak]: {
+    src: "/assets/audio/bulb_break.mp3",
+    volume: 0.7,
+    loop: false,
+    fallbackSynth: {
+      notes: [
+        { frequency: 1800, durationMs: 40, gapMs: 10 },
+        { frequency: 300, durationMs: 120 },
+      ],
+      volume: 0.5,
+      waveform: "square",
+    },
+  },
 };

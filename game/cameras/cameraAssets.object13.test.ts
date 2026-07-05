@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { getCameraImageSrc } from "./cameraAssets.object13";
+import { isNearRoomLightActive } from "../core/roomBulbs";
+import { createInitialGameState } from "../core/gameState";
+import { NIGHT_01 } from "../nights/night01";
 
 describe("getCameraImageSrc — door_hallway at_door special case", () => {
   it("shows the dark near-door frame when enemyStage is at_door and light is off", () => {
@@ -33,5 +36,21 @@ describe("getCameraImageSrc — door_hallway at_door special case", () => {
   it("falls back to normal behavior when enemyStage is omitted", () => {
     const src = getCameraImageSrc("door_hallway", false, false, 0);
     expect(src).not.toContain("at_door");
+  });
+});
+
+describe("door_hallway camera never shows the lit variant when the bulb is broken", () => {
+  it("uses the dark set for door_hallway even with lightOn === true at the switch, once bulb.broken", () => {
+    const state = {
+      ...createInitialGameState(NIGHT_01),
+      lightOn: true,
+      roomBulbs: { nearRoom: { remainingMs: 0, maxMs: 30_000, broken: true } },
+    };
+    // Stejný krok jako DeskView.tsx: reálný stav světla, ne surový přepínač.
+    const realLightOn = isNearRoomLightActive(state);
+    expect(realLightOn).toBe(false);
+
+    const src = getCameraImageSrc("door_hallway", false, realLightOn, 0, state.enemyStage);
+    expect(src).not.toContain("door_hallway_light");
   });
 });

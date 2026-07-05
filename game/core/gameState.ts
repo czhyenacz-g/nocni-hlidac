@@ -1,4 +1,5 @@
-import { EnemyStage, GameState, NightDefinition } from "./types";
+import { EnemyStage, GameState, NightDefinition, RoomBulbsState } from "./types";
+import { createDefaultRoomBulbs } from "./roomBulbs";
 
 // Vylosuje okamžik (elapsedMs) poruchy generátoru v rámci nastaveného okna —
 // mimo tento modul se nikdy nevolá Math.random() přímo, ať je losování na jednom místě.
@@ -14,7 +15,15 @@ function pickRouteVariant(night: NightDefinition): EnemyStage[] {
   return variants[Math.floor(Math.random() * variants.length)];
 }
 
-export function createInitialGameState(night: NightDefinition): GameState {
+/**
+ * `roomBulbsOverride` je volitelný — bez něj se použije čerstvě vyrobený
+ * výchozí stav (`createDefaultRoomBulbs()`), tak jako dřív. Skutečnou
+ * (persistovanou, případně denním servisem opravenou) hodnotu předává
+ * `gameReducer.ts` u `START_SHIFT`/`RESTART_SHIFT` — `app/play/page.tsx` ji
+ * načte z localStorage (`getRoomBulbs()`) a pošle jako součást akce, viz
+ * TECH_DESIGN.md "Žárovky".
+ */
+export function createInitialGameState(night: NightDefinition, roomBulbsOverride?: RoomBulbsState): GameState {
   return {
     screen: "menu",
     nightId: night.id,
@@ -58,6 +67,9 @@ export function createInitialGameState(night: NightDefinition): GameState {
 
     deathReason: null,
     doorDeathRevealUntilMs: null,
+
+    roomBulbs: roomBulbsOverride ?? createDefaultRoomBulbs(),
+    bulbBreakSeq: 0,
 
     isRunning: false,
     audioMuted: false,

@@ -2,6 +2,7 @@ import { DEBUG_PANEL_ENABLED } from "@/game/balancing/constants";
 import { GameState, NightDefinition } from "@/game/core/types";
 import { getBlackoutPhaseIndex } from "@/game/visuals/blackoutPhase";
 import { buildEnemyDebugInfo } from "@/game/core/enemyDebugInfo";
+import { isNearRoomLightActive } from "@/game/core/roomBulbs";
 import { DEFAULT_DIFFICULTY } from "@/game/difficulty/difficultyConfig";
 import DoorControl from "./DoorControl";
 
@@ -49,6 +50,12 @@ export default function DebugPanel({ state, night, tensionLevel, onDebugToggleDo
           (roars: {state.monsterRetreatRoarSeq})
         </div>
         <div>generator: {state.generatorState} (faults: {state.generatorFaultCount})</div>
+        <div>
+          bulb (nearRoom): {(state.roomBulbs.nearRoom.remainingMs / 1000).toFixed(1)}s /{" "}
+          {(state.roomBulbs.nearRoom.maxMs / 1000).toFixed(1)}s
+          {state.roomBulbs.nearRoom.broken ? " (BROKEN)" : ""} — light active:{" "}
+          {isNearRoomLightActive(state) ? "yes" : "no"} (breaks: {state.bulbBreakSeq})
+        </div>
 
         {/* Monster debug — rozšířený diagnostický výpis (viz game/core/enemyDebugInfo.ts).
             Záměrně ukecané, není to finální design, jen ať jde snadno testovat pohyb

@@ -181,6 +181,28 @@ export interface GeneratorDefinition {
 
 export type DeathReason = "door_open_at_attack" | "blackout_timeout";
 
+/**
+ * Stav jedné žárovky v místnosti — omezená životnost reálného svícení (viz
+ * game/core/roomBulbs.ts). `remainingMs`/`broken` se přenášejí mezi
+ * dny/nocemi (campaign hodnota, ne per-směna reset), jen se sníženou
+ * hodnotou se automaticky neopravuje — jen skutečně prasklá žárovka se
+ * vymění v denním servisu po přežité směně.
+ */
+export interface RoomBulbState {
+  remainingMs: number;
+  maxMs: number;
+  broken: boolean;
+}
+
+/**
+ * Zatím jen `nearRoom` (chodba/kamera nejblíž hráči u dveří, door_hallway) —
+ * struktura je `Record`-like záměrně, ať jde později přidat další místnosti
+ * beze změny tvaru.
+ */
+export interface RoomBulbsState {
+  nearRoom: RoomBulbState;
+}
+
 export type GameStatus = "normal" | "blackout";
 
 export interface GameState {
@@ -284,6 +306,17 @@ export interface GameState {
    * "death" rovnou jako dřív.
    */
   doorDeathRevealUntilMs: number | null;
+
+  /**
+   * Campaign stav žárovek per místnost (viz game/core/roomBulbs.ts) — na
+   * rozdíl od většiny `GameState` polí se NEresetuje na fixní výchozí hodnotu
+   * při každé směně; `createInitialGameState` ho přebírá jako volitelný
+   * override (`app/play/page.tsx` ho načte z localStorage přes
+   * `getRoomBulbs()`), ať poškození žárovky přežije restart/další noc.
+   */
+  roomBulbs: RoomBulbsState;
+  /** Zvyšuje se přesně jednou při prasknutí žárovky — UI podle změny spouští audio (viz app/play/page.tsx). */
+  bulbBreakSeq: number;
 
   isRunning: boolean;
   audioMuted: boolean;

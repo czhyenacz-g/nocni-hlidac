@@ -1,6 +1,7 @@
 import { CameraId, GameState, NightDefinition } from "@/game/core/types";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 import { STRESS_DEV_HUD_ENABLED } from "@/game/balancing/constants";
+import { COPY } from "@/content/copy";
 import SceneBackground from "@/components/SceneBackground";
 import DeskView from "../game/DeskView";
 import DoorView from "../game/DoorView";
@@ -60,6 +61,12 @@ export default function GameScreen({
   // viewport bg-cover škálování (viz DoorSceneFrame.tsx pro zdůvodnění).
   const isDoorView = state.playerView === "door";
   const showPlayBackground = state.gameStatus !== "blackout" && !isDoorView;
+  // Dev debug text pro PowerMeter — přesný údaj v sekundách, ne finální
+  // atmosférický text (viz game/core/roomBulbs.ts, content/copy.ts).
+  const nearRoomBulb = state.roomBulbs.nearRoom;
+  const nearRoomBulbLabel = nearRoomBulb.broken
+    ? COPY.game.bulbBrokenLabel
+    : `${Math.ceil(nearRoomBulb.remainingMs / 1000)} s`;
 
   return (
     // <main> je bez bg-* třídy a bez max-w-md — SceneBackground (potomek s
@@ -93,6 +100,7 @@ export default function GameScreen({
               power={state.power}
               stressPercent={STRESS_DEV_HUD_ENABLED ? Math.round(heartbeatStress * 100) : undefined}
               bulbsRemaining={bulbsRemaining}
+              nearRoomBulbLabel={nearRoomBulbLabel}
             />
           </>
         )}

@@ -17,6 +17,7 @@ export const AUDIO_EVENTS = {
   monsterRetreatRoar: "monster_retreat_roar",
   blackoutHowl: "blackout_howl",
   blackoutDoorHit: "blackout_door_hit",
+  bulbBreak: "bulb_break",
 } as const;
 
 export type AudioEventId = (typeof AUDIO_EVENTS)[keyof typeof AUDIO_EVENTS];
