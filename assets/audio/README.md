@@ -19,7 +19,6 @@ efekt smyčkovaný přes `loop: true`, ne skutečně nekonečná ambientní komp
 - `generator_beep.mp3` — normální pípnutí generátoru (`AUDIO_EVENTS.generatorBeep`)
 - `generator_warning_beep.mp3` — rychlé varovné pípání v kritickém stavu
   (`AUDIO_EVENTS.generatorWarningBeep`)
-- `blackout_howl.mp3` — vzdálené zavytí na začátku blackoutu (`AUDIO_EVENTS.blackoutHowl`)
 
 Dokud nejsou doplněné, hra funguje beze změny — `AudioManager` chybějící soubor jen
 tiše ignoruje (viz pravidlo výše). U těchto navíc `game/audio/audioConfig.ts`
@@ -50,6 +49,17 @@ pípnutí), který se teď použije, jen kdyby se `bulb_break.mp3` nepodařilo n
 Poznámka: v `public/assets/audio/` je navíc `33629__themfish__bulb_smash.mp3` — dřívější
 alternativní kandidát, dnes nikde v `audioConfig.ts` nezapojený (zůstává jen jako soubor na
 disku, ne aktivní asset).
+
+## Blackout howl
+
+`blackout_howl.mp3` — vzdálené zavytí přesně v okamžiku, kdy baterie klesne na 0 a začne
+blackout (`AUDIO_EVENTS.blackoutHowl`, viz GAME_DESIGN.md "Blackout"). Zdroj:
+`860536__windowsgamer23d__call-end.m4a` (soubor dodaný uživatelem do
+`public/assets/audio/`, licence/atribuce neuvedena). Originál byl tišší (mean_volume
+~-21,6 dB, peak -13,3 dB) — servírovaná kopie má `+12dB` gain (`ffmpeg -af "volume=12dB"`,
+peak teď ~-1,3 dB) a je zkonvertovaná z `.m4a` na `.mp3`. Nahrazuje dřívější syntetizovaný
+fallback (sestupná sekvence tónů), který se teď použije, jen kdyby se `blackout_howl.mp3`
+nepodařilo načíst.
 
 ## Heartbeat/stres vrstva
 
