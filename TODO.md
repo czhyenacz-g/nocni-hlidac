@@ -294,6 +294,11 @@
       riziko trvá celou dobu (zavření dveří nebo odchod z `DoorView` výměnu zruší beze
       opravy). Smrt během výměny má vlastní `bulb_replacement_attack` death reason/text.
       Nákup žárovek/sponzoring zůstávají mimo rozsah. Testy v `bulbReplacement.test.ts`.
+- [x] Reálné audio doplněno: `monster_retreat_roar.mp3`, `bulb_break.mp3`, `blackout_howl.mp3`
+      (uživatelem dodané soubory, zesílené/zkonvertované) nahradily syntetizované fallbacky.
+      Poslední fáze blackoutu (dřív `blackout_door_hit`) teď místo nového zvuku jen plynule
+      doztiší ambient úplně (`BLACKOUT_FINAL_AMBIENCE_FADE_MS`) — `blackoutDoorHit` event
+      odstraněný z `AUDIO_EVENTS`/`audioConfig.ts`/`soundRegistry.ts` (nepoužitý).
 - [x] Generátor `restarting` (omylem restartovaný funkční generátor) teď pípá stejně
       rychle jako `criticalBeeping` (dřív potichu) a přidává vyšší stres bonus (+40,
       `GENERATOR_RESTART_STRESS_BONUS`) než skutečná porucha (+20) — vlastní chyba bolí víc

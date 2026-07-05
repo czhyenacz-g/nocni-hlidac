@@ -401,7 +401,8 @@ zvuk, který se nepřehraje:
 0. "Nouzová baterie převzala napájení." — hraje `blackoutHowl` (zavytí při vstupu do blackoutu).
 1. "Zámek slábne. Odněkud se ozvaly vzdálené kroky." — hraje `enemyStep`.
 2. "Chodba utichla. Kroky se zrychlují." — hraje `enemyNear`.
-3. "Něco je za dveřmi." — hraje `blackoutDoorHit` (dech/bouchání těsně před koncem).
+3. "Něco je za dveřmi." — nehraje žádný nový zvuk, ambient místo toho plynule doztichne
+   úplně (`BLACKOUT_FINAL_AMBIENCE_FADE_MS`) — hráč čeká na smrt potichu, ne s dalším efektem.
 
 Na úplném konci (`deathReason: "blackout_timeout"`) hraje `jumpscare` — stejný
 efekt jako u každé jiné smrti (viz `app/play/page.tsx`, `screen === "death"`).

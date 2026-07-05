@@ -702,9 +702,13 @@ BlackoutDefinition` (`game/nights/night01.ts`).
   pípat sám od sebe (jeho `TICK` větev se v blackoutu nevolá). Samostatný `useEffect` sleduje
   `blackoutPhaseSeq` (stejný `useRef`-diffing vzor) a podle aktuální fáze
   (`getBlackoutPhaseIndex(state.blackoutElapsedMs, night.blackout)`, přepočítané v efektu, ne
-  jako závislost) přehraje `enemyStep` (fáze 1), `enemyNear` (fáze 2) nebo `blackoutDoorHit`
-  (fáze 3) — viz AUDIO_DESIGN.md "Blackout". Konečný `jumpscare` řeší už existující efekt na
-  `screen === "death"`, nic navíc se pro konec blackoutu nepřidává.
+  jako závislost) přehraje `enemyStep` (fáze 1) nebo `enemyNear` (fáze 2); fáze 3 (těsně před
+  koncem) místo dalšího zvuku zavolá `audioManager.fadeOutLoop(ambienceLoop,
+  BLACKOUT_FINAL_AMBIENCE_FADE_MS)` — ambient plynule doztichne úplně, žádný nový
+  `blackout_door_hit`-like event (ten byl kvůli tomu z `AUDIO_EVENTS`/`audioConfig.ts`/
+  `soundRegistry.ts` odstraněný, byl by nepoužitý) — viz AUDIO_DESIGN.md "Blackout". Konečný
+  `jumpscare` řeší už existující efekt na `screen === "death"`, nic navíc se pro konec
+  blackoutu nepřidává.
 - `DebugPanel.tsx` k `gameStatus`/`blackoutElapsedMs` navíc zobrazuje aktuální fázi
   (`getBlackoutPhaseIndex`) a `blackoutPhaseSeq`.
 

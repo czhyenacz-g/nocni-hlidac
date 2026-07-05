@@ -16,7 +16,12 @@ import { AUDIO_EVENTS } from "@/game/audio/audioEvents";
 import { computeTensionLevel } from "@/game/visuals/atmosphereState";
 import { atmosphereStyleToCssVars, tensionToAtmosphereStyle } from "@/game/visuals/visualEffects";
 import { getBlackoutPhaseIndex } from "@/game/visuals/blackoutPhase";
-import { AMBIENCE_DEATH_FADE_MS, JUMPSCARE_SILENT_GAP_MS, LOADING_SCREEN_DURATION_MS } from "@/game/balancing/constants";
+import {
+  AMBIENCE_DEATH_FADE_MS,
+  BLACKOUT_FINAL_AMBIENCE_FADE_MS,
+  JUMPSCARE_SILENT_GAP_MS,
+  LOADING_SCREEN_DURATION_MS,
+} from "@/game/balancing/constants";
 import { getDeathCount, incrementDeathCount } from "@/game/core/deathCount";
 import { getSurvivedNights, incrementSurvivedNights, resetSurvivedNights } from "@/game/core/survivedNights";
 import { getBulbsRemaining, setBulbsRemaining } from "@/game/core/bulbInventory";
@@ -213,15 +218,18 @@ export default function PlayPage() {
     prevGameStatusRef.current = state.gameStatus;
   }, [state.gameStatus]);
 
-  // Fáze 1/2/3 blackoutu (viz getBlackoutPhaseIndex) mají svůj zvuk — vzdálený
-  // krok, blížící se krok, dech/bouchání těsně před koncem. Fázi 0 (start)
-  // pokrývá blackoutHowl výše, konec (jumpscare) pokrývá efekt na screen === "death".
+  // Fáze 1/2 blackoutu (viz getBlackoutPhaseIndex) mají svůj zvuk — vzdálený
+  // krok, blížící se krok. Fázi 0 (start) pokrývá blackoutHowl výše. Poslední
+  // fáze (3, těsně před koncem) záměrně NEhraje žádný další zvuk — místo
+  // toho ambient plynule doztichne úplně (viz BLACKOUT_FINAL_AMBIENCE_FADE_MS),
+  // ať hráč čeká na smrt potichu, ne s dalším efektem navrch. Konec
+  // (jumpscare) pokrývá efekt na screen === "death" beze změny.
   useEffect(() => {
     if (prevBlackoutPhaseSeqRef.current !== state.blackoutPhaseSeq) {
       const phase = getBlackoutPhaseIndex(state.blackoutElapsedMs, night.blackout);
       if (phase === 1) audioManager.play(AUDIO_EVENTS.enemyStep);
       else if (phase === 2) audioManager.play(AUDIO_EVENTS.enemyNear);
-      else if (phase === 3) audioManager.play(AUDIO_EVENTS.blackoutDoorHit);
+      else if (phase === 3) audioManager.fadeOutLoop(AUDIO_EVENTS.ambienceLoop, BLACKOUT_FINAL_AMBIENCE_FADE_MS);
       prevBlackoutPhaseSeqRef.current = state.blackoutPhaseSeq;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -132,13 +132,6 @@ export const SOUND_REGISTRY: Record<AudioEventId, SoundRegistryEntry> = {
     guess: "Vzdálené zavytí.",
     usedIn: 'app/play/page.tsx — efekt na přechod state.gameStatus "normal" -> "blackout".',
   },
-  [AUDIO_EVENTS.blackoutDoorHit]: {
-    id: AUDIO_EVENTS.blackoutDoorHit,
-    label: "Blackout door hit",
-    description: "Poslední fáze blackoutu, těsně před koncem.",
-    guess: "Dech/bouchání/blízký úder do dveří.",
-    usedIn: "app/play/page.tsx — efekt na state.blackoutPhaseSeq, fáze 3.",
-  },
   [AUDIO_EVENTS.bulbBreak]: {
     id: AUDIO_EVENTS.bulbBreak,
     label: "Bulb break",

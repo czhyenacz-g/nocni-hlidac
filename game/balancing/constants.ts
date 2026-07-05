@@ -98,3 +98,8 @@ export const BULB_REPLACE_DURATION_MS = 5000;
 // jen okamžik navíc.
 export const AMBIENCE_DEATH_FADE_MS = 300;
 export const JUMPSCARE_SILENT_GAP_MS = 200;
+
+// Poslední fáze blackoutu (viz getBlackoutPhaseIndex, AUDIO_DESIGN.md
+// "Blackout") už nehraje žádný zvuk navíc — místo toho ambient plynule
+// doztichne úplně, ať hráč čeká na smrt potichu, ne s dalším efektem.
+export const BLACKOUT_FINAL_AMBIENCE_FADE_MS = 600;

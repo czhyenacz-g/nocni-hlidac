@@ -16,7 +16,6 @@ export const AUDIO_EVENTS = {
   generatorBeep: "generator_beep",
   monsterRetreatRoar: "monster_retreat_roar",
   blackoutHowl: "blackout_howl",
-  blackoutDoorHit: "blackout_door_hit",
   bulbBreak: "bulb_break",
 } as const;
 

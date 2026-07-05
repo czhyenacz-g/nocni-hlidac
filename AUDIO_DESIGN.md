@@ -37,8 +37,8 @@ Definováno v `game/audio/audioEvents.ts` a nakonfigurováno v `game/audio/audio
 - `blackout_howl` — vzdálené zavytí jednou na začátku blackoutu (viz "Blackout" v
   `GAME_DESIGN.md`); normální pípání generátoru se v blackoutu samo zastaví (jeho `TICK`
   větev se nevolá), žádný speciální "vypni zvuk" krok není potřeba
-- `blackout_door_hit` — dech/bouchání/blízký krok těsně před koncem blackoutu (poslední
-  atmosférická fáze, viz "Blackout" níže)
+- Poslední atmosférická fáze blackoutu (těsně před koncem) nemá vlastní zvukový event —
+  místo dalšího efektu ambient plynule doztichne úplně (viz "Blackout" níže)
 
 ## Ambientní zvuková vrstva
 
@@ -176,9 +176,14 @@ Blackout není jen ticho s odpočtem — má vlastní zvukovou sekvenci, ať je 
 1. **Fáze 1** (`blackoutElapsedMs` překročí první práh `phaseThresholdsMs[0]`) — `enemy_step`
    (vzdálený krok), stejný zvuk jako běžný pohyb nepřítele mimo blackout.
 2. **Fáze 2** (druhý práh) — `enemy_near` (kroky se zrychlují/blíží).
-3. **Fáze 3** (třetí práh, těsně před koncem) — `blackout_door_hit` (dech/bouchání).
+3. **Fáze 3** (třetí práh, těsně před koncem) — žádný nový zvuk. Místo dalšího efektu
+   (dřív `blackout_door_hit`) se `ambience_loop` plynule ztiší úplně
+   (`audioManager.fadeOutLoop(ambienceLoop, BLACKOUT_FINAL_AMBIENCE_FADE_MS)`,
+   `game/balancing/constants.ts`) — hráč čeká na smrt potichu, ne s dalším "leknutím" navíc.
 4. **Konec** (`blackoutElapsedMs >= durationMs`, `screen` přejde na `"death"`) — `jumpscare`,
-   stejný efekt jako u každé jiné smrti, žádný speciální blackout kód navíc.
+   stejný efekt jako u každé jiné smrti, žádný speciální blackout kód navíc. Ambient je v tu
+   chvíli už tichý z fáze 3, takže se death-sekvenční fade (viz "Ticho před lekačkou" výše)
+   nemá co dál ztlumit.
 
 Mechanismus je stejný sekvenční-čítač vzor jako `generatorBeepSeq`/`monsterRetreatRoarSeq`:
 `gameReducer.ts` v `TICK` větvi pro `gameStatus === "blackout"` porovná
@@ -194,7 +199,7 @@ nepřehrál (viz GAME_DESIGN.md "Blackout").
 ## Syntetizovaný fallback (bez čekání na audio soubory)
 
 `generator_beep`, `monster_retreat_roar`, `heartbeat`, `blackout_howl` a
-`blackout_door_hit` mají v `audioConfig.ts` navíc `fallbackSynth` — krátkou sekvenci tónů (frekvence, délka,
+`bulb_break` mají v `audioConfig.ts` navíc `fallbackSynth` — krátkou sekvenci tónů (frekvence, délka,
 tvar vlny) syntetizovanou přes nativní Web Audio API, žádná externí knihovna.
 `AudioManager.play()` ho spustí automaticky, když `audio.play()` na chybějící/nenačtený
 soubor selže (stejný `.catch()`, který jinak zvuk jen tiše zahodí). Jakmile do
