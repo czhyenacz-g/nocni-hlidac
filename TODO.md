@@ -251,6 +251,11 @@
       drain +5 % za noc, capnuté na +20 % od noci 5 dál. Napojené do `applyPowerDelta` přes
       nové volitelné `TICK.currentNight` pole (stejný vzor jako `stressLevel`). Testy v
       `nightScaling.test.ts` a `tickNightScaling.test.ts`.
+- [x] Základ pro žárovky — persistentní `bulbsRemaining` (`game/core/bulbInventory.ts`,
+      `bulbsConfig.ts`, `startingCount: 10`), přenáší se mezi nocemi beze změny, zatím se
+      nikde nesnižuje. Zobrazeno jako "Žárovky: X" v `PowerMeter.tsx`. Testy v
+      `bulbInventory.test.ts` (fake `localStorage` přes `vi.stubGlobal`, projekt zatím nemá
+      jsdom).
 - [x] Generátor `restarting` (omylem restartovaný funkční generátor) teď pípá stejně
       rychle jako `criticalBeeping` (dřív potichu) a přidává vyšší stres bonus (+40,
       `GENERATOR_RESTART_STRESS_BONUS`) než skutečná porucha (+20) — vlastní chyba bolí víc

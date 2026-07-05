@@ -19,6 +19,8 @@ interface GameScreenProps {
   heartbeatStress: number;
   /** Kolikátá noc v řadě aktuálního hlídače (viz game/core/survivedNights.ts) — jen popisek pro ShiftTimer. */
   nightNumber: number;
+  /** Campaign hodnota z game/core/bulbInventory.ts — zatím jen zobrazení, nikde se nesnižuje. */
+  bulbsRemaining: number;
   onToggleDoor: () => void;
   onToggleLight: () => void;
   onSelectCamera: (id: CameraId) => void;
@@ -38,6 +40,7 @@ export default function GameScreen({
   tensionLevel,
   heartbeatStress,
   nightNumber,
+  bulbsRemaining,
   onToggleDoor,
   onToggleLight,
   onSelectCamera,
@@ -89,6 +92,7 @@ export default function GameScreen({
             <PowerMeter
               power={state.power}
               stressPercent={STRESS_DEV_HUD_ENABLED ? Math.round(heartbeatStress * 100) : undefined}
+              bulbsRemaining={bulbsRemaining}
             />
           </>
         )}

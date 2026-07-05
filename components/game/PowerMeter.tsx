@@ -6,9 +6,11 @@ interface PowerMeterProps {
   power: number;
   /** Dev-only "Stres: X" vedle energie (viz STRESS_DEV_HUD_ENABLED) — undefined = nezobrazovat. */
   stressPercent?: number;
+  /** Zatím jen zobrazení (viz game/core/bulbInventory.ts) — undefined = nezobrazovat. */
+  bulbsRemaining?: number;
 }
 
-export default function PowerMeter({ power, stressPercent }: PowerMeterProps) {
+export default function PowerMeter({ power, stressPercent, bulbsRemaining }: PowerMeterProps) {
   const color =
     power <= CRITICAL_POWER_THRESHOLD
       ? PALETTE.powerCritical
@@ -24,6 +26,9 @@ export default function PowerMeter({ power, stressPercent }: PowerMeterProps) {
           {Math.round(power)}%
           {stressPercent !== undefined && (
             <span className="text-gray-500"> · {COPY.game.stressLabel}: {stressPercent}</span>
+          )}
+          {bulbsRemaining !== undefined && (
+            <span className="text-gray-500"> · {COPY.game.bulbsLabel}: {bulbsRemaining}</span>
           )}
         </span>
       </div>

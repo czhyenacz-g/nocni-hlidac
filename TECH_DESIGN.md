@@ -866,10 +866,39 @@ při rerenderu ani při kliknutí na tlačítko. Výsledek se posílá do `WinSc
 `formatSurvivedNights` přímo v `WinScreen.tsx`, ne v `content/copy.ts` (ten drží jen tři
 tvary textu s `{count}` placeholderem).
 
-`app/play/page.tsx` posílá `nightNumber={survivedNights + 1}` i do `GameScreen.tsx` →
-`ShiftTimer.tsx` — "kolikátá noc" zobrazená vedle odpočtu za směny je tak stejné číslo jako
-"za kolik nocí přijde WinScreen", jen o jednu dřív (aktuální rozdělaná noc). `ShiftTimer` sám
-o sobě žádnou logiku nepočítá, jen zobrazí `COPY.game.nightLabel` s dosazeným číslem.
+`app/play/page.tsx` počítá `const currentNight = survivedNights + 1;` na jednom místě a
+posílá ho jako `nightNumber` do `GameScreen.tsx` → `ShiftTimer.tsx` (i do night scalingu, viz
+"Night scaling" výše) — "kolikátá noc" zobrazená vedle odpočtu za směny je tak stejné číslo
+jako "za kolik nocí přijde WinScreen", jen o jednu dřív (aktuální rozdělaná noc). `ShiftTimer`
+sám o sobě žádnou logiku nepočítá, jen zobrazí `COPY.game.nightLabel` s dosazeným číslem.
+
+## Žárovky — základ persistentního campaign stavu (`game/core/bulbInventory.ts`)
+
+První krok budoucího systému náhradních žárovek — zatím jen persistentní počet, nikde se
+nesnižuje. Stejný `localStorage` vzor jako `deathCount.ts`/`survivedNights.ts`, ale
+záměrně **bez** reset volání nikde v kódu — na rozdíl od `survivedNights` (reset při smrti)
+se `bulbsRemaining` musí přenášet mezi nocemi **beze změny**, dokud ho nějaké budoucí
+pravidlo výslovně nesníží.
+
+- `game/core/bulbsConfig.ts` — `BULBS_CONFIG = { startingCount: 10 }`, jediné místo s
+  výchozí hodnotou pro novou kampaň. Žádná per-difficulty odlišnost (viz
+  `difficultyConfig.ts`) zatím není potřeba — `startingCount` musí odpovídat výchozí
+  (medium) obtížnosti.
+- `getBulbsRemaining()` — bez uloženého záznamu (nová kampaň) vrátí
+  `BULBS_CONFIG.startingCount`, jinak uloženou hodnotu. `setBulbsRemaining(count)` — zatím
+  nikde ve hře nevolané, připravené pro budoucí spotřebu.
+- `app/play/page.tsx`: `const [bulbsRemaining] = useState(() => getBulbsRemaining());` —
+  lazy initializer, stejný vzor jako `deathCount`/`survivedNights`, ale bez odpovídajícího
+  `setBulbsRemaining` volání kdekoliv (nic ho zatím nemění).
+- UI: `PowerMeter.tsx` dostal třetí volitelný prop (`bulbsRemaining?: number`, stejný vzor
+  jako `stressPercent`) — `"Žárovky: X"` vedle Energie/Stresu, ne finální design, jen ověření
+  že hodnota persistuje.
+
+Testy: `game/core/bulbInventory.test.ts` — `typeof window === "undefined"` větev nejde
+otestovat s reálným `localStorage` bez jsdom (projekt zatím žádné nemá), takže testy
+simulují `window.localStorage` přes `vi.stubGlobal` (fake in-memory `Map`) — ověřují nová
+kampaň = 10, uložená hodnota přežije opakované čtení (simulace přechodu mezi nocemi), a že
+se nikdy sama neresetuje zpátky na 10.
 
 ## Jak přidat další směnu později
 

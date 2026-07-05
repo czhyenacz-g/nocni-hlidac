@@ -16,6 +16,9 @@ export const COPY = {
     powerLabel: "Energie",
     // Dev-only hodnota vedle energie (viz STRESS_DEV_HUD_ENABLED, PowerMeter.tsx) — časem se skryje.
     stressLabel: "Stres",
+    // Zatím jen zobrazení campaign hodnoty (viz game/core/bulbInventory.ts) — nikde se
+    // ještě nesnižuje, jen se přenáší mezi nocemi. Není finální design.
+    bulbsLabel: "Žárovky",
     timeLabel: "Čas do úsvitu",
     // {n} se nahradí ve ShiftTimer.tsx — kolikátou noc v řadě aktuální hlídač slouží.
     nightLabel: "Noc {n}",

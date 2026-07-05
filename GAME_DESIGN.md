@@ -428,6 +428,15 @@ beze změny, smrt přijde stejně instantně jako dřív.
 Když `remainingMs` klesne na 0 a hráč je stále naživu (i uprostřed blackoutu — viz
 výše), zobrazí se `WinScreen`.
 
+## Žárovky (základ)
+
+První krok budoucího systému náhradních žárovek: hlídač na začátku kampaně dostane **10**
+náhradních žárovek (`game/core/bulbsConfig.ts`). Počet je **campaign** hodnota, ne per-směna
+— přenáší se beze změny z noci na noc, stejně jako "Předchozí hlídači" nebo survival streak.
+V tomhle kroku se počet nikde nesnižuje (žádné pravidlo zatím žárovky nespotřebovává) —
+zobrazuje se jen "Žárovky: X" vedle energie, aby šlo ověřit, že persistence funguje, než
+přibude skutečná mechanika (docházející/prasklé žárovky, tma na některé kameře, ...).
+
 ## Atmosférická pozadí
 
 Menu, loading, hraní (fáze u stolu se 4 monitory), smrt, výhra i `/about` mají vlastní

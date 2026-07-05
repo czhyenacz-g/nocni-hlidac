@@ -19,6 +19,7 @@ import { getBlackoutPhaseIndex } from "@/game/visuals/blackoutPhase";
 import { AMBIENCE_DEATH_FADE_MS, JUMPSCARE_SILENT_GAP_MS, LOADING_SCREEN_DURATION_MS } from "@/game/balancing/constants";
 import { getDeathCount, incrementDeathCount } from "@/game/core/deathCount";
 import { getSurvivedNights, incrementSurvivedNights, resetSurvivedNights } from "@/game/core/survivedNights";
+import { getBulbsRemaining } from "@/game/core/bulbInventory";
 import { useHeartbeatStress } from "@/game/audio/useHeartbeatStress";
 
 const night = NIGHT_01;
@@ -41,6 +42,10 @@ export default function PlayPage() {
   // prop níže) i night scaling (game/difficulty/nightScaling.ts), ne dva
   // paralelní výpočty.
   const currentNight = survivedNights + 1;
+  // Campaign počet náhradních žárovek (viz game/core/bulbInventory.ts) —
+  // zatím se nikde ve hře nesnižuje, jen se čte a zobrazuje (persistuje mezi
+  // nocemi beze změny). Lazy initializer, stejný vzor jako deathCount/survivedNights.
+  const [bulbsRemaining] = useState(() => getBulbsRemaining());
 
   // "Nejnovější hodnota" ref pro stress (viz stressTimeScale.ts přes TICK) —
   // gameLoop.ts jím jen čte .current uvnitř setInterval, ať se interval
@@ -308,6 +313,7 @@ export default function PlayPage() {
           tensionLevel={tensionLevel}
           heartbeatStress={heartbeatStress}
           nightNumber={currentNight}
+          bulbsRemaining={bulbsRemaining}
           onToggleDoor={handleToggleDoor}
           onToggleLight={handleToggleLight}
           onSelectCamera={handleSelectCamera}
