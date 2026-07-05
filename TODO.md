@@ -256,6 +256,10 @@
       nikde nesnižuje. Zobrazeno jako "Žárovky: X" v `PowerMeter.tsx`. Testy v
       `bulbInventory.test.ts` (fake `localStorage` přes `vi.stubGlobal`, projekt zatím nemá
       jsdom).
+- [x] Diagnostika pohybu monstra + rozšířený DebugPanel (viz `docs/monster-movement-debug.md`)
+      — nový `game/core/enemyDebugInfo.ts#buildEnemyDebugInfo`, DebugPanel teď ukazuje route/
+      branch/watched/verification/door-consequence. Čistě diagnostické, žádná herní logika
+      se nezměnila.
 - [x] Generátor `restarting` (omylem restartovaný funkční generátor) teď pípá stejně
       rychle jako `criticalBeeping` (dřív potichu) a přidává vyšší stres bonus (+40,
       `GENERATOR_RESTART_STRESS_BONUS`) než skutečná porucha (+20) — vlastní chyba bolí víc
