@@ -137,4 +137,22 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
       waveform: "square",
     },
   },
+  // Krátké optimistické potvrzení po úspěšné ruční výměně žárovky (viz
+  // gameReducer.ts#updateBulbReplacement, bulbReplaceSuccessSeq) — jemné
+  // elektrické "vzum"/naskočení světla, ne hlasitý UI beep a ne hororový
+  // zvuk. Žádný reálný soubor zatím neexistuje, fallback je krátký
+  // sine sweep nahoru (dvě rychle navazující stoupající noty, ~0.35 s celkem).
+  [AUDIO_EVENTS.bulbReplaceSuccess]: {
+    src: "/assets/audio/bulb_replace_success.mp3",
+    volume: 0.5,
+    loop: false,
+    fallbackSynth: {
+      notes: [
+        { frequency: 260, durationMs: 90, gapMs: 10 },
+        { frequency: 520, durationMs: 220 },
+      ],
+      volume: 0.35,
+      waveform: "sine",
+    },
+  },
 };

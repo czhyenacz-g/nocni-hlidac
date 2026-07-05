@@ -1,7 +1,7 @@
-import type { PointerEvent } from "react";
+import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { COPY } from "@/content/copy";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
-import { BULB_REPLACE_DURATION_MS } from "@/game/balancing/constants";
+import { BULB_REPLACE_DURATION_MS, BULB_REPLACE_SUCCESS_MESSAGE_MS } from "@/game/balancing/constants";
 import { computeBulbReplacementProgressRatio } from "@/game/core/bulbReplacementProgress";
 import DoorSceneFrame from "./DoorSceneFrame";
 import ViewSwitchArrow from "./ViewSwitchArrow";
@@ -15,6 +15,8 @@ interface DoorViewProps {
   /** viz GameState.bulbReplacement — probíhající ruční výměna. */
   bulbReplacementActive: boolean;
   bulbReplacementProgressMs: number;
+  /** viz GameState.bulbReplaceSuccessSeq — zvyšuje se jen při úspěšném dokončení výměny. */
+  bulbReplaceSuccessSeq: number;
   onToggleDoor: () => void;
   onLookAtDesk: () => void;
   onStartBulbReplacement: () => void;
@@ -40,6 +42,7 @@ export default function DoorView({
   bulbBroken,
   bulbReplacementActive,
   bulbReplacementProgressMs,
+  bulbReplaceSuccessSeq,
   onToggleDoor,
   onLookAtDesk,
   onStartBulbReplacement,
@@ -81,6 +84,21 @@ export default function DoorView({
     event.stopPropagation();
     onCancelBulbReplacement();
   }
+
+  // Krátká potvrzovací hláška po úspěšném dokončení výměny — čistě kosmetický
+  // lokální timeout v komponentě (ne herní stav), spouští se jen na SKUTEČNOU
+  // změnu bulbReplaceSuccessSeq (ne na start/cancel/smrt, ty seq vůbec
+  // nemění, viz gameReducer.ts#updateBulbReplacement). Ref drží poslední
+  // viděnou hodnotu, ať efekt na prvním mountu hlášku nezobrazí.
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const prevSuccessSeqRef = useRef(bulbReplaceSuccessSeq);
+  useEffect(() => {
+    if (prevSuccessSeqRef.current === bulbReplaceSuccessSeq) return;
+    prevSuccessSeqRef.current = bulbReplaceSuccessSeq;
+    setShowSuccessMessage(true);
+    const timeout = setTimeout(() => setShowSuccessMessage(false), BULB_REPLACE_SUCCESS_MESSAGE_MS);
+    return () => clearTimeout(timeout);
+  }, [bulbReplaceSuccessSeq]);
 
   return (
     <div className="flex flex-col gap-3">
@@ -131,6 +149,17 @@ export default function DoorView({
                 />
               </div>
             )}
+          </div>
+        )}
+
+        {showSuccessMessage && (
+          // pointer-events-none: čistě informativní hláška, nikdy nesmí bránit
+          // klikání na dveře pod ní (i kdyby se pozičně sešla s hotspotem).
+          <div
+            className="absolute pointer-events-none text-sm text-amber-300 bg-black/70 px-3 py-1 rounded whitespace-nowrap"
+            style={{ left: "50%", top: "8%", transform: "translate(-50%, -50%)" }}
+          >
+            {COPY.game.bulbReplaceSuccessLabel}
           </div>
         )}
       </DoorSceneFrame>

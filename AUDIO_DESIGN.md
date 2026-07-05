@@ -198,8 +198,8 @@ nepřehrál (viz GAME_DESIGN.md "Blackout").
 
 ## Syntetizovaný fallback (bez čekání na audio soubory)
 
-`generator_beep`, `monster_retreat_roar`, `heartbeat`, `blackout_howl` a
-`bulb_break` mají v `audioConfig.ts` navíc `fallbackSynth` — krátkou sekvenci tónů (frekvence, délka,
+`generator_beep`, `monster_retreat_roar`, `heartbeat`, `blackout_howl`,
+`bulb_break` a `bulb_replace_success` mají v `audioConfig.ts` navíc `fallbackSynth` — krátkou sekvenci tónů (frekvence, délka,
 tvar vlny) syntetizovanou přes nativní Web Audio API, žádná externí knihovna.
 `AudioManager.play()` ho spustí automaticky, když `audio.play()` na chybějící/nenačtený
 soubor selže (stejný `.catch()`, který jinak zvuk jen tiše zahodí). Jakmile do

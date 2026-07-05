@@ -314,6 +314,15 @@
       `game/balancing/constants.ts`) — jediná číselná konstanta, žádná další logika se
       neměnila. Testy s pevnými `progressMs` hodnotami přepsané na `BULB_REPLACE_DURATION_MS -
       1000`, ať dál sedí na jakoukoliv budoucí délku.
+- [x] Žárovky krok 5 — feedback po úspěšné výměně: nový `GameState.bulbReplaceSuccessSeq`
+      (stejný "seq" vzor jako `bulbBreakSeq`), zvyšuje ho výhradně completion větev
+      `updateBulbReplacement` (ne start, cancel, ani smrt). `app/play/page.tsx` na jeho změnu
+      přehraje nový audio event `bulb_replace_success` (`game/audio/audioEvents.ts`,
+      `audioConfig.ts` — krátký pozitivní "vzum" sine sweep fallback, ~0.3 s, žádný reálný
+      soubor zatím neexistuje). `DoorView.tsx` na stejnou změnu (lokální React
+      timeout, `BULB_REPLACE_SUCCESS_MESSAGE_MS = 1800`) na chvíli zobrazí "Žárovka
+      vyměněna." (`content/copy.ts`, `bulbReplaceSuccessLabel`) jako `pointer-events-none`
+      hlášku mimo door hotspot. Testy rozšířené v `bulbReplacement.test.ts`.
 - [x] Reálné audio doplněno: `monster_retreat_roar.mp3`, `bulb_break.mp3`, `blackout_howl.mp3`
       (uživatelem dodané soubory, zesílené/zkonvertované) nahradily syntetizované fallbacky.
       Poslední fáze blackoutu (dřív `blackout_door_hit`) teď místo nového zvuku jen plynule

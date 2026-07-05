@@ -139,4 +139,11 @@ export const SOUND_REGISTRY: Record<AudioEventId, SoundRegistryEntry> = {
     guess: "Krátké prasknutí/cvaknutí skla.",
     usedIn: "app/play/page.tsx — efekt na state.bulbBreakSeq (viz game/core/roomBulbs.ts).",
   },
+  [AUDIO_EVENTS.bulbReplaceSuccess]: {
+    id: AUDIO_EVENTS.bulbReplaceSuccess,
+    label: "Bulb replace success",
+    description: "Hráč úspěšně dokončil ruční výměnu prasklé žárovky (DoorView, hold 10 s).",
+    guess: "Krátké, pozitivní elektrické „vzum“/naskočení světla, ne UI beep, ne hororový zvuk.",
+    usedIn: "app/play/page.tsx — efekt na state.bulbReplaceSuccessSeq (viz gameReducer.ts#updateBulbReplacement).",
+  },
 };

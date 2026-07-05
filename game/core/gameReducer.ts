@@ -241,6 +241,11 @@ interface BulbReplacementTickResult {
   bulbReplacement: GameState["bulbReplacement"];
   roomBulbs?: GameState["roomBulbs"];
   bulbsRemaining?: GameState["bulbsRemaining"];
+  // Stejný "absent, dokud se nemění" vzor jako roomBulbs/bulbsRemaining výše —
+  // přítomné jen na úspěšném dokončení, ať app/play/page.tsx podle změny
+  // spustí bulb_replace_success zvuk + DoorView krátkou hlášku (ne při
+  // startu/cancelu/smrti, viz CANCEL_BULB_REPLACEMENT a ENEMY_ADVANCE).
+  bulbReplaceSuccessSeq?: GameState["bulbReplaceSuccessSeq"];
 }
 
 // Progres výměny žárovky roste, jen dokud je `active` — nezávislé na
@@ -266,6 +271,7 @@ function updateBulbReplacement(state: GameState, deltaMs: number): BulbReplaceme
       // START_BULB_REPLACEMENT nejde spustit s bulbsRemaining <= 0, takže tady
       // nemůže jít pod 0 — žádný clamp navíc.
       bulbsRemaining: state.bulbsRemaining - 1,
+      bulbReplaceSuccessSeq: state.bulbReplaceSuccessSeq + 1,
     };
   }
 

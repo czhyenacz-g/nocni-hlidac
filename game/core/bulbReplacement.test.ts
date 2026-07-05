@@ -135,6 +135,65 @@ describe("bulbsRemaining — replacement guards and consumption", () => {
   });
 });
 
+describe("bulbReplaceSuccessSeq — success feedback trigger", () => {
+  it("increments by exactly 1 on successful completion", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = stateAtDoorWithBrokenBulb({
+      bulbReplaceSuccessSeq: 0,
+      bulbReplacement: { active: true, startedAtMs: 0, progressMs: BULB_REPLACE_DURATION_MS - 1000 },
+    });
+
+    const result = reducer(state, { type: "TICK", deltaMs: 1000 });
+    expect(result.bulbReplaceSuccessSeq).toBe(1);
+  });
+
+  it("does not increment while replacement is merely in progress", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = stateAtDoorWithBrokenBulb({
+      bulbReplaceSuccessSeq: 0,
+      bulbReplacement: { active: true, startedAtMs: 0, progressMs: 1000 },
+    });
+
+    const result = reducer(state, { type: "TICK", deltaMs: 1000 });
+    expect(result.bulbReplaceSuccessSeq).toBe(0);
+  });
+
+  it("does not increment when the player cancels before completion", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = stateAtDoorWithBrokenBulb({
+      bulbReplaceSuccessSeq: 0,
+      bulbReplacement: { active: true, startedAtMs: 0, progressMs: 2000 },
+    });
+
+    const result = reducer(state, { type: "CANCEL_BULB_REPLACEMENT" });
+    expect(result.bulbReplaceSuccessSeq).toBe(0);
+  });
+
+  it("does not increment if the player dies mid-replacement", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state: GameState = {
+      ...stateAtDoorWithBrokenBulb({
+        bulbReplaceSuccessSeq: 0,
+        bulbReplacement: { active: true, startedAtMs: 0, progressMs: 2000 },
+      }),
+      enemyRoute: ["at_door", "attack"],
+      enemyStage: "at_door",
+      doorClosed: false,
+    };
+
+    const result = reducer(state, { type: "ENEMY_ADVANCE" });
+    expect(result.bulbReplaceSuccessSeq).toBe(0);
+  });
+
+  it("does not increment on plain START_BULB_REPLACEMENT", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = stateAtDoorWithBrokenBulb({ bulbReplaceSuccessSeq: 0 });
+
+    const result = reducer(state, { type: "START_BULB_REPLACEMENT" });
+    expect(result.bulbReplaceSuccessSeq).toBe(0);
+  });
+});
+
 describe("CANCEL_BULB_REPLACEMENT", () => {
   it("is a no-op when no replacement is active", () => {
     const reducer = createGameReducer(NIGHT_01);

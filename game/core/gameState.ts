@@ -80,6 +80,7 @@ export function createInitialGameState(
     // hráč zemřel uprostřed výměny (viz gameReducer.ts).
     bulbReplacement: { active: false, startedAtMs: null, progressMs: 0 },
     bulbsRemaining: bulbsRemainingOverride ?? BULBS_CONFIG.startingCount,
+    bulbReplaceSuccessSeq: 0,
 
     isRunning: false,
     audioMuted: false,

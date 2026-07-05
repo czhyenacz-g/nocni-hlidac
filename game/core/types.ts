@@ -343,6 +343,13 @@ export interface GameState {
    * jen na hranicích směny.
    */
   bulbsRemaining: number;
+  /**
+   * Zvyšuje se přesně jednou při ÚSPĚŠNÉM dokončení ruční výměny žárovky
+   * (ne při startu, cancelu, ani smrti během výměny) — stejný "seq" vzor jako
+   * `bulbBreakSeq`, UI podle změny spustí zvuk (`bulb_replace_success`, viz
+   * app/play/page.tsx) a krátkou textovou hlášku (viz DoorView.tsx).
+   */
+  bulbReplaceSuccessSeq: number;
 
   isRunning: boolean;
   audioMuted: boolean;

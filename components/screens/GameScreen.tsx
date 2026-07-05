@@ -131,6 +131,7 @@ export default function GameScreen({
                 bulbBroken={state.roomBulbs.nearRoom.broken}
                 bulbReplacementActive={state.bulbReplacement.active}
                 bulbReplacementProgressMs={state.bulbReplacement.progressMs}
+                bulbReplaceSuccessSeq={state.bulbReplaceSuccessSeq}
                 onToggleDoor={onToggleDoor}
                 onLookAtDesk={onLookAtDesk}
                 onStartBulbReplacement={onStartBulbReplacement}

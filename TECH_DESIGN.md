@@ -1110,6 +1110,44 @@ nesnížení při startu/progress/cancel/smrti, snížení přesně o 1 při dok
 `CANCEL_BULB_REPLACEMENT` no-op mimo aktivní výměnu i reset + restart), nový
 `bulbReplacementProgress.test.ts` (0 / 0.5 / 1 / clamp nad 1).
 
+## Žárovky — krok 5: feedback po úspěšné výměně
+
+Krok 4 opravila spotřebu/hold/rozsvěcení, ale úspěšná výměna neměla žádné potvrzení — ikonka
+prostě zmizela. Krok 5 přidává zvuk + krátkou textovou hlášku, striktně jen na skutečné
+dokončení (ne start, cancel, ani smrt).
+
+- **`GameState.bulbReplaceSuccessSeq: number`** (`game/core/types.ts`) — stejný "seq" vzor
+  jako `bulbBreakSeq`: zvyšuje se přesně o 1, `app/play/page.tsx` podle změny (přes
+  `useRef` diffing) spustí audio, žádná herní logika na něm nezávisí.
+  `createInitialGameState` ho vždy nastaví na 0 (nepřenáší se mezi směnami, stejně jako
+  `bulbReplacement`).
+- **`updateBulbReplacement`** (`gameReducer.ts`) — completion větev navíc vrací
+  `bulbReplaceSuccessSeq: state.bulbReplaceSuccessSeq + 1` jako další volitelné pole na
+  `BulbReplacementTickResult` (stejný "absent, dokud se nemění" vzor jako `roomBulbs`/
+  `bulbsRemaining` výše). Necompletion větve (progress, `!active`) ho vůbec nevrací, takže
+  `CANCEL_BULB_REPLACEMENT` a smrt (které nikdy nedosáhnou téhle větve) ho logicky nemůžou
+  zvýšit.
+- **Audio** — nový event `bulb_replace_success` (`game/audio/audioEvents.ts`,
+  `audioConfig.ts`, `app/dev-sound/soundRegistry.ts` — `Record<AudioEventId, ...>` vynutil
+  doplnění všude). Krátké, pozitivní, technické "vzum" — ne hlasitý UI beep, ne hororový
+  zvuk. Reálný soubor zatím neexistuje, fallback synth je dvoutónový sine sweep nahoru
+  (260 Hz → 520 Hz, ~0.3 s celkem, volume 0.35) — stejná fallback konvence jako
+  `monsterRetreatRoar`/`blackoutHowl`/`bulbBreak`. `app/play/page.tsx` má nový
+  `prevBulbReplaceSuccessSeqRef` + efekt analogický `bulbBreakSeq`.
+- **Text** — `DoorView.tsx` dostala nový prop `bulbReplaceSuccessSeq: number` (protažený z
+  `GameScreen.tsx` přímo ze `state`, žádný nový prop na `GameScreenProps` nebyl potřeba).
+  Uvnitř komponenty lokální `useState`/`useEffect` + `setTimeout`
+  (`BULB_REPLACE_SUCCESS_MESSAGE_MS = 1800 ms`, `game/balancing/constants.ts`) na změnu seq
+  zobrazí COPY.game.bulbReplaceSuccessLabel ("Žárovka vyměněna.") na ~1.8 s. Tohle je
+  výjimka z "progress v reduceru, ne setTimeout v komponentě" pravidla z kroku 3/4 — tam šlo
+  o herní stav (progres výměny ovlivňuje, jestli se žárovka opraví), tady jde o čistě
+  kosmetický toast bez vlivu na hru, `ref` navíc hlídá, aby efekt nevystřelil hlášku hned při
+  prvním mountu. Hláška je `pointer-events-none` a pozicovaná mimo `.door-hotspot` obdélník
+  (`left: 50%, top: 8%`), takže nikdy neblokuje klikání na dveře.
+
+Testy: rozšířené `game/core/bulbReplacement.test.ts` — `bulbReplaceSuccessSeq` se zvýší jen
+při dokončení, ne při startu/progress/cancelu/smrti.
+
 ## Jak přidat další směnu později
 
 1. Vytvoř `game/nights/night02.ts` s vlastní `NightDefinition` (může mít jiné kamery,

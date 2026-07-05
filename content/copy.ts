@@ -42,6 +42,8 @@ export const COPY = {
     bulbReplaceInProgressLabel: "Výměna žárovky… {seconds} s",
     /** Kompaktní varianta pro malou ikonku (viz DoorView.tsx). */
     bulbReplaceProgressShortLabel: "{seconds} s",
+    /** Krátká hláška po úspěšném dokončení výměny (viz DoorView.tsx, bulbReplaceSuccessSeq). */
+    bulbReplaceSuccessLabel: "Žárovka vyměněna.",
     lookAtGeneratorLabel: "Zkontrolovat generátor →",
     generatorViewHint: "Klikni pro restart.",
     generatorStateLabels: {
