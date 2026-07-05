@@ -333,6 +333,16 @@ export interface GameState {
   bulbBreakSeq: number;
   /** Ruční výměna prasklé žárovky (viz BulbReplacementState) — vždy resetováno na novou směnu, nikdy se nepřenáší mezi nocemi. */
   bulbReplacement: BulbReplacementState;
+  /**
+   * Campaign počet náhradních žárovek (viz game/core/bulbInventory.ts) — na
+   * rozdíl od `bulbBreakSeq`/`bulbReplacement` se přenáší mezi nocemi/smrtí
+   * stejně jako `roomBulbs`: `createInitialGameState` ho přebírá jako
+   * volitelný override, `app/play/page.tsx` ho čte/zapisuje přes
+   * `getBulbsRemaining()`/`setBulbsRemaining()`. V `GameState` musí žít, aby
+   * ho ruční výměna žárovky mohla spotřebovat přímo v reduceru (TICK), ne
+   * jen na hranicích směny.
+   */
+  bulbsRemaining: number;
 
   isRunning: boolean;
   audioMuted: boolean;

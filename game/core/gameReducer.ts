@@ -231,15 +231,16 @@ function updateRoomBulbs(state: GameState, deltaMs: number): RoomBulbsTickResult
   };
 }
 
-// `roomBulbs` je jen volitelná, ať se nikdy blind-spreadne přes výsledek
-// updateRoomBulbs výše — kdyby tenhle typ vždycky vracel `roomBulbs`
-// (i "beze změny" = `state.roomBulbs`), spread by v TICKu přebil i skutečně
-// spočítaný drain z updateRoomBulbs, protože ten běží nad ORIGINÁLNÍM
-// `state`, ne nad už-updatovaným. Definované jen tehdy, když výměna tenhle
-// tik skutečně dokončí opravu.
+// `roomBulbs`/`bulbsRemaining` jsou jen volitelné, ať se nikdy blind-spreadnou
+// přes výsledek updateRoomBulbs výše — kdyby tenhle typ vždycky vracel
+// `roomBulbs` (i "beze změny" = `state.roomBulbs`), spread by v TICKu přebil i
+// skutečně spočítaný drain z updateRoomBulbs, protože ten běží nad
+// ORIGINÁLNÍM `state`, ne nad už-updatovaným. Definované jen tehdy, když
+// výměna tenhle tik skutečně dokončí opravu (a spotřebuje 1 náhradní žárovku).
 interface BulbReplacementTickResult {
   bulbReplacement: GameState["bulbReplacement"];
   roomBulbs?: GameState["roomBulbs"];
+  bulbsRemaining?: GameState["bulbsRemaining"];
 }
 
 // Progres výměny žárovky roste, jen dokud je `active` — nezávislé na
@@ -262,6 +263,9 @@ function updateBulbReplacement(state: GameState, deltaMs: number): BulbReplaceme
         ...state.roomBulbs,
         nearRoom: { ...state.roomBulbs.nearRoom, remainingMs: state.roomBulbs.nearRoom.maxMs, broken: false },
       },
+      // START_BULB_REPLACEMENT nejde spustit s bulbsRemaining <= 0, takže tady
+      // nemůže jít pod 0 — žádný clamp navíc.
+      bulbsRemaining: state.bulbsRemaining - 1,
     };
   }
 
@@ -286,7 +290,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
 
       case "START_SHIFT":
         return {
-          ...createInitialGameState(night, action.roomBulbs),
+          ...createInitialGameState(night, action.roomBulbs, action.bulbsRemaining),
           audioMuted: state.audioMuted,
           screen: "playing",
           isRunning: true,
@@ -294,7 +298,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
 
       case "RESTART_SHIFT":
         return {
-          ...createInitialGameState(night, action.roomBulbs),
+          ...createInitialGameState(night, action.roomBulbs, action.bulbsRemaining),
           audioMuted: state.audioMuted,
           screen: "playing",
           isRunning: true,
@@ -315,12 +319,21 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         if (state.playerView !== "door" || state.doorClosed) return state;
         if (!state.roomBulbs.nearRoom.broken) return state;
         if (state.bulbReplacement.active) return state;
+        if (state.bulbsRemaining <= 0) return state;
 
         return {
           ...state,
           bulbReplacement: { active: true, startedAtMs: state.elapsedMs, progressMs: 0 },
         };
       }
+
+      // Puštění tlačítka / pointer leave / cancel před dokončením (viz
+      // DoorView.tsx) — no-op, pokud žádná výměna zrovna neběží. Bez dalších
+      // guard podmínek: zrušit rozběhnutou výměnu je vždy bezpečné, ať k tomu
+      // dojde odkudkoli.
+      case "CANCEL_BULB_REPLACEMENT":
+        if (!state.bulbReplacement.active) return state;
+        return { ...state, bulbReplacement: INACTIVE_BULB_REPLACEMENT };
 
       case "TOGGLE_DOOR":
         // Dveře jde přepnout jen v pohledu na dveře — hráč se tam musí nejdřív

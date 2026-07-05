@@ -48,10 +48,6 @@ export default function PlayPage() {
   // prop níže) i night scaling (game/difficulty/nightScaling.ts), ne dva
   // paralelní výpočty.
   const currentNight = survivedNights + 1;
-  // Campaign počet náhradních žárovek (viz game/core/bulbInventory.ts) —
-  // teď se může snížit denním servisem prasklých žárovek (viz efekt na
-  // "win" níže). Lazy initializer, stejný vzor jako deathCount/survivedNights.
-  const [bulbsRemaining, setBulbsRemainingState] = useState(() => getBulbsRemaining());
 
   // "Nejnovější hodnota" ref pro stress (viz stressTimeScale.ts přes TICK) —
   // gameLoop.ts jím jen čte .current uvnitř setInterval, ať se interval
@@ -114,6 +110,10 @@ export default function PlayPage() {
       // byla (žádný denní servis, ten běží jen po přežité směně, viz "win"
       // níže), ať další hlídač pokračuje přesně odtud, kde předchozí skončil.
       setRoomBulbs(state.roomBulbs);
+      // Náhradní žárovky patří do campaignu stejně jako roomBulbs — pokud
+      // hráč spotřeboval kus dřív v týhle směně (dokončená ruční výměna),
+      // musí to přežít i smrt z jiného důvodu, ne se ztratit.
+      setBulbsRemaining(state.bulbsRemaining);
       if (state.deathReason === "door_open_at_attack") {
         // Poslední krok těsně u dveří hraje hned (stihne doznít dávno před
         // jumpscare, viz gap níže) — zřetelně odděleně, ne zamíchaně přes sebe.
@@ -134,9 +134,12 @@ export default function PlayPage() {
       // ze skladu (viz game/core/roomBulbs.ts#applyDailyBulbService) — slabá,
       // ale neprasklá žárovka se nedotkne. Běží jen tady (přežitá směna),
       // nikdy na smrt (viz "death" výše).
-      const serviced = applyDailyBulbService(state.roomBulbs, getBulbsRemaining());
+      // state.bulbsRemaining (živá hodnota z GameState), ne stará
+      // getBulbsRemaining() z localStorage — jinak by denní servis přebil
+      // spotřebu z ruční výměny dokončené dřív v týhle směně.
+      const serviced = applyDailyBulbService(state.roomBulbs, state.bulbsRemaining);
       setRoomBulbs(serviced.roomBulbs);
-      setBulbsRemainingState(setBulbsRemaining(serviced.bulbsRemaining));
+      setBulbsRemaining(serviced.bulbsRemaining);
     }
     prevScreenRef.current = state.screen;
 
@@ -240,7 +243,7 @@ export default function PlayPage() {
   useEffect(() => {
     if (state.screen !== "loading") return;
     const timeout = setTimeout(
-      () => dispatch({ type: "START_SHIFT", roomBulbs: getRoomBulbs() }),
+      () => dispatch({ type: "START_SHIFT", roomBulbs: getRoomBulbs(), bulbsRemaining: getBulbsRemaining() }),
       LOADING_SCREEN_DURATION_MS,
     );
     return () => clearTimeout(timeout);
@@ -254,7 +257,7 @@ export default function PlayPage() {
 
   function handleRestart() {
     audioManager.play(AUDIO_EVENTS.uiClick);
-    dispatch({ type: "RESTART_SHIFT", roomBulbs: getRoomBulbs() });
+    dispatch({ type: "RESTART_SHIFT", roomBulbs: getRoomBulbs(), bulbsRemaining: getBulbsRemaining() });
   }
 
   function handleToggleDoor() {
@@ -303,6 +306,10 @@ export default function PlayPage() {
     dispatch({ type: "START_BULB_REPLACEMENT" });
   }
 
+  function handleCancelBulbReplacement() {
+    dispatch({ type: "CANCEL_BULB_REPLACEMENT" });
+  }
+
   function handleSelectCamera(cameraId: CameraId) {
     // heartbeat je zvuk překvapení: hraje jen když je nepřítel právě na
     // kameře nejblíž hráči, a jen poprvé za tuto "návštěvu" — další kliknutí
@@ -349,7 +356,7 @@ export default function PlayPage() {
           tensionLevel={tensionLevel}
           heartbeatStress={heartbeatStress}
           nightNumber={currentNight}
-          bulbsRemaining={bulbsRemaining}
+          bulbsRemaining={state.bulbsRemaining}
           onToggleDoor={handleToggleDoor}
           onToggleLight={handleToggleLight}
           onSelectCamera={handleSelectCamera}
@@ -362,6 +369,7 @@ export default function PlayPage() {
           onDebugToggleDoor={handleDebugToggleDoor}
           onDebugRestartGenerator={handleDebugRestartGenerator}
           onStartBulbReplacement={handleStartBulbReplacement}
+          onCancelBulbReplacement={handleCancelBulbReplacement}
         />
       )}
       {state.screen === "death" && (

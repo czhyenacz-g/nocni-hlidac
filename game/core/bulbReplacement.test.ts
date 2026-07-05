@@ -63,6 +63,101 @@ describe("START_BULB_REPLACEMENT", () => {
   });
 });
 
+describe("bulbsRemaining — replacement guards and consumption", () => {
+  it("cannot start when there are no spare bulbs left", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = stateAtDoorWithBrokenBulb({ bulbsRemaining: 0 });
+
+    const result = reducer(state, { type: "START_BULB_REPLACEMENT" });
+    expect(result.bulbReplacement.active).toBe(false);
+  });
+
+  it("does not decrement bulbsRemaining on start", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = stateAtDoorWithBrokenBulb({ bulbsRemaining: 3 });
+
+    const result = reducer(state, { type: "START_BULB_REPLACEMENT" });
+    expect(result.bulbsRemaining).toBe(3);
+  });
+
+  it("decrements bulbsRemaining by exactly 1 on successful completion", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = stateAtDoorWithBrokenBulb({
+      bulbsRemaining: 3,
+      bulbReplacement: { active: true, startedAtMs: 0, progressMs: 4000 },
+    });
+
+    const result = reducer(state, { type: "TICK", deltaMs: 1000 });
+    expect(result.bulbsRemaining).toBe(2);
+    expect(result.roomBulbs.nearRoom.broken).toBe(false);
+  });
+
+  it("does not decrement bulbsRemaining while replacement is merely in progress", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = stateAtDoorWithBrokenBulb({
+      bulbsRemaining: 3,
+      bulbReplacement: { active: true, startedAtMs: 0, progressMs: 1000 },
+    });
+
+    const result = reducer(state, { type: "TICK", deltaMs: 1000 });
+    expect(result.bulbsRemaining).toBe(3);
+  });
+
+  it("does not decrement bulbsRemaining if the player releases before completion (CANCEL)", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = stateAtDoorWithBrokenBulb({
+      bulbsRemaining: 3,
+      bulbReplacement: { active: true, startedAtMs: 0, progressMs: 2000 },
+    });
+
+    const result = reducer(state, { type: "CANCEL_BULB_REPLACEMENT" });
+    expect(result.bulbsRemaining).toBe(3);
+    expect(result.bulbReplacement.active).toBe(false);
+    expect(result.bulbReplacement.progressMs).toBe(0);
+    expect(result.roomBulbs.nearRoom.broken).toBe(true);
+  });
+
+  it("does not decrement bulbsRemaining if the player dies mid-replacement", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state: GameState = {
+      ...stateAtDoorWithBrokenBulb({
+        bulbsRemaining: 3,
+        bulbReplacement: { active: true, startedAtMs: 0, progressMs: 2000 },
+      }),
+      enemyRoute: ["at_door", "attack"],
+      enemyStage: "at_door",
+      doorClosed: false,
+    };
+
+    const result = reducer(state, { type: "ENEMY_ADVANCE" });
+    expect(result.bulbsRemaining).toBe(3);
+  });
+});
+
+describe("CANCEL_BULB_REPLACEMENT", () => {
+  it("is a no-op when no replacement is active", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = stateAtDoorWithBrokenBulb();
+
+    const result = reducer(state, { type: "CANCEL_BULB_REPLACEMENT" });
+    expect(result).toBe(state);
+  });
+
+  it("resets progress to 0 and lets the player start again by holding", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = stateAtDoorWithBrokenBulb({
+      bulbReplacement: { active: true, startedAtMs: 0, progressMs: 2500 },
+    });
+
+    const cancelled = reducer(state, { type: "CANCEL_BULB_REPLACEMENT" });
+    expect(cancelled.bulbReplacement).toEqual({ active: false, startedAtMs: null, progressMs: 0 });
+
+    const restarted = reducer(cancelled, { type: "START_BULB_REPLACEMENT" });
+    expect(restarted.bulbReplacement.active).toBe(true);
+    expect(restarted.bulbReplacement.progressMs).toBe(0);
+  });
+});
+
 describe("TICK — bulb replacement progress", () => {
   it("increases progressMs while active", () => {
     const reducer = createGameReducer(NIGHT_01);

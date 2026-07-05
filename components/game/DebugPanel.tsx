@@ -56,6 +56,7 @@ export default function DebugPanel({ state, night, tensionLevel, onDebugToggleDo
           {state.roomBulbs.nearRoom.broken ? " (BROKEN)" : ""} — light active:{" "}
           {isNearRoomLightActive(state) ? "yes" : "no"} (breaks: {state.bulbBreakSeq})
         </div>
+        <div>Náhradní žárovky: {state.bulbsRemaining}</div>
         {state.bulbReplacement.active && (
           <div>
             bulb replacement: {(state.bulbReplacement.progressMs / 1000).toFixed(1)}s /{" "}

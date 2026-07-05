@@ -1044,17 +1044,71 @@ persistentní/derivovaný stav — musí jít testovat bez `setTimeout` v kompon
   zobrazí jen `!doorClosed && bulbBroken`, jako **samostatná absolutní vrstva** uvnitř
   `DoorSceneFrame` — sourozenec `.door-hotspot`, ne jeho potomek, umístěná mimo hotspotův
   obdélník (`left: 30–70%, top: 14–84%`) na `left: 84%, top: 48%`, takže se s ním nikdy
-  vizuálně ani klikací plochou nepřekrývá. `onClick` má i tak `event.stopPropagation()` pro
-  jistotu (sourozenci by stejně nebublali do sebe, ale žádné budoucí zanoření to nerozbije).
-  Během `bulbReplacementActive` je tlačítko `disabled` a místo ikonky ukazuje uplynulé
-  sekundy + malou progress lištu (`bulbReplacementProgressMs / BULB_REPLACE_DURATION_MS`).
+  vizuálně ani klikací plochou nepřekrývá. Pointer eventy mají i tak `event.stopPropagation()`
+  pro jistotu (sourozenci by stejně nebublali do sebe, ale žádné budoucí zanoření to
+  nerozbije). Během `bulbReplacementActive` ukazuje ikonka uplynulé sekundy + malou progress
+  lištu (`bulbReplacementProgressMs / BULB_REPLACE_DURATION_MS`). **Ovládání (klik vs. hold) a
+  vizuální rozsvěcení popsané tady jsou od kroku 4 nahrazené — viz "Žárovky — krok 4" níže.**
   Props (`bulbBroken`, `bulbReplacementActive`, `bulbReplacementProgressMs`,
-  `onStartBulbReplacement`) protažené z `app/play/page.tsx` přes `GameScreen.tsx`.
+  `onStartBulbReplacement`, `onCancelBulbReplacement`) protažené z `app/play/page.tsx` přes
+  `GameScreen.tsx`.
 
 Testy: `game/core/bulbReplacement.test.ts` — `START_BULB_REPLACEMENT` guardy (broken/door
 open/playerView/no-double-start), `TICK` progress + oprava po 5 s, zrušení při
 `TOGGLE_DOOR`/`LOOK_AT_DESK`, `bulb_replacement_attack` vs. `door_open_at_attack` death
 reason, reset po `RESTART_SHIFT`.
+
+## Žárovky — krok 4: spotřeba, hold-to-replace, rozsvěcení ikonky
+
+Krok 3 dovolil vyměnit prasklou žárovku klikem bez spotřeby náhradního kusu. Krok 4 opravuje
+tři věci, beze změny řízení rizika (otevřené dveře, DoorView, žádný blackout/doorDeathReveal)
+z kroku 3.
+
+- **`bulbsRemaining` teď žije v `GameState`**, ne jen v localStorage čteném component-level
+  React state (`app/play/page.tsx`) — reducer potřebuje spotřebovat kus přímo v `TICK`u, ne
+  jen na hranicích směny. Přidáno stejným vzorem jako `roomBulbs`:
+  - `GameState.bulbsRemaining: number` (`game/core/types.ts`).
+  - `createInitialGameState(night, roomBulbsOverride?, bulbsRemainingOverride?)` — třetí
+    volitelný parametr, fallback `BULBS_CONFIG.startingCount` (`game/core/gameState.ts`).
+  - `START_SHIFT`/`RESTART_SHIFT` nesou volitelné `bulbsRemaining?: number`
+    (`gameActions.ts`) — `app/play/page.tsx` ho posílá z `getBulbsRemaining()` (localStorage).
+  - `app/play/page.tsx` už nemá lokální `bulbsRemaining` React state — zobrazuje/persistuje
+    přímo `state.bulbsRemaining`. Persistuje se na obou přechodech: `death` (`setBulbsRemaining
+    (state.bulbsRemaining)`, i když smrt nemá s výměnou nic společného — spotřeba dřív v týhle
+    směně nesmí zmizet) a `win` (`applyDailyBulbService(state.roomBulbs, state.bulbsRemaining)`
+    — **záměrně živá hodnota ze `state`, ne stará `getBulbsRemaining()`**, jinak by denní
+    servis přebil spotřebu z manuální výměny dokončené dřív v týhle směně).
+- **Spotřeba při dokončení** — `BulbReplacementTickResult` (`gameReducer.ts`) má nové
+  volitelné pole `bulbsRemaining?: number`, stejný "absent, dokud se nemění" vzor jako
+  `roomBulbs` (viz krok 3 výše) — jinak by spread v `TICK`u mohl přebít jinou aktualizaci
+  stejného pole. Přítomné jen v completion větvi `updateBulbReplacement`:
+  `bulbsRemaining: state.bulbsRemaining - 1` (nemůže jít pod 0, protože start je zagatovaný,
+  viz níže).
+- **`START_BULB_REPLACEMENT` guarda navíc**: `if (state.bulbsRemaining <= 0) return state;` —
+  bez náhradních žárovek výměna vůbec nezačne.
+- **Hold-to-replace** — nová akce `CANCEL_BULB_REPLACEMENT` (`gameActions.ts`, bez payloadu):
+  no-op mimo aktivní výměnu, jinak reset na `INACTIVE_BULB_REPLACEMENT` (beze změny
+  `roomBulbs`/`bulbsRemaining`). `DoorView.tsx` nahradila `onClick`/`disabled` za
+  `onPointerDown` (start, `stopPropagation` + `preventDefault`), `onPointerUp` /
+  `onPointerLeave` / `onPointerCancel` (všechny → cancel — puštění, odjetí prstu/kurzoru mimo
+  tlačítko, i systémové přerušení gesta mají stejný efekt). Tlačítko má `touch-none select-
+  none`, ať držení na mobilu nespustí scroll/výběr textu. Progress dál počítá výhradně reducer
+  (`TICK` + `active` flag), komponenta žádný lokální timer nemá.
+- **Rozsvěcení ikonky** — nová čistá funkce `computeBulbReplacementProgressRatio(progressMs)`
+  (`game/core/bulbReplacementProgress.ts`, testováno v `bulbReplacementProgress.test.ts`):
+  `progressMs / BULB_REPLACE_DURATION_MS` clampnuté na 0..1. `DoorView.tsx` z ní odvodí inline
+  styl ikonky (`brightness(0.35 + ratio*1.2)`, `opacity 0.55 + ratio*0.45`, `box-shadow` glow
+  rostoucí s ratio) — mimo aktivní výměnu je ratio vždy 0 (tmavá ikonka). Vychází výhradně z
+  `GameState.bulbReplacement.progressMs`, žádná lokální React animace, která by se mohla
+  rozjet mimo herní stav.
+- **DebugPanel** teď zobrazuje `Náhradní žárovky: {state.bulbsRemaining}` (mimo DoorView je to
+  i `PowerMeter`, ale ten se v DoorView neukazuje — DebugPanel je jediné místo viditelné ve
+  všech pohledech).
+
+Testy: rozšířené `game/core/bulbReplacement.test.ts` (guard na `bulbsRemaining <= 0`,
+nesnížení při startu/progress/cancel/smrti, snížení přesně o 1 při dokončení,
+`CANCEL_BULB_REPLACEMENT` no-op mimo aktivní výměnu i reset + restart), nový
+`bulbReplacementProgress.test.ts` (0 / 0.5 / 1 / clamp nad 1).
 
 ## Jak přidat další směnu později
 

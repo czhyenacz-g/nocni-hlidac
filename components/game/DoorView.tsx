@@ -1,6 +1,8 @@
+import type { PointerEvent } from "react";
 import { COPY } from "@/content/copy";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 import { BULB_REPLACE_DURATION_MS } from "@/game/balancing/constants";
+import { computeBulbReplacementProgressRatio } from "@/game/core/bulbReplacementProgress";
 import DoorSceneFrame from "./DoorSceneFrame";
 import ViewSwitchArrow from "./ViewSwitchArrow";
 
@@ -16,6 +18,7 @@ interface DoorViewProps {
   onToggleDoor: () => void;
   onLookAtDesk: () => void;
   onStartBulbReplacement: () => void;
+  onCancelBulbReplacement: () => void;
 }
 
 // Pohled na dveře: jediné místo, odkud jde dveře zavřít/otevřít. Hráč se sem
@@ -40,6 +43,7 @@ export default function DoorView({
   onToggleDoor,
   onLookAtDesk,
   onStartBulbReplacement,
+  onCancelBulbReplacement,
 }: DoorViewProps) {
   const doorScene = BACKGROUND_SCENES.door;
   // Stejné pořadí snímků jako dřív v GameScreen.tsx: 0 = otevřené, 1 = zavřené,
@@ -54,6 +58,29 @@ export default function DoorView({
   const showBulbReplacement = !doorClosed && bulbBroken;
   const bulbReplacementSeconds = (bulbReplacementProgressMs / 1000).toFixed(1);
   const bulbReplacementPercent = Math.min(100, (bulbReplacementProgressMs / BULB_REPLACE_DURATION_MS) * 100);
+  // Ikonka se rozsvěcí podle progressu ze GameState (ne lokální animace, viz
+  // computeBulbReplacementProgressRatio) — 0 = zhasnutá/tmavá, 1 = skoro plně
+  // rozsvícená. Mimo aktivní výměnu ratio == 0, ikonka zůstává tmavá.
+  const progressRatio = bulbReplacementActive ? computeBulbReplacementProgressRatio(bulbReplacementProgressMs) : 0;
+  const bulbIconStyle = {
+    filter: `brightness(${0.35 + progressRatio * 1.2})`,
+    opacity: 0.55 + progressRatio * 0.45,
+    boxShadow: progressRatio > 0 ? `0 0 ${8 + progressRatio * 16}px rgba(251, 191, 36, ${0.3 + progressRatio * 0.5})` : undefined,
+  };
+
+  // Držení tlačítka řídí progres v reduceru (TICK + START/CANCEL_BULB_REPLACEMENT),
+  // ne lokální React state — pointerUp/Leave/Cancel všechny mapují na stejné
+  // zrušení, ať výměna nikdy neběží bez toho, aby hráč fyzicky držel tlačítko.
+  function handlePointerDown(event: PointerEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    event.preventDefault();
+    onStartBulbReplacement();
+  }
+
+  function handlePointerUp(event: PointerEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    onCancelBulbReplacement();
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -75,13 +102,12 @@ export default function DoorView({
           >
             <button
               type="button"
-              className="tap-target flex items-center justify-center rounded-full border border-amber-400/70 bg-black/70 text-amber-300"
-              style={{ width: "64px", height: "64px" }}
-              disabled={bulbReplacementActive}
-              onClick={(event) => {
-                event.stopPropagation();
-                onStartBulbReplacement();
-              }}
+              className="tap-target flex items-center justify-center rounded-full border border-amber-400/70 bg-black/70 text-amber-300 touch-none select-none"
+              style={{ width: "64px", height: "64px", ...bulbIconStyle }}
+              onPointerDown={handlePointerDown}
+              onPointerUp={handlePointerUp}
+              onPointerLeave={handlePointerUp}
+              onPointerCancel={handlePointerUp}
               aria-label={COPY.game.bulbReplaceLabel}
             >
               {bulbReplacementActive ? (

@@ -2,11 +2,13 @@ import { CameraId, RoomBulbsState } from "./types";
 
 export type GameAction =
   | { type: "START_LOADING" }
-  // roomBulbs (viz game/core/roomBulbs.ts) je volitelný — app/play/page.tsx
-  // ho posílá načtený z localStorage (persistovaný/denním servisem opravený
-  // stav), chybí-li se použije čerstvý výchozí stav (createDefaultRoomBulbs).
-  | { type: "START_SHIFT"; roomBulbs?: RoomBulbsState }
-  | { type: "RESTART_SHIFT"; roomBulbs?: RoomBulbsState }
+  // roomBulbs (viz game/core/roomBulbs.ts) a bulbsRemaining (viz
+  // game/core/bulbInventory.ts) jsou volitelné — app/play/page.tsx je posílá
+  // načtené z localStorage (persistovaný/denním servisem/ruční výměnou
+  // upravený stav), chybí-li se použijí čerstvé výchozí hodnoty
+  // (createDefaultRoomBulbs, BULBS_CONFIG.startingCount).
+  | { type: "START_SHIFT"; roomBulbs?: RoomBulbsState; bulbsRemaining?: number }
+  | { type: "RESTART_SHIFT"; roomBulbs?: RoomBulbsState; bulbsRemaining?: number }
   | { type: "TOGGLE_DOOR" }
   | { type: "TOGGLE_LIGHT" }
   | { type: "LOOK_AT_DOOR" }
@@ -17,6 +19,9 @@ export type GameAction =
   | { type: "CLOSE_CAMERAS" }
   | { type: "TOGGLE_AUDIO_MUTED" }
   | { type: "START_BULB_REPLACEMENT" }
+  // Puštění tlačítka/pointer leave/cancel před dokončením — viz DoorView.tsx.
+  // No-op, pokud žádná výměna zrovna neběží.
+  | { type: "CANCEL_BULB_REPLACEMENT" }
   // stressLevel (0..1, viz game/audio/useHeartbeatStress.ts) je volitelný —
   // řídí jen game/core/stressTimeScale.ts, chybí-li, čas běží normální
   // rychlostí (stejné jako stressLevel 0). currentNight (survivedNights + 1,

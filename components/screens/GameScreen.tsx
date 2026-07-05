@@ -20,7 +20,7 @@ interface GameScreenProps {
   heartbeatStress: number;
   /** Kolikátá noc v řadě aktuálního hlídače (viz game/core/survivedNights.ts) — jen popisek pro ShiftTimer. */
   nightNumber: number;
-  /** Campaign hodnota z game/core/bulbInventory.ts — zatím jen zobrazení, nikde se nesnižuje. */
+  /** Campaign hodnota z GameState.bulbsRemaining (viz game/core/bulbInventory.ts pro persistenci) — snižuje se v reduceru při dokončené ruční výměně. */
   bulbsRemaining: number;
   onToggleDoor: () => void;
   onToggleLight: () => void;
@@ -34,6 +34,7 @@ interface GameScreenProps {
   onDebugToggleDoor: () => void;
   onDebugRestartGenerator: () => void;
   onStartBulbReplacement: () => void;
+  onCancelBulbReplacement: () => void;
 }
 
 export default function GameScreen({
@@ -55,6 +56,7 @@ export default function GameScreen({
   onDebugToggleDoor,
   onDebugRestartGenerator,
   onStartBulbReplacement,
+  onCancelBulbReplacement,
 }: GameScreenProps) {
   // Pozadí pro desk/generator (BACKGROUND_SCENES.play) — jen mimo blackout,
   // kdy BlackoutView stejně celou obrazovku nahrazuje vlastní atmosférou.
@@ -132,6 +134,7 @@ export default function GameScreen({
                 onToggleDoor={onToggleDoor}
                 onLookAtDesk={onLookAtDesk}
                 onStartBulbReplacement={onStartBulbReplacement}
+                onCancelBulbReplacement={onCancelBulbReplacement}
               />
             )}
             {state.playerView === "generator" && (

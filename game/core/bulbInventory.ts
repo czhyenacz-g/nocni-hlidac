@@ -3,8 +3,11 @@ import { BULBS_CONFIG } from "./bulbsConfig";
 // Počet náhradních žárovek — čistě lokální localStorage counter (stejný vzor
 // jako deathCount.ts/survivedNights.ts), žádný backend/login/databáze.
 // Na rozdíl od survivedNights (ten se smrtí vynuluje) je tohle "campaign"
-// hodnota: přenáší se mezi dny/nocemi beze změny, dokud ji nějaké budoucí
-// pravidlo výslovně nesníží (v tomhle kroku se nikde nesnižuje). Nová
+// hodnota: přenáší se mezi dny/nocemi/smrtí beze změny, dokud ji buď denní
+// servis (viz roomBulbs.ts#applyDailyBulbService), nebo dokončená ruční
+// výměna (viz gameReducer.ts#updateBulbReplacement) nesníží. Za běhu směny
+// žije jako GameState.bulbsRemaining — tyhle dvě funkce jen čtou/zapisují
+// persistovanou hodnotu na hranicích směny (app/play/page.tsx). Nová
 // kampaň = žádný uložený záznam ještě neexistuje -> BULBS_CONFIG.startingCount.
 const BULBS_REMAINING_STORAGE_KEY = "nocni-hlidac:object13:bulbs-remaining";
 
@@ -21,10 +24,7 @@ export function getBulbsRemaining(): number {
   }
 }
 
-/**
- * Uloží novou hodnotu a vrátí ji zpátky. Zatím nikde ve hře nevolané (žádné
- * pravidlo počet zatím nesnižuje) — připraveno pro budoucí spotřebu žárovek.
- */
+/** Uloží novou hodnotu a vrátí ji zpátky — voláno na hranicích směny (viz app/play/page.tsx). */
 export function setBulbsRemaining(count: number): number {
   if (typeof window === "undefined") return count;
   try {

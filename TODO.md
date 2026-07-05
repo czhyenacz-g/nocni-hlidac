@@ -252,10 +252,10 @@
       nové volitelné `TICK.currentNight` pole (stejný vzor jako `stressLevel`). Testy v
       `nightScaling.test.ts` a `tickNightScaling.test.ts`.
 - [x] Základ pro žárovky — persistentní `bulbsRemaining` (`game/core/bulbInventory.ts`,
-      `bulbsConfig.ts`, `startingCount: 10`), přenáší se mezi nocemi beze změny, zatím se
-      nikde nesnižuje. Zobrazeno jako "Žárovky: X" v `PowerMeter.tsx`. Testy v
-      `bulbInventory.test.ts` (fake `localStorage` přes `vi.stubGlobal`, projekt zatím nemá
-      jsdom).
+      `bulbsConfig.ts`, `startingCount: 10`), přenáší se mezi nocemi/smrtí beze změny; od
+      kroku 4 ji dokončená ruční výměna snižuje o 1 (viz níže). Zobrazeno jako "Žárovky: X"
+      v `PowerMeter.tsx` a v DEV panelu. Testy v `bulbInventory.test.ts` (fake `localStorage`
+      přes `vi.stubGlobal`, projekt zatím nemá jsdom).
 - [x] Diagnostika pohybu monstra + rozšířený DebugPanel (viz `docs/monster-movement-debug.md`)
       — nový `game/core/enemyDebugInfo.ts#buildEnemyDebugInfo`, DebugPanel teď ukazuje route/
       branch/watched/verification/door-consequence. Čistě diagnostické, žádná herní logika
@@ -294,6 +294,22 @@
       riziko trvá celou dobu (zavření dveří nebo odchod z `DoorView` výměnu zruší beze
       opravy). Smrt během výměny má vlastní `bulb_replacement_attack` death reason/text.
       Nákup žárovek/sponzoring zůstávají mimo rozsah. Testy v `bulbReplacement.test.ts`.
+- [x] Žárovky krok 4 — oprava tří nedostatků ruční výměny: (1) `bulbsRemaining` teď žije v
+      `GameState` (viz `createInitialGameState`/`START_SHIFT`/`RESTART_SHIFT` override, stejný
+      vzor jako `roomBulbs`) a `updateBulbReplacement` v `gameReducer.ts` ho při úspěšném
+      dokončení sníží o 1 (optional pole na `BulbReplacementTickResult`, stejný "absent dokud
+      se nemění" vzor jako `roomBulbs`, jinak by spread v `TICK`u klobůčkoval jinou aktualizaci
+      — viz komentář u typu). `START_BULB_REPLACEMENT` navíc odmítne start s `bulbsRemaining
+      <= 0`. (2) Výměna teď vyžaduje držení tlačítka — `DoorView.tsx` používá
+      `onPointerDown`/`onPointerUp`/`onPointerLeave`/`onPointerCancel` místo `onClick`, nová
+      akce `CANCEL_BULB_REPLACEMENT` (no-op mimo aktivní výměnu) resetuje progress na 0 beze
+      změny `bulbsRemaining`/`broken`. (3) Ikonka se podle `progressRatio` (nová čistá
+      `computeBulbReplacementProgressRatio` v `game/core/bulbReplacementProgress.ts`, testy v
+      `bulbReplacementProgress.test.ts`) postupně rozsvěcí (`brightness`/`opacity`/`box-shadow`
+      inline styl). `app/play/page.tsx` teď čte/persistuje `bulbsRemaining` ze `state`, ne z
+      lokálního React state — win-service (`applyDailyBulbService`) bere živou `state.
+      bulbsRemaining`, ne stará data z localStorage, ať nepřebije spotřebu z týhle směny.
+      Testy rozšířené v `bulbReplacement.test.ts`.
 - [x] Reálné audio doplněno: `monster_retreat_roar.mp3`, `bulb_break.mp3`, `blackout_howl.mp3`
       (uživatelem dodané soubory, zesílené/zkonvertované) nahradily syntetizované fallbacky.
       Poslední fáze blackoutu (dřív `blackout_door_hit`) teď místo nového zvuku jen plynule

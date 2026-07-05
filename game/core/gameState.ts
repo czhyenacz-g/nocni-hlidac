@@ -1,5 +1,6 @@
 import { EnemyStage, GameState, NightDefinition, RoomBulbsState } from "./types";
 import { createDefaultRoomBulbs } from "./roomBulbs";
+import { BULBS_CONFIG } from "./bulbsConfig";
 
 // Vylosuje okamžik (elapsedMs) poruchy generátoru v rámci nastaveného okna —
 // mimo tento modul se nikdy nevolá Math.random() přímo, ať je losování na jednom místě.
@@ -16,14 +17,19 @@ function pickRouteVariant(night: NightDefinition): EnemyStage[] {
 }
 
 /**
- * `roomBulbsOverride` je volitelný — bez něj se použije čerstvě vyrobený
- * výchozí stav (`createDefaultRoomBulbs()`), tak jako dřív. Skutečnou
- * (persistovanou, případně denním servisem opravenou) hodnotu předává
- * `gameReducer.ts` u `START_SHIFT`/`RESTART_SHIFT` — `app/play/page.tsx` ji
- * načte z localStorage (`getRoomBulbs()`) a pošle jako součást akce, viz
- * TECH_DESIGN.md "Žárovky".
+ * `roomBulbsOverride`/`bulbsRemainingOverride` jsou volitelné — bez nich se
+ * použijí čerstvé výchozí hodnoty (`createDefaultRoomBulbs()`,
+ * `BULBS_CONFIG.startingCount`), tak jako dřív. Skutečné (persistované,
+ * případně denním servisem/ruční výměnou upravené) hodnoty předává
+ * `gameReducer.ts` u `START_SHIFT`/`RESTART_SHIFT` — `app/play/page.tsx` je
+ * načte z localStorage (`getRoomBulbs()`/`getBulbsRemaining()`) a pošle jako
+ * součást akce, viz TECH_DESIGN.md "Žárovky".
  */
-export function createInitialGameState(night: NightDefinition, roomBulbsOverride?: RoomBulbsState): GameState {
+export function createInitialGameState(
+  night: NightDefinition,
+  roomBulbsOverride?: RoomBulbsState,
+  bulbsRemainingOverride?: number,
+): GameState {
   return {
     screen: "menu",
     nightId: night.id,
@@ -73,6 +79,7 @@ export function createInitialGameState(night: NightDefinition, roomBulbsOverride
     // Nikdy nepřežívá restart/další noc — vždy začíná neaktivní, i kdyby
     // hráč zemřel uprostřed výměny (viz gameReducer.ts).
     bulbReplacement: { active: false, startedAtMs: null, progressMs: 0 },
+    bulbsRemaining: bulbsRemainingOverride ?? BULBS_CONFIG.startingCount,
 
     isRunning: false,
     audioMuted: false,
