@@ -1006,7 +1006,7 @@ persistentní/derivovaný stav — musí jít testovat bez `setTimeout` v kompon
   `roomBulbs`) — `createInitialGameState` ho vždy nastaví na neaktivní
   (`{ active: false, startedAtMs: null, progressMs: 0 }`), žádný override parametr jako u
   `roomBulbsOverride`.
-- **`BULB_REPLACE_DURATION_MS`** (5000 ms, `game/balancing/constants.ts`) — jediné místo s
+- **`BULB_REPLACE_DURATION_MS`** (10 000 ms, `game/balancing/constants.ts`) — jediné místo s
   délkou výměny.
 - **`START_BULB_REPLACEMENT`** (`gameActions.ts`, nová akce bez payloadu) —
   `gameReducer.ts` case s guardy v pořadí: `isRunning`/`!blackout`/`!doorDeathReveal` (stejné
@@ -1054,7 +1054,7 @@ persistentní/derivovaný stav — musí jít testovat bez `setTimeout` v kompon
   `GameScreen.tsx`.
 
 Testy: `game/core/bulbReplacement.test.ts` — `START_BULB_REPLACEMENT` guardy (broken/door
-open/playerView/no-double-start), `TICK` progress + oprava po 5 s, zrušení při
+open/playerView/no-double-start), `TICK` progress + oprava po plné době držení, zrušení při
 `TOGGLE_DOOR`/`LOOK_AT_DESK`, `bulb_replacement_attack` vs. `door_open_at_attack` death
 reason, reset po `RESTART_SHIFT`.
 

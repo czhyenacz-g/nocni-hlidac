@@ -3,6 +3,7 @@ import { createGameReducer } from "./gameReducer";
 import { createInitialGameState } from "./gameState";
 import { NIGHT_01 } from "../nights/night01";
 import { GameState } from "./types";
+import { BULB_REPLACE_DURATION_MS } from "../balancing/constants";
 
 function stateAtDoorWithBrokenBulb(overrides: Partial<GameState> = {}): GameState {
   return {
@@ -84,7 +85,7 @@ describe("bulbsRemaining — replacement guards and consumption", () => {
     const reducer = createGameReducer(NIGHT_01);
     const state = stateAtDoorWithBrokenBulb({
       bulbsRemaining: 3,
-      bulbReplacement: { active: true, startedAtMs: 0, progressMs: 4000 },
+      bulbReplacement: { active: true, startedAtMs: 0, progressMs: BULB_REPLACE_DURATION_MS - 1000 },
     });
 
     const result = reducer(state, { type: "TICK", deltaMs: 1000 });
@@ -170,10 +171,10 @@ describe("TICK — bulb replacement progress", () => {
     expect(result.bulbReplacement.active).toBe(true);
   });
 
-  it("repairs the bulb to full lifetime and deactivates after 5 seconds total", () => {
+  it("repairs the bulb to full lifetime and deactivates after the full hold duration", () => {
     const reducer = createGameReducer(NIGHT_01);
     const state = stateAtDoorWithBrokenBulb({
-      bulbReplacement: { active: true, startedAtMs: 0, progressMs: 4000 },
+      bulbReplacement: { active: true, startedAtMs: 0, progressMs: BULB_REPLACE_DURATION_MS - 1000 },
     });
 
     const result = reducer(state, { type: "TICK", deltaMs: 1000 });

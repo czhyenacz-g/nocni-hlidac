@@ -89,7 +89,7 @@ export const NIGHT_SCALING_ENERGY_DRAIN_STEP = 0.05;
 
 // Ruční výměna prasklé žárovky (viz game/core/types.ts BulbReplacementState,
 // gameReducer.ts, DoorView.tsx) — jak dlouho (ms) trvá, než se žárovka opraví.
-export const BULB_REPLACE_DURATION_MS = 5000;
+export const BULB_REPLACE_DURATION_MS = 10_000;
 
 // Sekvence útoku/smrti (viz app/play/page.tsx, efekt na state.screen ===
 // "death", AUDIO_DESIGN.md "Ticho před lekačkou"): ambience plynule ztlumí

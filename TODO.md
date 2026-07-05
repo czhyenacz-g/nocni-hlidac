@@ -290,7 +290,7 @@
       4s hold/nákup/sponzoring zatím záměrně chybí (další krok). Testy v
       `roomBulbs.test.ts`, `roomBulbsStorage.test.ts`, `tickRoomBulbs.test.ts`.
 - [x] Žárovky krok 3 — ruční výměna prasklé žárovky v `DoorView` (`GameState.bulbReplacement`,
-      `START_BULB_REPLACEMENT`, `BULB_REPLACE_DURATION_MS = 5000`). Jen s otevřenými dveřmi,
+      `START_BULB_REPLACEMENT`, `BULB_REPLACE_DURATION_MS`, 10 s od kroku 4). Jen s otevřenými dveřmi,
       riziko trvá celou dobu (zavření dveří nebo odchod z `DoorView` výměnu zruší beze
       opravy). Smrt během výměny má vlastní `bulb_replacement_attack` death reason/text.
       Nákup žárovek/sponzoring zůstávají mimo rozsah. Testy v `bulbReplacement.test.ts`.
@@ -310,6 +310,10 @@
       lokálního React state — win-service (`applyDailyBulbService`) bere živou `state.
       bulbsRemaining`, ne stará data z localStorage, ať nepřebije spotřebu z týhle směny.
       Testy rozšířené v `bulbReplacement.test.ts`.
+- [x] Doba držení pro výměnu žárovky prodloužena z 5 s na 10 s (`BULB_REPLACE_DURATION_MS`,
+      `game/balancing/constants.ts`) — jediná číselná konstanta, žádná další logika se
+      neměnila. Testy s pevnými `progressMs` hodnotami přepsané na `BULB_REPLACE_DURATION_MS -
+      1000`, ať dál sedí na jakoukoliv budoucí délku.
 - [x] Reálné audio doplněno: `monster_retreat_roar.mp3`, `bulb_break.mp3`, `blackout_howl.mp3`
       (uživatelem dodané soubory, zesílené/zkonvertované) nahradily syntetizované fallbacky.
       Poslední fáze blackoutu (dřív `blackout_door_hit`) teď místo nového zvuku jen plynule
