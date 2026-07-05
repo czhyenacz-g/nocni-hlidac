@@ -259,6 +259,11 @@ Všechny čtyři kamery teď mají fotky s monstrem (`outer_yard`, `left_hallway
 přesto chyběly, fallback na "normal" fotky funguje i tak (žádná rozbitá/prázdná
 obrazovka).
 
+`door_hallway` má navíc speciální snímek pro `enemyStage === "at_door"` (monstrum je už
+fyzicky u dveří, ne jen v chodbě před nimi) — místo obyčejné "monstrum v chodbě" fotky se
+zobrazí jasně odlišný "u dveří" záběr (se světlem i bez), ať hráč pozná extrémní blízkost
+přímo na kameře, ne až v `DoorView`.
+
 ### Kamerový drift
 
 Obraz v detailu kamery navíc velmi jemně "dýchá" — pomalý pohyb zleva doprava (a mírně

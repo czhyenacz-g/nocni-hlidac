@@ -37,7 +37,7 @@ export default function CameraView({ camera, enemyStage, focused, lightOn, elaps
   // sama žádné názvy souborů nezná, jen zobrazí, co vrátí getCameraImageSrc.
   // null (kamera bez assetů, nebo prázdné pole pro danou situaci) = dosavadní
   // textový/placeholder vzhled beze změny.
-  const imageSrc = getCameraImageSrc(camera.id, enemyVisible, lightOn, elapsedMs);
+  const imageSrc = getCameraImageSrc(camera.id, enemyVisible, lightOn, elapsedMs, enemyStage);
   const motion = resolveCameraMotionConfig(camera.id);
 
   return (

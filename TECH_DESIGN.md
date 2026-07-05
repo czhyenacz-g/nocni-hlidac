@@ -131,8 +131,15 @@ napsaný v komponentě:
   existuje a `lightOn === true`, jinak `default`. Prázdné `monster: []` u libovolné kamery
   (dřív `right_hallway`, dokud nedostala vlastní monster snímky) je pořád platný stav —
   `getCameraImageSrc` na to reaguje fallbackem na `normal`, ne pádem/prázdnou obrazovkou.
-- `getCameraImageSrc(cameraId, hasMonster, lightOn, elapsedMs)` (stejný soubor) — čistá
-  funkce, žádný React state:
+- `getCameraImageSrc(cameraId, hasMonster, lightOn, elapsedMs, enemyStage?)` (stejný
+  soubor) — čistá funkce, žádný React state:
+  - **Nejvyšší priorita**: `cameraId === "door_hallway" && enemyStage === "at_door"` →
+    vrátí jeden ze dvou pevných souborů (`DOOR_HALLWAY_AT_DOOR_ASSET`, ne pole/cyklování) —
+    `door_hallway_light_10_monster_at_door.webp` při `lightOn`, jinak
+    `door_hallway_10_monster_at_door.webp`. Monstrum je fyzicky u dveří (ne jen v chodbě
+    před nimi), hráč má dostat jasně odlišný vizuální cue přímo na kameře. Pro jakoukoliv
+    jinou kameru nebo `enemyStage` se tahle větev vůbec nezkouší; `enemyStage` je volitelný
+    parametr — chybí-li, chová se přesně jako dřív.
   - `hasMonster` → **deterministický** výběr (hash `cameraId:monster`, ne `Math.random()`)
     z `monster` pole — stejná kamera + stejný stav vždy vrátí stejný obrázek. Prázdné
     `monster` pole (`right_hallway`) → fallback na cyklující `normal` (viz níže), ne `null`.
@@ -144,10 +151,11 @@ napsaný v komponentě:
   - Prázdné pole i po fallbacku (nebo kamera bez záznamu v `CAMERA_ASSETS`) → `null`,
     `CameraView.tsx` pak zobrazí dosavadní textový/placeholder vzhled beze změny — žádný
     pád, žádná prázdná/rozbitá obrazovka.
-- `CameraView.tsx` volá `getCameraImageSrc(camera.id, enemyVisible, lightOn, elapsedMs)`
-  (`enemyVisible` je už existující derivovaný stav — `camera.enemyVisibleAtStage ===
-  enemyStage`; `lightOn`/`elapsedMs` jsou nové props protažené z `DeskView.tsx` přes
-  `CameraPanel.tsx`/`CameraDetailView.tsx`) a vykreslí vrácený `src` jako `<img>`
+- `CameraView.tsx` volá `getCameraImageSrc(camera.id, enemyVisible, lightOn, elapsedMs,
+  enemyStage)` (`enemyVisible` je už existující derivovaný stav — `camera.enemyVisibleAtStage
+  === enemyStage`; `lightOn`/`elapsedMs` jsou nové props protažené z `DeskView.tsx` přes
+  `CameraPanel.tsx`/`CameraDetailView.tsx`; `enemyStage` je prop, který `CameraView` už měla
+  pro `enemyVisible` výpočet, teď se posílá dál) a vykreslí vrácený `src` jako `<img>`
   (`absolute inset-0 object-cover`) — nikde v komponentě není napsaný konkrétní název
   souboru. Šum/scanline efekt (`.pixel-screen-static`) je samostatný `<div>` NAD obrázkem,
   ne na stejném elementu — `background-image` z `.pixel-screen-static` by se jinak přepsal

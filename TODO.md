@@ -264,6 +264,10 @@
       monstrum do `"door_hallway"` (hráč má ještě šanci zavřít), ne rovnou na `"at_door"`
       (dřív působilo jako nefér teleport). DebugPanel text upraven. Testy v
       `difficulty.test.ts` aktualizované.
+- [x] `door_hallway` kamera má speciální snímek pro `enemyStage === "at_door"`
+      (`door_hallway_10_monster_at_door.webp` / světlá varianta) — přednost před běžným
+      monster/normal cyklováním, viz `getCameraImageSrc` v `cameraAssets.object13.ts`. Testy
+      v `cameraAssets.object13.test.ts`.
 - [x] Generátor `restarting` (omylem restartovaný funkční generátor) teď pípá stejně
       rychle jako `criticalBeeping` (dřív potichu) a přidává vyšší stres bonus (+40,
       `GENERATOR_RESTART_STRESS_BONUS`) než skutečná porucha (+20) — vlastní chyba bolí víc

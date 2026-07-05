@@ -1,4 +1,4 @@
-import { CameraId } from "../core/types";
+import { CameraId, EnemyStage } from "../core/types";
 import { CAMERA_IMAGE_CYCLE_MS } from "../balancing/constants";
 
 /** normal = kamera bez monstra, monster = kamera s monstrem (viz getCameraImageSrc). */
@@ -95,10 +95,13 @@ export const CAMERA_ASSETS: Record<CameraId, CameraAssetsEntry> = {
         "/object_13/camera/door_hallway/door_hallway_08.webp",
         "/object_13/camera/door_hallway/door_hallway_09.webp",
       ],
+      // door_hallway_10_monster.webp byl přejmenovaný na
+      // door_hallway_10_monster_at_door.webp (viz DOOR_HALLWAY_AT_DOOR_ASSET
+      // výše) — vyřazený odsud, ať se náhodou nevybere pro obyčejný
+      // door_hallway monster stav (soubor pod původním názvem už neexistuje).
       monster: [
         "/object_13/camera/door_hallway/door_hallway_06_monster.webp",
         "/object_13/camera/door_hallway/door_hallway_07_monster.webp",
-        "/object_13/camera/door_hallway/door_hallway_10_monster.webp",
       ],
     },
     // Světlo do chodby zapnuté — jiná sada snímků (jasnější chodba), stejné
@@ -113,10 +116,11 @@ export const CAMERA_ASSETS: Record<CameraId, CameraAssetsEntry> = {
         "/object_13/camera/door_hallway_light/door_hallway_light_08.webp",
         "/object_13/camera/door_hallway_light/door_hallway_light_09.webp",
       ],
+      // Stejný důvod jako výše — door_hallway_light_10_monster.webp byl
+      // přejmenovaný na _at_door variantu.
       monster: [
         "/object_13/camera/door_hallway_light/door_hallway_light_06_monster.webp",
         "/object_13/camera/door_hallway_light/door_hallway_light_07_monster.webp",
-        "/object_13/camera/door_hallway_light/door_hallway_light_10_monster.webp",
       ],
     },
   },
@@ -137,7 +141,22 @@ export function preloadCameraImages(): void {
       }
     }
   }
+  for (const src of [DOOR_HALLWAY_AT_DOOR_ASSET.default, DOOR_HALLWAY_AT_DOOR_ASSET.lightOn]) {
+    const img = new Image();
+    img.src = src;
+  }
 }
+
+// Speciální jednorázový snímek jen pro door_hallway, když je enemyStage
+// "at_door" — monstrum je fyzicky přímo u dveří, ne jen v chodbě před nimi.
+// Má přednost před běžným monster/normal cyklováním (viz getCameraImageSrc
+// níže) — hráč má na kameře dostat jasný vizuální cue "je extrémně blízko",
+// ne obyčejný door_hallway monster snímek. Netýká se žádné jiné kamery ani
+// jiné enemyStage.
+const DOOR_HALLWAY_AT_DOOR_ASSET = {
+  default: "/object_13/camera/door_hallway/door_hallway_10_monster_at_door.webp",
+  lightOn: "/object_13/camera/door_hallway_light/door_hallway_light_10_monster_at_door.webp",
+};
 
 function resolveAssetSet(cameraId: CameraId, lightOn: boolean): CameraAssetSet {
   const entry = CAMERA_ASSETS[cameraId];
@@ -174,15 +193,27 @@ function pickCycling(list: string[], elapsedMs: number): string | null {
  * `resolveAssetSet`). Volá `CameraView.tsx`. `null` = kamera nemá vhodný
  * obrázek (prázdné pole nebo kamera bez definovaných assetů) — `CameraView`
  * pak zobrazí dosavadní textový/placeholder vzhled.
+ *
+ * `enemyStage` navíc řeší jediný speciální případ: `door_hallway` +
+ * `enemyStage === "at_door"` (monstrum je už fyzicky u dveří, ne jen v
+ * chodbě před nimi) — má přednost před `hasMonster`/cyklováním, viz
+ * `DOOR_HALLWAY_AT_DOOR_ASSET` výše. Pro jakoukoliv jinou kameru nebo
+ * enemyStage se `enemyStage` nepoužije vůbec.
  */
 export function getCameraImageSrc(
   cameraId: CameraId,
   hasMonster: boolean,
   lightOn: boolean,
   elapsedMs: number,
+  enemyStage?: EnemyStage,
 ): string | null {
   const assets = CAMERA_ASSETS[cameraId];
   if (!assets) return null;
+
+  if (cameraId === "door_hallway" && enemyStage === "at_door") {
+    return lightOn ? DOOR_HALLWAY_AT_DOOR_ASSET.lightOn : DOOR_HALLWAY_AT_DOOR_ASSET.default;
+  }
+
   const set = resolveAssetSet(cameraId, lightOn);
 
   if (hasMonster) {
