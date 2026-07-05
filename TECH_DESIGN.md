@@ -121,41 +121,52 @@ napsaný v komponentě:
 - `game/cameras/cameraAssets.object13.ts` — `CAMERA_ASSETS: Record<CameraId,
   CameraAssetsEntry>`, jeden záznam na kameru. `CameraAssetsEntry = { default:
   CameraAssetSet; lightOn?: CameraAssetSet }`, `CameraAssetSet = { normal: string[];
-  monster: string[] }` — `normal` obrázky bez monstra, `monster` obrázky s monstrem v
-  záběru. Soubory jsou `.webp` (konvertované z `.png` přes `cwebp`, jméno se zachovaným
-  `monster` v názvu) v `public/object_13/camera/<kamera>/`, rozdělené po mapě/objektu stejně
-  jako pozadí (viz "Struktura assetů podle mapy/objektu" výše). `door_hallway` má navíc
-  `lightOn` variantu (`public/object_13/camera/door_hallway_light/`) — jiná sada snímků, když
-  je zapnuté světlo do chodby (`state.lightOn`), stejné rozdělení `normal`/`monster`.
+  monster: string[]; fleeing: string[] }` — `normal` obrázky bez monstra, `monster` obrázky
+  se skutečným nebezpečím, `fleeing` obrázky monstra ustupujícího/utíkajícího pryč (viz
+  `getCameraImageSrc` níže). Soubory jsou `.webp` (konvertované z `.png` přes `cwebp`, jméno
+  se zachovaným `monster`/`fleeing_monster`/`monster_at_door` v názvu) v
+  `public/object_13/camera/<kamera>/`, rozdělené po mapě/objektu stejně jako pozadí (viz
+  "Struktura assetů podle mapy/objektu" výše). `door_hallway` má navíc `lightOn` variantu
+  (`public/object_13/camera/door_hallway_light/`) — jiná sada snímků, když je zapnuté světlo
+  do chodby (`state.lightOn`), stejné rozdělení `normal`/`monster`/`fleeing`.
   `resolveAssetSet(cameraId, lightOn)` (stejný soubor) vybere `lightOn` sadu, jen pokud
-  existuje a `lightOn === true`, jinak `default`. Prázdné `monster: []` u libovolné kamery
-  (dřív `right_hallway`, dokud nedostala vlastní monster snímky) je pořád platný stav —
-  `getCameraImageSrc` na to reaguje fallbackem na `normal`, ne pádem/prázdnou obrazovkou.
-- `getCameraImageSrc(cameraId, hasMonster, lightOn, elapsedMs, enemyStage?)` (stejný
-  soubor) — čistá funkce, žádný React state:
-  - **Nejvyšší priorita**: `cameraId === "door_hallway" && enemyStage === "at_door"` →
-    vrátí jeden ze dvou pevných souborů (`DOOR_HALLWAY_AT_DOOR_ASSET`, ne pole/cyklování) —
-    `door_hallway_light_10_monster_at_door.webp` při `lightOn`, jinak
-    `door_hallway_10_monster_at_door.webp`. Monstrum je fyzicky u dveří (ne jen v chodbě
-    před nimi), hráč má dostat jasně odlišný vizuální cue přímo na kameře. Pro jakoukoliv
-    jinou kameru nebo `enemyStage` se tahle větev vůbec nezkouší; `enemyStage` je volitelný
-    parametr — chybí-li, chová se přesně jako dřív.
-  - `hasMonster` → **deterministický** výběr (hash `cameraId:monster`, ne `Math.random()`)
-    z `monster` pole — stejná kamera + stejný stav vždy vrátí stejný obrázek. Prázdné
-    `monster` pole (`right_hallway`) → fallback na cyklující `normal` (viz níže), ne `null`.
-  - jinak → **pomalé prostřídání** (`pickCycling`) mezi `normal` obrázky:
-    `Math.floor(elapsedMs / CAMERA_IMAGE_CYCLE_MS) % normal.length` (`CAMERA_IMAGE_CYCLE_MS`
-    = 4000 ms, `game/balancing/constants.ts`) — čistá funkce `elapsedMs`, ne `setInterval`
-    ani React state v komponentě, takže se mění jen jednou za pár sekund (ne animace) a
-    neseká se při každém renderu.
+  existuje a `lightOn === true`, jinak `default`. Prázdné pole u libovolné kamery/kategorie
+  je pořád platný stav — `getCameraImageSrc` na to reaguje fallbackem, ne pádem/prázdnou
+  obrazovkou.
+- `getCameraImageSrc(cameraId, hasMonster, lightOn, elapsedMs, enemyStage?,
+  monsterRetreatedTo?, monsterRetreatVerified?)` (stejný soubor) — čistá funkce, žádný React
+  state, čtyři priority v pořadí:
+  1. **`monster_at_door`** — `cameraId === "door_hallway" && enemyStage === "at_door"` →
+     vrátí jeden ze dvou pevných souborů (`DOOR_HALLWAY_AT_DOOR_ASSET`, ne pole/cyklování) —
+     `door_hallway_light_10_monster_at_door.webp` při `lightOn`, jinak
+     `door_hallway_10_monster_at_door.webp`. Monstrum je fyzicky u dveří (ne jen v chodbě
+     před nimi).
+  2. **`fleeing_monster`** — `hasMonster && monsterRetreatedTo != null && enemyStage ===
+     monsterRetreatedTo && monsterRetreatVerified === false`. `hasMonster` už samo o sobě
+     znamená `camera.enemyVisibleAtStage === enemyStage` (spočítané v `CameraView.tsx`), takže
+     spolu s `enemyStage === monsterRetreatedTo` je jistota, že tahle kamera je přesně ta, kam
+     monstrum po "gave_up" odešlo. `pickDeterministic(set.fleeing, ...)` — chybí-li fleeing
+     asset pro danou kameru, propadne se do bodu 3 (fallback na běžný monster snímek, ne
+     `null`). Otevření téhle kamery samo o sobě potvrzuje ústup stejně jako dřív —
+     `gameReducer.ts` `OPEN_CAMERA` počítá `monsterRetreatVerified` nezávisle na `getCameraImageSrc`
+     (stejná podmínka `camera.enemyVisibleAtStage === enemyStage`), žádná změna reduceru
+     nebyla potřeba.
+  3. **`hasMonster`** (bez podmínek výše) → **deterministický** výběr (hash `cameraId:monster`,
+     ne `Math.random()`) z `monster` pole — stejná kamera + stejný stav vždy vrátí stejný
+     obrázek. Prázdné `monster` pole → fallback na cyklující `normal` (viz níže), ne `null`.
+  4. jinak → **pomalé prostřídání** (`pickCycling`) mezi `normal` obrázky:
+     `Math.floor(elapsedMs / CAMERA_IMAGE_CYCLE_MS) % normal.length` (`CAMERA_IMAGE_CYCLE_MS`
+     = 4000 ms, `game/balancing/constants.ts`) — čistá funkce `elapsedMs`, ne `setInterval`
+     ani React state v komponentě, takže se mění jen jednou za pár sekund (ne animace) a
+     neseká se při každém renderu.
   - Prázdné pole i po fallbacku (nebo kamera bez záznamu v `CAMERA_ASSETS`) → `null`,
     `CameraView.tsx` pak zobrazí dosavadní textový/placeholder vzhled beze změny — žádný
     pád, žádná prázdná/rozbitá obrazovka.
 - `CameraView.tsx` volá `getCameraImageSrc(camera.id, enemyVisible, lightOn, elapsedMs,
-  enemyStage)` (`enemyVisible` je už existující derivovaný stav — `camera.enemyVisibleAtStage
-  === enemyStage`; `lightOn`/`elapsedMs` jsou nové props protažené z `DeskView.tsx` přes
-  `CameraPanel.tsx`/`CameraDetailView.tsx`; `enemyStage` je prop, který `CameraView` už měla
-  pro `enemyVisible` výpočet, teď se posílá dál) a vykreslí vrácený `src` jako `<img>`
+  enemyStage, monsterRetreatedTo, monsterRetreatVerified)` (`enemyVisible` je už existující
+  derivovaný stav — `camera.enemyVisibleAtStage === enemyStage`; `monsterRetreatedTo`/
+  `monsterRetreatVerified` jsou nové props protažené z `state` přes `DeskView.tsx` →
+  `CameraPanel.tsx` → `CameraDetailView.tsx`) a vykreslí vrácený `src` jako `<img>`
   (`absolute inset-0 object-cover`) — nikde v komponentě není napsaný konkrétní název
   souboru. Šum/scanline efekt (`.pixel-screen-static`) je samostatný `<div>` NAD obrázkem,
   ne na stejném elementu — `background-image` z `.pixel-screen-static` by se jinak přepsal

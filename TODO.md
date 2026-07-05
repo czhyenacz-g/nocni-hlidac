@@ -268,6 +268,18 @@
       (`door_hallway_10_monster_at_door.webp` / světlá varianta) — přednost před běžným
       monster/normal cyklováním, viz `getCameraImageSrc` v `cameraAssets.object13.ts`. Testy
       v `cameraAssets.object13.test.ts`.
+- [x] `fleeing_monster` kamerový asset — vizuální potvrzení neověřeného ústupu monstra
+      (`monsterRetreatedTo`/`monsterRetreatVerified`), na kameře odpovídající retreat
+      destinaci se místo obyčejné monster fotky ukáže "monstrum ustupuje", dokud hráč ústup
+      neověří (stejná logika ověření jako dřív, beze změny reduceru). Přednost před běžným
+      monster snímkem, fallback na něj, chybí-li fleeing asset pro danou kameru. Testy v
+      `cameraAssets.object13.test.ts`.
+- [ ] Budoucí retreat workflow: při úspěšném door + light repel by mohlo monstrum postupně
+      utíkat přes kamery (`door_hallway` fleeing → `left`/`right_hallway` fleeing podle
+      aktivní trasy → `outer_yard` fleeing → `outside`), a po dosažení `outside` dostat
+      dočasný "safe cooldown" (např. 10 s), kdy se hned nevrací ke dveřím. Zatím
+      neimplementováno, jen zapsáno jako návrh — asset kategorizace (`fleeing`) je na tohle
+      už připravená.
 - [x] Žárovky krok 2 — životnost žárovky u dveří (`game/core/roomBulbs.ts`,
       `roomBulbs.nearRoom`, výchozí 30 s z `BULBS_CONFIG.defaultLifetimeMs`). Ubývá jen při
       reálném svícení (`isNearRoomLightActive`), praskne na 0 (`bulbBreakSeq` audio přes nový

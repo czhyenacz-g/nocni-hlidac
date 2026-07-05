@@ -39,6 +39,56 @@ describe("getCameraImageSrc — door_hallway at_door special case", () => {
   });
 });
 
+describe("getCameraImageSrc — fleeing_monster (unverified retreat)", () => {
+  it("shows the fleeing asset when the monster retreated to this camera's stage and is not yet verified", () => {
+    const src = getCameraImageSrc(
+      "left_hallway",
+      true,
+      false,
+      0,
+      "left_hallway",
+      "left_hallway",
+      false,
+    );
+    expect(src).toBe("/object_13/camera/left_hallway/left_hallway_fleeing_monster.webp");
+  });
+
+  it("works the same for outer_yard (outdoor)", () => {
+    const src = getCameraImageSrc(
+      "outer_yard",
+      true,
+      false,
+      0,
+      "outer_yard",
+      "outer_yard",
+      false,
+    );
+    expect(src).toBe("/object_13/camera/outdoor/outdoor_fleeing_monster.webp");
+  });
+
+  it("takes priority over the regular monster asset", () => {
+    const regular = getCameraImageSrc("left_hallway", true, false, 0, "left_hallway");
+    const fleeing = getCameraImageSrc("left_hallway", true, false, 0, "left_hallway", "left_hallway", false);
+    expect(fleeing).not.toBe(regular);
+    expect(fleeing).toContain("fleeing_monster");
+  });
+
+  it("falls back to the regular monster asset once verified", () => {
+    const src = getCameraImageSrc("left_hallway", true, false, 0, "left_hallway", "left_hallway", true);
+    expect(src).not.toContain("fleeing_monster");
+  });
+
+  it("falls back to the regular monster asset when this camera isn't the retreat destination", () => {
+    const src = getCameraImageSrc("right_hallway", true, false, 0, "right_hallway", "left_hallway", false);
+    expect(src).not.toContain("fleeing_monster");
+  });
+
+  it("does not show fleeing when monsterRetreatedTo is null (no pending retreat at all)", () => {
+    const src = getCameraImageSrc("left_hallway", true, false, 0, "left_hallway", null, false);
+    expect(src).not.toContain("fleeing_monster");
+  });
+});
+
 describe("door_hallway camera never shows the lit variant when the bulb is broken", () => {
   it("uses the dark set for door_hallway even with lightOn === true at the switch, once bulb.broken", () => {
     const state = {

@@ -12,9 +12,21 @@ interface CameraViewProps {
   lightOn: boolean;
   /** Pro pomalé prostřídání "normal" snímků (viz getCameraImageSrc), ne pro herní logiku. */
   elapsedMs: number;
+  /** Kam monstrum odešlo po "gave_up" standoffu u dveří — viz getCameraImageSrc (fleeing_monster). */
+  monsterRetreatedTo: EnemyStage | null;
+  /** Jestli hráč už ústup ověřil kamerou — viz getCameraImageSrc (fleeing_monster). */
+  monsterRetreatVerified: boolean;
 }
 
-export default function CameraView({ camera, enemyStage, focused, lightOn, elapsedMs }: CameraViewProps) {
+export default function CameraView({
+  camera,
+  enemyStage,
+  focused,
+  lightOn,
+  elapsedMs,
+  monsterRetreatedTo,
+  monsterRetreatVerified,
+}: CameraViewProps) {
   if (!camera) {
     return (
       <div className="pixel-panel pixel-screen-static h-48 flex items-center justify-center text-gray-500 text-sm">
@@ -37,7 +49,15 @@ export default function CameraView({ camera, enemyStage, focused, lightOn, elaps
   // sama žádné názvy souborů nezná, jen zobrazí, co vrátí getCameraImageSrc.
   // null (kamera bez assetů, nebo prázdné pole pro danou situaci) = dosavadní
   // textový/placeholder vzhled beze změny.
-  const imageSrc = getCameraImageSrc(camera.id, enemyVisible, lightOn, elapsedMs, enemyStage);
+  const imageSrc = getCameraImageSrc(
+    camera.id,
+    enemyVisible,
+    lightOn,
+    elapsedMs,
+    enemyStage,
+    monsterRetreatedTo,
+    monsterRetreatVerified,
+  );
   const motion = resolveCameraMotionConfig(camera.id);
 
   return (

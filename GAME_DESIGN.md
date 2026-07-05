@@ -187,6 +187,16 @@ jednu z chodeb nebo na venkovní vstup:
 `medium` a `hard` se dnes chovají stejně — `hard` je připravené místo pro
 budoucí přísnější pravidla, ne duplicitní kopie `medium`.
 
+### Vizuální potvrzení ústupu (fleeing_monster)
+
+Na kameře, kam monstrum po "vzdání se" odešlo, se dokud ho hráč neověří ukáže speciální
+snímek — monstrum **ustupuje/utíká pryč** (`fleeing_monster`), ne obyčejná "monstrum je tu a
+je nebezpečí" fotka. Otevření téhle konkrétní kamery ústup zároveň potvrzuje (stejná logika
+jako dřív) — hráč tak přímo na obrázku vidí, že našel správné místo, ne že jen náhodou
+narazil na monstrum. Jakmile je ústup ověřený, kamera se vrátí k běžnému monster/normal
+zobrazení. Pokud pro danou kameru fleeing snímek chybí, zobrazí se obyčejná monster fotka
+místo něj — beze změny chování ověření.
+
 ## Kamery
 
 4 kamery (`game/cameras/cameras.object13.ts`), seřazené podle vzdálenosti od

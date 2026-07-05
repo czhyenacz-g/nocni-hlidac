@@ -10,6 +10,8 @@ interface CameraPanelProps {
   focused: boolean;
   lightOn: boolean;
   elapsedMs: number;
+  monsterRetreatedTo: EnemyStage | null;
+  monsterRetreatVerified: boolean;
   onSelectCamera: (id: CameraId) => void;
   onCloseCameras: () => void;
 }
@@ -25,6 +27,8 @@ export default function CameraPanel({
   focused,
   lightOn,
   elapsedMs,
+  monsterRetreatedTo,
+  monsterRetreatVerified,
   onSelectCamera,
   onCloseCameras,
 }: CameraPanelProps) {
@@ -37,6 +41,8 @@ export default function CameraPanel({
         focused={focused}
         lightOn={lightOn}
         elapsedMs={elapsedMs}
+        monsterRetreatedTo={monsterRetreatedTo}
+        monsterRetreatVerified={monsterRetreatVerified}
         onBack={onCloseCameras}
       />
     );

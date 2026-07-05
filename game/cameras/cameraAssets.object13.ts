@@ -1,10 +1,17 @@
 import { CameraId, EnemyStage } from "../core/types";
 import { CAMERA_IMAGE_CYCLE_MS } from "../balancing/constants";
 
-/** normal = kamera bez monstra, monster = kamera s monstrem (viz getCameraImageSrc). */
+/**
+ * normal = kamera bez monstra, monster = kamera s monstrem (nebezpečí),
+ * fleeing = monstrum ustupuje/utíká pryč po "gave_up" standoffu u dveří —
+ * hráč tímhle obrázkem vizuálně potvrzuje ústup (viz getCameraImageSrc,
+ * monster_check_or_return v difficultyConfig.ts). Prázdné/chybějící pole je
+ * pořád platný stav (fallback na "monster", viz getCameraImageSrc).
+ */
 export interface CameraAssetSet {
   normal: string[];
   monster: string[];
+  fleeing: string[];
 }
 
 interface CameraAssetsEntry {
@@ -46,6 +53,7 @@ export const CAMERA_ASSETS: Record<CameraId, CameraAssetsEntry> = {
         "/object_13/camera/outdoor/outdoor_06_monster.webp",
         "/object_13/camera/outdoor/outdoor_08_monster.webp",
       ],
+      fleeing: ["/object_13/camera/outdoor/outdoor_fleeing_monster.webp"],
     },
   },
   right_hallway: {
@@ -64,6 +72,7 @@ export const CAMERA_ASSETS: Record<CameraId, CameraAssetsEntry> = {
         "/object_13/camera/right_hallway/right_hallway_07_monster.webp",
         "/object_13/camera/right_hallway/right_hallway_10_monster.webp",
       ],
+      fleeing: ["/object_13/camera/right_hallway/right_hallway_fleeing_monster.webp"],
     },
   },
   left_hallway: {
@@ -82,6 +91,7 @@ export const CAMERA_ASSETS: Record<CameraId, CameraAssetsEntry> = {
         "/object_13/camera/left_hallway/left_hallway_08_monster.webp",
         "/object_13/camera/left_hallway/left_hallway_10_monster.webp",
       ],
+      fleeing: ["/object_13/camera/left_hallway/left_hallway_fleeing_monster.webp"],
     },
   },
   door_hallway: {
@@ -103,6 +113,7 @@ export const CAMERA_ASSETS: Record<CameraId, CameraAssetsEntry> = {
         "/object_13/camera/door_hallway/door_hallway_06_monster.webp",
         "/object_13/camera/door_hallway/door_hallway_07_monster.webp",
       ],
+      fleeing: ["/object_13/camera/door_hallway/door_hallway_fleeing_monster.webp"],
     },
     // Světlo do chodby zapnuté — jiná sada snímků (jasnější chodba), stejné
     // rozdělení normal/monster. Viz resolveAssetSet.
@@ -122,6 +133,7 @@ export const CAMERA_ASSETS: Record<CameraId, CameraAssetsEntry> = {
         "/object_13/camera/door_hallway_light/door_hallway_light_06_monster.webp",
         "/object_13/camera/door_hallway_light/door_hallway_light_07_monster.webp",
       ],
+      fleeing: ["/object_13/camera/door_hallway_light/door_hallway_light_fleeing_monster.webp"],
     },
   },
 };
@@ -135,7 +147,7 @@ export function preloadCameraImages(): void {
   for (const entry of Object.values(CAMERA_ASSETS)) {
     for (const set of [entry.default, entry.lightOn]) {
       if (!set) continue;
-      for (const src of [...set.normal, ...set.monster]) {
+      for (const src of [...set.normal, ...set.monster, ...set.fleeing]) {
         const img = new Image();
         img.src = src;
       }
@@ -187,18 +199,27 @@ function pickCycling(list: string[], elapsedMs: number): string | null {
 }
 
 /**
- * Vrátí src obrázku pro detail kamery podle toho, jestli je na ní podle
- * `enemyStage` vidět monstrum (viz CameraDefinition.enemyVisibleAtStage), a
- * podle `lightOn` (jen `door_hallway` má na to jinou sadu obrázků, viz
- * `resolveAssetSet`). Volá `CameraView.tsx`. `null` = kamera nemá vhodný
- * obrázek (prázdné pole nebo kamera bez definovaných assetů) — `CameraView`
- * pak zobrazí dosavadní textový/placeholder vzhled.
+ * Vrátí src obrázku pro detail kamery — priorita podle GAME_DESIGN.md
+ * "Odchod monstra od dveří":
  *
- * `enemyStage` navíc řeší jediný speciální případ: `door_hallway` +
- * `enemyStage === "at_door"` (monstrum je už fyzicky u dveří, ne jen v
- * chodbě před nimi) — má přednost před `hasMonster`/cyklováním, viz
- * `DOOR_HALLWAY_AT_DOOR_ASSET` výše. Pro jakoukoliv jinou kameru nebo
- * enemyStage se `enemyStage` nepoužije vůbec.
+ * 1. `monster_at_door` — `door_hallway` + `enemyStage === "at_door"`
+ *    (monstrum je fyzicky u dveří, ne jen v chodbě před nimi) — přednost
+ *    před vším ostatním, viz `DOOR_HALLWAY_AT_DOOR_ASSET` výše.
+ * 2. `fleeing_monster` — monstrum "vzdalo" čekání u dveří
+ *    (`monsterRetreatedTo`) a hráč to ještě neověřil kamerou
+ *    (`!monsterRetreatVerified`), a tahle kamera je zrovna ta, kam odešlo
+ *    (`hasMonster` — což už samo o sobě znamená `camera.enemyVisibleAtStage
+ *    === enemyStage` — a navíc `enemyStage === monsterRetreatedTo`). Otevření
+ *    téhle kamery zároveň potvrzuje ústup stejně jako dřív (viz
+ *    `gameReducer.ts` OPEN_CAMERA — beze změny, `hasMonster` je stejná
+ *    podmínka, kterou si OPEN_CAMERA přepočítává samo). Chybí-li `fleeing`
+ *    asset pro danou kameru, spadne zpět na běžný `monster` snímek.
+ * 3. běžný `monster` — `hasMonster` bez podmínek výše (skutečné nebezpečí).
+ * 4. `normal` — pomalé cyklování, žádné relevantní monstrum na kameře.
+ *
+ * `lightOn` mění jen sadu pro `door_hallway` (viz `resolveAssetSet`). `null`
+ * = kamera nemá vhodný obrázek (prázdné pole/kamera bez assetů) —
+ * `CameraView` pak zobrazí dosavadní textový/placeholder vzhled.
  */
 export function getCameraImageSrc(
   cameraId: CameraId,
@@ -206,6 +227,8 @@ export function getCameraImageSrc(
   lightOn: boolean,
   elapsedMs: number,
   enemyStage?: EnemyStage,
+  monsterRetreatedTo?: EnemyStage | null,
+  monsterRetreatVerified?: boolean,
 ): string | null {
   const assets = CAMERA_ASSETS[cameraId];
   if (!assets) return null;
@@ -215,6 +238,19 @@ export function getCameraImageSrc(
   }
 
   const set = resolveAssetSet(cameraId, lightOn);
+
+  const isPendingFleeingRetreat =
+    hasMonster &&
+    monsterRetreatedTo != null &&
+    enemyStage === monsterRetreatedTo &&
+    monsterRetreatVerified === false;
+
+  if (isPendingFleeingRetreat) {
+    const fleeing = pickDeterministic(set.fleeing, `${cameraId}:fleeing`);
+    if (fleeing) return fleeing;
+    // Chybějící fleeing asset pro tuhle kameru — fallback na běžný monster
+    // snímek níže, ne pád/prázdná obrazovka.
+  }
 
   if (hasMonster) {
     return pickDeterministic(set.monster, `${cameraId}:monster`) ?? pickCycling(set.normal, elapsedMs);
