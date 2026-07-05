@@ -19,15 +19,37 @@ efekt smyčkovaný přes `loop: true`, ne skutečně nekonečná ambientní komp
 - `generator_beep.mp3` — normální pípnutí generátoru (`AUDIO_EVENTS.generatorBeep`)
 - `generator_warning_beep.mp3` — rychlé varovné pípání v kritickém stavu
   (`AUDIO_EVENTS.generatorWarningBeep`)
-- `monster_retreat_roar.mp3` — řev při door-light repelu (`AUDIO_EVENTS.monsterRetreatRoar`)
 - `blackout_howl.mp3` — vzdálené zavytí na začátku blackoutu (`AUDIO_EVENTS.blackoutHowl`)
 
 Dokud nejsou doplněné, hra funguje beze změny — `AudioManager` chybějící soubor jen
-tiše ignoruje (viz pravidlo výše). U těchto čtyř navíc `game/audio/audioConfig.ts`
+tiše ignoruje (viz pravidlo výše). U těchto navíc `game/audio/audioConfig.ts`
 definuje `fallbackSynth` — krátký tón/sekvenci syntetizovanou přímo přes Web Audio API
 (`AudioManager.playFallbackSynth`, žádná externí knihovna), takže i bez hotových
 souborů je slyšet aspoň placeholder pípnutí/řev. Jakmile soubor přibude, fallback se
 přestane používat sám od sebe.
+
+## Monster retreat roar
+
+`monster_retreat_roar.mp3` — řev při door-light repelu (`AUDIO_EVENTS.monsterRetreatRoar`,
+viz GAME_DESIGN.md "Světlo a dveře"). Zdroj: `614013__aarontheonly__roar9.wav` (soubor
+dodaný uživatelem do `public/assets/audio/`, licence/atribuce neuvedena). Originál byl tichý
+(mean_volume ~-27 dB, peak -11,1 dB) — servírovaná kopie má `+10dB` gain
+(`ffmpeg -af "volume=10dB"`, peak teď ~-1,2 dB). Nahrazuje dřívější syntetizovaný fallback,
+který se teď použije, jen kdyby se `monster_retreat_roar.mp3` z nějakého důvodu nepodařilo
+načíst.
+
+## Bulb break
+
+`bulb_break.mp3` — praskne žárovka v místnosti (`AUDIO_EVENTS.bulbBreak`, viz
+`game/core/roomBulbs.ts`, GAME_DESIGN.md "Žárovky"). Zdroj:
+[541828__iainmccurdy__smash-light-bulb.wav](https://freesound.org/people/iainmccurdy/sounds/541828/)
+(Freesound.org, autor iainmccurdy). Peak byl už skoro na `0dB` (-0,6 dB po konverzi), takže
+beze změny gainu, jen konverze na mp3. Nahrazuje dřívější syntetizovaný fallback (krátké
+pípnutí), který se teď použije, jen kdyby se `bulb_break.mp3` nepodařilo načíst.
+
+Poznámka: v `public/assets/audio/` je navíc `33629__themfish__bulb_smash.mp3` — dřívější
+alternativní kandidát, dnes nikde v `audioConfig.ts` nezapojený (zůstává jen jako soubor na
+disku, ne aktivní asset).
 
 ## Heartbeat/stres vrstva
 
