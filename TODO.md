@@ -260,6 +260,10 @@
       — nový `game/core/enemyDebugInfo.ts#buildEnemyDebugInfo`, DebugPanel teď ukazuje route/
       branch/watched/verification/door-consequence. Čistě diagnostické, žádná herní logika
       se nezměnila.
+- [x] `monster_check_or_return` trest zmírněný: otevření dveří bez ověření teď vrátí
+      monstrum do `"door_hallway"` (hráč má ještě šanci zavřít), ne rovnou na `"at_door"`
+      (dřív působilo jako nefér teleport). DebugPanel text upraven. Testy v
+      `difficulty.test.ts` aktualizované.
 - [x] Generátor `restarting` (omylem restartovaný funkční generátor) teď pípá stejně
       rychle jako `criticalBeeping` (dřív potichu) a přidává vyšší stres bonus (+40,
       `GENERATOR_RESTART_STRESS_BONUS`) než skutečná porucha (+20) — vlastní chyba bolí víc

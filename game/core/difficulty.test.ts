@@ -68,14 +68,16 @@ describe("monster_check_or_return rule", () => {
     expect(verified.monsterRetreatVerified).toBe(true);
   });
 
-  it("medium/hard: opening the door without verifying sends the monster right back", () => {
+  it("medium/hard: opening the door without verifying sends the monster back to door_hallway, not all the way to at_door", () => {
     const reducer = createGameReducer(NIGHT_01, "hard");
     const gaveUp = reducer(stateAtGaveUp(), { type: "ENEMY_ADVANCE" });
 
     const opened = reducer(gaveUp, { type: "TOGGLE_DOOR" });
     expect(opened.doorClosed).toBe(false);
-    expect(opened.enemyStage).toBe("at_door");
+    expect(opened.enemyStage).toBe("door_hallway");
     expect(opened.lastEnemyDecision).toBe("returned_unverified");
+    expect(opened.monsterRetreatedTo).toBeNull();
+    expect(opened.monsterRetreatVerified).toBe(false);
   });
 
   it("medium/hard: after verifying with the correct camera, opening the door is safe", () => {

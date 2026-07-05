@@ -76,7 +76,7 @@ export default function DebugPanel({ state, night, tensionLevel, onDebugToggleDo
           {enemyDebug.verificationRequired && <div>Verification camera: {enemyDebug.verificationCameraId ?? "—"}</div>}
           <div>
             Opening door consequence:{" "}
-            {enemyDebug.openingDoorWouldReturnMonster ? "monster returns to door (unverified)" : "safe"}
+            {enemyDebug.openingDoorWouldReturnMonster ? "monster returns to door_hallway (unverified)" : "safe"}
           </div>
         </div>
 

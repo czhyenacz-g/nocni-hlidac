@@ -302,13 +302,18 @@ Tři místa v `gameReducer.ts`, kde se pravidlo projevuje:
    "špatnou" kameru).
 3. **`TOGGLE_DOOR`** — otevírání (ne zavírání) dveří, kdy `state.doorClosed` bylo `true`
    a `rules.monster_check_or_return && monsterRetreatedTo !== null &&
-   !monsterRetreatVerified`: dveře se otevřou, ale nepřítel se **okamžitě vrátí zpět ke
-   dveřím** (`enemyStage: "at_door"`, `lastEnemyDecision: "returned_unverified"`,
-   `enemyAtDoorSinceMs` se nastaví na aktuální čas — standoff začíná znovu od nuly) a
-   `monsterRetreatedTo`/`monsterRetreatVerified` se vynulují. Je to trest, ne smrt — hráč
-   musí dveře znovu zavřít a situaci vyřešit správně. Jakékoliv jiné otevření dveří
-   (bezpečné, nebo na `easy`) při té příležitosti taky vynuluje `monsterRetreatedTo`/
-   `monsterRetreatVerified`, ať nezůstane "zaseknuté" ověření z předchozího standoffu.
+   !monsterRetreatVerified`: dveře se otevřou, ale nepřítel se vrátí do `"door_hallway"`
+   (`enemyStage: "door_hallway"`, `lastEnemyDecision: "returned_unverified"` — union typ
+   neměněný, jen teď znamená konkrétně "vráceno do door_hallway", ne do `at_door`;
+   `enemyAtDoorSinceMs` se nastaví na `null`, protože `door_hallway` není `isAtDoorStage`)
+   a `monsterRetreatedTo`/`monsterRetreatVerified` se vynulují. **Není** to okamžitý teleport
+   rovnou ke dveřím (`at_door`) — playtest: prázdná kamera `door_hallway` matla hráče, který
+   pak bez varování skončil v extrémním ohrožení. `door_hallway` dává hráči ještě krátkou
+   šanci si všimnout (na téže kameře) a stihnout dveře znovu zavřít, než nepřítel normálním
+   `ENEMY_ADVANCE` tempem postoupí až na `at_door`. Je to trest, ne smrt — hráč musí dveře
+   znovu zavřít a situaci vyřešit správně. Jakékoliv jiné otevření dveří (bezpečné, nebo na
+   `easy`) při té příležitosti taky vynuluje `monsterRetreatedTo`/`monsterRetreatVerified`,
+   ať nezůstane "zaseknuté" ověření z předchozího standoffu.
 
 Testy pokrývající tohle pravidlo (výchozí obtížnost, zapnutí/vypnutí per úroveň, celý
 easy/medium/hard flow) jsou v `game/core/difficulty.test.ts` (Vitest, `npm run test`).

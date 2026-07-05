@@ -255,9 +255,14 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         // Otevírání (ne zavírání) dveří, kdy monstrum předtím "vzdalo" čekání
         // (viz ENEMY_ADVANCE "gave_up") a hráč ještě neověřil kamerou, kam
         // odešlo: na easy (rules.monster_check_or_return vypnuté) je vždy
-        // bezpečné. Na medium/hard bez ověření se monstrum okamžitě vrátí
-        // zpět ke dveřím — trest, ne okamžitá smrt, viz GAME_DESIGN.md
-        // "Odchod monstra od dveří".
+        // bezpečné. Na medium/hard bez ověření se monstrum vrátí do
+        // "door_hallway" (ne rovnou "at_door") — trest, ale ne okamžitý
+        // teleport ke dveřím: hráč ještě dostane krátkou šanci si všimnout
+        // (na kameře door_hallway) a stihnout dveře znovu zavřít, než
+        // monstrum normálním ENEMY_ADVANCE postupem dojde až k "at_door".
+        // lastEnemyDecision zůstává "returned_unverified" (typovaný union,
+        // neměněno) — teď znamená konkrétně "vráceno do door_hallway", ne do
+        // at_door, viz GAME_DESIGN.md "Odchod monstra od dveří".
         if (
           state.doorClosed &&
           rules.monster_check_or_return &&
@@ -267,9 +272,9 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           return {
             ...state,
             doorClosed: false,
-            enemyStage: "at_door",
+            enemyStage: "door_hallway",
             lastEnemyDecision: "returned_unverified",
-            enemyAtDoorSinceMs: state.elapsedMs,
+            enemyAtDoorSinceMs: null,
             enemyDoorHoldTargetMs: null,
             enemyDoorHoldProgressMs: 0,
             monsterRetreatedTo: null,

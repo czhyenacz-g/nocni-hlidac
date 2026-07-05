@@ -175,11 +175,14 @@ Když monstrum u zavřených dveří "vzdá" čekání (viz "Nepřítel" výše)
 jednu z chodeb nebo na venkovní vstup:
 
 - **easy** — jakmile monstrum odejde, je bezpečné dveře otevřít rovnou.
-- **medium/hard** — nestačí počkat. Hráč musí monstrum nejdřív najít na správné
-  kameře (ta, která odpovídá místu, kam odešlo), teprve pak je bezpečné dveře
-  otevřít. Pokud hráč otevře dřív, monstrum se okamžitě vrátí zpátky ke dveřím
-  — není to okamžitá smrt, ale trest a návrat hrozby: dveře je potřeba znovu
-  zavřít a situaci vyřešit správně.
+- **medium/hard** — nestačí počkat, až monstrum zmizí z kamery `door_hallway`. To
+  jen znamená "monstrum už není přímo před kanceláří", ne "je bezpečno". Hráč
+  musí monstrum najít na **jiné** odpovídající kameře (`outer_yard`/
+  `left_hallway`/`right_hallway` — podle toho, kam skutečně odešlo), teprve pak
+  je bezpečné dveře otevřít. Pokud hráč otevře dřív, monstrum se vrátí do
+  `door_hallway` (ne rovnou ke dveřím) — trest, ale ne okamžitý teleport k
+  útoku: hráč ještě dostane krátkou šanci si všimnout a stihnout dveře znovu
+  zavřít, než monstrum normálním tempem postoupí až ke dveřím.
 
 `medium` a `hard` se dnes chovají stejně — `hard` je připravené místo pro
 budoucí přísnější pravidla, ne duplicitní kopie `medium`.
