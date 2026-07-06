@@ -68,26 +68,20 @@ export default function GameScreen({
 }: GameScreenProps) {
   // Pozadí pro desk/generator (BACKGROUND_SCENES.play) — jen mimo blackout,
   // kdy BlackoutView stejně celou obrazovku nahrazuje vlastní atmosférou.
-  // DoorView má vlastní lokální řešení (DoorSceneFrame, viz DoorView.tsx) —
-  // NErenderuje se tu přes SceneBackground, aby dveřní hotspot nezávisel na
-  // viewport bg-cover škálování (viz DoorSceneFrame.tsx pro zdůvodnění).
-  const isDoorView = state.playerView === "door";
-  const showPlayBackground = state.gameStatus !== "blackout" && !isDoorView;
+  // DoorView i LeftWallView mají vlastní lokální řešení (sdílená
+  // .door-scene-frame, viz DoorSceneFrame.tsx/LeftWallView.tsx) —
+  // NErenderují se tu přes SceneBackground, aby scéna nezávisela na viewport
+  // bg-cover škálování (viz DoorSceneFrame.tsx pro zdůvodnění). Stejný důvod,
+  // proč obě nejsou v max-w-[33.6rem] wrapperu a nemají běžný HUD (čas/zvuk/
+  // energie) — jen svoje rámované okno na scénu + tlačítko zpět.
+  const isWideSceneView = state.playerView === "door" || state.playerView === "left_wall";
+  const showPlayBackground = state.gameStatus !== "blackout" && !isWideSceneView;
   // Dev debug text pro PowerMeter — přesný údaj v sekundách, ne finální
   // atmosférický text (viz game/core/roomBulbs.ts, content/copy.ts).
   const nearRoomBulb = state.roomBulbs.nearRoom;
   const nearRoomBulbLabel = nearRoomBulb.broken
     ? COPY.game.bulbBrokenLabel
     : `${Math.ceil(nearRoomBulb.remainingMs / 1000)} s`;
-
-  // left_wall je čistě atmosférický celoobrazovkový pohled (obrázek přes
-  // celou plochu, jen malé overlay tlačítko zpět) — na rozdíl od door/desk/
-  // generator/blackout nemá vůbec žádný HUD ani dev panel kolem sebe, takže
-  // se nehodí do sdíleného max-w wrapperu níže. LeftWallView si renderuje
-  // vlastní fullscreen <main>, tenhle early return ho nezanořuje do dalšího.
-  if (state.playerView === "left_wall") {
-    return <LeftWallView onLookAtDesk={onLookAtDesk} />;
-  }
 
   return (
     // <main> je bez bg-* třídy a bez max-w-md — SceneBackground (potomek s
@@ -106,11 +100,11 @@ export default function GameScreen({
           Desk/generator/blackout sloupec je o 20 % širší než dřívější max-w-md
           (28rem -> 33.6rem) — hlavně kvůli kamerovému detailu (CameraView),
           který díky tomu může být po "ladění signálu" větší. */}
-      <div className={`flex flex-col gap-4 ${isDoorView ? "" : "max-w-[33.6rem] mx-auto"}`}>
-        {/* V DoorView schválně nerenderujeme čas/zvuk/energii vůbec (ne jen
-            skryté přes CSS) — hráč se má soustředit na dveře, ne na obecné
-            HUD. Desk/generator zůstávají beze změny. */}
-        {!isDoorView && (
+      <div className={`flex flex-col gap-4 ${isWideSceneView ? "" : "max-w-[33.6rem] mx-auto"}`}>
+        {/* V DoorView/LeftWallView schválně nerenderujeme čas/zvuk/energii
+            vůbec (ne jen skryté přes CSS) — hráč se má soustředit na scénu,
+            ne na obecné HUD. Desk/generator zůstávají beze změny. */}
+        {!isWideSceneView && (
           <>
             <div className="flex justify-between items-center">
               <ShiftTimer remainingMs={state.remainingMs} nightNumber={nightNumber} />
@@ -167,11 +161,12 @@ export default function GameScreen({
                 onLookAtDesk={onLookAtDesk}
               />
             )}
+            {state.playerView === "left_wall" && <LeftWallView onLookAtDesk={onLookAtDesk} />}
             {state.playerView === "object_map" && <ObjectMapView onLookAtDesk={onLookAtDesk} />}
           </>
         )}
 
-        <div className={isDoorView ? "w-full max-w-md mx-auto" : ""}>
+        <div className={isWideSceneView ? "w-full max-w-md mx-auto" : ""}>
           <DebugPanel
             state={state}
             night={night}
