@@ -185,14 +185,18 @@ export const COPY = {
   // připraveno na budoucí náhradu za skutečné výsledky beze změny textů.
   leaderboard: {
     seoTitle: "Žebříček hlídačů | Noční hlídač",
-    seoDescription: "Žebříček hlídačů Objektu 13 — kdo vydržel nejdéle a jak skončila jeho směna.",
+    seoDescription: "Žebříček hlídačů Objektu 13 — kdo drží rekord a kdo právě slouží.",
     heading: "Žebříček hlídačů",
     subheading: "Pozice byla opakovaně obsazena. Někteří vydrželi déle.",
+    explanation:
+      "Rekord ukazuje nejlepší dosaženou směnu hráče. Aktuální směna ukazuje hlídače, " +
+      "který se zatím nevrátil ani nezmizel.",
     columnRank: "Pořadí",
     columnGuard: "Hlídač",
-    columnNights: "Přežité noci",
-    columnEndReason: "Konec směny",
-    columnRecordedAt: "Datum záznamu",
+    columnBestRun: "Rekord",
+    columnCurrentRun: "Aktuální směna",
+    /** currentRun === 0 — hlídač buď ještě nezačal, nebo naposledy zemřel. */
+    noActiveRunLabel: "bez aktivní směny",
     backToGameLabel: "← Zpět do hry",
   },
 } as const;

@@ -367,6 +367,12 @@
       za `getLeaderboardEntries()` (async signatura, ať pozdější náhrada za API nevyžaduje
       změnu volajícího `app/leaderboard/page.tsx`). Nenápadný odkaz v `MainMenuScreen.tsx`.
       Žádné API, DB, ani ukládání výsledků směny zatím nepřibylo.
+- [x] Žebříček zjednodušen na `bestRun`/`currentRun` (rekord + aktuálně rozehraná směna),
+      místo dřívějších `survivedNights`/`endReason`/`recordedAt` (death reason/last run/datum
+      záznamu patří do budoucího `guard_runs`/vzkazů, ne do hlavní tabulky). Sloupce Pořadí/
+      Hlídač/Rekord/Aktuální směna, `currentRun === 0` -> "bez aktivní směny". Nová
+      `formatNights()` (`lib/leaderboard/formatNights.ts`) pro české skloňování (1 noc, 2-4
+      noci, 0/5+ nocí). `getLeaderboardEntries()` signatura beze změny.
 
 ## Další kroky po MVP
 

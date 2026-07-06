@@ -1272,17 +1272,30 @@ mock daty v kódu. **Záměrně NEobsahuje**: API endpoint, DB, ukládání výs
 smrti/výhře, vzkazy hlídačů — to je až další krok, až bude co reálně ukládat (viz "Discord
 login" výše, "Další kroky po MVP" v TODO.md).
 
-- **Typ dat**: `GuardLeaderboardEntry` (`lib/leaderboard/types.ts`) — `guardName`,
-  `survivedNights`, `endReason`, `recordedAt` (ISO `YYYY-MM-DD`, stejný tvar, jaký by
-  později poslalo skutečné API). Záměrně BEZ `rank` pole — pořadí v tabulce se počítá jako
-  `index + 1` při renderu (`app/leaderboard/page.tsx`), ať nemůže vzniknout nesoulad mezi
-  uloženým pořadím a skutečným řazením podle `survivedNights`.
+- **Typ dat**: `GuardLeaderboardEntry` (`lib/leaderboard/types.ts`) — zjednodušeno na
+  `guardName`, `bestRun`, `currentRun`. `bestRun` = nejlepší dosažený počet přežitých nocí
+  (rekord, nikdy neklesá), `currentRun` = aktuálně rozehraná série (0 = hlídač bez aktivní
+  směny). Budoucí (zatím NEIMPLEMENTOVANÉ) herní pravidlo, jen zapsané jako komentář u typu:
+  po přežité noci `currentRun += 1; bestRun = max(bestRun, currentRun)`, po smrti
+  `currentRun = 0` (bestRun beze změny). Death reason/last run/datum záznamu záměrně
+  odstraněné z hlavní tabulky — patří do budoucího `guard_runs`/vzkazů, ne sem. Záměrně BEZ
+  `rank` pole — pořadí v tabulce se počítá jako `index + 1` při renderu
+  (`app/leaderboard/page.tsx`), ať nemůže vzniknout nesoulad mezi uloženým pořadím a
+  skutečným řazením podle `bestRun`.
 - **Mock data**: `lib/leaderboard/mockLeaderboard.ts` — 10 pevných záznamů seřazených
-  sestupně podle `survivedNights`, exportovaná přes jedinou funkci
-  `getLeaderboardEntries(): Promise<GuardLeaderboardEntry[]>`. Návratový typ je záměrně
-  `Promise`, i když teď žádné I/O neprobíhá — až se nahradí skutečným fetch/DB dotazem,
-  volající strana (`await getLeaderboardEntries()` v `page.tsx`) se nemusí měnit vůbec,
-  jen implementace uvnitř týhle jedné funkce.
+  sestupně podle `bestRun`, exportovaná přes jedinou funkci
+  `getLeaderboardEntries(): Promise<GuardLeaderboardEntry[]>` (beze změny signatury).
+  Návratový typ je záměrně `Promise`, i když teď žádné I/O neprobíhá — až se nahradí
+  skutečným fetch/DB dotazem, volající strana (`await getLeaderboardEntries()` v
+  `page.tsx`) se nemusí měnit vůbec, jen implementace uvnitř týhle jedné funkce.
+- **Skloňování počtu nocí**: `formatNights(count)` (`lib/leaderboard/formatNights.ts`) —
+  čistá pomocná funkce pro české skloňování (1 noc, 2-4 noci, 0/5+ nocí), zvlášť od
+  `COPY.leaderboard` textů, protože jde o gramatickou logiku, ne o vyměnitelný text.
+  `currentRun === 0` se místo `formatNights(0)` zobrazí jako
+  `COPY.leaderboard.noActiveRunLabel` ("bez aktivní směny").
+- **Sloupce tabulky**: Pořadí, Hlídač, Rekord (`bestRun`), Aktuální směna (`currentRun`).
+  Pod podtitulem je krátké vysvětlení (`COPY.leaderboard.explanation`), co která hodnota
+  znamená.
 - **Stránka** (`app/leaderboard/page.tsx`) — Server Component (stejný vzor jako
   `app/about/page.tsx`/`app/terms/page.tsx`, žádné `"use client"`, žádný stav), stejné
   pozadí jako menu (`BACKGROUND_SCENES.menu`), širší panel (`max-w-2xl` místo `max-w-md`

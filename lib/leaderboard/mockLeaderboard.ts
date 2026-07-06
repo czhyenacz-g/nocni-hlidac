@@ -3,39 +3,19 @@ import { GuardLeaderboardEntry } from "./types";
 /**
  * Statická mock data pro první verzi /leaderboard — žádná DB, žádné API
  * volání zatím neexistuje (viz TECH_DESIGN.md "Žebříček hlídačů"). Seřazeno
- * sestupně podle `survivedNights`, stejně jak by to vracelo skutečné API.
+ * sestupně podle `bestRun`, stejně jak by to vracelo skutečné API.
  */
 const MOCK_LEADERBOARD: GuardLeaderboardEntry[] = [
-  { guardName: "czhyenacz", survivedNights: 52, endReason: "incident neuzavřen", recordedAt: "2026-06-30" },
-  { guardName: "Hlídač #13", survivedNights: 34, endReason: "blackout", recordedAt: "2026-05-18" },
-  { guardName: "Strážný Novák", survivedNights: 27, endReason: "otevřené dveře", recordedAt: "2026-04-02" },
-  {
-    guardName: "NočníPepa",
-    survivedNights: 21,
-    endReason: "poslední poloha: door_hallway",
-    recordedAt: "2026-06-11",
-  },
-  {
-    guardName: "Zaměstnanec 042",
-    survivedNights: 16,
-    endReason: "pozdní kontrola generátoru",
-    recordedAt: "2026-03-27",
-  },
-  { guardName: "Kandidát směny", survivedNights: 11, endReason: "výměna žárovky", recordedAt: "2026-06-25" },
-  { guardName: "Hlídač #07", survivedNights: 8, endReason: "otevřené dveře", recordedAt: "2026-02-14" },
-  { guardName: "Bezpečnostní technik B.", survivedNights: 5, endReason: "blackout", recordedAt: "2026-05-03" },
-  {
-    guardName: "Vrátný Dvořák",
-    survivedNights: 3,
-    endReason: "poslední poloha: door_hallway",
-    recordedAt: "2026-01-09",
-  },
-  {
-    guardName: "Nový zaměstnanec (zkušební doba)",
-    survivedNights: 1,
-    endReason: "incident neuzavřen",
-    recordedAt: "2026-06-02",
-  },
+  { guardName: "czhyenacz", bestRun: 9, currentRun: 6 },
+  { guardName: "Hlídač #13", bestRun: 7, currentRun: 0 },
+  { guardName: "Strážný Novák", bestRun: 5, currentRun: 2 },
+  { guardName: "NočníPepa", bestRun: 4, currentRun: 4 },
+  { guardName: "Zaměstnanec 042", bestRun: 3, currentRun: 0 },
+  { guardName: "Kandidát směny", bestRun: 2, currentRun: 2 },
+  { guardName: "Hlídač #07", bestRun: 2, currentRun: 0 },
+  { guardName: "Bezpečnostní technik B.", bestRun: 1, currentRun: 1 },
+  { guardName: "Vrátný Dvořák", bestRun: 1, currentRun: 0 },
+  { guardName: "Nový zaměstnanec (zkušební doba)", bestRun: 0, currentRun: 0 },
 ];
 
 /**
