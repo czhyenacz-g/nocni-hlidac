@@ -52,9 +52,9 @@ export const STRESS_DEV_HUD_ENABLED = true;
 
 // Playtest feedback: heartbeat byl pořád moc tichý i po +12dB boostu souborů
 // (viz assets/audio/README.md) — o 20 % hlasitěji, pak po dalším kole ještě o
-// 30 % navrch (1.2 -> 1.56) přes tenhle násobič na výsledné
-// computeHeartbeatVolumes (viz heartbeatStress.ts).
-export const HEARTBEAT_VOLUME_MULTIPLIER = 1.56;
+// 30 % navrch (1.2 -> 1.56), pak ještě o 15 % navrch (1.56 -> 1.794) přes
+// tenhle násobič na výsledné computeHeartbeatVolumes (viz heartbeatStress.ts).
+export const HEARTBEAT_VOLUME_MULTIPLIER = 1.794;
 
 // Ambient (ambience_loop) se má při vysokém stresu ztišit, ať heartbeat víc
 // vynikne — na maximu stresu klesne na tenhle podíl své základní hlasitosti
