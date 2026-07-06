@@ -10,8 +10,12 @@ interface DoorViewProps {
   doorClosed: boolean;
   /** viz GameState.doorDeathRevealUntilMs — krátce ukáže monstrum ve dveřích před smrtí. */
   isDoorDeathReveal: boolean;
-  /** Prasklá žárovka u dveří (viz game/core/roomBulbs.ts) — řídí, jestli se vůbec zobrazí ikonka výměny. */
+  /** Prasklá žárovka u dveří (viz game/core/roomBulbs.ts) — jen jemné grayscale navíc na ikonce, o viditelnosti/interaktivitě už nerozhoduje. */
   bulbBroken: boolean;
+  /** 0 (prasklá/vybitá) .. 1 (nová) — viz game/core/roomBulbs.ts#computeNearRoomBulbWearRatio. Řídí klidový jas ikonky mimo aktivní výměnu. */
+  bulbWearRatio: number;
+  /** viz gameReducer.ts#canReplaceBulb — jestli by teď držení ikonky vůbec něco spustilo (dveře otevřené, náhradní žárovka k dispozici, ...). */
+  canReplaceBulb: boolean;
   /** viz GameState.bulbReplacement — probíhající ruční výměna. */
   bulbReplacementActive: boolean;
   bulbReplacementProgressMs: number;
@@ -40,6 +44,8 @@ export default function DoorView({
   doorClosed,
   isDoorDeathReveal,
   bulbBroken,
+  bulbWearRatio,
+  canReplaceBulb,
   bulbReplacementActive,
   bulbReplacementProgressMs,
   bulbReplaceSuccessSeq,
@@ -52,31 +58,39 @@ export default function DoorView({
   // Stejné pořadí snímků jako dřív v GameScreen.tsx: 0 = otevřené, 1 = zavřené,
   // 2 = monstrum ve dveřích (jen během doorDeathReveal).
   const activeIndex = isDoorDeathReveal ? 2 : doorClosed ? 1 : 0;
-  // Ikonka výměny žárovky se ukáže jen s otevřenými dveřmi (jednodušší
-  // varianta než neaktivní ikonka při zavřených, viz GAME_DESIGN.md
-  // "Žárovky") — vlastní menší absolutní vrstva MIMO .door-hotspot
-  // (stranou, ne přes celý rám dveří), ať klik na ni nikdy nezavře/neotevře
-  // dveře. `stopPropagation` je navíc jistota — sourozenecké elementy spolu
-  // stejně nebublávají, ale žádné budoucí zanoření to nerozbije.
-  const showBulbReplacement = !doorClosed && bulbBroken;
+  // Ikonka výměny je v DoorView trvale vidět (na rozdíl od dřívějšího "jen
+  // po prasknutí") — jedinou výjimkou je krátký doorDeathReveal (monstrum ve
+  // dveřích těsně před smrtí), kde by ikonka jen rušila. Vlastní menší
+  // absolutní vrstva MIMO .door-hotspot (stranou, ne přes celý rám dveří), ať
+  // klik na ni nikdy nezavře/neotevře dveře. `stopPropagation` je navíc
+  // jistota — sourozenecké elementy spolu stejně nebublávají, ale žádné
+  // budoucí zanoření to nerozbije.
+  const showBulbReplacement = !isDoorDeathReveal;
   const bulbReplacementSeconds = (bulbReplacementProgressMs / 1000).toFixed(1);
   const bulbReplacementPercent = Math.min(100, (bulbReplacementProgressMs / BULB_REPLACE_DURATION_MS) * 100);
-  // Ikonka se rozsvěcí podle progressu ze GameState (ne lokální animace, viz
-  // computeBulbReplacementProgressRatio) — 0 = zhasnutá/tmavá, 1 = skoro plně
-  // rozsvícená. Mimo aktivní výměnu ratio == 0, ikonka zůstává tmavá.
-  const progressRatio = bulbReplacementActive ? computeBulbReplacementProgressRatio(bulbReplacementProgressMs) : 0;
+  // Mimo aktivní výměnu ukazuje ikonka opotřebení žárovky samotné
+  // (bulbWearRatio, viz computeNearRoomBulbWearRatio — 0 prasklá/vybitá, 1
+  // nová), během výměny se místo toho postupně rozsvěcí podle progresu ze
+  // GameState (computeBulbReplacementProgressRatio) — ne lokální animace.
+  const displayRatio = bulbReplacementActive
+    ? computeBulbReplacementProgressRatio(bulbReplacementProgressMs)
+    : bulbWearRatio;
   const bulbIconStyle = {
-    filter: `brightness(${0.35 + progressRatio * 1.2})`,
-    opacity: 0.55 + progressRatio * 0.45,
-    boxShadow: progressRatio > 0 ? `0 0 ${8 + progressRatio * 16}px rgba(251, 191, 36, ${0.3 + progressRatio * 0.5})` : undefined,
+    filter: `brightness(${0.35 + displayRatio * 1.2})${bulbBroken && !bulbReplacementActive ? " grayscale(0.6)" : ""}`,
+    opacity: 0.55 + displayRatio * 0.45,
+    boxShadow:
+      displayRatio > 0 ? `0 0 ${8 + displayRatio * 16}px rgba(251, 191, 36, ${0.3 + displayRatio * 0.5})` : undefined,
   };
 
   // Držení tlačítka řídí progres v reduceru (TICK + START/CANCEL_BULB_REPLACEMENT),
   // ne lokální React state — pointerUp/Leave/Cancel všechny mapují na stejné
   // zrušení, ať výměna nikdy neběží bez toho, aby hráč fyzicky držel tlačítko.
+  // `canReplaceBulb` je jen UX zkratka (žádný zbytečný dispatch, když by
+  // reducer beztak no-opoval) — autoritativní podmínka zůstává v reduceru.
   function handlePointerDown(event: PointerEvent<HTMLButtonElement>) {
     event.stopPropagation();
     event.preventDefault();
+    if (!canReplaceBulb) return;
     onStartBulbReplacement();
   }
 
@@ -120,7 +134,7 @@ export default function DoorView({
           >
             <button
               type="button"
-              className="tap-target flex items-center justify-center rounded-full border border-amber-400/70 bg-black/70 text-amber-300 touch-none select-none"
+              className={`tap-target flex items-center justify-center rounded-full border border-amber-400/70 bg-black/70 text-amber-300 touch-none select-none ${canReplaceBulb ? "" : "cursor-not-allowed"}`}
               style={{ width: "64px", height: "64px", ...bulbIconStyle }}
               onPointerDown={handlePointerDown}
               onPointerUp={handlePointerUp}

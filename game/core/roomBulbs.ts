@@ -64,6 +64,20 @@ export function isNearRoomLightActive(state: GameState): boolean {
   return state.lightOn && !bulb.broken && bulb.remainingMs > 0;
 }
 
+/**
+ * Kolik životnosti žárovce `nearRoom` zbývá jako podíl 0..1 — 0 = prasklá
+ * (nebo technicky nulová maxMs), 1 = plná/nová. Čistě odvozená hodnota, žádný
+ * vlastní stav — DoorView.tsx z ní počítá trvale viditelnou ikonku (jasná ->
+ * skoro nová, tmavá/šedá -> skoro prázdná/prasklá), viz GAME_DESIGN.md
+ * "Žárovky". Nepočítá se, jestli reálně svítí (na rozdíl od
+ * isNearRoomLightActive) — jen fyzický stav žárovky samotné.
+ */
+export function computeNearRoomBulbWearRatio(state: GameState): number {
+  const bulb = state.roomBulbs.nearRoom;
+  if (bulb.broken || bulb.maxMs <= 0) return 0;
+  return Math.min(1, Math.max(0, bulb.remainingMs / bulb.maxMs));
+}
+
 export interface DailyBulbServiceResult {
   roomBulbs: RoomBulbsState;
   bulbsRemaining: number;

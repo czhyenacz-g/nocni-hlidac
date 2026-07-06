@@ -281,6 +281,22 @@ function updateBulbReplacement(state: GameState, deltaMs: number): BulbReplaceme
 const INACTIVE_BULB_REPLACEMENT: GameState["bulbReplacement"] = { active: false, startedAtMs: null, progressMs: 0 };
 
 /**
+ * Jestli hráč MŮŽE teď spustit ruční výměnu žárovky u dveří — sdílená podmínka
+ * mezi `START_BULB_REPLACEMENT` (reducer) a UI (`DoorView.tsx` přes
+ * `app/play/page.tsx`/`GameScreen.tsx`), ať se stejná pravidla nerozjedou na
+ * dvou místech zvlášť. Záměrně BEZE ZMÍNKY `roomBulbs.nearRoom.broken` —
+ * výměna je "zásobníková" (jako výměna nábojů), jde vyměnit žárovku kdykoliv,
+ * i skoro novou, ne jen po prasknutí (viz GAME_DESIGN.md "Žárovky").
+ */
+export function canReplaceBulb(state: GameState): boolean {
+  if (!state.isRunning || state.gameStatus === "blackout" || state.doorDeathRevealUntilMs !== null) return false;
+  if (state.playerView !== "door" || state.doorClosed) return false;
+  if (state.bulbReplacement.active) return false;
+  if (state.bulbsRemaining <= 0) return false;
+  return true;
+}
+
+/**
  * Reducer je čistá funkce (state, action) -> state; herní pravidla dané směny
  * přijímá jako parametr. Obtížnost je zatím jen interní (žádné UI/query
  * parametr, viz game/difficulty/difficultyConfig.ts) — herní logika níže nikdy
@@ -318,14 +334,10 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
 
       case "START_BULB_REPLACEMENT": {
         // Riskantní ruční akce — jde jen z DoorView, jen s otevřenými dveřmi,
-        // jen na skutečně prasklou žárovku, a jen jednou (žádná paralelní
-        // druhá výměna). Nesplněná podmínka = tichý no-op, ne chyba.
-        if (!state.isRunning || state.gameStatus === "blackout" || state.doorDeathRevealUntilMs !== null)
-          return state;
-        if (state.playerView !== "door" || state.doorClosed) return state;
-        if (!state.roomBulbs.nearRoom.broken) return state;
-        if (state.bulbReplacement.active) return state;
-        if (state.bulbsRemaining <= 0) return state;
+        // "zásobníková" výměna (kdykoliv, ne jen po prasknutí, viz
+        // canReplaceBulb výše), a jen jednou (žádná paralelní druhá výměna).
+        // Nesplněná podmínka = tichý no-op, ne chyba.
+        if (!canReplaceBulb(state)) return state;
 
         return {
           ...state,

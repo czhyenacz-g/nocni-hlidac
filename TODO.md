@@ -323,6 +323,15 @@
       timeout, `BULB_REPLACE_SUCCESS_MESSAGE_MS = 1800`) na chvíli zobrazí "Žárovka
       vyměněna." (`content/copy.ts`, `bulbReplaceSuccessLabel`) jako `pointer-events-none`
       hlášku mimo door hotspot. Testy rozšířené v `bulbReplacement.test.ts`.
+- [x] Žárovky krok 6 — preventivní výměna kdykoliv, ne jen po prasknutí (`gameReducer.ts`
+      `canReplaceBulb`, nová sdílená podmínka bez `roomBulbs.nearRoom.broken` guardy —
+      "zásobníková" mechanika, stará žárovka se vždy zahodí, žádná zbývající životnost se
+      nešetří). Ikonka v `DoorView.tsx` je teď trvale viditelná (mizí jen během
+      `doorDeathReveal`) a mimo aktivní výměnu ukazuje opotřebení přes novou
+      `computeNearRoomBulbWearRatio` (`game/core/roomBulbs.ts`, 0 prasklá/vybitá .. 1 nová).
+      Text zůstává jednotný "Vyměnit žárovku" bez ohledu na stav. Testy rozšířené v
+      `bulbReplacement.test.ts` (start na neprasklé žárovce při vysoké i nízké životnosti,
+      completion vždy resetuje na `maxMs`).
 - [x] Reálné audio doplněno: `monster_retreat_roar.mp3`, `bulb_break.mp3`, `blackout_howl.mp3`
       (uživatelem dodané soubory, zesílené/zkonvertované) nahradily syntetizované fallbacky.
       Poslední fáze blackoutu (dřív `blackout_door_hit`) teď místo nového zvuku jen plynule

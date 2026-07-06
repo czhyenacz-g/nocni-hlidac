@@ -1148,6 +1148,48 @@ dokončení (ne start, cancel, ani smrt).
 Testy: rozšířené `game/core/bulbReplacement.test.ts` — `bulbReplaceSuccessSeq` se zvýší jen
 při dokončení, ne při startu/progress/cancelu/smrti.
 
+## Žárovky — krok 6: preventivní výměna kdykoliv ("zásobníková" mechanika)
+
+Kroky 1–5 dovolily vyměnit žárovku jen PO prasknutí. Krok 6 tenhle práh ruší úplně — výměna
+je teď jako výměna zásobníku: jde vyměnit i skoro novou žárovku, stará se vždy zahodí, žádná
+zbývající životnost se nešetří ani nevrací.
+
+- **`canReplaceBulb(state)`** — nová exportovaná čistá funkce v `gameReducer.ts`, sdílená
+  podmínka mezi `START_BULB_REPLACEMENT` (case teď jen `if (!canReplaceBulb(state)) return
+  state;`) a UI (`GameScreen.tsx` ji volá přímo a posílá jako `canReplaceBulb` prop do
+  `DoorView.tsx`). Oproti dřívějším guardám **záměrně chybí** `roomBulbs.nearRoom.broken` —
+  to je jediná změna oproti předchozí podmínce (`isRunning`/`!blackout`/`!doorDeathReveal`,
+  `playerView === "door"`, `!doorClosed`, `!bulbReplacement.active`, `bulbsRemaining > 0`
+  zůstávají beze změny).
+- **Trvale viditelná ikonka** — `DoorView.tsx`: `showBulbReplacement` už nezávisí na
+  `bulbBroken` ani `doorClosed`, jen na `!isDoorDeathReveal` (ikonka zmizí jen na tu krátkou
+  chvíli, kdy scéna ukazuje monstrum ve dveřích těsně před smrtí — jinak vždy vidět, i se
+  zavřenými dveřmi nebo s žárovkou na 100 % života).
+- **Vizuální opotřebení** — nová čistá `computeNearRoomBulbWearRatio(state)`
+  (`game/core/roomBulbs.ts`) vrací 0 (prasklá/nulová `maxMs`) až 1 (plná/nová) z
+  `remainingMs / maxMs`. `DoorView.tsx` mimo aktivní výměnu použije tenhle poměr jako
+  `displayRatio` pro stejný brightness/opacity/glow výpočet, který dřív řídil jen
+  `progressRatio` během výměny — nová žárovka svítí jasně, vybitá je tmavá, prasklá má navíc
+  jemný `grayscale(0.6)` filtr navrch (drobné odlišení od "jen skoro prázdné"). Během aktivní
+  výměny se `displayRatio` přepne zpátky na `computeBulbReplacementProgressRatio` (beze
+  změny chování z kroku 4) — ikonka se tedy vždycky rozsvěcí od tmava, bez ohledu na to, jak
+  moc byla stará žárovka opotřebená.
+- **Stará žárovka se vždy zahodí** — beze změny oproti kroku 4: completion větev
+  `updateBulbReplacement` vždy nastaví `remainingMs: maxMs, broken: false` bez ohledu na
+  vstupní `remainingMs` (i 90 % života se přepíše na 100 %, ne "zůstane 90 % + zbytek").
+  Žádná logika nikde nesčítá/průměruje starou a novou životnost.
+- **Spotřeba náhradní žárovky až po dokončení** — beze změny mechanismu z kroku 4 (optional
+  `bulbsRemaining` pole na `BulbReplacementTickResult`, přítomné jen v completion větvi) —
+  jen teď platí i pro neprasklé žárovky, protože `START_BULB_REPLACEMENT` už na `broken`
+  nekouká.
+- **Text** zůstává jednotný `COPY.game.bulbReplaceLabel` ("Vyměnit žárovku") bez ohledu na
+  stav žárovky — žádný rozdíl mezi "oprava" a "preventivní výměna" v UI textu (na výslovné
+  přání, ať hráč nemusí rozlišovat dva různé flow).
+
+Testy: rozšířené `game/core/bulbReplacement.test.ts` — start funguje na prasklé i neprasklé
+žárovce (90 % i nízká životnost), completion vždy resetuje `remainingMs` na `maxMs` bez
+ohledu na vstupní hodnotu.
+
 ## Jak přidat další směnu později
 
 1. Vytvoř `game/nights/night02.ts` s vlastní `NightDefinition` (může mít jiné kamery,

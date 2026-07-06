@@ -17,14 +17,32 @@ function stateAtDoorWithBrokenBulb(overrides: Partial<GameState> = {}): GameStat
 }
 
 describe("START_BULB_REPLACEMENT", () => {
-  it("cannot start when the bulb is not broken", () => {
+  it("starts on a broken bulb, as before", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = stateAtDoorWithBrokenBulb();
+
+    const result = reducer(state, { type: "START_BULB_REPLACEMENT" });
+    expect(result.bulbReplacement.active).toBe(true);
+  });
+
+  it("starts on a non-broken bulb at high remaining life (90%)", () => {
     const reducer = createGameReducer(NIGHT_01);
     const state = stateAtDoorWithBrokenBulb({
-      roomBulbs: { nearRoom: { remainingMs: 5000, maxMs: 30_000, broken: false } },
+      roomBulbs: { nearRoom: { remainingMs: 27_000, maxMs: 30_000, broken: false } },
     });
 
     const result = reducer(state, { type: "START_BULB_REPLACEMENT" });
-    expect(result.bulbReplacement.active).toBe(false);
+    expect(result.bulbReplacement.active).toBe(true);
+  });
+
+  it("starts on a non-broken bulb at low remaining life", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = stateAtDoorWithBrokenBulb({
+      roomBulbs: { nearRoom: { remainingMs: 500, maxMs: 30_000, broken: false } },
+    });
+
+    const result = reducer(state, { type: "START_BULB_REPLACEMENT" });
+    expect(result.bulbReplacement.active).toBe(true);
   });
 
   it("cannot start when the door is closed", () => {
@@ -50,6 +68,18 @@ describe("START_BULB_REPLACEMENT", () => {
     const result = reducer(state, { type: "START_BULB_REPLACEMENT" });
     expect(result.bulbReplacement.active).toBe(true);
     expect(result.bulbReplacement.progressMs).toBe(0);
+  });
+
+  it("discards the old (still fairly fresh) bulb on completion — remainingMs resets to maxMs, not just to its old value", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = stateAtDoorWithBrokenBulb({
+      roomBulbs: { nearRoom: { remainingMs: 27_000, maxMs: 30_000, broken: false } },
+      bulbReplacement: { active: true, startedAtMs: 0, progressMs: BULB_REPLACE_DURATION_MS - 1000 },
+    });
+
+    const result = reducer(state, { type: "TICK", deltaMs: 1000 });
+    expect(result.roomBulbs.nearRoom.remainingMs).toBe(30_000);
+    expect(result.roomBulbs.nearRoom.broken).toBe(false);
   });
 
   it("does not start a second parallel replacement while one is already active", () => {

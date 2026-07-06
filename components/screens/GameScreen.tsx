@@ -2,6 +2,8 @@ import { CameraId, GameState, NightDefinition } from "@/game/core/types";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 import { STRESS_DEV_HUD_ENABLED } from "@/game/balancing/constants";
 import { COPY } from "@/content/copy";
+import { computeNearRoomBulbWearRatio } from "@/game/core/roomBulbs";
+import { canReplaceBulb } from "@/game/core/gameReducer";
 import SceneBackground from "@/components/SceneBackground";
 import DeskView from "../game/DeskView";
 import DoorView from "../game/DoorView";
@@ -129,6 +131,8 @@ export default function GameScreen({
                 doorClosed={state.doorClosed}
                 isDoorDeathReveal={state.doorDeathRevealUntilMs !== null}
                 bulbBroken={state.roomBulbs.nearRoom.broken}
+                bulbWearRatio={computeNearRoomBulbWearRatio(state)}
+                canReplaceBulb={canReplaceBulb(state)}
                 bulbReplacementActive={state.bulbReplacement.active}
                 bulbReplacementProgressMs={state.bulbReplacement.progressMs}
                 bulbReplaceSuccessSeq={state.bulbReplaceSuccessSeq}
