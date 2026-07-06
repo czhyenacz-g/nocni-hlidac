@@ -6,7 +6,7 @@ export const COPY = {
     intro: "Sedíš v malé místnosti. Kamery šumí. Dveře nevydrží věčně. Přežij do rána.",
     startButton: "Nastoupit na směnu",
     termsLinkLabel: "Podmínky noční služby",
-    authorEmail: "hynek@darbujan.cz",
+    authorEmail: "hynek@darbujan.com",
   },
   // Nenápadný login box v hlavním menu (viz components/auth/AuthStatus.tsx,
   // lib/auth/session.ts) — základ identity hráče pro budoucí žebříček, hra
