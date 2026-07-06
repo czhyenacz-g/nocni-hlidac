@@ -1569,3 +1569,51 @@ kontrola cache hlaviček produkční stránky) ukázal:
   (žádný `console.error` na ne-2xx odpověď ani na network/timeout chybu) — do Vercel logu by
   se selhání upsertu vůbec nedostalo. Přidán `console.error` s cestou a
   statusem/chybou (nikdy hlavičky/token), ať jde budoucí podobné selhání dohledat.
+
+## Self-healing upsert — `ensureHubPlayer` (oprava "starou session hráč nikdy nevznikne")
+
+Krok výše diagnostikoval příčinu ("re-login nutný"), ale spoléhat na to, že si to hráč sám
+neuvědomí a nikdy se znovu nepřihlásí, je špatné UX i špatná spolehlivost. Tenhle krok dělá
+zápis hráče robustní: **platná Discord session sama o sobě stačí** k tomu, aby hráč vznikl v
+DB, ne jen samotný OAuth callback.
+
+- **`lib/leaderboard/ensureHubPlayer.ts`** — nový `ensureHubPlayer(player: DiscordPlayer,
+  context: string): Promise<void>`. Zabalí `upsertHubPlayer` (viz níže) do vlastního
+  try/catch (defense-in-depth — `upsertHubPlayer`/`hubPost` samy o sobě už nikdy nevyhodí,
+  ale tohle je poslední pojistka), na neúspěch (upsert vrátil `false`, nebo nastala
+  neočekávaná chyba) zaloguje `console.warn`/`console.error` s `context` (odkud se volalo)
+  a `discordUserId` (veřejné Discord ID, ne token — bezpečné logovat). Nikdy nevyhazuje,
+  nikdy neposílá token do klienta.
+- **`upsertHubPlayer`** (`lib/leaderboard/remotePlayer.ts`) teď vrací `Promise<boolean>`
+  (dřív `Promise<void>`) — `true`, jen když `hubPost` skutečně dostal úspěšnou odpověď, ať
+  `ensureHubPlayer` může rozlišit úspěch od tichého selhání.
+- **Volá se na třech místech**, ne jen v OAuth callbacku:
+  1. `app/api/auth/callback/route.ts` — beze změny místa volání, jen přejmenováno na
+     `ensureHubPlayer(player, "auth/callback")` (stejné logování jako zbytek).
+  2. `app/api/auth/me/route.ts` — **nové**: kdykoliv `getSession()` vrátí platného hráče,
+     než se odpoví klientovi. Protože `AuthStatus.tsx` volá `/api/auth/me` při každém
+     mountu hlavního menu, tohle je vlastně hlavní "samoopravný" mechanismus — i STARÁ
+     session (vytvořená před tím, než callback vůbec začal volat VPS) se tímhle při
+     příštím zobrazení menu sama založí v DB.
+  3. `lib/leaderboard/guardRunRequestHandlers.ts` — **nové**: `handleSurviveNightRequest`/
+     `handleDeathRequest` teď volají `ensureHubPlayer(session, "survive-night"|"death")`
+     TĚSNĚ PŘED samotným `recordSurvivedNight`/`recordDeath` voláním. I kdyby se hráč nikdy
+     nezobrazil v menu (`/api/auth/me` se nezavolalo), první survive-night/death ho stejně
+     založí — `ensureHubPlayer` je idempotentní upsert, ne drahá kontrola existence, takže
+     se dá volat před KAŽDÝM požadavkem bez obav z duplicit nebo přepsání `bestRun`/
+     `currentRun`.
+- **Response shape** (`GuardRunResponse` v `guardRunRequestHandlers.ts`), přesně podle
+  zadání — čitelné i při ručním curl testu:
+  - 401 nepřihlášený: `{ ok: false, error: "not_authenticated" }`
+  - 202 API nedostupné/nenakonfigurované: `{ ok: false, stored: false }`
+  - 200 úspěch: `{ ok: true, stored: true, player: GuardRunState }`
+- **Logy** (nikdy token/Authorization/cookie, jen `discordUserId` — veřejné Discord ID):
+  `console.warn` když survive-night/death přijde bez session; `console.warn`/`console.error`
+  z `ensureHubPlayer` na neúspěšný upsert; `console.warn` z `guardRunRequestHandlers.ts`,
+  když `recordSurvivedNight`/`recordDeath` vrátí `null` (API nedostupné i PO úspěšném
+  ensure, nebo pořád nenakonfigurované).
+
+Testy: `lib/leaderboard/ensureHubPlayer.test.ts` (nikdy nevyhodí, loguje jen na neúspěch,
+nikdy neloguje token), rozšířené `guardRunRequestHandlers.test.ts` (nové response shape,
+ensure se volá před survive-night/death — ověřeno přes fetch spy na obě cesty, bezpečné
+chování i když samotný ensure selže).

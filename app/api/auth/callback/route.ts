@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { encodeSession, OAUTH_STATE_COOKIE_NAME, SESSION_COOKIE_NAME, SESSION_MAX_AGE } from "@/lib/auth/session";
 import { DiscordPlayer } from "@/lib/auth/types";
-import { upsertHubPlayer } from "@/lib/leaderboard/remotePlayer";
+import { ensureHubPlayer } from "@/lib/leaderboard/ensureHubPlayer";
 
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID ?? "";
 const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET ?? "";
@@ -82,10 +82,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   // bestRun/currentRun na nulu — to je pravidlo VPS strany, viz
   // TECH_DESIGN.md "VPS API specifikace"). AWAITOVANÉ (ne "fire and forget")
   // — na serverless platformě by nedokončený promise mohl být zabitý hned po
-  // odeslání response; hubPost (lib/hubClient.ts) má vlastní 3s timeout a
+  // odeslání response; ensureHubPlayer (lib/leaderboard/ensureHubPlayer.ts)
   // nikdy nevyhodí, takže tohle jen krátce zpozdí redirect, nikdy ho nerozbije.
   // Stejný princip jako osmaliga.cz "Přihlášení pokračuje i bez úspěšného upsert".
-  await upsertHubPlayer(player);
+  // Sdílené s /api/auth/me a survive-night/death (viz TECH_DESIGN.md
+  // "Diagnostika: přihlášený hráč chybí na /leaderboard") — tohle NENÍ
+  // jediné místo, kde se upsert spouští, jen to nejrannější.
+  await ensureHubPlayer(player, "auth/callback");
 
   const token = encodeSession(player);
   if (!token) {

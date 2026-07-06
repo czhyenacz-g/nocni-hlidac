@@ -1,10 +1,11 @@
 import { DiscordPlayer } from "../auth/types";
+import { ensureHubPlayer } from "./ensureHubPlayer";
 import { recordDeath, recordSurvivedNight } from "./remotePlayer";
 import { GuardRunState } from "./types";
 
 export interface GuardRunResponse {
   status: number;
-  body: { ok: true; state: GuardRunState } | { ok: false } | { error: string };
+  body: { ok: true; stored: true; player: GuardRunState } | { ok: false; stored: false } | { ok: false; error: string };
 }
 
 /**
@@ -16,19 +17,45 @@ export interface GuardRunResponse {
  * Anonymní (nepřihlášený) požadavek nikdy nevolá VPS API — `discordUserId`
  * smí pocházet jen ze server-side session, nikdy z těla requestu (viz
  * app/api/player/*.ts route handlery, které sem session posílají).
+ *
+ * `ensureHubPlayer` běží PŘED samotným survive-night/death voláním — řeší
+ * starou session z doby před VPS wiringem, kdy hráč nikdy nebyl založen (viz
+ * TECH_DESIGN.md "Diagnostika: přihlášený hráč chybí na /leaderboard").
+ * Volá se pokaždé, ne jen když by hráč chyběl — je to idempotentní upsert,
+ * ne drahá kontrola existence.
  */
 export async function handleSurviveNightRequest(session: DiscordPlayer | null): Promise<GuardRunResponse> {
-  if (!session) return { status: 401, body: { error: "Not authenticated" } };
+  if (!session) {
+    console.warn("[guardRunRequestHandlers] survive-night called without a valid session");
+    return { status: 401, body: { ok: false, error: "not_authenticated" } };
+  }
+
+  await ensureHubPlayer(session, "survive-night");
 
   const state = await recordSurvivedNight(session.discordUserId);
-  if (!state) return { status: 202, body: { ok: false } };
-  return { status: 200, body: { ok: true, state } };
+  if (!state) {
+    console.warn(
+      `[guardRunRequestHandlers] survive-night: hub returned no state (not configured or still failing after ensure), discordUserId: ${session.discordUserId}`,
+    );
+    return { status: 202, body: { ok: false, stored: false } };
+  }
+  return { status: 200, body: { ok: true, stored: true, player: state } };
 }
 
 export async function handleDeathRequest(session: DiscordPlayer | null): Promise<GuardRunResponse> {
-  if (!session) return { status: 401, body: { error: "Not authenticated" } };
+  if (!session) {
+    console.warn("[guardRunRequestHandlers] death called without a valid session");
+    return { status: 401, body: { ok: false, error: "not_authenticated" } };
+  }
+
+  await ensureHubPlayer(session, "death");
 
   const state = await recordDeath(session.discordUserId);
-  if (!state) return { status: 202, body: { ok: false } };
-  return { status: 200, body: { ok: true, state } };
+  if (!state) {
+    console.warn(
+      `[guardRunRequestHandlers] death: hub returned no state (not configured or still failing after ensure), discordUserId: ${session.discordUserId}`,
+    );
+    return { status: 202, body: { ok: false, stored: false } };
+  }
+  return { status: 200, body: { ok: true, stored: true, player: state } };
 }

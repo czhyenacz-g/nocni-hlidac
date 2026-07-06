@@ -4,11 +4,13 @@ import { GuardRunState } from "./types";
 
 /**
  * POST /nocni-hlidac/player/upsert (viz TECH_DESIGN.md "VPS API specifikace")
- * — voláno best-effort po Discord loginu (app/api/auth/callback/route.ts).
- * Nikdy nesmí rozbít přihlášení, proto nevrací nic zajímavé, jen se pokusí.
+ * — nikdy nevyhazuje, jen se pokusí (hubPost už sám o sobě nikdy neodmítne).
+ * Vrací, jestli se to skutečně povedlo — volající (viz ensureHubPlayer.ts)
+ * podle toho rozhodne, jestli zalogovat neúspěch.
  */
-export async function upsertHubPlayer(player: DiscordPlayer): Promise<void> {
-  await hubPost<unknown>("/nocni-hlidac/player/upsert", player);
+export async function upsertHubPlayer(player: DiscordPlayer): Promise<boolean> {
+  const result = await hubPost<unknown>("/nocni-hlidac/player/upsert", player);
+  return result !== null;
 }
 
 /**
