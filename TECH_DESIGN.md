@@ -1306,3 +1306,151 @@ login" výše, "Další kroky po MVP" v TODO.md).
   "Nastoupit na směnu" zůstává jediné výrazné tlačítko beze změny.
 - Texty v `COPY.leaderboard` (`content/copy.ts`), ne natvrdo v komponentě — stejná konvence
   jako zbytek projektu.
+
+## VPS API specifikace — online bestRun/currentRun (adaptováno z osmaliga.cz)
+
+**Princip** (stejný jako osmaliga.cz → project-hub-api): Vercel appka NEMÁ přímé DB
+připojení. Volá soukromé VPS API (mimo tento repozitář), to teprve mluví s DB. Žádný
+`DATABASE_URL` ve Vercelu.
+
+### Co bylo zjištěno v osmaliga.cz
+
+- Žádný sdílený API klient — každý call site duplikuje vlastní `fetch` s
+  `x-project-hub-key`/`X-Project-Hub-Key` hlavičkou (nekonzistentní casing, ale HTTP
+  hlavičky nejsou case-sensitive). Pro nocni-hlidac je to zbytečná duplikace na jen pár
+  endpointů — místo toho jeden sdílený `lib/hubClient.ts`.
+  - `app/api/auth/callback/route.ts`: `POST /api/osma-liga/users/discord-upsert` po
+    úspěšném Discord loginu — **plně non-blocking**, selhání se tiše ignoruje ("Přihlášení
+    pokračuje i bez úspěšného upsert"). Tenhle vzor je převzatý 1:1.
+  - Ostatní volání (kluby, zápasy, online hry) jsou specifické pro Osmou ligu a
+  **NEBYLA kopírována** — jen obecný princip komunikace.
+- Na straně `project-hub-api` (Fastify): `apiKeyAuth` preHandler (constant-time porovnání
+  klíče), zod validace requestu, `sendError(reply, status, message)` → vždy `{ error:
+  string }` na chybu, čistý objekt/pole na úspěch. Prisma `upsert` pro "založ nebo
+  aktualizuj" operace, žádná repository/DAO vrstva navíc.
+- **Žádný rate limiting, žádný request timeout, žádný retry nikde** — vlastní vylepšení pro
+  nocni-hlidac: `lib/hubClient.ts` přidává `AbortSignal.timeout(3000)`, ať zavěšené VPS API
+  nezavěsí i Next.js request.
+- Env vzor (`src/config.ts` v project-hub-api): `requireEnv()` helper, co při chybějící
+  proměnné rovnou při startu shodí VPS appku (na Vercel straně to nejde stejně — chybějící
+  config tam musí být tichý no-op, ne pád, viz "Chování bez configu" níže).
+
+### Env proměnné v nocni-hlidac
+
+- `NOCNI_HLIDAC_API_URL` — base URL VPS API (zvoleno místo obecnějšího
+  `PROJECT_HUB_API_URL` z osmaliga.cz, protože jde o samostatnou instanci/appku, ne
+  nutně sdílený "hub" mezi víc projekty).
+- `NOCNI_HLIDAC_API_TOKEN` — posílá se jako `Authorization: Bearer <token>` (standardní
+  bearer schéma místo osmaliga.cz vlastní `x-project-hub-key` hlavičky — funkčně
+  ekvivalentní, jen konvenčnější).
+
+### Server-side API klient — `lib/hubClient.ts`
+
+Jediné místo, které zná `NOCNI_HLIDAC_API_URL`/`NOCNI_HLIDAC_API_TOKEN`. `isHubConfigured()`
++ `hubGet<T>(path)`/`hubPost<T>(path, body)` — `null` na cokoliv, co se pokazí (chybějící
+config, network chyba, timeout 3s, ne-2xx, chybný JSON), nikdy nevyhodí výjimku. Env
+proměnné se čtou při KAŽDÉM volání (ne jednou při načtení modulu), ať jde config
+testovat (`vi.stubEnv`) a ať se nikde nezacachuje "chybí" hodnota. Server-only modul —
+import jen z Route Handlers a `lib/leaderboard/*`, token se nikdy neposílá do klienta.
+
+### Navržená specifikace VPS endpointů
+
+Implementace samotné VPS appky NENÍ součástí tohoto repozitáře — tohle je přesná
+specifikace, kterou musí VPS strana splnit.
+
+**`GET /nocni-hlidac/leaderboard`** — Authorization: Bearer token. Vrátí pole
+`GuardLeaderboardEntry[]` (`guardName`, `bestRun`, `currentRun`), seřazené `bestRun` desc,
+remízy `currentRun` desc, limit 10 (nocni-hlidac to navíc přeřadí/ořízne defenzivně, viz
+`sortLeaderboardEntries.ts` — nespoléhá se naslepo na VPS řazení).
+
+**`POST /nocni-hlidac/player/upsert`** — body `{ discordUserId, username, displayName?,
+avatarUrl? }`. Pokud hráč neexistuje, založí ho s `bestRun: 0, currentRun: 0`. Pokud
+existuje, aktualizuje jen jméno/avatar/`lastLoginAt` — **nikdy nepřepíše
+bestRun/currentRun**. Voláno po Discord loginu (`app/api/auth/callback/route.ts`),
+awaitované (ne fire-and-forget — na serverless platformě by nedokončený promise mohl být
+zabitý hned po odeslání response), ale selhání nesmí zablokovat/rozbít přihlášení.
+
+**`POST /nocni-hlidac/player/survive-night`** — body `{ discordUserId }`. VPS strana najde
+hráče podle `discordUserId` (to smí posílat JEN nocni-hlidac server-side kód po ověření
+session, nikdy klient) a provede `currentRun += 1; bestRun = max(bestRun, currentRun)`.
+Vrátí aktuální `GuardRunState` (`{ bestRun, currentRun }`). Referenční implementace týhle
+přesné logiky (pro VPS stranu, testovaná, ale v nocni-hlidac se nevykonává) je
+`lib/leaderboard/guardRunTransitions.ts#applySurviveNight`.
+
+**`POST /nocni-hlidac/player/death`** — body `{ discordUserId }`. `currentRun = 0` (bestRun
+beze změny). Vrátí aktuální `GuardRunState`. Referenční logika:
+`guardRunTransitions.ts#applyDeath`. Death reason se zatím NEPOSÍLÁ (další krok).
+
+Všechny tři POST endpointy vyžadují stejnou `Authorization: Bearer` autorizaci jako GET.
+
+### Next.js API routes (proxy/adapter mezi hrou a VPS API)
+
+- **`GET /api/leaderboard`** (`app/api/leaderboard/route.ts`) — zavolá
+  `getLeaderboardEntries()` (viz níže), vrátí `GuardLeaderboardEntry[]` jako JSON. Zatím ho
+  nikdo nevolá (`/leaderboard` stránka volá `getLeaderboardEntries()` přímo, bez HTTP
+  zajížďky) — připraveno pro budoucí klientské dotazování.
+- **`POST /api/player/survive-night`** a **`POST /api/player/death`**
+  (`app/api/player/{survive-night,death}/route.ts`) — načtou `getSession()`, deleguj na
+  testovatelnou `handleSurviveNightRequest`/`handleDeathRequest`
+  (`lib/leaderboard/guardRunRequestHandlers.ts`, session jako parametr, ne interní
+  `getSession()` volání — jde otestovat bez cookies/request mockingu). Bez session → 401.
+  Se session, ale VPS API nedostupné/nenakonfigurované → 202 `{ ok: false }`. Úspěch → 200
+  `{ ok: true, state }`.
+
+### Napojení `/leaderboard` na budoucí API
+
+`lib/leaderboard/getLeaderboardEntries.ts` — jediné volané místo
+(`app/leaderboard/page.tsx`, `app/api/leaderboard/route.ts`), signatura beze změny
+(`Promise<GuardLeaderboardEntry[]>`). Zkusí `fetchRemoteLeaderboard()`
+(`lib/leaderboard/remoteLeaderboard.ts`, `hubGet`), a když vrátí `null` (nekonfigurováno
+nebo selhalo), spadne na `getMockLeaderboardEntries()` (přejmenováno z původního
+`getLeaderboardEntries`, aby název odpovídal tomu, čím skutečně je). Výsledek se vždy
+proežene `sortLeaderboardEntries()` (bestRun desc, currentRun desc, limit 10) bez ohledu
+na zdroj.
+
+### Napojení hry — kde se volá survive-night/death
+
+`app/play/page.tsx`, stejný `useEffect` s `prevScreenRef` diffingem, který už dřív
+zvyšoval `deathCount`/`survivedNights` (firuje přesně jednou za skutečný přechod
+obrazovky, ne při každém rerenderu ani opakovaně):
+- přechod na `screen === "win"` (přežitá směna) → `fetch("/api/player/survive-night", {
+  method: "POST" }).catch(() => {})`.
+- přechod na `screen === "death"` → `fetch("/api/player/death", { method: "POST"
+  }).catch(() => {})`.
+
+Obě volání jsou best-effort fire-and-forget z klienta — žádné `discordUserId` se
+neposílá (server si ho vezme ze session), 401/202/network chyba se v `.catch()` tiše
+zahodí, hra pokračuje beze změny. Žádné volání při běžném tiku (jen na přechod
+obrazovky), takže se nezapisuje "každou sekundu".
+
+### Nepřihlášený hráč
+
+`getSession()` vrátí `null` → route handler vrátí 401 dřív, než by se `discordUserId`
+vůbec dostal k `hubPost` volání (viz `handleSurviveNightRequest`/`handleDeathRequest`,
+otestováno). Klient na 401 nijak nereaguje (`.catch()` na fire-and-forget fetch).
+
+### Chybějící/selhávající VPS API
+
+Zvoleno přesně podle preferované varianty ze zadání:
+- `GET /api/leaderboard` (i přímé volání `getLeaderboardEntries()`) → tichý fallback na
+  mock data.
+- `POST /api/player/{survive-night,death}` → **202 `{ ok: false }`** (ne 503) při
+  nenakonfigurovaném/nedostupném VPS API — 202 "Accepted" věrně popisuje, co se stalo
+  (požadavek přijat, ale nezapsán), klient stejně vždy jen `.catch()`-ne/ignoruje response.
+
+### Bezpečnost
+
+- Token (`NOCNI_HLIDAC_API_TOKEN`) žije jen v `lib/hubClient.ts`, čte se ze server-side
+  `process.env`, nikdy se neposílá do klienta (žádný `NEXT_PUBLIC_` prefix).
+  `app/play/page.tsx` volá jen vlastní `/api/player/*` routes, ne VPS API přímo.
+- Discord identita pro zápis (`discordUserId`) pochází VÝHRADNĚ ze server-side
+  `getSession()` — route handler ho čte z podepsané cookie, klient ho nikdy neposílá v
+  těle requestu (anonymní hráč nemá čím zapsat, viz test "anonymous requests never write
+  state" v `guardRunRequestHandlers.test.ts`).
+- Žádné secrety commitované, `.env.example` má jen prázdné hodnoty.
+
+### Co zůstává na další krok (výslovně mimo rozsah)
+
+Skutečná implementace VPS appky (routes/DB schema/deploy), death reason posílaný na
+survive-night/death, `guard_runs` historie, vzkazy hlídačů, admin/moderace, detailní
+statistiky.

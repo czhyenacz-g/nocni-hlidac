@@ -115,6 +115,11 @@ export default function PlayPage() {
       // hráč spotřeboval kus dřív v týhle směně (dokončená ruční výměna),
       // musí to přežít i smrt z jiného důvodu, ne se ztratit.
       setBulbsRemaining(state.bulbsRemaining);
+      // Best-effort online stav (viz TECH_DESIGN.md "VPS API specifikace") —
+      // server si identitu vezme ze session, ne odsud (klient nikdy neposílá
+      // discordUserId). Nepřihlášený hráč dostane 401, nedostupné VPS API
+      // 202 — v obou případech se odpověď ignoruje, hra pokračuje beze změny.
+      fetch("/api/player/death", { method: "POST" }).catch(() => {});
       if (state.deathReason === "door_open_at_attack") {
         // Poslední krok těsně u dveří hraje hned (stihne doznít dávno před
         // jumpscare, viz gap níže) — zřetelně odděleně, ne zamíchaně přes sebe.
@@ -141,6 +146,10 @@ export default function PlayPage() {
       const serviced = applyDailyBulbService(state.roomBulbs, state.bulbsRemaining);
       setRoomBulbs(serviced.roomBulbs);
       setBulbsRemaining(serviced.bulbsRemaining);
+      // Best-effort online stav — stejná pravidla jako u "death" výše
+      // (identita ze session, 401/202 se ignorují, žádné opakované volání
+      // každou sekundu, jen jednou za skutečný přechod na "win").
+      fetch("/api/player/survive-night", { method: "POST" }).catch(() => {});
     }
     prevScreenRef.current = state.screen;
 

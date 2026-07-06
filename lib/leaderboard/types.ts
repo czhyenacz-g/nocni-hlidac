@@ -12,9 +12,21 @@
  * `currentRun = 0` (bestRun zůstává beze změny). Death reason/last run/datum
  * záznamu záměrně nejsou součástí tohohle typu — patří do budoucího
  * `guard_runs`/vzkazů, ne do hlavního žebříčku.
+ *
+ * Tahle logika (`currentRun`/`bestRun` přechody) se SKUTEČNĚ vykonává na VPS
+ * API (mimo tenhle repozitář) — `lib/leaderboard/guardRunTransitions.ts` je
+ * jen testovatelná referenční specifikace pro tu implementaci, nocni-hlidac
+ * sám žádný stav nepočítá, jen volá `/nocni-hlidac/player/survive-night` a
+ * `/nocni-hlidac/player/death` (viz lib/leaderboard/remotePlayer.ts).
  */
 export interface GuardLeaderboardEntry {
   guardName: string;
+  bestRun: number;
+  currentRun: number;
+}
+
+/** Stav jednoho hráče bez jména — vrací ho VPS API po survive-night/death volání. */
+export interface GuardRunState {
   bestRun: number;
   currentRun: number;
 }

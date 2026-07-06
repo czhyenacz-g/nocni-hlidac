@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { encodeSession, OAUTH_STATE_COOKIE_NAME, SESSION_COOKIE_NAME, SESSION_MAX_AGE } from "@/lib/auth/session";
 import { DiscordPlayer } from "@/lib/auth/types";
+import { upsertHubPlayer } from "@/lib/leaderboard/remotePlayer";
 
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID ?? "";
 const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET ?? "";
@@ -17,10 +18,11 @@ interface DiscordProfile {
  * Discord OAuth callback (adaptováno z osmaliga.cz
  * `app/api/auth/callback/route.ts`) — ověří `state` proti httpOnly cookie ze
  * login/route.ts, vymění `code` za access token, načte Discord profil a
- * uloží jen minimum (`DiscordPlayer`) do podepsané session cookie. Na rozdíl
- * od osmaliga.cz tady NENÍ žádný upsert do DB — v tomhle kroku je identita
- * hráče čistě v cookie, žádná DB tabulka `players` ještě neexistuje (viz
- * TECH_DESIGN.md "Discord login").
+ * uloží jen minimum (`DiscordPlayer`) do podepsané session cookie. Identita
+ * hráče žije primárně v týhle cookie (žádná DB tabulka `players` v tomhle
+ * repozitáři neexistuje) — `upsertHubPlayer` níže jen best-effort pošle
+ * profil na VPS API, stejně jako osmaliga.cz posílá "discord-upsert" do
+ * project-hub-api: selhání/nedostupnost VPS API nesmí přihlášení rozbít.
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
   if (!CLIENT_ID || !CLIENT_SECRET || !REDIRECT_URI) {
@@ -75,6 +77,15 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       ? { avatarUrl: `https://cdn.discordapp.com/avatars/${profile.id}/${profile.avatar}.png?size=64` }
       : {}),
   };
+
+  // Best-effort upsert do VPS API (jméno/avatar/last-login, NIKDY nesnižuje
+  // bestRun/currentRun na nulu — to je pravidlo VPS strany, viz
+  // TECH_DESIGN.md "VPS API specifikace"). AWAITOVANÉ (ne "fire and forget")
+  // — na serverless platformě by nedokončený promise mohl být zabitý hned po
+  // odeslání response; hubPost (lib/hubClient.ts) má vlastní 3s timeout a
+  // nikdy nevyhodí, takže tohle jen krátce zpozdí redirect, nikdy ho nerozbije.
+  // Stejný princip jako osmaliga.cz "Přihlášení pokračuje i bez úspěšného upsert".
+  await upsertHubPlayer(player);
 
   const token = encodeSession(player);
   if (!token) {

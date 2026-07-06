@@ -3,7 +3,7 @@ import Link from "next/link";
 import { COPY } from "@/content/copy";
 import SceneBackground from "@/components/SceneBackground";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
-import { getLeaderboardEntries } from "@/lib/leaderboard/mockLeaderboard";
+import { getLeaderboardEntries } from "@/lib/leaderboard/getLeaderboardEntries";
 import { formatNights } from "@/lib/leaderboard/formatNights";
 
 export const metadata: Metadata = {
@@ -11,10 +11,12 @@ export const metadata: Metadata = {
   description: COPY.leaderboard.seoDescription,
 };
 
-// Zatím jen mock data (viz lib/leaderboard/mockLeaderboard.ts) — žádné API,
-// žádná DB, žádné ukládání výsledků směny. Stejné pozadí jako menu/terms
-// (BACKGROUND_SCENES.menu), širší panel než about/terms kvůli tabulce, ale
-// pořád ve stejném pixel/horror stylu.
+// getLeaderboardEntries() zkusí soukromé VPS API (viz lib/hubClient.ts,
+// lib/leaderboard/remoteLeaderboard.ts) a spadne na mock data
+// (lib/leaderboard/mockLeaderboard.ts), pokud API není nakonfigurované nebo
+// selže — stránka o tom vůbec neví, jen dostane GuardLeaderboardEntry[].
+// Stejné pozadí jako menu/terms (BACKGROUND_SCENES.menu), širší panel než
+// about/terms kvůli tabulce, ale pořád ve stejném pixel/horror stylu.
 export default async function LeaderboardPage() {
   const entries = await getLeaderboardEntries();
 

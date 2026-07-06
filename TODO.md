@@ -373,16 +373,25 @@
       Hlídač/Rekord/Aktuální směna, `currentRun === 0` -> "bez aktivní směny". Nová
       `formatNights()` (`lib/leaderboard/formatNights.ts`) pro české skloňování (1 noc, 2-4
       noci, 0/5+ nocí). `getLeaderboardEntries()` signatura beze změny.
+- [x] Žebříček/hráč napojen na soukromé VPS API — stejný princip jako osmaliga.cz →
+      project-hub-api (Vercel appka bez přímého DB připojení, viz TECH_DESIGN.md "VPS API
+      specifikace"). Nový `lib/hubClient.ts` (`NOCNI_HLIDAC_API_URL`/`_TOKEN`, Bearer auth,
+      3s timeout, nikdy nevyhodí). `GET /api/leaderboard`, `POST /api/player/{survive-night,
+      death}` — session jen server-side (`getSession()`), anonymní požadavek 401, nedostupné
+      API 202 no-op. Best-effort upsert hráče po Discord loginu. Hra volá survive-night/death
+      jen na přechod screen "win"/"death" (fire-and-forget, `.catch()` ignoruje chyby).
+      Skutečná implementace VPS appky (routes/DB) NENÍ součástí tohoto repozitáře — jen
+      přesná specifikace + adapter na straně nocni-hlidac.
 
 ## Další kroky po MVP
 
 - Discord login krok 2 — DB tabulka `players` (id, discord_user_id, username, display_name,
   avatar_url, created_at, updated_at, last_login_at), upsert v `app/api/auth/callback/route.ts`
   (dnes jen podepsaná cookie, žádná perzistence hráče)
-- Žebříček krok 2 — API endpoint + DB tabulka pro skutečné výsledky směn, náhrada
-  `lib/leaderboard/mockLeaderboard.ts` za reálný dotaz, ukládání runu po smrti/výhře, vzkazy
-  hlídačů — všechno explicitně mimo rozsah prvních dvou kroků (viz TECH_DESIGN.md "Discord
-  login" a "Žebříček hlídačů")
+- Žebříček krok 3 — skutečná implementace VPS appky (routes/DB schema/deploy podle
+  specifikace v TECH_DESIGN.md "VPS API specifikace"), death reason posílaný na
+  survive-night/death, `guard_runs` historie, vzkazy hlídačů — všechno explicitně mimo
+  rozsah dosavadních kroků
 - Skutečná pixel-art grafika (sprity pro místnost, kamery, nepřítele, generátor)
 - Vlastní/kvalitnější audio místo Kenney.nl CC0 placeholderů (zejména `ambience_loop`,
   který teď je jen krátký smyčkovaný efekt, ne skutečná ambientní kompozice); doplnit

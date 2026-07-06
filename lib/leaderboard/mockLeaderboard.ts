@@ -1,9 +1,9 @@
 import { GuardLeaderboardEntry } from "./types";
 
 /**
- * Statická mock data pro první verzi /leaderboard — žádná DB, žádné API
- * volání zatím neexistuje (viz TECH_DESIGN.md "Žebříček hlídačů"). Seřazeno
- * sestupně podle `bestRun`, stejně jak by to vracelo skutečné API.
+ * Statická mock data — fallback, když soukromé VPS API není nakonfigurované
+ * nebo selže (viz lib/leaderboard/getLeaderboardEntries.ts). Pořadí v poli
+ * nemusí být přesné, `sortLeaderboardEntries` ho stejně přepočítá.
  */
 const MOCK_LEADERBOARD: GuardLeaderboardEntry[] = [
   { guardName: "czhyenacz", bestRun: 9, currentRun: 6 },
@@ -18,12 +18,6 @@ const MOCK_LEADERBOARD: GuardLeaderboardEntry[] = [
   { guardName: "Nový zaměstnanec (zkušební doba)", bestRun: 0, currentRun: 0 },
 ];
 
-/**
- * Jediné místo, které `app/leaderboard/page.tsx` volá — signatura je záměrně
- * `Promise`, i když teď žádné I/O neprobíhá, ať pozdější náhrada za skutečné
- * API (fetch/DB dotaz) nevyžaduje změnu volajícího kódu, jen implementace
- * tady uvnitř.
- */
-export async function getLeaderboardEntries(): Promise<GuardLeaderboardEntry[]> {
+export async function getMockLeaderboardEntries(): Promise<GuardLeaderboardEntry[]> {
   return MOCK_LEADERBOARD;
 }
