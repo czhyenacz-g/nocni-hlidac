@@ -9,18 +9,25 @@ describe("getNightConfig", () => {
     expect(config.features.monsterRetreatVerificationEnabled).toBe(false);
     expect(config.features.bulbReplacementEnabled).toBe(true);
     expect(config.briefing.title).toBe("Noc 1");
+    expect(config.briefing.lines).toEqual(["První směna.", "Stačí vydržet do rána."]);
   });
 
   it("night 2: still no generator faults, but bulb lifetime turns on", () => {
     const config = getNightConfig(2);
     expect(config.features.generatorFaultsEnabled).toBe(false);
     expect(config.features.bulbLifetimeEnabled).toBe(true);
+    expect(config.briefing.lines).toEqual([
+      "Viděl jsem to na kameře.",
+      "Jen tak tak jsem stihl zavřít dveře.",
+      "Žárovka u nich svítí nějak slabě...",
+    ]);
   });
 
   it("night 3: generator faults turn on", () => {
     const config = getNightConfig(3);
     expect(config.features.generatorFaultsEnabled).toBe(true);
     expect(config.features.monsterRetreatVerificationEnabled).toBe(false);
+    expect(config.briefing.lines).toEqual(["Generátor včera ztichl.", "Nejhorší zvuk v mém životě."]);
   });
 
   it("night 4: monster retreat verification turns on", () => {
@@ -28,20 +35,21 @@ describe("getNightConfig", () => {
     expect(config.features.monsterRetreatVerificationEnabled).toBe(true);
     expect(config.features.generatorFaultsEnabled).toBe(true);
     expect(config.features.bulbLifetimeEnabled).toBe(true);
+    expect(config.briefing.lines).toEqual(["Na kameře nebylo nic vidět.", "Do dveří stejně něco udeřilo."]);
   });
 
-  it("night 5: everything on, custom briefing", () => {
-    const config = getNightConfig(5);
+  it.each([5, 6, 7, 8, 9, 10])("night %i: everything on, shared fallback-style briefing", (nightNumber) => {
+    const config = getNightConfig(nightNumber);
     expect(config.features).toEqual(DEFAULT_NIGHT_FEATURES);
-    expect(config.briefing.title).toBe("Noc 5");
-    expect(config.briefing.lines.length).toBeGreaterThan(0);
+    expect(config.briefing.title).toBe(`Noc ${nightNumber}`);
+    expect(config.briefing.lines).toEqual(["Služby jsou čím dál horší.", "Tohle místo se rozpadá."]);
   });
 
-  it("undefined night (999) uses fallback briefing and all default features", () => {
+  it("undefined night (999) uses the same fallback briefing and all default features", () => {
     const config = getNightConfig(999);
     expect(config.features).toEqual(DEFAULT_NIGHT_FEATURES);
     expect(config.briefing.title).toBe("Noc 999");
-    expect(config.briefing.lines.length).toBeGreaterThan(0);
+    expect(config.briefing.lines).toEqual(["Služby jsou čím dál horší.", "Tohle místo se rozpadá."]);
   });
 
   it("never returns undefined values in features, for any defined or undefined night", () => {

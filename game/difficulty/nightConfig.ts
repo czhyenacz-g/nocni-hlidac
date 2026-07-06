@@ -46,7 +46,7 @@ const NIGHT_CONFIGS: NightConfig[] = [
     nightNumber: 1,
     briefing: {
       title: "Noc 1",
-      lines: ["První směna.", "Kamery fungují. Dveře taky.", "Stačí vydržet do rána."],
+      lines: ["První směna.", "Stačí vydržet do rána."],
     },
     features: {
       generatorFaultsEnabled: false,
@@ -58,7 +58,7 @@ const NIGHT_CONFIGS: NightConfig[] = [
     nightNumber: 2,
     briefing: {
       title: "Noc 2",
-      lines: ["Ta žárovka u dveří svítí nějak slabě.", "Možná ji šetřit.", "Možná na ni nespoléhat."],
+      lines: ["Viděl jsem to na kameře.", "Jen tak tak jsem stihl zavřít dveře.", "Žárovka u nich svítí nějak slabě..."],
     },
     features: {
       generatorFaultsEnabled: false,
@@ -69,7 +69,7 @@ const NIGHT_CONFIGS: NightConfig[] = [
     nightNumber: 3,
     briefing: {
       title: "Noc 3",
-      lines: ["Včera něco luplo v generátoru.", "Pak se to zase rozběhlo.", "Doufám, že se to nebude opakovat."],
+      lines: ["Generátor včera ztichl.", "Nejhorší zvuk v mém životě."],
     },
     features: {
       monsterRetreatVerificationEnabled: false,
@@ -79,24 +79,15 @@ const NIGHT_CONFIGS: NightConfig[] = [
     nightNumber: 4,
     briefing: {
       title: "Noc 4",
-      lines: [
-        "Když zmizí z kamery, neznamená to, že odešlo.",
-        "To už jsem pochopil.",
-        "Dneska si to radši ověřím.",
-      ],
+      lines: ["Na kameře nebylo nic vidět.", "Do dveří stejně něco udeřilo."],
     },
     // Beze změn features — od tuhle noci je všechno zapnuté jako dnes.
   },
-  {
-    nightNumber: 5,
-    briefing: {
-      title: "Noc 5",
-      lines: ["Našel jsem plánek objektu.", "Levá hala. Pravá hala. Sklad.", "Nechci tam chodit."],
-    },
-  },
 ];
 
-const FALLBACK_BRIEFING_LINES: string[] = ["Další směna.", "Méně světla. Méně klidu.", "Stejný úkol: vydržet do rána."];
+// Noci 5+ (bez vlastního záznamu v NIGHT_CONFIGS výše) dostanou tenhle
+// fallback — noci 5–10 i 11+ mají záměrně stejný text (viz zadání).
+const FALLBACK_BRIEFING_LINES: string[] = ["Služby jsou čím dál horší.", "Tohle místo se rozpadá."];
 
 /**
  * Vrací kompletní config pro danou noc — nikdy `undefined` hodnoty ve
