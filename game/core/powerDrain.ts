@@ -1,0 +1,95 @@
+import { GameState, NightDefinition } from "./types";
+import { NightScaling } from "../difficulty/nightScaling";
+
+/**
+ * Rozpad spotřeby/dobíjení energie za sekundu — jediné místo pravdy, které
+ * používá jak `gameReducer.ts#applyPowerDelta` (skutečný přepočet `power`),
+ * tak `DebugPanel.tsx` (diagnostický "Power drain breakdown"). Držet tohle
+ * na jednom místě je záměrné: kdyby debug panel počítal drain nezávisle
+ * vlastní kopií vzorce, mohl by se tiše rozejít od skutečného chování hry a
+ * lhát o tom, co energii doopravdy žere (přesně proto, proč byl tenhle audit
+ * potřeba — viz TECH_DESIGN.md "Power drain diagnostika").
+ *
+ * Dvě neslučitelné větve (stejné jako v `applyPowerDelta`):
+ * - `watchingCameras` (cameraOpen && playerView === "desk"): jen drain
+ *   (idle + cameraOpen + generatorExtra), žádné dobíjení.
+ * - jinak: drain jen z toho, co je skutečně aktivní (zavřené dveře/rozsvícené
+ *   světlo/kritický generátor), proti tomu dobíjení `rechargePerSecondWhenIdle`.
+ */
+export interface PowerDrainBreakdown {
+  watchingCameras: boolean;
+  /** rates.idle — jen ve `watchingCameras` větvi, jinak 0 (mimo kamery žádný "idle" drain neexistuje). */
+  idleDrain: number;
+  /** rates.cameraOpen — jen když je skutečně otevřený DETAIL kamery (ne overview). */
+  cameraDrain: number;
+  /** rates.doorClosed — jen když jsou dveře skutečně zavřené. */
+  doorDrain: number;
+  /** rates.lightOn — jen když je světlo skutečně zapnuté. */
+  lightDrain: number;
+  /** Pevná extra spotřeba během criticalBeeping/restarting (2x doorClosed + lightOn), bez ohledu na to, jestli jsou dveře/světlo skutečně aktivní. */
+  generatorExtraDrain: number;
+  /** Night scaling multiplikátor (viz game/difficulty/nightScaling.ts) — aplikovaný přesně jednou, na součet drainu, nikdy na recharge. */
+  nightScalingMultiplier: number;
+  /** Součet všech drain složek NAD multiplikátorem (idle+camera+door+light+generatorExtra), před vynásobením. */
+  drainBeforeMultiplier: number;
+  /** `drainBeforeMultiplier * nightScalingMultiplier` — skutečná spotřeba za sekundu. */
+  totalDrainPerSecond: number;
+  /** `night.rechargePerSecondWhenIdle`, pokud se vůbec může uplatnit (mimo watchingCameras), jinak 0. */
+  rechargePerSecondWhenIdle: number;
+  /** Výsledná změna power za sekundu — kladná = dobíjení, záporná = čistý úbytek. */
+  netPerSecond: number;
+}
+
+export function computePowerDrainBreakdown(
+  state: GameState,
+  night: NightDefinition,
+  nightScaling: NightScaling,
+): PowerDrainBreakdown {
+  const rates = night.powerDrainPerSecond;
+  const watchingCameras = state.cameraOpen && state.playerView === "desk";
+  const generatorExtraDrain =
+    state.generatorState === "criticalBeeping" || state.generatorState === "restarting"
+      ? 2 * rates.doorClosed + rates.lightOn
+      : 0;
+  const multiplier = nightScaling.energyDrainMultiplier;
+
+  if (watchingCameras) {
+    const idleDrain = rates.idle;
+    const cameraDrain = rates.cameraOpen;
+    const drainBeforeMultiplier = idleDrain + cameraDrain + generatorExtraDrain;
+    const totalDrainPerSecond = drainBeforeMultiplier * multiplier;
+    return {
+      watchingCameras: true,
+      idleDrain,
+      cameraDrain,
+      doorDrain: 0,
+      lightDrain: 0,
+      generatorExtraDrain,
+      nightScalingMultiplier: multiplier,
+      drainBeforeMultiplier,
+      totalDrainPerSecond,
+      rechargePerSecondWhenIdle: 0,
+      netPerSecond: -totalDrainPerSecond,
+    };
+  }
+
+  const doorDrain = state.doorClosed ? rates.doorClosed : 0;
+  const lightDrain = state.lightOn ? rates.lightOn : 0;
+  const drainBeforeMultiplier = doorDrain + lightDrain + generatorExtraDrain;
+  const totalDrainPerSecond = drainBeforeMultiplier * multiplier;
+  const rechargePerSecondWhenIdle = night.rechargePerSecondWhenIdle;
+
+  return {
+    watchingCameras: false,
+    idleDrain: 0,
+    cameraDrain: 0,
+    doorDrain,
+    lightDrain,
+    generatorExtraDrain,
+    nightScalingMultiplier: multiplier,
+    drainBeforeMultiplier,
+    totalDrainPerSecond,
+    rechargePerSecondWhenIdle,
+    netPerSecond: rechargePerSecondWhenIdle - totalDrainPerSecond,
+  };
+}

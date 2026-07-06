@@ -3,18 +3,29 @@ import { GameState, NightDefinition } from "@/game/core/types";
 import { getBlackoutPhaseIndex } from "@/game/visuals/blackoutPhase";
 import { buildEnemyDebugInfo } from "@/game/core/enemyDebugInfo";
 import { isNearRoomLightActive } from "@/game/core/roomBulbs";
+import { computePowerDrainBreakdown } from "@/game/core/powerDrain";
 import { DEFAULT_DIFFICULTY } from "@/game/difficulty/difficultyConfig";
+import { computeNightScaling } from "@/game/difficulty/nightScaling";
 import DoorControl from "./DoorControl";
 
 interface DebugPanelProps {
   state: GameState;
   night: NightDefinition;
   tensionLevel: number;
+  /** Kolikátá noc v řadě (viz game/core/survivedNights.ts) — jen pro dopočet night scaling multiplikátoru v "Power drain breakdown" níže, chybí-li bere se jako noc 1. */
+  nightNumber?: number;
   onDebugToggleDoor: () => void;
   onDebugRestartGenerator: () => void;
 }
 
-export default function DebugPanel({ state, night, tensionLevel, onDebugToggleDoor, onDebugRestartGenerator }: DebugPanelProps) {
+export default function DebugPanel({
+  state,
+  night,
+  tensionLevel,
+  nightNumber,
+  onDebugToggleDoor,
+  onDebugRestartGenerator,
+}: DebugPanelProps) {
   if (!DEBUG_PANEL_ENABLED) return null;
 
   // DEV panel nezná zvolenou obtížnost přímo (createGameReducer si ji drží
@@ -24,6 +35,14 @@ export default function DebugPanel({ state, night, tensionLevel, onDebugToggleDo
   // obtížnosti), tenhle řádek bude potřeba nahradit skutečnou hodnotou
   // protaženou jako prop.
   const enemyDebug = buildEnemyDebugInfo(state, night, DEFAULT_DIFFICULTY);
+
+  // "Power drain breakdown" — přesně tatáž funkce, kterou TICK používá pro
+  // skutečný přepočet `power` (game/core/powerDrain.ts), ať tenhle panel
+  // nikdy neukazuje jiná čísla, než jaká hru doopravdy řídí (viz
+  // TECH_DESIGN.md "Power drain diagnostika" — audit podezřele rychlého
+  // vybití energie, kde přesně tohle chybělo).
+  const nightScaling = computeNightScaling(nightNumber ?? 1);
+  const drain = computePowerDrainBreakdown(state, night, nightScaling);
 
   // Dev nástroj, ne herní ovládání — na mobilu/užších obrazovkách by jen
   // zabíral místo a mohl překrývat skutečné hotspoty, proto se pod `lg` skryje.
@@ -42,6 +61,23 @@ export default function DebugPanel({ state, night, tensionLevel, onDebugToggleDo
         )}
         <div>tension: {tensionLevel.toFixed(2)}</div>
         <div>power: {state.power.toFixed(1)}</div>
+        <div className="border-t border-gray-700 pt-2 mt-1">
+          <div className="text-gray-400 mb-1">
+            Power drain{drain.watchingCameras ? " (sleduje kamery — jen drain, žádné dobíjení)" : ""}:
+          </div>
+          <div>idle: {drain.idleDrain.toFixed(3)}/s</div>
+          <div>camera: {drain.cameraDrain.toFixed(3)}/s</div>
+          <div>door: {drain.doorDrain.toFixed(3)}/s</div>
+          <div>light: {drain.lightDrain.toFixed(3)}/s</div>
+          <div>generator (critical/restarting extra): {drain.generatorExtraDrain.toFixed(3)}/s</div>
+          <div>night scaling multiplier: ×{drain.nightScalingMultiplier.toFixed(2)}</div>
+          <div>total drain: {drain.totalDrainPerSecond.toFixed(3)}/s</div>
+          <div>recharge: {drain.rechargePerSecondWhenIdle.toFixed(3)}/s</div>
+          <div className={drain.netPerSecond < 0 ? "text-red-400" : "text-green-400"}>
+            net: {drain.netPerSecond >= 0 ? "+" : ""}
+            {drain.netPerSecond.toFixed(3)}/s
+          </div>
+        </div>
         <div>playerView: {state.playerView}</div>
         <div>door: {state.doorClosed ? "closed" : "open"}</div>
         <div>light: {state.lightOn ? "on" : "off"}</div>

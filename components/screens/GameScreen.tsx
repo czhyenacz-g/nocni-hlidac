@@ -158,6 +158,7 @@ export default function GameScreen({
             state={state}
             night={night}
             tensionLevel={tensionLevel}
+            nightNumber={nightNumber}
             onDebugToggleDoor={onDebugToggleDoor}
             onDebugRestartGenerator={onDebugRestartGenerator}
           />

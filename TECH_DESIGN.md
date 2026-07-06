@@ -1454,3 +1454,86 @@ Zvoleno přesně podle preferované varianty ze zadání:
 Skutečná implementace VPS appky (routes/DB schema/deploy), death reason posílaný na
 survive-night/death, `guard_runs` historie, vzkazy hlídačů, admin/moderace, detailní
 statistiky.
+
+## Power drain diagnostika (audit podezřele rychlého vybití energie)
+
+Podnět: hlášení "brutálně rychlého" vybití energie s debug logem, který v okamžiku snímku
+vypadal neškodně (`playerView: desk`, dveře otevřené, světlo vypnuté, generátor `normal`,
+žádná otevřená kamera). Závěr auditu: **žádný bug v samotném výpočtu power** — viz
+`game/core/powerDrain.ts` a jeho testy (`powerDrain.test.ts`, 14 testů) pro ověření všech
+podmínek níže. Skutečné vysvětlení a nový diagnostický nástroj popsané dál.
+
+### Kompletní seznam drain/recharge složek (`applyPowerDelta`/`computePowerDrainBreakdown`)
+
+Dvě neslučitelné větve, přesně jedna platí každý tik:
+
+- **`watchingCameras`** (`state.cameraOpen && state.playerView === "desk"`) — jen drain, žádné
+  dobíjení: `idle` (`night.powerDrainPerSecond.idle`, night01: 0.15/s) + `cameraOpen`
+  (0.2/s) + generátor extra (níže).
+- **jinak** (dveře/pohled na dveře či generátor, nebo desk bez otevřené kamery) — drain jen
+  z toho, co je SKUTEČNĚ aktivní: `doorClosed` (1.4/s, jen když `state.doorClosed`) +
+  `lightOn` (1.0/s, jen když `state.lightOn`) + generátor extra (níže), proti tomu
+  `night.rechargePerSecondWhenIdle` (night01: 1/12 %/s).
+- **Generátor extra drain** — pevná spotřeba `2 × doorClosed + lightOn` (night01: 3.8/s),
+  aplikovaná v OBOU větvích výše, jen když `generatorState` je `"criticalBeeping"` nebo
+  `"restarting"` — bez ohledu na to, jestli jsou dveře/světlo skutečně zavřené/zapnuté.
+  `"silentFault"` (prvních 10 s po poruše, `silentGraceMs`) žádnou extra spotřebu nemá.
+- **Night scaling multiplikátor** (`computeNightScaling`, cap 1.2× od noci 5) — násobí
+  součet drainu přesně JEDNOU, nikdy recharge, nikdy dvakrát (ověřeno testem "applies...
+  exactly once, never compounded").
+
+Sčítají se ANO — door + light + generátor extra se sečtou, pokud platí víc podmínek
+najednou (např. zavřené dveře SOUČASNĚ se zapnutým světlem během door-light repelu proti
+monstru = 2.4/s, ne jen jedna z hodnot).
+
+### Odpovědi na konkrétní otázky z auditu
+
+1. **Drain při `playerView: desk`?** Ano, pokud je otevřený DETAIL kamery
+   (`watchingCameras`) — ale ne jinak. Bez otevřené kamery na desk platí stejná pravidla
+   jako v door/generator pohledu (jen door/light/generátor extra).
+2. **Počítá se overview jako aktivní kamera?** Ne — `cameraOpen` je `true` JEN v
+   `cameraViewMode: "detail"` (nastaveno výhradně v `OPEN_CAMERA`), overview ho vždy
+   nastavuje na `false` (`LOOK_AT_DOOR`/`LOOK_AT_GENERATOR`/`CLOSE_CAMERAS`/blackout).
+   Overview tedy nikdy nedrénuje jako detail.
+3. **Může kamera vypadat zavřená v UI, ale žrát energii?** Ne — `watchingCameras` čte přímo
+   `state.cameraOpen`/`state.playerView`, žádný jiný lokální/UI stav se nepoužívá.
+4. **Ovlivňuje blackout/tension drain dál?** Blackout má vlastní, úplně oddělenou větev
+   `TICK`u (`gameStatus === "blackout"`) — `applyPowerDelta` se v blackoutu vůbec nevolá.
+   `tension`/`atmosphereState.ts` čte `power`, nikdy obráceně (ověřeno gremem přes
+   `game/core/*.ts`/`game/visuals/*.ts` — jediná reference na `state.power` je čtecí, v
+   `atmosphereState.ts`).
+
+### Skutečné vysvětlení nahlášeného stavu
+
+Debug log byl zachycen `blackoutElapsedMs: 6101`, tedy **6 sekund PO** vstupu do blackoutu —
+`gameStatus === "blackout"` větev `TICK`u přitom force-nuluje `doorClosed`/`lightOn`/
+`cameraOpen` na bezpečné hodnoty (viz `power <= 0` větev). Snímek proto nutně vypadá
+neškodně bez ohledu na to, co energii spotřebovalo PŘED blackoutem — debug panel v tu chvíli
+neukazoval příčinu, jen důsledek. Ze zbytku logu (`faults: 1`, `generatorState: normal` — tedy
+porucha už byla vyřešena restartem; `roars: 1` — door-light repel proti monstru už jednou
+proběhl) je nejpravděpodobnější příčina kombinace:
+- neošetřená porucha generátoru v `criticalBeeping` (3.8/s × až 1.2 multiplikátor = až
+  4.56/s), která podle designu (viz GAME_DESIGN.md "Generátor") běží, DOKUD ji hráč
+  nerestartuje — čím déle si jí nevšimne, tím větší ztráta,
+- plus náklad na úspěšný door-light repel (zavřené dveře + světlo současně, ~2.4/s po dobu
+  standoffu).
+
+Obojí je záměrný design (cena za ignorování generátoru / za obranu proti monstru), ne bug —
+problém byl v tom, že to nešlo z debug panelu OKAMŽITĚ vidět, protože panel neukazoval
+rozpad drainu, jen aktuální `power` číslo.
+
+### Oprava: sdílený `computePowerDrainBreakdown` + DebugPanel sekce
+
+`game/core/powerDrain.ts` — nová čistá funkce, jediné místo pravdy pro rozpad drainu,
+použitá jak reducerem (`applyPowerDelta` teď jen `state.power + netPerSecond * seconds`,
+beze změny chování — 146 existujících testů beze změny prošlo po refaktoru), tak
+`DebugPanel.tsx` (nová sekce "Power drain" hned pod `power:` — idle/camera/door/light/
+generátor extra/night scaling multiplier/total drain/recharge/net, barevně net
+kladné/záporné). Diagnostika je tak MATEMATICKY nemožná odchýlit od skutečného chování hry
+(žádná duplicitní kopie vzorce). `DebugPanel` dostal nový volitelný prop `nightNumber` (viz
+`GameScreen.tsx`), ať multiplier v breakdownu odpovídá skutečně běžící noci, ne vždy noci 1.
+
+Testy: `game/core/powerDrain.test.ts` (14 testů) — bezpečný idle stav (recharge, ne drain),
+overview vs. detail kamera, izolace door/light drainu, generátor critical/restarting vs.
+normal/silentFault (a že extra drain po opravě zmizí), night scaling aplikovaný přesně
+jednou a nikdy na recharge.

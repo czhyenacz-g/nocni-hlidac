@@ -7,6 +7,7 @@ import { DEFAULT_DIFFICULTY, DIFFICULTY_RULES, Difficulty } from "../difficulty/
 import { computeNightScaling, NightScaling } from "../difficulty/nightScaling";
 import { computeStressTimeScale } from "./stressTimeScale";
 import { isNearRoomLightActive } from "./roomBulbs";
+import { computePowerDrainBreakdown } from "./powerDrain";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -53,6 +54,9 @@ function pickMonsterRetreatLocation(route: EnemyStage[]): EnemyStage {
 // zavřených dveří / rozsvíceného světla dobíjení dál přebíjí — viz GAME_DESIGN.md.
 // Kritický stav generátoru navrch přidá pevnou extra spotřebu (jako 2x zavřené
 // dveře + rozsvícené světlo), bez ohledu na to, jestli jsou skutečně zapnuté.
+// Skutečný výpočet žije v game/core/powerDrain.ts#computePowerDrainBreakdown —
+// jediné místo pravdy, sdílené s DebugPanel.tsx "Power drain breakdown", ať se
+// diagnostika nikdy nerozejde od skutečného chování (viz TECH_DESIGN.md).
 function applyPowerDelta(
   state: GameState,
   night: NightDefinition,
@@ -60,28 +64,8 @@ function applyPowerDelta(
   nightScaling: NightScaling,
 ): number {
   const seconds = deltaMs / 1000;
-  const rates = night.powerDrainPerSecond;
-  const watchingCameras = state.cameraOpen && state.playerView === "desk";
-  const generatorExtraDrain =
-    state.generatorState === "criticalBeeping" || state.generatorState === "restarting"
-      ? 2 * rates.doorClosed + rates.lightOn
-      : 0;
-
-  // Night scaling (viz game/difficulty/nightScaling.ts) škáluje jen spotřebu
-  // (drain), nikdy dobíjení (rechargePerSecondWhenIdle níže) — spočítej base
-  // drain a znásob jednou, na obou větvích, ne po jednotlivých položkách.
-  if (watchingCameras) {
-    const baseDrain = rates.idle + rates.cameraOpen + generatorExtraDrain;
-    const drain = baseDrain * nightScaling.energyDrainMultiplier;
-    return clamp(state.power - drain * seconds, 0, MAX_POWER);
-  }
-
-  let baseDrain = generatorExtraDrain;
-  if (state.doorClosed) baseDrain += rates.doorClosed;
-  if (state.lightOn) baseDrain += rates.lightOn;
-  const drain = baseDrain * nightScaling.energyDrainMultiplier;
-  const delta = (night.rechargePerSecondWhenIdle - drain) * seconds;
-  return clamp(state.power + delta, 0, MAX_POWER);
+  const { netPerSecond } = computePowerDrainBreakdown(state, night, nightScaling);
+  return clamp(state.power + netPerSecond * seconds, 0, MAX_POWER);
 }
 
 type GeneratorTickResult = Pick<
