@@ -56,8 +56,13 @@ export default function DeskView({
 
       <LightControl lightOn={state.lightOn} bulbBroken={state.roomBulbs.nearRoom.broken} onToggle={onToggleLight} />
 
+      {/* Spodní navigace jako prostorová orientace v místnosti, ne 2×2 grid
+          stejných boxů: vlevo/vpravo boční pohledy (stěna/generátor), pod
+          nimi samostatná neutrální mapa, úplně dole dominantní otočení ke
+          dveřím — ten je vizuálně nejvýraznější (ViewSwitchArrow
+          variant="primary"), protože je to hlavní směr pohledu control roomu. */}
       <div className="grid grid-cols-2 gap-3">
-        <ViewSwitchArrow label={COPY.game.lookAtDoorLabel} onClick={onLookAtDoor} align="right" />
+        <ViewSwitchArrow label={COPY.game.lookAtLeftWallLabel} onClick={onLookAtLeftWall} align="left" />
         <ViewSwitchArrow
           label={COPY.game.lookAtGeneratorLabel}
           onClick={onLookAtGenerator}
@@ -66,10 +71,9 @@ export default function DeskView({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <ViewSwitchArrow label={COPY.game.lookAtLeftWallLabel} onClick={onLookAtLeftWall} align="left" />
-        <ViewSwitchArrow label={COPY.game.lookAtMapLabel} onClick={onLookAtMap} align="left" />
-      </div>
+      <ViewSwitchArrow label={COPY.game.lookAtMapLabel} onClick={onLookAtMap} align="center" />
+
+      <ViewSwitchArrow label={COPY.game.lookAtDoorLabel} onClick={onLookAtDoor} align="center" variant="primary" />
     </div>
   );
 }

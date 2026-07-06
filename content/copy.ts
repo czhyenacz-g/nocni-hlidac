@@ -44,7 +44,10 @@ export const COPY = {
     cameraFocusingLabel: "LADÍM SIGNÁL...",
     audioOnLabel: "Zvuk: zapnutý",
     audioOffLabel: "Zvuk: vypnutý",
-    lookAtDoorLabel: "Otočit se ke dveřím →",
+    // Dominantní navigace v control roomu — šipka dolů, ne doprava, ať
+    // odpovídá tomu, že dveře jsou "hlavní směr pohledu" spodní navigace
+    // (viz DeskView.tsx, ViewSwitchArrow variant="primary").
+    lookAtDoorLabel: "Otočit se ke dveřím ↓",
     lookAtDeskLabel: "← Zpět k panelu",
     // Text hotspotu odráží akci, kterou klik provede (ne popis "klikni na
     // dveře") — viz DoorView.tsx, stejná dvojice jako aria-label u hotspotu.
@@ -63,7 +66,7 @@ export const COPY = {
     // Čistě atmosférický pohled bez herní mechaniky (viz LeftWallView.tsx,
     // gameReducer.ts LOOK_AT_LEFT_WALL) — vlastní text návratu na výslovné
     // přání zadání, ne sdílený lookAtDeskLabel.
-    lookAtLeftWallLabel: "Podívat se na stěnu vlevo",
+    lookAtLeftWallLabel: "← Podívat se na stěnu vlevo",
     leftWallBackLabel: "Zpět ke stolu",
     // Statický plánek objektu bez interaktivity (viz ObjectMapView.tsx,
     // gameReducer.ts LOOK_AT_MAP, game/map/objectMap.ts pro data uzlů/hran) —
