@@ -3,6 +3,7 @@
 import { useEffect, useReducer, useRef, useState } from "react";
 import MainMenuScreen from "@/components/screens/MainMenuScreen";
 import LoadingScreen from "@/components/screens/LoadingScreen";
+import BriefingScreen from "@/components/screens/BriefingScreen";
 import GameScreen from "@/components/screens/GameScreen";
 import DeathScreen from "@/components/screens/DeathScreen";
 import WinScreen from "@/components/screens/WinScreen";
@@ -27,6 +28,7 @@ import { getSurvivedNights, incrementSurvivedNights, resetSurvivedNights } from 
 import { getBulbsRemaining, setBulbsRemaining } from "@/game/core/bulbInventory";
 import { applyDailyBulbService, getRoomBulbs, setRoomBulbs } from "@/game/core/roomBulbs";
 import { useHeartbeatStress } from "@/game/audio/useHeartbeatStress";
+import { getNightConfig } from "@/game/difficulty/nightConfig";
 
 const night = NIGHT_01;
 const gameReducer = createGameReducer(night);
@@ -79,6 +81,10 @@ export default function PlayPage() {
   // dokud tam nepřítel je, další kliknutí na kameru (ani na jinou a zpátky) ho
   // znovu nespustí. Resetuje se, až nepřítel z téhle stage odejde (uteče/postoupí).
   const hasPlayedNearCameraSurpriseRef = useRef(false);
+  // Briefing panel (viz components/screens/BriefingScreen.tsx) je mezikrok
+  // před START_SHIFT i před RESTART_SHIFT — tenhle ref si pamatuje, kterou
+  // z těch dvou akcí má "Nastoupit na směnu" po skončení briefingu spustit.
+  const pendingShiftKindRef = useRef<"start" | "restart">("start");
 
   useEffect(() => {
     audioManager.setMuted(state.audioMuted);
@@ -255,14 +261,16 @@ export default function PlayPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.blackoutPhaseSeq]);
 
-  // Falešný loading screen — po LOADING_SCREEN_DURATION_MS automaticky spustí
-  // směnu. Zatím nejde přeskočit, viz TODO.md.
+  // Falešný loading screen — po LOADING_SCREEN_DURATION_MS automaticky
+  // přejde na briefing (viz components/screens/BriefingScreen.tsx), ne rovnou
+  // na START_SHIFT — směna samotná start čeká na "Nastoupit na směnu".
+  // Zatím nejde přeskočit, viz TODO.md.
   useEffect(() => {
     if (state.screen !== "loading") return;
-    const timeout = setTimeout(
-      () => dispatch({ type: "START_SHIFT", roomBulbs: getRoomBulbs(), bulbsRemaining: getBulbsRemaining() }),
-      LOADING_SCREEN_DURATION_MS,
-    );
+    const timeout = setTimeout(() => {
+      pendingShiftKindRef.current = "start";
+      dispatch({ type: "SHOW_BRIEFING" });
+    }, LOADING_SCREEN_DURATION_MS);
     return () => clearTimeout(timeout);
   }, [state.screen]);
 
@@ -272,9 +280,25 @@ export default function PlayPage() {
     dispatch({ type: "START_LOADING" });
   }
 
+  // Briefing panel "Nastoupit na směnu" — spustí buď START_SHIFT (nový start
+  // z menu/loading) nebo RESTART_SHIFT (retry po smrti/výhře), podle toho,
+  // odkud hráč na briefing přišel (viz pendingShiftKindRef). Oba dostávají
+  // stejná data: persistovaný stav žárovek + čerstvě rozřešený night config
+  // pro aktuální noc (getNightConfig(currentNight).features).
+  function handleBeginShift() {
+    audioManager.play(AUDIO_EVENTS.uiClick);
+    const nightFeatures = getNightConfig(currentNight).features;
+    if (pendingShiftKindRef.current === "restart") {
+      dispatch({ type: "RESTART_SHIFT", roomBulbs: getRoomBulbs(), bulbsRemaining: getBulbsRemaining(), nightFeatures });
+    } else {
+      dispatch({ type: "START_SHIFT", roomBulbs: getRoomBulbs(), bulbsRemaining: getBulbsRemaining(), nightFeatures });
+    }
+  }
+
   function handleRestart() {
     audioManager.play(AUDIO_EVENTS.uiClick);
-    dispatch({ type: "RESTART_SHIFT", roomBulbs: getRoomBulbs(), bulbsRemaining: getBulbsRemaining() });
+    pendingShiftKindRef.current = "restart";
+    dispatch({ type: "SHOW_BRIEFING" });
   }
 
   function handleGoToMenu() {
@@ -381,6 +405,7 @@ export default function PlayPage() {
     >
       {state.screen === "menu" && <MainMenuScreen onStart={handleStart} />}
       {state.screen === "loading" && <LoadingScreen />}
+      {state.screen === "briefing" && <BriefingScreen nightNumber={currentNight} onStartShift={handleBeginShift} />}
       {state.screen === "playing" && (
         <GameScreen
           state={state}

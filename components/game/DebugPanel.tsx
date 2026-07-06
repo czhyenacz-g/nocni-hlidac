@@ -130,6 +130,17 @@ export default function DebugPanel({
           </div>
         </div>
 
+        {/* Night config (viz game/difficulty/nightConfig.ts) — jaké mechaniky
+            jsou tuhle noc zapnuté, rozřešené jednou při START_SHIFT/RESTART_SHIFT
+            a odteď žijící ve state.nightFeatures. */}
+        <div className="border-t border-gray-700 pt-2 mt-1">
+          <div className="text-gray-400 mb-1">Night config:</div>
+          <div>generatorFaults: {state.nightFeatures.generatorFaultsEnabled ? "on" : "off"}</div>
+          <div>bulbLifetime: {state.nightFeatures.bulbLifetimeEnabled ? "on" : "off"}</div>
+          <div>bulbReplacement: {state.nightFeatures.bulbReplacementEnabled ? "on" : "off"}</div>
+          <div>retreatVerification: {state.nightFeatures.monsterRetreatVerificationEnabled ? "on" : "off"}</div>
+        </div>
+
         <DoorControl doorClosed={state.doorClosed} onToggle={onDebugToggleDoor} />
         <button className="pixel-button px-3 py-2 text-xs w-full" onClick={onDebugRestartGenerator}>
           DEV: Restartovat generátor{state.generatorState === "normal" ? " (test penalizace)" : ""}

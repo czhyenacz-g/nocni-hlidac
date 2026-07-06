@@ -83,6 +83,10 @@ type GeneratorTickResult = Pick<
 // penalizace, a plánování dalšího pípnutí (normální/kritické tempo). Čistá
 // funkce, žádné audio zde — to spouští UI podle změny generatorBeepSeq/
 // generatorState (viz app/play/page.tsx).
+// state.nightFeatures.generatorFaultsEnabled=false (viz
+// game/difficulty/nightConfig.ts) jen vypne SPUŠTĚNÍ nové poruchy — generátor
+// zůstává "normal" po celou směnu, ale ruční RESTART_GENERATOR (omylem
+// restartovaný funkční generátor) zůstává nezávisle možný, viz gameReducer.ts.
 function updateGenerator(state: GameState, night: NightDefinition, elapsedMs: number): GeneratorTickResult {
   const cfg = night.generator;
   let generatorState = state.generatorState;
@@ -93,6 +97,7 @@ function updateGenerator(state: GameState, night: NightDefinition, elapsedMs: nu
   let generatorRestartUntilMs = state.generatorRestartUntilMs;
 
   if (
+    state.nightFeatures.generatorFaultsEnabled &&
     generatorState === "normal" &&
     generatorFaultCount < cfg.faultMaxPerShift &&
     elapsedMs >= state.generatorFaultAtMs
@@ -197,7 +202,9 @@ type RoomBulbsTickResult = Pick<GameState, "roomBulbs" | "bulbBreakSeq" | "light
 // zvýší přesně jednou, ať UI spustí zvuk (viz app/play/page.tsx, stejný
 // vzor jako generatorBeepSeq/monsterRetreatRoarSeq).
 function updateRoomBulbs(state: GameState, deltaMs: number): RoomBulbsTickResult {
-  if (!isNearRoomLightActive(state)) {
+  // nightFeatures.bulbLifetimeEnabled=false (viz game/difficulty/nightConfig.ts)
+  // — životnost se vůbec neodečítá, žárovka nemůže prasknout opotřebením.
+  if (!state.nightFeatures.bulbLifetimeEnabled || !isNearRoomLightActive(state)) {
     return { roomBulbs: state.roomBulbs, bulbBreakSeq: state.bulbBreakSeq, lightOn: state.lightOn };
   }
 
@@ -273,6 +280,10 @@ const INACTIVE_BULB_REPLACEMENT: GameState["bulbReplacement"] = { active: false,
  * i skoro novou, ne jen po prasknutí (viz GAME_DESIGN.md "Žárovky").
  */
 export function canReplaceBulb(state: GameState): boolean {
+  // nightFeatures.bulbReplacementEnabled=false (viz game/difficulty/nightConfig.ts)
+  // — výměnu vůbec nejde spustit tuhle noc; ikonka v DoorView.tsx zůstává
+  // vidět, jen neaktivní (stejný `canReplaceBulb` gate jako ostatní podmínky níže).
+  if (!state.nightFeatures.bulbReplacementEnabled) return false;
   if (!state.isRunning || state.gameStatus === "blackout" || state.doorDeathRevealUntilMs !== null) return false;
   if (state.playerView !== "door" || state.doorClosed) return false;
   if (state.bulbReplacement.active) return false;
@@ -290,13 +301,24 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
   const rules = DIFFICULTY_RULES[difficulty];
 
   return function gameReducer(state: GameState, action: GameAction): GameState {
+    // Kombinuje difficulty pravidlo (rules.monster_check_or_return — zatím
+    // vždy true, žádné UI pro volbu obtížnosti) s night feature flagem
+    // (state.nightFeatures.monsterRetreatVerificationEnabled — skutečně
+    // aktivní ovladač, viz game/difficulty/nightConfig.ts). Ověření je
+    // potřeba, jen když obojí platí zároveň.
+    const requireMonsterRetreatVerification =
+      rules.monster_check_or_return && state.nightFeatures.monsterRetreatVerificationEnabled;
+
     switch (action.type) {
       case "START_LOADING":
         return { ...createInitialGameState(night), audioMuted: state.audioMuted, screen: "loading" };
 
+      case "SHOW_BRIEFING":
+        return { ...createInitialGameState(night), audioMuted: state.audioMuted, screen: "briefing" };
+
       case "START_SHIFT":
         return {
-          ...createInitialGameState(night, action.roomBulbs, action.bulbsRemaining),
+          ...createInitialGameState(night, action.roomBulbs, action.bulbsRemaining, action.nightFeatures),
           audioMuted: state.audioMuted,
           screen: "playing",
           isRunning: true,
@@ -304,7 +326,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
 
       case "RESTART_SHIFT":
         return {
-          ...createInitialGameState(night, action.roomBulbs, action.bulbsRemaining),
+          ...createInitialGameState(night, action.roomBulbs, action.bulbsRemaining, action.nightFeatures),
           audioMuted: state.audioMuted,
           screen: "playing",
           isRunning: true,
@@ -353,18 +375,19 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
 
         // Otevírání (ne zavírání) dveří, kdy monstrum předtím "vzdalo" čekání
         // (viz ENEMY_ADVANCE "gave_up") a hráč ještě neověřil kamerou, kam
-        // odešlo: na easy (rules.monster_check_or_return vypnuté) je vždy
-        // bezpečné. Na medium/hard bez ověření se monstrum vrátí do
-        // "door_hallway" (ne rovnou "at_door") — trest, ale ne okamžitý
-        // teleport ke dveřím: hráč ještě dostane krátkou šanci si všimnout
-        // (na kameře door_hallway) a stihnout dveře znovu zavřít, než
-        // monstrum normálním ENEMY_ADVANCE postupem dojde až k "at_door".
-        // lastEnemyDecision zůstává "returned_unverified" (typovaný union,
-        // neměněno) — teď znamená konkrétně "vráceno do door_hallway", ne do
-        // at_door, viz GAME_DESIGN.md "Odchod monstra od dveří".
+        // odešlo: bez požadavku na ověření (easy, nebo tahle noc má
+        // monsterRetreatVerificationEnabled vypnuté) je vždy bezpečné. Jinak
+        // bez ověření se monstrum vrátí do "door_hallway" (ne rovnou
+        // "at_door") — trest, ale ne okamžitý teleport ke dveřím: hráč ještě
+        // dostane krátkou šanci si všimnout (na kameře door_hallway) a
+        // stihnout dveře znovu zavřít, než monstrum normálním ENEMY_ADVANCE
+        // postupem dojde až k "at_door". lastEnemyDecision zůstává
+        // "returned_unverified" (typovaný union, neměněno) — teď znamená
+        // konkrétně "vráceno do door_hallway", ne do at_door, viz
+        // GAME_DESIGN.md "Odchod monstra od dveří".
         if (
           state.doorClosed &&
-          rules.monster_check_or_return &&
+          requireMonsterRetreatVerification &&
           state.monsterRetreatedTo !== null &&
           !state.monsterRetreatVerified
         ) {
@@ -710,10 +733,11 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
                 enemyDoorHoldTargetMs: null,
                 enemyDoorHoldProgressMs: 0,
                 monsterRetreatedTo: retreatedTo,
-                // easy (rules.monster_check_or_return vypnuté) nepotřebuje
-                // ověření kamerou -> rovnou "ověřeno", dveře jdou otevřít bez
-                // dalšího kroku (viz TOGGLE_DOOR).
-                monsterRetreatVerified: !rules.monster_check_or_return,
+                // Bez požadavku na ověření (easy, nebo vypnuté
+                // monsterRetreatVerificationEnabled tuhle noc) rovnou
+                // "ověřeno" -> dveře jdou otevřít bez dalšího kroku (viz
+                // TOGGLE_DOOR).
+                monsterRetreatVerified: !requireMonsterRetreatVerification,
               };
             }
             return {

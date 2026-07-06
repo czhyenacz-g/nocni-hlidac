@@ -48,8 +48,14 @@ export function buildEnemyDebugInfo(state: GameState, night: NightDefinition, di
   const visibleOnActiveCamera = activeCamera?.enemyVisibleAtStage === state.enemyStage;
   const isBeingWatched = state.playerView === "desk" && state.cameraOpen && visibleOnActiveCamera;
 
+  // Stejná kombinace jako gameReducer.ts requireMonsterRetreatVerification —
+  // difficulty rule AND night feature flag (viz game/difficulty/nightConfig.ts),
+  // ne jen samotné rules.monster_check_or_return.
   const verificationRequired =
-    rules.monster_check_or_return && state.monsterRetreatedTo !== null && !state.monsterRetreatVerified;
+    rules.monster_check_or_return &&
+    state.nightFeatures.monsterRetreatVerificationEnabled &&
+    state.monsterRetreatedTo !== null &&
+    !state.monsterRetreatVerified;
   const verificationCamera =
     state.monsterRetreatedTo !== null
       ? (night.cameras.find((c) => c.enemyVisibleAtStage === state.monsterRetreatedTo) ?? null)

@@ -1,6 +1,7 @@
 import { EnemyStage, GameState, NightDefinition, RoomBulbsState } from "./types";
 import { createDefaultRoomBulbs } from "./roomBulbs";
 import { BULBS_CONFIG } from "./bulbsConfig";
+import { DEFAULT_NIGHT_FEATURES, NightFeatureFlags } from "../difficulty/nightConfig";
 
 // Vylosuje okamžik (elapsedMs) poruchy generátoru v rámci nastaveného okna —
 // mimo tento modul se nikdy nevolá Math.random() přímo, ať je losování na jednom místě.
@@ -17,18 +18,22 @@ function pickRouteVariant(night: NightDefinition): EnemyStage[] {
 }
 
 /**
- * `roomBulbsOverride`/`bulbsRemainingOverride` jsou volitelné — bez nich se
- * použijí čerstvé výchozí hodnoty (`createDefaultRoomBulbs()`,
- * `BULBS_CONFIG.startingCount`), tak jako dřív. Skutečné (persistované,
- * případně denním servisem/ruční výměnou upravené) hodnoty předává
- * `gameReducer.ts` u `START_SHIFT`/`RESTART_SHIFT` — `app/play/page.tsx` je
- * načte z localStorage (`getRoomBulbs()`/`getBulbsRemaining()`) a pošle jako
- * součást akce, viz TECH_DESIGN.md "Žárovky".
+ * `roomBulbsOverride`/`bulbsRemainingOverride`/`nightFeaturesOverride` jsou
+ * volitelné — bez nich se použijí čerstvé výchozí hodnoty
+ * (`createDefaultRoomBulbs()`, `BULBS_CONFIG.startingCount`,
+ * `DEFAULT_NIGHT_FEATURES`), tak jako dřív. Skutečné (persistované, případně
+ * denním servisem/ruční výměnou upravené, nebo pro danou noc rozřešené přes
+ * `getNightConfig`) hodnoty předává `gameReducer.ts` u
+ * `START_SHIFT`/`RESTART_SHIFT` — `app/play/page.tsx` je načte z
+ * localStorage (`getRoomBulbs()`/`getBulbsRemaining()`) / spočítá
+ * (`getNightConfig(currentNight).features`) a pošle jako součást akce, viz
+ * TECH_DESIGN.md "Žárovky".
  */
 export function createInitialGameState(
   night: NightDefinition,
   roomBulbsOverride?: RoomBulbsState,
   bulbsRemainingOverride?: number,
+  nightFeaturesOverride?: NightFeatureFlags,
 ): GameState {
   return {
     screen: "menu",
@@ -81,6 +86,8 @@ export function createInitialGameState(
     bulbReplacement: { active: false, startedAtMs: null, progressMs: 0 },
     bulbsRemaining: bulbsRemainingOverride ?? BULBS_CONFIG.startingCount,
     bulbReplaceSuccessSeq: 0,
+
+    nightFeatures: nightFeaturesOverride ?? DEFAULT_NIGHT_FEATURES,
 
     isRunning: false,
     audioMuted: false,

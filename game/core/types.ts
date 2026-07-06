@@ -1,4 +1,5 @@
 // Sdílené typy pro herní stav, nezávislé na UI.
+import { NightFeatureFlags } from "../difficulty/nightConfig";
 
 // Fyzické pozice nepřítele na trase. "outside" (mimo dohled žádné kamery) a
 // "at_door" (u dveří — stav pro DoorView, ne kamera) nejsou nutně kamerou
@@ -30,7 +31,11 @@ export type EnemyMoveDecision =
   | "attack"
   | "returned_unverified";
 
-export type ScreenId = "menu" | "loading" | "playing" | "death" | "win";
+// "briefing" = krátký panel před START_SHIFT/RESTART_SHIFT (viz
+// components/screens/BriefingScreen.tsx, game/difficulty/nightConfig.ts) —
+// mezikrok po "loading" (nový start) i po smrti/výhře (retry), nikdy se
+// nezobrazí uprostřed běžící směny.
+export type ScreenId = "menu" | "loading" | "briefing" | "playing" | "death" | "win";
 
 /** Kam se hráč v místnosti právě dívá — ovládá to, co je aktuálně klikatelné. */
 export type PlayerView = "desk" | "door" | "generator" | "left_wall" | "object_map";
@@ -350,6 +355,14 @@ export interface GameState {
    * app/play/page.tsx) a krátkou textovou hlášku (viz DoorView.tsx).
    */
   bulbReplaceSuccessSeq: number;
+
+  /**
+   * Které mechaniky jsou tuhle noc zapnuté (viz game/difficulty/nightConfig.ts)
+   * — vyřešené jednou při START_SHIFT/RESTART_SHIFT (app/play/page.tsx pošle
+   * getNightConfig(currentNight).features) a odtud čte zbytek reduceru,
+   * stejný "resolve při startu, čti ze state" vzor jako roomBulbs/bulbsRemaining.
+   */
+  nightFeatures: NightFeatureFlags;
 
   isRunning: boolean;
   audioMuted: boolean;
