@@ -66,17 +66,14 @@ export const COPY = {
     lookAtLeftWallLabel: "Podívat se na stěnu vlevo",
     leftWallBackLabel: "Zpět ke stolu",
     // Statický plánek objektu bez interaktivity (viz ObjectMapView.tsx,
-    // gameReducer.ts LOOK_AT_MAP) — vlastní texty, stejný vzor jako left_wall.
+    // gameReducer.ts LOOK_AT_MAP, game/map/objectMap.ts pro data uzlů/hran) —
+    // vlastní texty, stejný vzor jako left_wall. Popisky místností samotné
+    // žijí v game/map/objectMap.ts (stejná konvence jako CameraDefinition.label
+    // v game/cameras/), ne tady.
     lookAtMapLabel: "Podívat se na mapu",
     mapBackLabel: "Zpět ke stolu",
     mapTitle: "Plánek objektu",
     mapSubtitle: "Zjednodušený provozní plánek Objektu 13.",
-    mapRoomOutside: "Venkovní oblast",
-    mapRoomLeftHallway: "Levá hala",
-    mapRoomRightHallway: "Pravá hala",
-    mapRoomControlRoom: "Kontrolní místnost",
-    mapRoomSupplyStorage: "Sklad spotřebního materiálu",
-    mapRoomDoorHallway: "Chodba před dveřmi",
     generatorViewHint: "Klikni pro restart.",
     generatorStateLabels: {
       normal: "Generátor běží.",
