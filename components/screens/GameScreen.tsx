@@ -9,6 +9,7 @@ import DeskView from "../game/DeskView";
 import DoorView from "../game/DoorView";
 import GeneratorView from "../game/GeneratorView";
 import LeftWallView from "../game/LeftWallView";
+import ObjectMapView from "../game/ObjectMapView";
 import BlackoutView from "../game/BlackoutView";
 import PowerMeter from "../game/PowerMeter";
 import ShiftTimer from "../game/ShiftTimer";
@@ -34,6 +35,7 @@ interface GameScreenProps {
   onLookAtDesk: () => void;
   onLookAtGenerator: () => void;
   onLookAtLeftWall: () => void;
+  onLookAtMap: () => void;
   onRestartGenerator: () => void;
   onDebugToggleDoor: () => void;
   onDebugRestartGenerator: () => void;
@@ -57,6 +59,7 @@ export default function GameScreen({
   onLookAtDesk,
   onLookAtGenerator,
   onLookAtLeftWall,
+  onLookAtMap,
   onRestartGenerator,
   onDebugToggleDoor,
   onDebugRestartGenerator,
@@ -128,6 +131,7 @@ export default function GameScreen({
                 onLookAtDoor={onLookAtDoor}
                 onLookAtGenerator={onLookAtGenerator}
                 onLookAtLeftWall={onLookAtLeftWall}
+                onLookAtMap={onLookAtMap}
               />
             )}
             {state.playerView === "door" && (
@@ -155,6 +159,7 @@ export default function GameScreen({
               />
             )}
             {state.playerView === "left_wall" && <LeftWallView onLookAtDesk={onLookAtDesk} />}
+            {state.playerView === "object_map" && <ObjectMapView onLookAtDesk={onLookAtDesk} />}
           </>
         )}
 

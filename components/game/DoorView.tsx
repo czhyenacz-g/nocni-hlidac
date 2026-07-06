@@ -124,7 +124,9 @@ export default function DoorView({
           onClick={onToggleDoor}
           aria-label={doorClosed ? "Otevřít dveře" : "Zavřít dveře"}
         >
-          <span className="door-hotspot-label">{COPY.game.doorViewHint}</span>
+          <span className="door-hotspot-label">
+            {doorClosed ? COPY.game.doorViewHintOpen : COPY.game.doorViewHintClose}
+          </span>
         </button>
 
         {showBulbReplacement && (

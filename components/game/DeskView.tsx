@@ -16,6 +16,7 @@ interface DeskViewProps {
   onLookAtDoor: () => void;
   onLookAtGenerator: () => void;
   onLookAtLeftWall: () => void;
+  onLookAtMap: () => void;
 }
 
 // Základní pohled hráče: kamerový/stolní panel. Dveře a generátor odsud
@@ -29,6 +30,7 @@ export default function DeskView({
   onLookAtDoor,
   onLookAtGenerator,
   onLookAtLeftWall,
+  onLookAtMap,
 }: DeskViewProps) {
   return (
     <div className="flex flex-col gap-3">
@@ -64,7 +66,10 @@ export default function DeskView({
         />
       </div>
 
-      <ViewSwitchArrow label={COPY.game.lookAtLeftWallLabel} onClick={onLookAtLeftWall} align="left" />
+      <div className="grid grid-cols-2 gap-3">
+        <ViewSwitchArrow label={COPY.game.lookAtLeftWallLabel} onClick={onLookAtLeftWall} align="left" />
+        <ViewSwitchArrow label={COPY.game.lookAtMapLabel} onClick={onLookAtMap} align="left" />
+      </div>
     </div>
   );
 }

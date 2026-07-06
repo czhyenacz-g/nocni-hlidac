@@ -15,6 +15,7 @@ export type GameAction =
   | { type: "LOOK_AT_DESK" }
   | { type: "LOOK_AT_GENERATOR" }
   | { type: "LOOK_AT_LEFT_WALL" }
+  | { type: "LOOK_AT_MAP" }
   | { type: "RESTART_GENERATOR" }
   | { type: "OPEN_CAMERA"; cameraId: CameraId }
   | { type: "CLOSE_CAMERAS" }

@@ -46,7 +46,10 @@ export const COPY = {
     audioOffLabel: "Zvuk: vypnutý",
     lookAtDoorLabel: "Otočit se ke dveřím →",
     lookAtDeskLabel: "← Zpět k panelu",
-    doorViewHint: "Klikni na dveře.",
+    // Text hotspotu odráží akci, kterou klik provede (ne popis "klikni na
+    // dveře") — viz DoorView.tsx, stejná dvojice jako aria-label u hotspotu.
+    doorViewHintOpen: "Otevřít dveře",
+    doorViewHintClose: "Zavřít dveře",
     // Ruční výměna prasklé žárovky (viz DoorView.tsx, gameReducer.ts
     // START_BULB_REPLACEMENT) — jen MVP text, žádný nový obrázkový asset.
     bulbReplaceLabel: "Vyměnit žárovku",
@@ -62,6 +65,18 @@ export const COPY = {
     // přání zadání, ne sdílený lookAtDeskLabel.
     lookAtLeftWallLabel: "Podívat se na stěnu vlevo",
     leftWallBackLabel: "Zpět ke stolu",
+    // Statický plánek objektu bez interaktivity (viz ObjectMapView.tsx,
+    // gameReducer.ts LOOK_AT_MAP) — vlastní texty, stejný vzor jako left_wall.
+    lookAtMapLabel: "Podívat se na mapu",
+    mapBackLabel: "Zpět ke stolu",
+    mapTitle: "Plánek objektu",
+    mapSubtitle: "Zjednodušený provozní plánek Objektu 13.",
+    mapRoomOutside: "Venkovní oblast",
+    mapRoomLeftHallway: "Levá hala",
+    mapRoomRightHallway: "Pravá hala",
+    mapRoomControlRoom: "Kontrolní místnost",
+    mapRoomSupplyStorage: "Sklad spotřebního materiálu",
+    mapRoomDoorHallway: "Chodba před dveřmi",
     generatorViewHint: "Klikni pro restart.",
     generatorStateLabels: {
       normal: "Generátor běží.",

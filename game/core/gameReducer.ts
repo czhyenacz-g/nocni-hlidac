@@ -455,6 +455,21 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           bulbReplacement: state.bulbReplacement.active ? INACTIVE_BULB_REPLACEMENT : state.bulbReplacement,
         };
 
+      case "LOOK_AT_MAP":
+        // Čistě informativní pohled bez vlastní herní logiky — stejný vzor
+        // jako LOOK_AT_LEFT_WALL (zavře kamery, zruší rozběhnutou výměnu
+        // žárovky), žádný drain, žádná změna trasy nepřítele.
+        if (!state.isRunning || state.doorDeathRevealUntilMs !== null) return state;
+        return {
+          ...state,
+          playerView: "object_map",
+          cameraOpen: false,
+          activeCameraId: null,
+          cameraViewMode: "overview",
+          cameraFocusUntilMs: null,
+          bulbReplacement: state.bulbReplacement.active ? INACTIVE_BULB_REPLACEMENT : state.bulbReplacement,
+        };
+
       case "RESTART_GENERATOR": {
         // V blackoutu generátor úplně chcípl — standardní restart ho nevzkřísí.
         if (!state.isRunning || state.gameStatus === "blackout" || state.doorDeathRevealUntilMs !== null)

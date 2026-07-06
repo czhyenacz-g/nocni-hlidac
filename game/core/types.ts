@@ -33,7 +33,7 @@ export type EnemyMoveDecision =
 export type ScreenId = "menu" | "loading" | "playing" | "death" | "win";
 
 /** Kam se hráč v místnosti právě dívá — ovládá to, co je aktuálně klikatelné. */
-export type PlayerView = "desk" | "door" | "generator" | "left_wall";
+export type PlayerView = "desk" | "door" | "generator" | "left_wall" | "object_map";
 
 /**
  * normal — pravidelně pípá, vše v pořádku
