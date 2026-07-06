@@ -11,6 +11,19 @@ export const metadata: Metadata = {
   description: COPY.leaderboard.seoDescription,
 };
 
+// Vynuceně dynamické — bez tohohle Next.js za určitých okolností (build bez
+// nastavených NOCNI_HLIDAC_API_* proměnných, build cache, budoucí změna
+// prerender heuristiky) stránku staticky vygeneruje při `next build` a
+// zamrzne na datech z toho okamžiku, i když getLeaderboardEntries() interně
+// volá `fetch(..., { cache: "no-store" })` na živé VPS API (viz
+// lib/hubClient.ts). Ověřeno lokálním buildem bez env proměnných: stránka
+// vyšla jako "○ Static" místo "ƒ Dynamic". Na produkci (Vercel má env
+// proměnné při buildu) se to zatím neprojevovalo (x-vercel-cache: MISS na
+// každý request), ale spoléhat na tenhle nepřímý signál je křehké — radši
+// explicitně, ať `/leaderboard` vždycky ukazuje živá data bez ohledu na to,
+// jaký byl stav env proměnných v okamžiku posledního buildu.
+export const dynamic = "force-dynamic";
+
 // getLeaderboardEntries() zkusí soukromé VPS API (viz lib/hubClient.ts,
 // lib/leaderboard/remoteLeaderboard.ts) a spadne na mock data
 // (lib/leaderboard/mockLeaderboard.ts), pokud API není nakonfigurované nebo

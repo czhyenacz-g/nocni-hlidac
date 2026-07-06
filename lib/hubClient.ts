@@ -34,7 +34,11 @@ export function isHubConfigured(): boolean {
  * timeout, ne-2xx odpověď, i chybný JSON. Stejná "tichá null" konvence jako
  * osmaliga.cz (`lib/clubs.ts#fetchFromApi`), navíc s `AbortSignal.timeout` —
  * osmaliga.cz žádný timeout nemá (zavěšené VPS API by viselo do platform
- * timeoutu), tady je to záměrné vylepšení, ne slepá kopie.
+ * timeoutu), tady je to záměrné vylepšení, ne slepá kopie. "Tichá null" pro
+ * VOLAJÍCÍHO (ten se má chovat stejně, ať API selhalo nebo není
+ * nakonfigurované) ale NE tichá v serverovém logu — `console.error` níže
+ * loguje jen cestu a status/chybu, nikdy hlavičky/token, ať jde v Vercel
+ * logu vidět, že se konkrétní volání (např. upsert po loginu) nepovedlo.
  */
 async function hubFetch<T>(path: string, init?: RequestInit): Promise<T | null> {
   if (!isHubConfigured()) return null;
@@ -48,9 +52,13 @@ async function hubFetch<T>(path: string, init?: RequestInit): Promise<T | null> 
       },
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.error(`[hubClient] ${init?.method ?? "GET"} ${path} failed: HTTP ${res.status}`);
+      return null;
+    }
     return (await res.json()) as T;
-  } catch {
+  } catch (err) {
+    console.error(`[hubClient] ${init?.method ?? "GET"} ${path} failed:`, err instanceof Error ? err.message : err);
     return null;
   }
 }

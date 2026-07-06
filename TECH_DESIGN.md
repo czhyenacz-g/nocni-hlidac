@@ -1537,3 +1537,35 @@ Testy: `game/core/powerDrain.test.ts` (14 testů) — bezpečný idle stav (rech
 overview vs. detail kamera, izolace door/light drainu, generátor critical/restarting vs.
 normal/silentFault (a že extra drain po opravě zmizí), night scaling aplikovaný přesně
 jednou a nikdy na recharge.
+
+## Diagnostika: přihlášený hráč chybí na `/leaderboard`
+
+Podnět: hráč viděl v menu "Identita hlídače ověřena: czhyenacz" (session/Discord login
+funguje), ale na `/leaderboard` se nezobrazoval. Audit (VPS DB dotaz, přímý curl na
+produkční `/nocni-hlidac/player/upsert`, kontrola `listNocniHlidacLeaderboard` řazení,
+kontrola cache hlaviček produkční stránky) ukázal:
+
+- **Skutečná příčina**: hráčova session cookie vznikla PŘED commitem, který do
+  `app/api/auth/callback/route.ts` přidal `await upsertHubPlayer(player)` (Discord login
+  `b369a7e` běžel v produkci dřív, VPS wiring `e47fdda` až později týž den). Session je
+  pořád platná (`getSession()` jen dekóduje cookie, nikdy se neptá VPS), takže UI dál hlásí
+  přihlášeného hráče — ale upsert do VPS DB se pro tenhle konkrétní login nikdy nespustil,
+  protože ten kód v době jeho přihlášení ještě neexistoval. Ověřeno přímým dotazem do
+  produkční `NocniHlidacPlayer` tabulky (czhyenacz tam skutečně chybí) a přímým externím
+  curl na `POST /nocni-hlidac/player/upsert` (funguje, 200, založí záznam) — VPS endpoint
+  není rozbitý, jen se pro tuhle session nikdy nezavolal. **Náprava beze změny kódu: nové
+  přihlášení (odhlásit/znovu přes Discord) spustí aktuální callback a hráče založí.**
+- `listNocniHlidacLeaderboard` (project-hub-api) nefiltruje `bestRun = 0` (ověřeno testovacím
+  záznamem s `0/0`, který se v odpovědi objevil) — žádný bug v řazení/limitu.
+- **Vedlejší zjištění, opraveno**: `app/leaderboard/page.tsx` neměl `export const dynamic`
+  — lokální build bez `NOCNI_HLIDAC_API_*` proměnných vyšel jako `○ Static` (stránka by se
+  v takovém buildu zamrazila na mock datech z okamžiku buildu). Na produkci (Vercel má env
+  proměnné při buildu, `fetch(..., {cache:"no-store"})` uvnitř `getLeaderboardEntries()`
+  správně spustil dynamické renderování — ověřeno `x-vercel-cache: MISS` na každý request)
+  se to zatím neprojevovalo, ale spoléhat na tenhle nepřímý signál je křehké. Přidáno
+  `export const dynamic = "force-dynamic";` — teď je dynamické vždy, bez ohledu na stav env
+  proměnných v okamžiku posledního buildu.
+- **Vedlejší zjištění, opraveno**: `lib/hubClient.ts#hubFetch` úplně tiše polykal chyby
+  (žádný `console.error` na ne-2xx odpověď ani na network/timeout chybu) — do Vercel logu by
+  se selhání upsertu vůbec nedostalo. Přidán `console.error` s cestou a
+  statusem/chybou (nikdy hlavičky/token), ať jde budoucí podobné selhání dohledat.
