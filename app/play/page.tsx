@@ -277,6 +277,11 @@ export default function PlayPage() {
     dispatch({ type: "RESTART_SHIFT", roomBulbs: getRoomBulbs(), bulbsRemaining: getBulbsRemaining() });
   }
 
+  function handleGoToMenu() {
+    audioManager.play(AUDIO_EVENTS.uiClick);
+    dispatch({ type: "GO_TO_MENU" });
+  }
+
   function handleToggleDoor() {
     dispatch({ type: "TOGGLE_DOOR" });
   }
@@ -392,7 +397,9 @@ export default function PlayPage() {
       {state.screen === "death" && (
         <DeathScreen reason={state.deathReason} deathCount={deathCount} onRetry={handleRestart} />
       )}
-      {state.screen === "win" && <WinScreen survivedNights={survivedNights} onRetry={handleRestart} />}
+      {state.screen === "win" && (
+        <WinScreen survivedNights={survivedNights} onRetry={handleRestart} onGoToMenu={handleGoToMenu} />
+      )}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 interface WinScreenProps {
   survivedNights: number;
   onRetry: () => void;
+  onGoToMenu: () => void;
 }
 
 // Skloňování noc/noci/nocí — 1 = "noc", 2-4 = "noci", jinak (0, 5+) = "nocí".
@@ -14,7 +15,7 @@ function formatSurvivedNights(count: number): string {
   return label.replace("{count}", String(count));
 }
 
-export default function WinScreen({ survivedNights, onRetry }: WinScreenProps) {
+export default function WinScreen({ survivedNights, onRetry, onGoToMenu }: WinScreenProps) {
   // Bez bg-* na <main> — viz stejná poznámka v MainMenuScreen.tsx (main by
   // jinak vlastním pozadím zakryl SceneBackground potomka s -z-10).
   return (
@@ -27,6 +28,12 @@ export default function WinScreen({ survivedNights, onRetry }: WinScreenProps) {
         <p className="text-xs text-gray-500 mb-8">{formatSurvivedNights(survivedNights)}</p>
         <button className="pixel-button tap-target px-6 py-3 text-sm w-full" onClick={onRetry}>
           {COPY.win.retryButton}
+        </button>
+        <button
+          className="block mt-4 mx-auto text-center text-xs text-gray-500 hover:text-gray-300"
+          onClick={onGoToMenu}
+        >
+          {COPY.win.backToMenuLabel}
         </button>
       </div>
     </main>
