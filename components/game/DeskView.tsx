@@ -50,7 +50,7 @@ export default function DeskView({
         />
       </div>
 
-      <LightControl lightOn={state.lightOn} onToggle={onToggleLight} />
+      <LightControl lightOn={state.lightOn} bulbBroken={state.roomBulbs.nearRoom.broken} onToggle={onToggleLight} />
 
       <div className="grid grid-cols-2 gap-3">
         <ViewSwitchArrow label={COPY.game.lookAtDoorLabel} onClick={onLookAtDoor} align="right" />

@@ -13,6 +13,8 @@ export const COPY = {
     doorOpenLabel: "Dveře: OTEVŘENO",
     lightOnLabel: "Světlo: ZAPNUTO",
     lightOffLabel: "Světlo: VYPNUTO",
+    /** Prasklá žárovka u dveří (viz game/core/roomBulbs.ts) — nahrazuje lightOffLabel na LightControl, ať "VYPNUTO" nepůsobí jako by šlo světlo prostě zapnout. */
+    lightBrokenLabel: "Světlo: rozbitá žárovka",
     powerLabel: "Energie",
     // Dev-only hodnota vedle energie (viz STRESS_DEV_HUD_ENABLED, PowerMeter.tsx) — časem se skryje.
     stressLabel: "Stres",
