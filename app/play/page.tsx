@@ -308,6 +308,11 @@ export default function PlayPage() {
     dispatch({ type: "LOOK_AT_GENERATOR" });
   }
 
+  function handleLookAtLeftWall() {
+    audioManager.play(AUDIO_EVENTS.uiClick);
+    dispatch({ type: "LOOK_AT_LEFT_WALL" });
+  }
+
   function handleRestartGenerator() {
     audioManager.play(AUDIO_EVENTS.uiClick);
     dispatch({ type: "RESTART_GENERATOR" });
@@ -387,6 +392,7 @@ export default function PlayPage() {
           onLookAtDoor={handleLookAtDoor}
           onLookAtDesk={handleLookAtDesk}
           onLookAtGenerator={handleLookAtGenerator}
+          onLookAtLeftWall={handleLookAtLeftWall}
           onRestartGenerator={handleRestartGenerator}
           onDebugToggleDoor={handleDebugToggleDoor}
           onDebugRestartGenerator={handleDebugRestartGenerator}

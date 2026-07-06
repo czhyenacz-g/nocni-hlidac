@@ -8,6 +8,7 @@ import SceneBackground from "@/components/SceneBackground";
 import DeskView from "../game/DeskView";
 import DoorView from "../game/DoorView";
 import GeneratorView from "../game/GeneratorView";
+import LeftWallView from "../game/LeftWallView";
 import BlackoutView from "../game/BlackoutView";
 import PowerMeter from "../game/PowerMeter";
 import ShiftTimer from "../game/ShiftTimer";
@@ -32,6 +33,7 @@ interface GameScreenProps {
   onLookAtDoor: () => void;
   onLookAtDesk: () => void;
   onLookAtGenerator: () => void;
+  onLookAtLeftWall: () => void;
   onRestartGenerator: () => void;
   onDebugToggleDoor: () => void;
   onDebugRestartGenerator: () => void;
@@ -54,6 +56,7 @@ export default function GameScreen({
   onLookAtDoor,
   onLookAtDesk,
   onLookAtGenerator,
+  onLookAtLeftWall,
   onRestartGenerator,
   onDebugToggleDoor,
   onDebugRestartGenerator,
@@ -124,6 +127,7 @@ export default function GameScreen({
                 onCloseCameras={onCloseCameras}
                 onLookAtDoor={onLookAtDoor}
                 onLookAtGenerator={onLookAtGenerator}
+                onLookAtLeftWall={onLookAtLeftWall}
               />
             )}
             {state.playerView === "door" && (
@@ -150,6 +154,7 @@ export default function GameScreen({
                 onLookAtDesk={onLookAtDesk}
               />
             )}
+            {state.playerView === "left_wall" && <LeftWallView onLookAtDesk={onLookAtDesk} />}
           </>
         )}
 

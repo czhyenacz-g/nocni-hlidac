@@ -440,6 +440,21 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           bulbReplacement: state.bulbReplacement.active ? INACTIVE_BULB_REPLACEMENT : state.bulbReplacement,
         };
 
+      case "LOOK_AT_LEFT_WALL":
+        // Čistě atmosférický pohled bez vlastní herní logiky — stejně jako
+        // LOOK_AT_GENERATOR zavře kamery a odchod od stolu, ale nic dalšího
+        // (žádný drain, žádný nový mechanický stav).
+        if (!state.isRunning || state.doorDeathRevealUntilMs !== null) return state;
+        return {
+          ...state,
+          playerView: "left_wall",
+          cameraOpen: false,
+          activeCameraId: null,
+          cameraViewMode: "overview",
+          cameraFocusUntilMs: null,
+          bulbReplacement: state.bulbReplacement.active ? INACTIVE_BULB_REPLACEMENT : state.bulbReplacement,
+        };
+
       case "RESTART_GENERATOR": {
         // V blackoutu generátor úplně chcípl — standardní restart ho nevzkřísí.
         if (!state.isRunning || state.gameStatus === "blackout" || state.doorDeathRevealUntilMs !== null)

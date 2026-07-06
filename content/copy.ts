@@ -57,6 +57,11 @@ export const COPY = {
     /** Krátká hláška po úspěšném dokončení výměny (viz DoorView.tsx, bulbReplaceSuccessSeq). */
     bulbReplaceSuccessLabel: "Žárovka vyměněna.",
     lookAtGeneratorLabel: "Zkontrolovat generátor →",
+    // Čistě atmosférický pohled bez herní mechaniky (viz LeftWallView.tsx,
+    // gameReducer.ts LOOK_AT_LEFT_WALL) — vlastní text návratu na výslovné
+    // přání zadání, ne sdílený lookAtDeskLabel.
+    lookAtLeftWallLabel: "Podívat se na stěnu vlevo",
+    leftWallBackLabel: "Zpět ke stolu",
     generatorViewHint: "Klikni pro restart.",
     generatorStateLabels: {
       normal: "Generátor běží.",
