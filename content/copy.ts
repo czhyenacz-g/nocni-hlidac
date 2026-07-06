@@ -6,6 +6,7 @@ export const COPY = {
     intro: "Sedíš v malé místnosti. Kamery šumí. Dveře nevydrží věčně. Přežij do rána.",
     startButton: "Nastoupit na směnu",
     termsLinkLabel: "Podmínky noční služby",
+    leaderboardLinkLabel: "Žebříček hlídačů",
     authorEmail: "hynek@darbujan.com",
   },
   // Nenápadný login box v hlavním menu (viz components/auth/AuthStatus.tsx,
@@ -179,5 +180,19 @@ export const COPY = {
         "respekt, světlo, klid a férovou mzdu.",
     ],
     backLabel: "← Zpět na nástup",
+  },
+  // Zatím jen mock data (viz lib/leaderboard/mockLeaderboard.ts) — žádné API/DB,
+  // připraveno na budoucí náhradu za skutečné výsledky beze změny textů.
+  leaderboard: {
+    seoTitle: "Žebříček hlídačů | Noční hlídač",
+    seoDescription: "Žebříček hlídačů Objektu 13 — kdo vydržel nejdéle a jak skončila jeho směna.",
+    heading: "Žebříček hlídačů",
+    subheading: "Pozice byla opakovaně obsazena. Někteří vydrželi déle.",
+    columnRank: "Pořadí",
+    columnGuard: "Hlídač",
+    columnNights: "Přežité noci",
+    columnEndReason: "Konec směny",
+    columnRecordedAt: "Datum záznamu",
+    backToGameLabel: "← Zpět do hry",
   },
 } as const;

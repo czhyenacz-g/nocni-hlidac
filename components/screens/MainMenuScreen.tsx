@@ -30,6 +30,10 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
           {COPY.menu.termsLinkLabel}
         </Link>
 
+        <Link href="/leaderboard" className="block mt-1 text-center text-[10px] text-gray-600 hover:text-gray-400">
+          {COPY.menu.leaderboardLinkLabel}
+        </Link>
+
         <AuthStatus />
       </div>
 

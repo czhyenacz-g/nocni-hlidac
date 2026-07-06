@@ -361,14 +361,22 @@
       jsou samostatné další kroky. Hra jde hrát beze změny i bez přihlášení; chybějící
       Discord/AUTH_SECRET config login tiše no-opne (`?auth=config_error`), build/typecheck
       beze změny.
+- [x] `/leaderboard` — první verze žebříčku hlídačů, jen frontend + mock data (viz
+      TECH_DESIGN.md "Žebříček hlídačů"). `GuardLeaderboardEntry`
+      (`lib/leaderboard/types.ts`), 10 pevných záznamů v `lib/leaderboard/mockLeaderboard.ts`
+      za `getLeaderboardEntries()` (async signatura, ať pozdější náhrada za API nevyžaduje
+      změnu volajícího `app/leaderboard/page.tsx`). Nenápadný odkaz v `MainMenuScreen.tsx`.
+      Žádné API, DB, ani ukládání výsledků směny zatím nepřibylo.
 
 ## Další kroky po MVP
 
 - Discord login krok 2 — DB tabulka `players` (id, discord_user_id, username, display_name,
   avatar_url, created_at, updated_at, last_login_at), upsert v `app/api/auth/callback/route.ts`
   (dnes jen podepsaná cookie, žádná perzistence hráče)
-- Discord login krok 3 — žebříček hlídačů (leaderboard), ukládání výsledků směny, vzkazy
-  hlídačů — všechno explicitně mimo rozsah kroku 1 (viz TECH_DESIGN.md "Discord login")
+- Žebříček krok 2 — API endpoint + DB tabulka pro skutečné výsledky směn, náhrada
+  `lib/leaderboard/mockLeaderboard.ts` za reálný dotaz, ukládání runu po smrti/výhře, vzkazy
+  hlídačů — všechno explicitně mimo rozsah prvních dvou kroků (viz TECH_DESIGN.md "Discord
+  login" a "Žebříček hlídačů")
 - Skutečná pixel-art grafika (sprity pro místnost, kamery, nepřítele, generátor)
 - Vlastní/kvalitnější audio místo Kenney.nl CC0 placeholderů (zejména `ambience_loop`,
   který teď je jen krátký smyčkovaný efekt, ne skutečná ambientní kompozice); doplnit

@@ -1264,3 +1264,32 @@ discord_user_id, username, display_name, avatar_url, created_at, updated_at,
 last_login_at) a upsert v callbacku, leaderboard, ukládání výsledků směny, vzkazy hlídačů,
 ochrana/gating jakékoli herní route podle přihlášení (žádná dnes neexistuje, hra je celá
 veřejná).
+
+## Žebříček hlídačů (`/leaderboard`) — jen frontend, mock data
+
+**Rozsah tohoto kroku**: statická stránka `/leaderboard` s Top 10 tabulkou a natvrdo napsanými
+mock daty v kódu. **Záměrně NEobsahuje**: API endpoint, DB, ukládání výsledků směny po
+smrti/výhře, vzkazy hlídačů — to je až další krok, až bude co reálně ukládat (viz "Discord
+login" výše, "Další kroky po MVP" v TODO.md).
+
+- **Typ dat**: `GuardLeaderboardEntry` (`lib/leaderboard/types.ts`) — `guardName`,
+  `survivedNights`, `endReason`, `recordedAt` (ISO `YYYY-MM-DD`, stejný tvar, jaký by
+  později poslalo skutečné API). Záměrně BEZ `rank` pole — pořadí v tabulce se počítá jako
+  `index + 1` při renderu (`app/leaderboard/page.tsx`), ať nemůže vzniknout nesoulad mezi
+  uloženým pořadím a skutečným řazením podle `survivedNights`.
+- **Mock data**: `lib/leaderboard/mockLeaderboard.ts` — 10 pevných záznamů seřazených
+  sestupně podle `survivedNights`, exportovaná přes jedinou funkci
+  `getLeaderboardEntries(): Promise<GuardLeaderboardEntry[]>`. Návratový typ je záměrně
+  `Promise`, i když teď žádné I/O neprobíhá — až se nahradí skutečným fetch/DB dotazem,
+  volající strana (`await getLeaderboardEntries()` v `page.tsx`) se nemusí měnit vůbec,
+  jen implementace uvnitř týhle jedné funkce.
+- **Stránka** (`app/leaderboard/page.tsx`) — Server Component (stejný vzor jako
+  `app/about/page.tsx`/`app/terms/page.tsx`, žádné `"use client"`, žádný stav), stejné
+  pozadí jako menu (`BACKGROUND_SCENES.menu`), širší panel (`max-w-2xl` místo `max-w-md`
+  u about/terms) kvůli tabulce, ale stejný `pixel-panel`/tmavý styl. Tabulka je zabalená v
+  `overflow-x-auto`, ať zůstane čitelná i na mobilu bez rozbití layoutu.
+- **Navigace**: nenápadný odkaz `COPY.menu.leaderboardLinkLabel` v `MainMenuScreen.tsx`,
+  hned pod odkazem na podmínky služby — stejný vizuální styl (malý šedý text), hlavní CTA
+  "Nastoupit na směnu" zůstává jediné výrazné tlačítko beze změny.
+- Texty v `COPY.leaderboard` (`content/copy.ts`), ne natvrdo v komponentě — stejná konvence
+  jako zbytek projektu.
