@@ -2,6 +2,7 @@ import Link from "next/link";
 import { COPY } from "@/content/copy";
 import Footer from "@/components/Footer";
 import SceneBackground from "@/components/SceneBackground";
+import AuthStatus from "@/components/auth/AuthStatus";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 
 interface MainMenuScreenProps {
@@ -28,6 +29,8 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
         <Link href="/terms" className="block mt-4 text-center text-[10px] text-gray-600 hover:text-gray-400">
           {COPY.menu.termsLinkLabel}
         </Link>
+
+        <AuthStatus />
       </div>
 
       <div className="fixed bottom-0 left-0 right-0">

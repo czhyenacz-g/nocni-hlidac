@@ -353,8 +353,22 @@
         zpět na přehled (`CameraDetailView`)
       - žádný hotspot není nalepený na okraj displeje (notch/safe area u `viewportFit: cover`)
 
+- [x] Discord login — základ identity hráče pro budoucí žebříček (viz TECH_DESIGN.md
+      "Discord login"). Adaptováno z osmaliga.cz (`lib/auth/session.ts` — vlastní HMAC session
+      cookie, žádná knihovna). `app/api/auth/{login,callback,logout,me}/route.ts`,
+      `components/auth/AuthStatus.tsx` (nenápadný login box v `MainMenuScreen.tsx`). Zatím
+      NENÍ: DB tabulka `players`, leaderboard, ukládání výsledků směny, vzkazy hlídačů — to
+      jsou samostatné další kroky. Hra jde hrát beze změny i bez přihlášení; chybějící
+      Discord/AUTH_SECRET config login tiše no-opne (`?auth=config_error`), build/typecheck
+      beze změny.
+
 ## Další kroky po MVP
 
+- Discord login krok 2 — DB tabulka `players` (id, discord_user_id, username, display_name,
+  avatar_url, created_at, updated_at, last_login_at), upsert v `app/api/auth/callback/route.ts`
+  (dnes jen podepsaná cookie, žádná perzistence hráče)
+- Discord login krok 3 — žebříček hlídačů (leaderboard), ukládání výsledků směny, vzkazy
+  hlídačů — všechno explicitně mimo rozsah kroku 1 (viz TECH_DESIGN.md "Discord login")
 - Skutečná pixel-art grafika (sprity pro místnost, kamery, nepřítele, generátor)
 - Vlastní/kvalitnější audio místo Kenney.nl CC0 placeholderů (zejména `ambience_loop`,
   který teď je jen krátký smyčkovaný efekt, ne skutečná ambientní kompozice); doplnit
@@ -375,8 +389,8 @@
 
 ## Explicitně odložené věci
 
-- Platby, Discord login, Patreon
-- Databáze
+- Platby, Patreon
+- Databáze (Discord login zatím jen v podepsané cookie, žádná DB tabulka — viz "Další kroky po MVP")
 - Editor kampaní, více kampaní
 - 3D grafika
 - Multiplayer

@@ -1201,3 +1201,66 @@ ohledu na vstupní hodnotu.
    importované `NIGHT_01`.
 4. Reducer (`createGameReducer`) i loop (`useGameLoop`) už jsou parametrizované definicí
    směny — není potřeba je měnit.
+
+## Discord login (základ identity hráče pro budoucí žebříček)
+
+**Rozsah tohoto kroku**: přihlásit/odhlásit přes Discord a zobrazit přihlášeného hráče v
+menu. **Záměrně NEobsahuje**: DB tabulku `players`, leaderboard, ukládání výsledků směny,
+vzkazy hlídačů — to jsou další, samostatné kroky. Hra jde hrát beze změny i bez přihlášení;
+game loop/death/win flow/žárovky/kamery/monster logika/difficulty se vůbec nedotkly.
+
+Adaptováno z **osmaliga.cz** (`app/api/auth/{login,callback,logout,me}/route.ts`,
+`lib/auth/session.ts`, `components/auth/AuthStatus.tsx`) — vlastní, na knihovnách nezávislý
+OAuth + session mechanismus (žádný NextAuth/iron-session), stejná struktura, jen:
+- odstraněný krok "upsert do DB" v callbacku (osmaliga.cz to posílá do samostatné
+  `project-hub-api` mikroslužby — tady zatím žádná DB tabulka neexistuje),
+  `PROJECT_HUB_API_URL`/`PROJECT_HUB_API_KEY` proto nejsou potřeba,
+- `redirect_uri` čtený z explicitního `DISCORD_REDIRECT_URI` (ne odvozený z `AUTH_URL`),
+  same-origin redirecty (`/`, `?auth=error`) staví na `request.url` (funguje beze změny na
+  Vercel preview URL i produkci),
+- session payload = přesně `DiscordPlayer` typ ze zadání (`discordUserId`, `username`,
+  volitelné `displayName`/`avatarUrl`), ne osmaliga.cz širší `OsmaSession`.
+
+**Session mechanismus** (`lib/auth/session.ts`) — `base64url(JSON.stringify(DiscordPlayer)) +
+"." + hex(HMAC-SHA256 podpis)` v httpOnly cookie (`nocni-hlidac-session`, `sameSite: lax`,
+`secure` jen v produkci, 30 dní). `decodeSession` ověřuje podpis přes `timingSafeEqual`
+(ne prosté `===`). Bez `AUTH_SECRET` v env `encodeSession`/`decodeSession` vrátí `null` —
+přihlášení se v tom případě tiše NEprovede (žádná nepodepsaná/padělatelná session), ne pád
+aplikace.
+
+**OAuth flow**:
+1. `GET /api/auth/login` — vygeneruje náhodný `state` (`crypto.randomBytes(16)`), uloží ho do
+   krátkodobé (`300s`) httpOnly cookie `nocni-hlidac-oauth-state`, přesměruje na Discord
+   authorize URL se scope jen `identify` (žádný e-mail, žádné guildy).
+2. `GET /api/auth/callback` — ověří `state` proti cookie (CSRF ochrana), vymění `code` za
+   access token, načte `https://discord.com/api/users/@me`, uloží
+   `{ discordUserId, username, displayName?, avatarUrl? }` do podepsané session cookie,
+   smaže `oauth-state` cookie, přesměruje na `/`.
+3. `POST /api/auth/logout` — smaže session cookie, 303 redirect na `/`. Žádné volání Discord
+   API (token se nikde neukládá, není co revokovat).
+4. `GET /api/auth/me` — vrátí `{ player: DiscordPlayer | null }`, čte jen cookie
+   (`getSession()`), nikdy nevolá Discord API znovu.
+
+Kterákoliv chybějící/špatná config (`DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`,
+`DISCORD_REDIRECT_URI`, `AUTH_SECRET`) → tichý redirect na `/?auth=config_error`, ne pád
+buildu ani runtime chyba — build funguje i s úplně prázdným `.env` (ověřeno).
+
+**UI**: `components/auth/AuthStatus.tsx` — client komponenta (fetch `/api/auth/me` při
+mountu), protože `MainMenuScreen.tsx` běží pod `"use client"` stromem `app/play/page.tsx`
+(nemůže být async Server Component s přímým `getSession()`). Vykreslená v
+`MainMenuScreen.tsx` pod termíny odkazem, jako nenápadný malý text — hlavní CTA "Nastoupit na
+směnu" zůstává jediné výrazné tlačítko. Texty v `COPY.auth` (`content/copy.ts`), ne natvrdo
+v komponentě.
+
+**Env/config** (`.env.example`, nikdy commitované skutečné hodnoty):
+- `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` — z Discord Developer Portal, OAuth2.
+- `DISCORD_REDIRECT_URI` — musí přesně sedět na jeden ze zaregistrovaných redirectů v Discord
+  Developer Portal (jinak Discord vrátí `Invalid OAuth2 redirect_uri`).
+- `AUTH_SECRET` — HMAC podpis session cookie, `openssl rand -base64 32`.
+- `DATABASE_URL` zatím NENÍ potřeba — žádná DB tabulka v tomhle kroku neexistuje.
+
+**Co zůstává na další krok** (výslovně mimo rozsah): DB tabulka `players` (id,
+discord_user_id, username, display_name, avatar_url, created_at, updated_at,
+last_login_at) a upsert v callbacku, leaderboard, ukládání výsledků směny, vzkazy hlídačů,
+ochrana/gating jakékoli herní route podle přihlášení (žádná dnes neexistuje, hra je celá
+veřejná).

@@ -8,6 +8,15 @@ export const COPY = {
     termsLinkLabel: "Podmínky noční služby",
     authorEmail: "hynek@darbujan.cz",
   },
+  // Nenápadný login box v hlavním menu (viz components/auth/AuthStatus.tsx,
+  // lib/auth/session.ts) — základ identity hráče pro budoucí žebříček, hra
+  // samotná se přihlášením nijak nemění a jde hrát i bez něj.
+  auth: {
+    discordLoginLabel: "Přihlásit přes Discord",
+    // {name} nahrazuje AuthStatus.tsx (displayName, jinak username).
+    verifiedLabel: "Identita hlídače ověřena: {name}",
+    logoutLabel: "Odhlásit",
+  },
   game: {
     doorClosedLabel: "Dveře: ZAVŘENO",
     doorOpenLabel: "Dveře: OTEVŘENO",
