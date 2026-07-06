@@ -24,6 +24,10 @@ interface GameScreenProps {
   heartbeatStress: number;
   /** Kolikátá noc v řadě aktuálního hlídače (viz game/core/survivedNights.ts) — jen popisek pro ShiftTimer. */
   nightNumber: number;
+  /** Serverový currentRun přihlášeného hráče (viz app/api/auth/me/route.ts) — jen pro DebugPanel "Run source", `null` = nepřihlášený/hub API nedostupné. */
+  serverCurrentRun: number | null;
+  /** Lokální localStorage counter (viz game/core/survivedNights.ts) — jen pro DebugPanel "Run source". */
+  localSurvivedNights: number;
   /** Campaign hodnota z GameState.bulbsRemaining (viz game/core/bulbInventory.ts pro persistenci) — snižuje se v reduceru při dokončené ruční výměně. */
   bulbsRemaining: number;
   onToggleDoor: () => void;
@@ -49,6 +53,8 @@ export default function GameScreen({
   tensionLevel,
   heartbeatStress,
   nightNumber,
+  serverCurrentRun,
+  localSurvivedNights,
   bulbsRemaining,
   onToggleDoor,
   onToggleLight,
@@ -172,6 +178,8 @@ export default function GameScreen({
             night={night}
             tensionLevel={tensionLevel}
             nightNumber={nightNumber}
+            serverCurrentRun={serverCurrentRun}
+            localSurvivedNights={localSurvivedNights}
             onDebugToggleDoor={onDebugToggleDoor}
             onDebugRestartGenerator={onDebugRestartGenerator}
           />

@@ -15,7 +15,7 @@ describe("ensureHubPlayer", () => {
     vi.stubEnv("NOCNI_HLIDAC_API_TOKEN", "");
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-    await expect(ensureHubPlayer(PLAYER, "test")).resolves.toBeUndefined();
+    await expect(ensureHubPlayer(PLAYER, "test")).resolves.toBeNull();
     expect(warnSpy).toHaveBeenCalled();
   });
 
@@ -28,20 +28,20 @@ describe("ensureHubPlayer", () => {
     );
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-    await expect(ensureHubPlayer(PLAYER, "test")).resolves.toBeUndefined();
+    await expect(ensureHubPlayer(PLAYER, "test")).resolves.toBeNull();
     expect(warnSpy).toHaveBeenCalled();
   });
 
-  it("does not warn when the upsert succeeds", async () => {
+  it("does not warn when the upsert succeeds, and resolves with the returned GuardRunState", async () => {
     vi.stubEnv("NOCNI_HLIDAC_API_URL", "https://hub.example.invalid");
     vi.stubEnv("NOCNI_HLIDAC_API_TOKEN", "test-token");
     vi.stubGlobal(
       "fetch",
-      vi.fn(() => Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }))),
+      vi.fn(() => Promise.resolve(new Response(JSON.stringify({ bestRun: 3, currentRun: 1 }), { status: 200 }))),
     );
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-    await ensureHubPlayer(PLAYER, "test");
+    await expect(ensureHubPlayer(PLAYER, "test")).resolves.toEqual({ bestRun: 3, currentRun: 1 });
     expect(warnSpy).not.toHaveBeenCalled();
   });
 

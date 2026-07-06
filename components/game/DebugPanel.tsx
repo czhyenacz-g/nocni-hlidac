@@ -14,6 +14,10 @@ interface DebugPanelProps {
   tensionLevel: number;
   /** Kolikátá noc v řadě (viz game/core/survivedNights.ts) — jen pro dopočet night scaling multiplikátoru v "Power drain breakdown" níže, chybí-li bere se jako noc 1. */
   nightNumber?: number;
+  /** Serverový currentRun přihlášeného hráče (viz app/api/auth/me/route.ts) — `null` = nepřihlášený/hub API nedostupné. */
+  serverCurrentRun: number | null;
+  /** Lokální localStorage counter (viz game/core/survivedNights.ts) — fallback pro nepřihlášeného hráče. */
+  localSurvivedNights: number;
   onDebugToggleDoor: () => void;
   onDebugRestartGenerator: () => void;
 }
@@ -23,6 +27,8 @@ export default function DebugPanel({
   night,
   tensionLevel,
   nightNumber,
+  serverCurrentRun,
+  localSurvivedNights,
   onDebugToggleDoor,
   onDebugRestartGenerator,
 }: DebugPanelProps) {
@@ -139,6 +145,16 @@ export default function DebugPanel({
           <div>bulbLifetime: {state.nightFeatures.bulbLifetimeEnabled ? "on" : "off"}</div>
           <div>bulbReplacement: {state.nightFeatures.bulbReplacementEnabled ? "on" : "off"}</div>
           <div>retreatVerification: {state.nightFeatures.monsterRetreatVerificationEnabled ? "on" : "off"}</div>
+        </div>
+
+        {/* Run source (viz app/play/page.tsx serverRunState/survivedNights) —
+            při testu má být na první pohled jasné, jestli se noc počítá ze
+            serveru (přihlášený hráč) nebo z lokálního fallbacku. */}
+        <div className="border-t border-gray-700 pt-2 mt-1">
+          <div className="text-gray-400 mb-1">Run source:</div>
+          <div>server currentRun: {serverCurrentRun ?? "—"}</div>
+          <div>local survived nights: {localSurvivedNights}</div>
+          <div>resolved currentNight: {nightNumber ?? 1}</div>
         </div>
 
         <DoorControl doorClosed={state.doorClosed} onToggle={onDebugToggleDoor} />

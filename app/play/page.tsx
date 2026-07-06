@@ -29,6 +29,9 @@ import { getBulbsRemaining, setBulbsRemaining } from "@/game/core/bulbInventory"
 import { applyDailyBulbService, getRoomBulbs, setRoomBulbs } from "@/game/core/roomBulbs";
 import { useHeartbeatStress } from "@/game/audio/useHeartbeatStress";
 import { getNightConfig } from "@/game/difficulty/nightConfig";
+import type { AuthenticatedPlayer } from "@/lib/auth/types";
+import type { GuardRunState } from "@/lib/leaderboard/types";
+import type { GuardRunResponse } from "@/lib/leaderboard/guardRunRequestHandlers";
 
 const night = NIGHT_01;
 const gameReducer = createGameReducer(night);
@@ -45,11 +48,46 @@ export default function PlayPage() {
   const [deathCount, setDeathCount] = useState(() => getDeathCount());
   // Kolik nocí v řadě aktuální hlídač přežil bez smrti (viz
   // game/core/survivedNights.ts) — na rozdíl od deathCount se smrtí vynuluje.
+  // Tohle je jen FALLBACK pro nepřihlášeného hráče (nebo dokud se ještě
+  // nenačetl serverový stav) — přihlášený hráč má přednostně navazovat na
+  // serverRunState níže, ne na tenhle lokální localStorage counter.
   const [survivedNights, setSurvivedNights] = useState(() => getSurvivedNights());
+  // Serverový run stav (bestRun/currentRun) přihlášeného hráče — `null`, dokud
+  // se nenačte (nebo hráč není přihlášený/hub API nedostupné). Nastavuje se
+  // (1) při mountu z /api/auth/me, (2) po úspěšném /api/player/survive-night,
+  // (3) po úspěšném /api/player/death — NIKDY při pouhém startu/rozehrání
+  // směny, ať zavření prohlížeče uprostřed noci currentRun nezmění (viz
+  // handleBeginShift níže — ten jen ČTE, nikdy nezapisuje serverRunState).
+  const [serverRunState, setServerRunState] = useState<GuardRunState | null>(null);
   // Jediný zdroj "kolikátá noc" — používá ho HUD (ShiftTimer přes nightNumber
-  // prop níže) i night scaling (game/difficulty/nightScaling.ts), ne dva
-  // paralelní výpočty.
-  const currentNight = survivedNights + 1;
+  // prop níže), night scaling (game/difficulty/nightScaling.ts) i briefing
+  // (getNightConfig). Serverový currentRun má přednost, jakmile je k
+  // dispozici — lokální survivedNights je jen fallback (anonymní hráč, nebo
+  // než se server stav stihne načíst).
+  const currentNight = serverRunState ? serverRunState.currentRun + 1 : survivedNights + 1;
+
+  // Jednorázově při mountu zjisti přihlášeného hráče a jeho serverový run
+  // stav (viz app/api/auth/me/route.ts) — pokud je hráč přihlášený a hub API
+  // vrátilo bestRun/currentRun, `currentNight` výše se od teď počítá z nich,
+  // ne z lokálního localStorage counteru.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((data: { player: AuthenticatedPlayer | null }) => {
+        if (cancelled || !data.player) return;
+        if (data.player.currentRun !== null && data.player.bestRun !== null) {
+          setServerRunState({ currentRun: data.player.currentRun, bestRun: data.player.bestRun });
+        }
+      })
+      .catch(() => {
+        // Tichý fallback — currentNight zůstane spočítané z lokálního
+        // survivedNights, stejně jako u nepřihlášeného hráče.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // "Nejnovější hodnota" ref pro stress (viz stressTimeScale.ts přes TICK) —
   // gameLoop.ts jím jen čte .current uvnitř setInterval, ať se interval
@@ -85,6 +123,20 @@ export default function PlayPage() {
   // před START_SHIFT i před RESTART_SHIFT — tenhle ref si pamatuje, kterou
   // z těch dvou akcí má "Nastoupit na směnu" po skončení briefingu spustit.
   const pendingShiftKindRef = useRef<"start" | "restart">("start");
+
+  // Zpracuje odpověď /api/player/death nebo /api/player/survive-night —
+  // na úspěch (ok+stored) aktualizuje serverRunState (viz výše), jinak jen
+  // zaloguje warning. Nikdy nepřepisuje serverRunState lokální hodnotou.
+  function applyGuardRunResponse(body: GuardRunResponse["body"], context: "death" | "survive-night") {
+    if (body.ok && body.stored) {
+      setServerRunState(body.player);
+      return;
+    }
+    console.warn(
+      `[nocni-hlidac] ${context} was not recorded on the server — currentRun may be stale until the next successful call`,
+      body,
+    );
+  }
 
   useEffect(() => {
     audioManager.setMuted(state.audioMuted);
@@ -124,8 +176,15 @@ export default function PlayPage() {
       // Best-effort online stav (viz TECH_DESIGN.md "VPS API specifikace") —
       // server si identitu vezme ze session, ne odsud (klient nikdy neposílá
       // discordUserId). Nepřihlášený hráč dostane 401, nedostupné VPS API
-      // 202 — v obou případech se odpověď ignoruje, hra pokračuje beze změny.
-      fetch("/api/player/death", { method: "POST" }).catch(() => {});
+      // 202 — v obou případech hra pokračuje beze změny, jen zaloguje warning
+      // (viz applyGuardRunResponse), ať je z Vercel logu jasné, že server
+      // currentRun se pro tenhle běh nemusel resetovat na 0.
+      fetch("/api/player/death", { method: "POST" })
+        .then((res) => res.json())
+        .then((body: GuardRunResponse["body"]) => applyGuardRunResponse(body, "death"))
+        .catch((err) => {
+          console.warn("[nocni-hlidac] death request failed — server currentRun may not have been reset to 0", err);
+        });
       if (state.deathReason === "door_open_at_attack") {
         // Poslední krok těsně u dveří hraje hned (stihne doznít dávno před
         // jumpscare, viz gap níže) — zřetelně odděleně, ne zamíchaně přes sebe.
@@ -153,9 +212,16 @@ export default function PlayPage() {
       setRoomBulbs(serviced.roomBulbs);
       setBulbsRemaining(serviced.bulbsRemaining);
       // Best-effort online stav — stejná pravidla jako u "death" výše
-      // (identita ze session, 401/202 se ignorují, žádné opakované volání
-      // každou sekundu, jen jednou za skutečný přechod na "win").
-      fetch("/api/player/survive-night", { method: "POST" }).catch(() => {});
+      // (identita ze session, žádné opakované volání každou sekundu, jen
+      // jednou za skutečný přechod na "win"). Úspěch aktualizuje
+      // serverRunState, ať příští briefing ukáže SKUTEČNĚ další noc podle
+      // serveru, ne lokální counter.
+      fetch("/api/player/survive-night", { method: "POST" })
+        .then((res) => res.json())
+        .then((body: GuardRunResponse["body"]) => applyGuardRunResponse(body, "survive-night"))
+        .catch((err) => {
+          console.warn("[nocni-hlidac] survive-night request failed — server currentRun may not have advanced", err);
+        });
     }
     prevScreenRef.current = state.screen;
 
@@ -413,6 +479,8 @@ export default function PlayPage() {
           tensionLevel={tensionLevel}
           heartbeatStress={heartbeatStress}
           nightNumber={currentNight}
+          serverCurrentRun={serverRunState?.currentRun ?? null}
+          localSurvivedNights={survivedNights}
           bulbsRemaining={state.bulbsRemaining}
           onToggleDoor={handleToggleDoor}
           onToggleLight={handleToggleLight}

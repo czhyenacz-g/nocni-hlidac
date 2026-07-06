@@ -5,12 +5,15 @@ import { GuardRunState } from "./types";
 /**
  * POST /nocni-hlidac/player/upsert (viz TECH_DESIGN.md "VPS API specifikace")
  * — nikdy nevyhazuje, jen se pokusí (hubPost už sám o sobě nikdy neodmítne).
- * Vrací, jestli se to skutečně povedlo — volající (viz ensureHubPlayer.ts)
- * podle toho rozhodne, jestli zalogovat neúspěch.
+ * Vrací aktuální `GuardRunState` (nový hráč dostane `{bestRun: 0, currentRun: 0}`,
+ * upsert existujícího nikdy nepřepíše bestRun/currentRun) — `null`, když
+ * volání selže nebo API není nakonfigurované. Volající (viz
+ * ensureHubPlayer.ts) podle `null` rozhodne, jestli zalogovat neúspěch, a
+ * podle vrácené hodnoty ví, jaké currentRun/bestRun hráč doopravdy má (viz
+ * app/api/auth/me/route.ts — frontend na tom navazuje další noc).
  */
-export async function upsertHubPlayer(player: DiscordPlayer): Promise<boolean> {
-  const result = await hubPost<unknown>("/nocni-hlidac/player/upsert", player);
-  return result !== null;
+export async function upsertHubPlayer(player: DiscordPlayer): Promise<GuardRunState | null> {
+  return hubPost<GuardRunState>("/nocni-hlidac/player/upsert", player);
 }
 
 /**
