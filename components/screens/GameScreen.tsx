@@ -80,6 +80,15 @@ export default function GameScreen({
     ? COPY.game.bulbBrokenLabel
     : `${Math.ceil(nearRoomBulb.remainingMs / 1000)} s`;
 
+  // left_wall je čistě atmosférický celoobrazovkový pohled (obrázek přes
+  // celou plochu, jen malé overlay tlačítko zpět) — na rozdíl od door/desk/
+  // generator/blackout nemá vůbec žádný HUD ani dev panel kolem sebe, takže
+  // se nehodí do sdíleného max-w wrapperu níže. LeftWallView si renderuje
+  // vlastní fullscreen <main>, tenhle early return ho nezanořuje do dalšího.
+  if (state.playerView === "left_wall") {
+    return <LeftWallView onLookAtDesk={onLookAtDesk} />;
+  }
+
   return (
     // <main> je bez bg-* třídy a bez max-w-md — SceneBackground (potomek s
     // -z-10) musí sedět přímo v <main>, jinak by ho buď zakrylo vlastní
@@ -158,7 +167,6 @@ export default function GameScreen({
                 onLookAtDesk={onLookAtDesk}
               />
             )}
-            {state.playerView === "left_wall" && <LeftWallView onLookAtDesk={onLookAtDesk} />}
             {state.playerView === "object_map" && <ObjectMapView onLookAtDesk={onLookAtDesk} />}
           </>
         )}
