@@ -11,15 +11,36 @@ describe("cinematics config", () => {
     expect(scene?.imageSrc).toBe("/object_13/story/story_1.webp");
   });
 
-  it("old_guard_first_death_warning has a segment with the text 'Baf!'", () => {
+  it("old_guard_first_death_warning has 13 segments", () => {
     const scene = getCinematicScene("old_guard_first_death_warning");
-    expect(scene?.segments.some((segment) => segment.text === "Baf!")).toBe(true);
+    expect(scene?.segments).toHaveLength(13);
   });
 
-  it("the 'Baf!' segment has a responseLabel", () => {
+  it("the first segment is 'Baf.'", () => {
     const scene = getCinematicScene("old_guard_first_death_warning");
-    const bafSegment = scene?.segments.find((segment) => segment.text === "Baf!");
-    expect(bafSegment?.responseLabel).toBe("...");
+    expect(scene?.segments[0].text).toBe("Baf.");
+  });
+
+  it("the last segment's responseLabel is 'Zpět do směny.'", () => {
+    const scene = getCinematicScene("old_guard_first_death_warning");
+    expect(scene?.segments.at(-1)?.responseLabel).toBe("Zpět do směny.");
+  });
+
+  it("includes the technician introduction line", () => {
+    const scene = getCinematicScene("old_guard_first_death_warning");
+    expect(scene?.segments.some((segment) => segment.text === "Jsem místní technik. Máš kliku, že jsem to já.")).toBe(
+      true,
+    );
+  });
+
+  it("every segment has a responseLabel", () => {
+    const scene = getCinematicScene("old_guard_first_death_warning");
+    expect(scene?.segments.every((segment) => Boolean(segment.responseLabel))).toBe(true);
+  });
+
+  it("no segment has an audioSrc yet", () => {
+    const scene = getCinematicScene("old_guard_first_death_warning");
+    expect(scene?.segments.every((segment) => segment.audioSrc === undefined)).toBe(true);
   });
 
   it("getCinematicScene returns the exact same data as CINEMATIC_SCENES", () => {
