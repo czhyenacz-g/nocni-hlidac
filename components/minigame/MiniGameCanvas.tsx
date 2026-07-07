@@ -8,33 +8,42 @@ import {
   CONE_RANGE,
   ENEMY_AGGRO_RANGE,
   ENEMY_AGGRO_SPEED_MULTIPLIER,
-  ENEMY_AWARENESS_RANGE,
-  ENEMY_IDLE_WANDER_SPEED,
+  ENEMY_CHASE_SPEED,
+  ENEMY_SEARCH_SPEED,
   ENEMY_STUN_DURATION_MS,
+  ENEMY_VISION_ANGLE_RAD,
+  ENEMY_VISION_RANGE,
+  ENEMY_VISION_RAY_COUNT,
+  ENEMY_VISION_RAY_STEP_PX,
+  ENEMY_WAIT_MAX_MS,
+  ENEMY_WAIT_MIN_MS,
+  INVESTIGATION_ARRIVAL_RADIUS_PX,
+  INVESTIGATION_CLOSE_DISTANCE_THRESHOLD_PX,
+  INVESTIGATION_MAX_ATTEMPTS,
+  INVESTIGATION_NOISE_CLOSE_PX,
+  INVESTIGATION_NOISE_FAR_PX,
   SHOT_FLASH_DURATION_MS,
   WALLS,
   createInitialEnemy,
   createInitialPlayer,
 } from "@/game/minigame/config";
-import { Direction, Enemy, MiniGameStatus, Player } from "@/game/minigame/types";
+import { Direction, Enemy, EnemyMode, MiniGameStatus, Player } from "@/game/minigame/types";
 import {
   DIRECTION_ANGLES,
+  EnemyAiConfig,
+  castVisionCone,
   circlesTouch,
   directionFromVector,
-  distance,
-  enemySpeedForState,
   isEnemyHit,
   moveWithWallSliding,
-  resolveEnemyAiState,
-  stepTowards,
-  tickEnemyStun,
+  updateEnemyAi,
 } from "@/game/minigame/logic";
 
 // Izolovaný prototyp minihry (viz app/minihra/page.tsx) — vlastní
 // requestAnimationFrame smyčka mimo React render cyklus. Mutable herní stav
 // žije v refu (gameRef), ať se hra neproháněla přes setState 60×/s; do
-// Reactu (useState status/shotsLeft) se propisuje jen při SKUTEČNÉ změně
-// (výstřel, smrt, výhra, restart), aby se stavový panel/overlay překreslil.
+// Reactu (useState status/shotsLeft/enemyMode/woundedMsLeft) se propisuje
+// jen při SKUTEČNÉ změně, aby se stavový panel/overlay překreslil.
 interface MiniGameRefState {
   player: Player;
   enemy: Enemy;
@@ -44,8 +53,37 @@ interface MiniGameRefState {
 }
 
 function createInitialState(): MiniGameRefState {
-  return { player: createInitialPlayer(), enemy: createInitialEnemy(), status: "playing", shotFlashRemainingMs: 0 };
+  const player = createInitialPlayer();
+  const enemy = createInitialEnemy(player);
+  return { player, enemy, status: "playing", shotFlashRemainingMs: 0 };
 }
+
+// Statická konfigurace AI (viz game/minigame/logic.ts#updateEnemyAi) — složená
+// jednou z config.ts konstant, ne přepočítávaná každý tik.
+const ENEMY_AI_CONFIG: EnemyAiConfig = {
+  searchSpeed: ENEMY_SEARCH_SPEED,
+  chaseSpeed: ENEMY_CHASE_SPEED,
+  aggroSpeedMultiplier: ENEMY_AGGRO_SPEED_MULTIPLIER,
+  aggroRange: ENEMY_AGGRO_RANGE,
+  visionRange: ENEMY_VISION_RANGE,
+  visionAngleRad: ENEMY_VISION_ANGLE_RAD,
+  waitMinMs: ENEMY_WAIT_MIN_MS,
+  waitMaxMs: ENEMY_WAIT_MAX_MS,
+  investigationArrivalRadius: INVESTIGATION_ARRIVAL_RADIUS_PX,
+  investigationNoiseCloseRangePx: INVESTIGATION_NOISE_CLOSE_PX,
+  investigationNoiseFarPx: INVESTIGATION_NOISE_FAR_PX,
+  investigationCloseDistanceThresholdPx: INVESTIGATION_CLOSE_DISTANCE_THRESHOLD_PX,
+  investigationMaxAttempts: INVESTIGATION_MAX_ATTEMPTS,
+  mapWidth: CANVAS_WIDTH,
+  mapHeight: CANVAS_HEIGHT,
+};
+
+const MODE_LABELS: Record<EnemyMode, string> = {
+  investigating: "Pátrání",
+  waiting: "Čeká",
+  chasing: "Lov",
+  wounded: "Zraněno",
+};
 
 const MOVE_KEYS: Record<string, { dx: number; dy: number }> = {
   w: { dx: 0, dy: -1 },
@@ -64,16 +102,19 @@ export default function MiniGameCanvas() {
   const heldKeysRef = useRef<Set<string>>(new Set());
   const animationFrameRef = useRef<number | null>(null);
   // rAF timestamp z předchozího ticku — potřeba pro deltaMs (odpočet
-  // shotFlashRemainingMs/enemy.stunRemainingMs), ne pro pohyb (ten zůstává
-  // fixní na tik, beze změny oproti dřívějšku).
+  // shotFlashRemainingMs/enemy.stunRemainingMs/waitRemainingMs), ne pro
+  // pohyb (ten zůstává fixní na tik, beze změny oproti dřívějšku).
   const lastTimestampRef = useRef<number | null>(null);
 
   const [status, setStatus] = useState<MiniGameStatus>("playing");
   const [shotsLeft, setShotsLeft] = useState(1);
-  // Zobrazený odpočet "Zranění: X.X s" — `null` mimo wounded stav. Aktualizuje
+  // Zobrazený odpočet "Zranění: X.X s" — `null` mimo wounded mód. Aktualizuje
   // se každý tik, ale React re-render přeskočí, dokud se zaokrouhlená hodnota
   // skutečně nezmění (setState se stejnou hodnotou = bailout).
   const [woundedMsLeft, setWoundedMsLeft] = useState<number | null>(null);
+  // Nenápadný HUD status ("Režim: Pátrání/Čeká/Lov/Zraněno") — stejný bailout
+  // vzor jako woundedMsLeft, mění se jen při skutečném přechodu módu.
+  const [enemyMode, setEnemyMode] = useState<EnemyMode>("investigating");
 
   function restart() {
     gameRef.current = createInitialState();
@@ -81,6 +122,7 @@ export default function MiniGameCanvas() {
     setStatus("playing");
     setShotsLeft(gameRef.current.player.shotsLeft);
     setWoundedMsLeft(null);
+    setEnemyMode(gameRef.current.enemy.mode);
   }
 
   function fireShot() {
@@ -103,7 +145,7 @@ export default function MiniGameCanvas() {
       // Zásah NENÍ smrt — monstrum zůstane na místě a dočasně se omráčí
       // (viz ENEMY_STUN_DURATION_MS), hra dál běží (status zůstává "playing").
       game.enemy.stunRemainingMs = ENEMY_STUN_DURATION_MS;
-      game.enemy.aiState = "wounded";
+      game.enemy.mode = "wounded";
     }
     // Miss: náboj je pryč (shotsLeft už 0), hra dál běží, enemy nezraněn.
   }
@@ -157,7 +199,7 @@ export default function MiniGameCanvas() {
       const game = gameRef.current;
       const lastTimestamp = lastTimestampRef.current;
       // ~1 frame @60fps na první tik (ještě nemáme předchozí timestamp) — jen
-      // pro deltaMs odpočtů níže (shotFlash/stun), pohyb zůstává fixní na tik.
+      // pro deltaMs odpočtů níže (shotFlash/stun/wait), pohyb zůstává fixní na tik.
       const deltaMs = lastTimestamp === null ? 16.67 : timestamp - lastTimestamp;
       lastTimestampRef.current = timestamp;
 
@@ -193,61 +235,29 @@ export default function MiniGameCanvas() {
         }
 
         if (game.enemy.alive) {
-          if (game.enemy.stunRemainingMs > 0) {
-            game.enemy.stunRemainingMs = tickEnemyStun(game.enemy.stunRemainingMs, deltaMs);
+          game.enemy = updateEnemyAi({
+            enemy: game.enemy,
+            player: { x: game.player.x, y: game.player.y },
+            walls: WALLS,
+            deltaMs,
+            config: ENEMY_AI_CONFIG,
+          });
+
+          // Game over jen když enemy NENÍ wounded a fyzicky se dotkne hráče —
+          // wounded se dotykem game over nikdy nezpůsobí (viz zadání).
+          if (
+            game.enemy.mode !== "wounded" &&
+            circlesTouch(game.player.x, game.player.y, game.player.radius, game.enemy.x, game.enemy.y, game.enemy.radius)
+          ) {
+            game.status = "gameOver";
+            setStatus("gameOver");
           }
 
-          const distanceToPlayer = distance(game.enemy.x, game.enemy.y, game.player.x, game.player.y);
-          game.enemy.aiState = resolveEnemyAiState(
-            distanceToPlayer,
-            ENEMY_AWARENESS_RANGE,
-            ENEMY_AGGRO_RANGE,
-            game.enemy.stunRemainingMs,
-          );
-
-          if (game.enemy.aiState === "wounded") {
-            // Omráčený nepřítel se nehýbe a nemůže dotykem způsobit game
-            // over — vrátí se do idle/chasing/aggro až po doznění stunu
-            // (viz resolveEnemyAiState), teprve pak zase reaguje na hráče.
-          } else {
-            let step: { dx: number; dy: number };
-            if (game.enemy.aiState === "idle") {
-              // Mimo awareness range enemy "neví" o hráči — místo přímého
-              // honění pomalu bloudí náhodným směrem (malá odchylka úhlu
-              // každý tik, ať bloudění nevypadá cukavě).
-              game.enemy.wanderAngle += (Math.random() - 0.5) * 0.3;
-              step = {
-                dx: Math.cos(game.enemy.wanderAngle) * ENEMY_IDLE_WANDER_SPEED,
-                dy: Math.sin(game.enemy.wanderAngle) * ENEMY_IDLE_WANDER_SPEED,
-              };
-            } else {
-              const speed = enemySpeedForState(game.enemy.speed, game.enemy.aiState, ENEMY_AGGRO_SPEED_MULTIPLIER);
-              step = stepTowards(game.enemy.x, game.enemy.y, game.player.x, game.player.y, speed);
-            }
-
-            const moved = moveWithWallSliding(
-              game.enemy.x,
-              game.enemy.y,
-              step.dx,
-              step.dy,
-              game.enemy.radius,
-              WALLS,
-              CANVAS_WIDTH,
-              CANVAS_HEIGHT,
-            );
-            game.enemy.x = moved.x;
-            game.enemy.y = moved.y;
-
-            if (circlesTouch(game.player.x, game.player.y, game.player.radius, game.enemy.x, game.enemy.y, game.enemy.radius)) {
-              game.status = "gameOver";
-              setStatus("gameOver");
-            }
-          }
-
+          setEnemyMode(game.enemy.mode);
           // Zaokrouhleno na desetiny sekundy — React re-render přeskočí,
           // dokud se zobrazená hodnota skutečně nezmění (setState se stejnou
           // hodnotou je no-op), takže tohle nezpůsobuje re-render 60×/s.
-          setWoundedMsLeft(game.enemy.aiState === "wounded" ? Math.ceil(game.enemy.stunRemainingMs / 100) * 100 : null);
+          setWoundedMsLeft(game.enemy.mode === "wounded" ? Math.ceil(game.enemy.stunRemainingMs / 100) * 100 : null);
         }
       }
 
@@ -279,6 +289,7 @@ export default function MiniGameCanvas() {
           {status === "playing" ? "PROBÍHÁ OBCHŮZKA" : status === "won" ? "MONSTRUM ZASAŽENO" : "MONSTRUM TĚ DOSTALO"}
         </div>
         <div style={{ textShadow: "0 0 4px rgba(111,227,160,0.8)" }}>NÁBOJE: {shotsLeft}</div>
+        <div style={{ color: "#3f7a58" }}>REŽIM: {MODE_LABELS[enemyMode].toUpperCase()}</div>
         {woundedMsLeft !== null && (
           <div style={{ color: "#ff5c5c", textShadow: "0 0 4px rgba(255,92,92,0.8)" }}>
             ZRANĚNÍ: {(woundedMsLeft / 1000).toFixed(1)} s
@@ -443,9 +454,43 @@ function draw(ctx: CanvasRenderingContext2D, game: MiniGameRefState, gridCanvas:
   }
   ctx.restore();
 
-  // Výseč vidění/zásahu — poloprůhledný radarový kužel + jasnější oblouk na
-  // konci dosahu. Stejný výpočet (facing/CONE_ANGLE_RAD/CONE_RANGE) jako
-  // dřív, mění se jen kreslení. Krátké bliknutí po výstřelu
+  // Výseč vidění nepřítele — samostatná od hráčovy, červená/oranžová,
+  // omezená zdmi jednoduchým raycastingem (viz castVisionCone). Wounded
+  // nic nevyhodnocuje, takže se nevykresluje vůbec.
+  if (enemy.alive && enemy.mode !== "wounded") {
+    const points = castVisionCone({
+      originX: enemy.x,
+      originY: enemy.y,
+      facingAngle: enemy.visionAngle,
+      coneAngleRad: ENEMY_VISION_ANGLE_RAD,
+      range: ENEMY_VISION_RANGE,
+      walls: WALLS,
+      rayCount: ENEMY_VISION_RAY_COUNT,
+      stepPx: ENEMY_VISION_RAY_STEP_PX,
+    });
+
+    const waitingPulse = 0.5 + 0.5 * Math.sin(performance.now() / 300);
+    const fillAlpha = enemy.mode === "chasing" ? 0.22 : enemy.mode === "waiting" ? 0.1 + waitingPulse * 0.06 : 0.09;
+
+    ctx.save();
+    ctx.fillStyle = `rgba(239, 68, 68, ${fillAlpha})`;
+    ctx.beginPath();
+    ctx.moveTo(enemy.x, enemy.y);
+    for (const point of points) ctx.lineTo(point.x, point.y);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.shadowColor = "rgba(239, 68, 68, 0.7)";
+    ctx.shadowBlur = enemy.mode === "chasing" ? 10 : 4;
+    ctx.strokeStyle = enemy.mode === "chasing" ? "rgba(248, 113, 113, 0.65)" : "rgba(239, 68, 68, 0.35)";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Výseč vidění/zásahu hráče — poloprůhledný radarový kužel + jasnější
+  // oblouk na konci dosahu. Stejný výpočet (facing/CONE_ANGLE_RAD/CONE_RANGE)
+  // jako dřív, mění se jen kreslení. Krátké bliknutí po výstřelu
   // (shotFlashRemainingMs, viz fireShot) je čistě vizuální — nemění dosah
   // ani úhel, jen dočasně zesvětlí výplň/glow.
   const facing = DIRECTION_ANGLES[player.direction];
@@ -474,22 +519,23 @@ function draw(ctx: CanvasRenderingContext2D, game: MiniGameRefState, gridCanvas:
   ctx.stroke();
   ctx.restore();
 
-  // Nepřítel — červený radarový bod, glow/barva podle AI stavu: idle slabý,
-  // chasing normální, aggro silnější a pulzující, wounded bliká
-  // bílá/tmavě červená + pulzující prstenec (jasně vyřazený, ne mrtvý).
+  // Nepřítel — červený radarový bod, glow/barva podle módu: investigating
+  // normální, waiting lehce pulzuje, chasing silnější a pulzující, wounded
+  // bliká bílá/tmavě červená + pulzující prstenec (jasně vyřazený, ne mrtvý).
   ctx.save();
-  ctx.shadowColor = enemy.aiState === "wounded" ? "rgba(255, 255, 255, 0.9)" : "rgba(220, 38, 38, 0.9)";
+  ctx.shadowColor = enemy.mode === "wounded" ? "rgba(255, 255, 255, 0.9)" : "rgba(220, 38, 38, 0.9)";
   if (!enemy.alive) {
     ctx.shadowBlur = 4;
     ctx.fillStyle = "#4b5563";
-  } else if (enemy.aiState === "wounded") {
+  } else if (enemy.mode === "wounded") {
     ctx.shadowBlur = 16;
     ctx.fillStyle = (performance.now() / 180) % 2 < 1 ? "#ffffff" : "#7a1f1f";
-  } else if (enemy.aiState === "idle") {
-    ctx.shadowBlur = 5;
+  } else if (enemy.mode === "investigating") {
+    ctx.shadowBlur = 6;
     ctx.fillStyle = "#ef4444";
-  } else if (enemy.aiState === "chasing") {
-    ctx.shadowBlur = 14;
+  } else if (enemy.mode === "waiting") {
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 260);
+    ctx.shadowBlur = 6 + pulse * 4;
     ctx.fillStyle = "#ef4444";
   } else {
     const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 100);
@@ -501,7 +547,7 @@ function draw(ctx: CanvasRenderingContext2D, game: MiniGameRefState, gridCanvas:
   ctx.fill();
   ctx.restore();
 
-  if (enemy.alive && enemy.aiState === "wounded") {
+  if (enemy.alive && enemy.mode === "wounded") {
     // Pulzující prstenec navíc kolem omráčeného nepřítele — ať je i na
     // dálku jasné, že je dočasně vyřazený, ne jen "trochu blikající".
     const ringPulse = 0.5 + 0.5 * Math.sin(performance.now() / 220);

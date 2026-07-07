@@ -1,19 +1,25 @@
 import { describe, expect, it } from "vitest";
 import {
+  angleBetween,
+  canEnemySeePlayer,
+  castVisionCone,
   circleIntersectsAnyWall,
   circleIntersectsWall,
   circlesTouch,
-  computeEnemyAiState,
+  createInvestigationTarget,
   directionFromVector,
   distance,
-  enemySpeedForState,
+  hasLineOfSight,
   isEnemyHit,
+  isPointInCone,
   isTargetInCone,
+  lineIntersectsRect,
   moveWithWallSliding,
-  resolveEnemyAiState,
   tickEnemyStun,
+  updateEnemyAi,
+  EnemyAiConfig,
 } from "./logic";
-import { Wall } from "./types";
+import { Enemy, Wall } from "./types";
 
 describe("distance", () => {
   it("computes straight-line distance", () => {
@@ -149,53 +155,6 @@ describe("circlesTouch", () => {
   });
 });
 
-describe("computeEnemyAiState", () => {
-  const awarenessRange = 900; // shotgunRange (150) * 6
-  const aggroRange = 150; // shotgunRange
-
-  it("is idle beyond the awareness range", () => {
-    expect(computeEnemyAiState(901, awarenessRange, aggroRange)).toBe("idle");
-    expect(computeEnemyAiState(2000, awarenessRange, aggroRange)).toBe("idle");
-  });
-
-  it("is chasing inside the awareness range but outside the aggro range", () => {
-    expect(computeEnemyAiState(900, awarenessRange, aggroRange)).toBe("chasing");
-    expect(computeEnemyAiState(151, awarenessRange, aggroRange)).toBe("chasing");
-  });
-
-  it("is aggro inside the aggro range", () => {
-    expect(computeEnemyAiState(150, awarenessRange, aggroRange)).toBe("aggro");
-    expect(computeEnemyAiState(0, awarenessRange, aggroRange)).toBe("aggro");
-  });
-});
-
-describe("enemySpeedForState", () => {
-  it("leaves speed unchanged when idle or chasing", () => {
-    expect(enemySpeedForState(2, "idle", 1.5)).toBe(2);
-    expect(enemySpeedForState(2, "chasing", 1.5)).toBe(2);
-  });
-
-  it("multiplies speed by the aggro multiplier when aggro", () => {
-    expect(enemySpeedForState(2, "aggro", 1.5)).toBe(3);
-  });
-});
-
-describe("resolveEnemyAiState", () => {
-  const awarenessRange = 900;
-  const aggroRange = 150;
-
-  it("is wounded whenever stunRemainingMs > 0, regardless of distance", () => {
-    expect(resolveEnemyAiState(0, awarenessRange, aggroRange, 5000)).toBe("wounded");
-    expect(resolveEnemyAiState(5000, awarenessRange, aggroRange, 1)).toBe("wounded");
-  });
-
-  it("falls back to computeEnemyAiState once stunRemainingMs is 0", () => {
-    expect(resolveEnemyAiState(2000, awarenessRange, aggroRange, 0)).toBe("idle");
-    expect(resolveEnemyAiState(500, awarenessRange, aggroRange, 0)).toBe("chasing");
-    expect(resolveEnemyAiState(100, awarenessRange, aggroRange, 0)).toBe("aggro");
-  });
-});
-
 describe("tickEnemyStun", () => {
   it("counts down by deltaMs", () => {
     expect(tickEnemyStun(10_000, 1000)).toBe(9000);
@@ -211,5 +170,245 @@ describe("tickEnemyStun", () => {
       remaining = tickEnemyStun(remaining, 100);
     }
     expect(remaining).toBe(0);
+  });
+});
+
+describe("angleBetween", () => {
+  it("points right for a point directly to the right", () => {
+    expect(angleBetween(0, 0, 10, 0)).toBeCloseTo(0, 5);
+  });
+
+  it("points down (+PI/2) for a point directly below (canvas Y grows down)", () => {
+    expect(angleBetween(0, 0, 0, 10)).toBeCloseTo(Math.PI / 2, 5);
+  });
+});
+
+describe("isPointInCone", () => {
+  const coneAngleRad = (60 * Math.PI) / 180;
+  const range = 220;
+
+  it("is true for a point directly ahead, in range", () => {
+    expect(isPointInCone(0, -100, 0, 0, -Math.PI / 2, coneAngleRad, range)).toBe(true);
+  });
+
+  it("is false beyond range", () => {
+    expect(isPointInCone(0, -300, 0, 0, -Math.PI / 2, coneAngleRad, range)).toBe(false);
+  });
+
+  it("is false outside the cone angle", () => {
+    expect(isPointInCone(0, 100, 0, 0, -Math.PI / 2, coneAngleRad, range)).toBe(false);
+  });
+});
+
+describe("lineIntersectsRect / hasLineOfSight", () => {
+  const wall: Wall = { x: 90, y: -10, width: 20, height: 220 };
+
+  it("lineIntersectsRect is true when the segment passes through the rect", () => {
+    expect(lineIntersectsRect(0, 0, 200, 0, wall)).toBe(true);
+  });
+
+  it("lineIntersectsRect is false when the segment does not reach the rect", () => {
+    expect(lineIntersectsRect(0, 0, 50, 0, wall)).toBe(false);
+  });
+
+  it("hasLineOfSight is false when a wall is between the two points", () => {
+    expect(hasLineOfSight(0, 0, 200, 0, [wall])).toBe(false);
+  });
+
+  it("hasLineOfSight is true with no obstructing wall", () => {
+    expect(hasLineOfSight(0, 0, 50, 0, [wall])).toBe(true);
+    expect(hasLineOfSight(0, 0, 200, 0, [])).toBe(true);
+  });
+});
+
+describe("canEnemySeePlayer", () => {
+  const base = { enemyX: 0, enemyY: 0, visionAngle: 0, visionAngleRad: (60 * Math.PI) / 180, visionRange: 220 };
+
+  it("sees the player when in cone, in range, and unobstructed", () => {
+    expect(canEnemySeePlayer({ ...base, playerX: 100, playerY: 0, walls: [] })).toBe(true);
+  });
+
+  it("does not see the player behind a wall, even though geometrically in the cone", () => {
+    const wall: Wall = { x: 40, y: -50, width: 20, height: 100 };
+    expect(canEnemySeePlayer({ ...base, playerX: 100, playerY: 0, walls: [wall] })).toBe(false);
+  });
+
+  it("does not see the player outside the cone angle", () => {
+    expect(canEnemySeePlayer({ ...base, playerX: 0, playerY: 100, walls: [] })).toBe(false);
+  });
+});
+
+describe("createInvestigationTarget", () => {
+  const baseOptions = {
+    playerX: 400,
+    playerY: 300,
+    distanceToPlayer: 100,
+    noiseCloseRangePx: 60,
+    noiseFarPx: 140,
+    closeDistanceThresholdPx: 200,
+    enemyRadius: 14,
+    walls: [] as Wall[],
+    mapWidth: 800,
+    mapHeight: 520,
+    maxAttempts: 8,
+  };
+
+  it("creates a point near the player, not exactly on the player", () => {
+    const rng = () => 0.75; // deterministic: always the same offset
+    const target = createInvestigationTarget({ ...baseOptions, rng });
+    expect(target.x === baseOptions.playerX && target.y === baseOptions.playerY).toBe(false);
+    expect(distance(target.x, target.y, baseOptions.playerX, baseOptions.playerY)).toBeLessThanOrEqual(60 * Math.SQRT2);
+  });
+
+  it("uses a smaller noise radius when close, larger when far", () => {
+    const rng = () => 1; // maximum offset in both axes
+    const closeTarget = createInvestigationTarget({ ...baseOptions, distanceToPlayer: 50, rng });
+    const farTarget = createInvestigationTarget({ ...baseOptions, distanceToPlayer: 500, rng });
+    const closeDist = distance(closeTarget.x, closeTarget.y, baseOptions.playerX, baseOptions.playerY);
+    const farDist = distance(farTarget.x, farTarget.y, baseOptions.playerX, baseOptions.playerY);
+    expect(farDist).toBeGreaterThan(closeDist);
+  });
+
+  it("avoids landing inside a wall, retrying until a free spot is found", () => {
+    // A wall covering the entire noise radius around the player except far to the right.
+    const wall: Wall = { x: 0, y: 0, width: 800, height: 520 };
+    // rng sequence: first attempts land in the wall-covered map, but since the
+    // whole map is a wall here, it must fall back to the clamped player position
+    // rather than loop forever or return undefined.
+    const target = createInvestigationTarget({ ...baseOptions, walls: [wall], maxAttempts: 3, rng: () => 0.5 });
+    expect(target).toBeDefined();
+  });
+});
+
+describe("castVisionCone", () => {
+  it("returns rayCount points, at max range when unobstructed", () => {
+    const points = castVisionCone({
+      originX: 0,
+      originY: 0,
+      facingAngle: 0,
+      coneAngleRad: Math.PI / 2,
+      range: 100,
+      walls: [],
+      rayCount: 5,
+      stepPx: 10,
+    });
+    expect(points).toHaveLength(5);
+    for (const point of points) {
+      expect(distance(0, 0, point.x, point.y)).toBeCloseTo(100, 0);
+    }
+  });
+
+  it("stops rays early when a wall blocks them", () => {
+    const wall: Wall = { x: 40, y: -50, width: 10, height: 100 };
+    const points = castVisionCone({
+      originX: 0,
+      originY: 0,
+      facingAngle: 0,
+      coneAngleRad: 0.1,
+      range: 100,
+      walls: [wall],
+      rayCount: 1,
+      stepPx: 2,
+    });
+    expect(points).toHaveLength(1);
+    expect(distance(0, 0, points[0].x, points[0].y)).toBeLessThan(100);
+  });
+});
+
+describe("updateEnemyAi", () => {
+  const config: EnemyAiConfig = {
+    searchSpeed: 1.4,
+    chaseSpeed: 1.6,
+    aggroSpeedMultiplier: 1.5,
+    aggroRange: 150,
+    visionRange: 220,
+    visionAngleRad: (60 * Math.PI) / 180,
+    waitMinMs: 2000,
+    waitMaxMs: 3000,
+    investigationArrivalRadius: 12,
+    investigationNoiseCloseRangePx: 60,
+    investigationNoiseFarPx: 140,
+    investigationCloseDistanceThresholdPx: 200,
+    investigationMaxAttempts: 8,
+    mapWidth: 800,
+    mapHeight: 520,
+  };
+
+  function baseEnemy(overrides: Partial<Enemy> = {}): Enemy {
+    return {
+      x: 400,
+      y: 400,
+      radius: 14,
+      alive: true,
+      mode: "investigating",
+      investigationTarget: { x: 400, y: 200 },
+      waitRemainingMs: 0,
+      stunRemainingMs: 0,
+      visionAngle: -Math.PI / 2,
+      ...overrides,
+    };
+  }
+
+  it("wounded: does not move and ignores vision while stunRemainingMs > 0", () => {
+    const enemy = baseEnemy({ mode: "wounded", stunRemainingMs: 5000, x: 100, y: 100 });
+    // Player directly in front and close enough to normally trigger chasing.
+    const result = updateEnemyAi({ enemy, player: { x: 100, y: 50 }, walls: [], deltaMs: 500, config });
+    expect(result.mode).toBe("wounded");
+    expect(result.x).toBe(100);
+    expect(result.y).toBe(100);
+    expect(result.stunRemainingMs).toBe(4500);
+  });
+
+  it("wounded: once the stun ends, picks a new investigation target and resumes", () => {
+    const enemy = baseEnemy({ mode: "wounded", stunRemainingMs: 100 });
+    const result = updateEnemyAi({ enemy, player: { x: 700, y: 400 }, walls: [], deltaMs: 200, config, rng: () => 0.5 });
+    expect(result.mode).toBe("investigating");
+    expect(result.stunRemainingMs).toBe(0);
+    expect(result.investigationTarget).not.toEqual(enemy.investigationTarget);
+  });
+
+  it("investigating: moves toward the investigationTarget, not straight at the player", () => {
+    const enemy = baseEnemy({ x: 400, y: 400, investigationTarget: { x: 400, y: 200 } });
+    // Player far off to the side — if the enemy moved straight at the player, x would change a lot.
+    const result = updateEnemyAi({ enemy, player: { x: 10, y: 10 }, walls: [], deltaMs: 16, config });
+    expect(result.mode).toBe("investigating");
+    expect(result.x).toBeCloseTo(400, 5); // no horizontal drift toward the target which is straight above
+    expect(result.y).toBeLessThan(400); // moved up toward investigationTarget
+  });
+
+  it("investigating: transitions to waiting once the investigationTarget is reached", () => {
+    const enemy = baseEnemy({ x: 400, y: 201, investigationTarget: { x: 400, y: 200 } });
+    const result = updateEnemyAi({ enemy, player: { x: 10, y: 10 }, walls: [], deltaMs: 16, config, rng: () => 0.5 });
+    expect(result.mode).toBe("waiting");
+    expect(result.waitRemainingMs).toBeGreaterThanOrEqual(config.waitMinMs);
+    expect(result.waitRemainingMs).toBeLessThanOrEqual(config.waitMaxMs);
+  });
+
+  it("waiting: picks a new investigationTarget once the wait is over", () => {
+    const enemy = baseEnemy({ mode: "waiting", waitRemainingMs: 100 });
+    const result = updateEnemyAi({ enemy, player: { x: 10, y: 10 }, walls: [], deltaMs: 200, config, rng: () => 0.5 });
+    expect(result.mode).toBe("investigating");
+    expect(result.waitRemainingMs).toBe(0);
+  });
+
+  it("chases when the player is visible (in cone, in range, unobstructed)", () => {
+    const enemy = baseEnemy({ x: 400, y: 400, visionAngle: 0 });
+    const result = updateEnemyAi({ enemy, player: { x: 450, y: 400 }, walls: [], deltaMs: 16, config });
+    expect(result.mode).toBe("chasing");
+    expect(result.x).toBeGreaterThan(400); // moved toward the player
+  });
+
+  it("does not chase when the player is visible-by-angle but hidden behind a wall", () => {
+    const enemy = baseEnemy({ x: 400, y: 400, visionAngle: 0 });
+    const wall: Wall = { x: 420, y: 380, width: 10, height: 40 };
+    const result = updateEnemyAi({ enemy, player: { x: 450, y: 400 }, walls: [wall], deltaMs: 16, config });
+    expect(result.mode).not.toBe("chasing");
+  });
+
+  it("when losing sight of the player while chasing, switches to investigating near the player", () => {
+    const enemy = baseEnemy({ mode: "chasing", x: 400, y: 400, visionAngle: 0 });
+    // Player now far outside vision range/angle.
+    const result = updateEnemyAi({ enemy, player: { x: 400, y: 0 }, walls: [], deltaMs: 16, config, rng: () => 0.5 });
+    expect(result.mode).toBe("investigating");
   });
 });

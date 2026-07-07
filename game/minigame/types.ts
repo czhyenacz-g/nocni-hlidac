@@ -9,6 +9,11 @@ export interface Wall {
   height: number;
 }
 
+export interface Vec2 {
+  x: number;
+  y: number;
+}
+
 // 8 směrů (45° kroky) — kardinální + diagonální, ať se hráč při diagonálním
 // pohybu (např. W+D) může dívat/střílet i mezi dvě osy, ne jen po jedné z nich.
 export type Direction = "up" | "down" | "left" | "right" | "up-left" | "up-right" | "down-left" | "down-right";
@@ -22,26 +27,30 @@ export interface Player {
   shotsLeft: number;
 }
 
-// Jednoduchý AI stav podle vzdálenosti k hráči (viz
-// game/minigame/logic.ts#computeEnemyAiState) — "idle" mimo awareness range
-// (enemy hráče "neví" a nejde po něm přímo), "chasing" v awareness range
-// (normální rychlost), "aggro" v aggro range (shotgunRange, o 50 % rychleji).
-// "wounded" (viz game/minigame/logic.ts#resolveEnemyAiState) přebíjí
-// všechny tři — dočasné omráčení po zásahu brokovnicí, ne trvalá smrt.
-export type EnemyAiState = "idle" | "chasing" | "aggro" | "wounded";
+// Chování nepřítele (viz game/minigame/logic.ts#updateEnemyAi):
+// "investigating" — jde na přibližný podezřelý bod (investigationTarget),
+//   ne přímo na hráče.
+// "waiting" — dorazil na podezřelý bod, 2–3 s čeká/hlídá, než zvolí další bod.
+// "chasing" — vidí hráče (vision cone + line-of-sight), jde přímo po něm; v
+//   blízkém dosahu (shotgunRange) zrychlí o 50 %.
+// "wounded" — dočasně omráčený po zásahu brokovnicí (viz stunRemainingMs);
+//   přebíjí ostatní tři, nehýbe se, nevyhodnocuje vidění.
+export type EnemyMode = "investigating" | "waiting" | "chasing" | "wounded";
 
 export interface Enemy {
   x: number;
   y: number;
   radius: number;
-  /** Základní rychlost — "chasing" ji používá beze změny, "aggro" ji násobí ENEMY_AGGRO_SPEED_MULTIPLIER (viz config.ts). */
-  speed: number;
   alive: boolean;
-  aiState: EnemyAiState;
-  /** Úhel (rad) pro pomalé náhodné bloudění v "idle" stavu — perzistentní mezi tiky, ať bloudění nevypadá cukavě. */
-  wanderAngle: number;
+  mode: EnemyMode;
+  /** Aktuální cíl "investigating" — přibližný bod poblíž (poslední známé) polohy hráče, NE přesná pozice hráče. */
+  investigationTarget: Vec2;
+  /** > 0 = zbývá čekat ve "waiting" (viz ENEMY_WAIT_MIN_MS/MAX_MS). */
+  waitRemainingMs: number;
   /** > 0 = omráčený po zásahu brokovnicí (viz ENEMY_STUN_DURATION_MS) — nehýbe se, nezpůsobí game over, odpočítává se v ms. */
   stunRemainingMs: number;
+  /** Aktuální úhel (rad) výseče vidění nepřítele — navazuje na směr pohybu/cíle/hráče podle módu, viz updateEnemyAi. Libovolný úhel, ne omezený na 8 Direction hodnot (na rozdíl od hráče). */
+  visionAngle: number;
 }
 
 export type MiniGameStatus = "playing" | "won" | "gameOver";
