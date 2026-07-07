@@ -75,8 +75,19 @@ export const COPY = {
     // v game/cameras/), ne tady.
     lookAtMapLabel: "Podívat se na mapu",
     mapBackLabel: "Zpět ke stolu",
-    mapTitle: "Plánek objektu",
-    mapSubtitle: "Zjednodušený provozní plánek Objektu 13.",
+    // Horní pruh vyvěšeného plánku (viz ObjectMapView.tsx) — vzhled starého
+    // požárního/evakuačního plánu, ne moderní UI nadpis.
+    mapTitle: "POŽÁRNÍ EVAKUAČNÍ PLÁN",
+    mapSubtitle: "OBJEKT 13 — NOČNÍ ÚSEK",
+    /** Marker uvnitř kontrolní místnosti (aktuální pozice hráče), viz ObjectMapView.tsx. */
+    mapHereLabel: "ZDE STOJÍTE",
+    mapLegendTitle: "Legenda",
+    mapLegendHereLabel: "Zde stojíte",
+    mapLegendExitLabel: "Směr úniku",
+    mapLegendStorageLabel: "Sklad",
+    mapLegendElectricLabel: "Elektro",
+    /** Drobná dekorativní poznámka na plánku — atmosféra "starého vyvěšeného papíru", žádná herní informace. */
+    mapFlavorNote: "Revize nečitelná. Pro noční službu.",
     generatorViewHint: "Klikni pro restart.",
     generatorStateLabels: {
       normal: "Generátor běží.",

@@ -10,6 +10,8 @@ export type ObjectMapNodeKind = "outside" | "hall" | "room" | "safe" | "storage"
 export interface ObjectMapNode {
   id: ObjectMapNodeId;
   label: string;
+  /** Volitelný druhý (menší) řádek popisku — ať se `label` neláme přes víc řádků (viz ObjectMapView.tsx, sklad). */
+  shortLabel?: string;
   /** Pozice a rozměry v procentech (0–100) vůči mapovému plátnu. */
   x: number;
   y: number;
@@ -27,12 +29,12 @@ export interface ObjectMapEdge {
 // (levá/pravá hala), sbíhají se do Chodby před dveřmi a dál do Kontrolní
 // místnosti (bezpečný koncový prostor dole). Sklad je boční místnost u levé haly.
 export const OBJECT_MAP_NODES: ObjectMapNode[] = [
-  { id: "outside", label: "Venkovní oblast", x: 30, y: 2, width: 40, height: 12, kind: "outside" },
-  { id: "left_hall", label: "Levá hala", x: 16, y: 18, width: 16, height: 46, kind: "hall" },
-  { id: "right_hall", label: "Pravá hala", x: 68, y: 18, width: 16, height: 46, kind: "hall" },
-  { id: "storage", label: "Sklad spotřebního materiálu", x: 1, y: 40, width: 13, height: 14, kind: "storage" },
-  { id: "door_hall", label: "Chodba před dveřmi", x: 38, y: 68, width: 24, height: 10, kind: "hall" },
-  { id: "control_room", label: "Kontrolní místnost", x: 32, y: 82, width: 36, height: 14, kind: "safe" },
+  { id: "outside", label: "VENKOVNÍ OBLAST", x: 30, y: 2, width: 40, height: 12, kind: "outside" },
+  { id: "left_hall", label: "LEVÁ HALA", x: 16, y: 18, width: 16, height: 46, kind: "hall" },
+  { id: "right_hall", label: "PRAVÁ HALA", x: 68, y: 18, width: 16, height: 46, kind: "hall" },
+  { id: "storage", label: "SKLAD", shortLabel: "spotřební materiál", x: 1, y: 40, width: 13, height: 14, kind: "storage" },
+  { id: "door_hall", label: "CHODBA PŘED DVEŘMI", x: 38, y: 68, width: 24, height: 10, kind: "hall" },
+  { id: "control_room", label: "KONTROLNÍ MÍSTNOST", x: 32, y: 82, width: 36, height: 14, kind: "safe" },
 ];
 
 export const OBJECT_MAP_EDGES: ObjectMapEdge[] = [
