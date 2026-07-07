@@ -17,45 +17,83 @@ import {
   ENEMY_VISION_RAY_STEP_PX,
   ENEMY_WAIT_MAX_MS,
   ENEMY_WAIT_MIN_MS,
+  EXIT_ZONE,
   INVESTIGATION_ARRIVAL_RADIUS_PX,
   INVESTIGATION_CLOSE_DISTANCE_THRESHOLD_PX,
   INVESTIGATION_MAX_ATTEMPTS,
   INVESTIGATION_NOISE_CLOSE_PX,
   INVESTIGATION_NOISE_FAR_PX,
+  ITEM_RADIUS,
+  ITEM_SPAWN_POSITION,
   SHOT_FLASH_DURATION_MS,
+  START_ZONE_LEAVE_RADIUS_PX,
   WALLS,
   createInitialEnemy,
   createInitialPlayer,
 } from "@/game/minigame/config";
-import { Direction, Enemy, EnemyMode, MiniGameStatus, Player } from "@/game/minigame/types";
+import { Direction, EmergencyMiniGameInput, EmergencyMiniGameResult, Enemy, EnemyMode, MiniGameStatus, Player } from "@/game/minigame/types";
 import {
   DIRECTION_ANGLES,
   EnemyAiConfig,
   castVisionCone,
+  circleIntersectsWall,
   circlesTouch,
+  createCollectedItemResult,
+  createDeadResult,
+  createReturnedResult,
   directionFromVector,
+  distance,
   isEnemyHit,
   moveWithWallSliding,
+  resolveShotsFromInput,
   updateEnemyAi,
 } from "@/game/minigame/logic";
 
-// Izolovaný prototyp minihry (viz app/minihra/page.tsx) — vlastní
-// requestAnimationFrame smyčka mimo React render cyklus. Mutable herní stav
-// žije v refu (gameRef), ať se hra neproháněla přes setState 60×/s; do
-// Reactu (useState status/shotsLeft/enemyMode/woundedMsLeft) se propisuje
-// jen při SKUTEČNÉ změně, aby se stavový panel/overlay překreslil.
+interface EmergencyMiniGameProps {
+  input: EmergencyMiniGameInput;
+  /** Zavolá se PŘESNĚ jednou za smysluplný konec (dead/returned/collected_item) — viz completedRef guard níže. */
+  onComplete?: (result: EmergencyMiniGameResult) => void;
+  /** Zatím jen Escape během hraní — žádná další UI cesta k "cancel" v tomhle MVP. */
+  onCancel?: () => void;
+}
+
+// Znovupoužitelný "nouzová obchůzka" modul — vlastní requestAnimationFrame
+// smyčka mimo React render cyklus. Mutable herní stav žije v refu (gameRef),
+// ať se hra neproháněla přes setState 60×/s; do Reactu (useState
+// status/shotsLeft/enemyMode/woundedMsLeft/result) se propisuje jen při
+// SKUTEČNÉ změně, aby se stavový panel/overlay překreslil. Zatím NENÍ
+// napojený na hlavní hru (/play) — jen připravený kontrakt (input/
+// onComplete/onCancel), viz app/minihra/page.tsx pro samostatné použití.
 interface MiniGameRefState {
   player: Player;
   enemy: Enemy;
   status: MiniGameStatus;
   /** > 0 = výseč krátce bliká po výstřelu (zásah i minutí) — čistě vizuální, viz fireShot/draw. */
   shotFlashRemainingMs: number;
+  /** Kolik ms uplynulo od startu/restartu, dokud hra běží — vrací se v EmergencyMiniGameResult.elapsedMs. */
+  elapsedMs: number;
+  /** Kolik výstřelů hráč skutečně vypálil (ne kolik mu zbylo) — vrací se v EmergencyMiniGameResult.shotsUsed. */
+  shotsUsed: number;
+  /** Objective "return_to_office": true, jakmile hráč aspoň jednou opustí okolí startu — EXIT_ZONE se počítá až pak (viz zadání "ne hned na startu"). */
+  hasLeftStartZone: boolean;
+  /** Objective "collect_item": true po sebrání — brání opakovanému dokončení. */
+  itemCollected: boolean;
 }
 
-function createInitialState(): MiniGameRefState {
-  const player = createInitialPlayer();
+function createInitialState(input: EmergencyMiniGameInput): MiniGameRefState {
+  const shots = resolveShotsFromInput(input);
+  const player = createInitialPlayer(shots);
   const enemy = createInitialEnemy(player);
-  return { player, enemy, status: "playing", shotFlashRemainingMs: 0 };
+  return {
+    player,
+    enemy,
+    status: "playing",
+    shotFlashRemainingMs: 0,
+    elapsedMs: 0,
+    shotsUsed: 0,
+    hasLeftStartZone: false,
+    itemCollected: false,
+  };
 }
 
 // Statická konfigurace AI (viz game/minigame/logic.ts#updateEnemyAi) — složená
@@ -96,18 +134,21 @@ const MOVE_KEYS: Record<string, { dx: number; dy: number }> = {
   arrowright: { dx: 1, dy: 0 },
 };
 
-export default function MiniGameCanvas() {
+export default function EmergencyMiniGame({ input, onComplete, onCancel }: EmergencyMiniGameProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const gameRef = useRef<MiniGameRefState>(createInitialState());
+  const gameRef = useRef<MiniGameRefState>(createInitialState(input));
   const heldKeysRef = useRef<Set<string>>(new Set());
   const animationFrameRef = useRef<number | null>(null);
   // rAF timestamp z předchozího ticku — potřeba pro deltaMs (odpočet
-  // shotFlashRemainingMs/enemy.stunRemainingMs/waitRemainingMs), ne pro
-  // pohyb (ten zůstává fixní na tik, beze změny oproti dřívějšku).
+  // shotFlashRemainingMs/enemy.stunRemainingMs/waitRemainingMs/elapsedMs),
+  // ne pro pohyb (ten zůstává fixní na tik, beze změny oproti dřívějšku).
   const lastTimestampRef = useRef<number | null>(null);
+  // Guard proti opakovanému onComplete — jakmile jednou zavoláme, nesmí se
+  // to stát znovu, i kdyby tick() proběhl ještě několikrát před cancelAnimationFrame.
+  const completedRef = useRef(false);
 
   const [status, setStatus] = useState<MiniGameStatus>("playing");
-  const [shotsLeft, setShotsLeft] = useState(1);
+  const [shotsLeft, setShotsLeft] = useState(() => resolveShotsFromInput(input));
   // Zobrazený odpočet "Zranění: X.X s" — `null` mimo wounded mód. Aktualizuje
   // se každý tik, ale React re-render přeskočí, dokud se zaokrouhlená hodnota
   // skutečně nezmění (setState se stejnou hodnotou = bailout).
@@ -115,22 +156,42 @@ export default function MiniGameCanvas() {
   // Nenápadný HUD status ("Režim: Pátrání/Čeká/Lov/Zraněno") — stejný bailout
   // vzor jako woundedMsLeft, mění se jen při skutečném přechodu módu.
   const [enemyMode, setEnemyMode] = useState<EnemyMode>("investigating");
+  // Poslední odeslaný výsledek — `null`, dokud hra neskončí smysluplným
+  // koncem. Debug stránka (app/minihra/page.tsx) ho může zobrazit dál poté,
+  // co se tahle komponenta případně odmountuje (drží si vlastní kopii).
+  const [result, setResult] = useState<EmergencyMiniGameResult | null>(null);
 
   function restart() {
-    gameRef.current = createInitialState();
+    gameRef.current = createInitialState(input);
     lastTimestampRef.current = null;
+    completedRef.current = false;
     setStatus("playing");
     setShotsLeft(gameRef.current.player.shotsLeft);
     setWoundedMsLeft(null);
     setEnemyMode(gameRef.current.enemy.mode);
+    setResult(null);
+  }
+
+  // Jediné místo, odkud se volá onComplete — completedRef zajistí, že se to
+  // stane nejvýš jednou za běh (i kdyby tick() stihl proběhnout vícekrát
+  // po nastavení výsledku, než se smyčka skutečně zastaví/status přestane
+  // být "playing").
+  function completeGame(gameResult: EmergencyMiniGameResult, nextStatus: MiniGameStatus) {
+    if (completedRef.current) return;
+    completedRef.current = true;
+    gameRef.current.status = nextStatus;
+    setStatus(nextStatus);
+    setResult(gameResult);
+    onComplete?.(gameResult);
   }
 
   function fireShot() {
     const game = gameRef.current;
     if (game.status !== "playing" || game.player.shotsLeft <= 0) return;
 
-    game.player.shotsLeft = 0;
-    setShotsLeft(0);
+    game.player.shotsLeft -= 1;
+    game.shotsUsed += 1;
+    setShotsLeft(game.player.shotsLeft);
     // Čistě vizuální bliknutí výseče — nezávisí na tom, jestli výstřel trefí.
     game.shotFlashRemainingMs = SHOT_FLASH_DURATION_MS;
 
@@ -147,7 +208,39 @@ export default function MiniGameCanvas() {
       game.enemy.stunRemainingMs = ENEMY_STUN_DURATION_MS;
       game.enemy.mode = "wounded";
     }
-    // Miss: náboj je pryč (shotsLeft už 0), hra dál běží, enemy nezraněn.
+    // Miss: náboj je pryč, hra dál běží, enemy nezraněn.
+  }
+
+  // "E" dokončí objective, kde to pro MVP dává smysl — return_to_office
+  // (uvnitř EXIT_ZONE, ale jen POTÉ, co hráč opustil start) a collect_item
+  // (dotyk s itemem). Explicitní stisk, ne pouhý vstup do zóny/dotyk — ať
+  // se výsledek nespustí "omylem" jen průchodem.
+  function handleObjectiveKey() {
+    const game = gameRef.current;
+    if (game.status !== "playing") return;
+
+    if (input.objective === "return_to_office") {
+      const inExitZone = circleIntersectsWall(game.player.x, game.player.y, game.player.radius, EXIT_ZONE);
+      if (game.hasLeftStartZone && inExitZone) {
+        completeGame(createReturnedResult(game.elapsedMs, game.shotsUsed), "won");
+      }
+      return;
+    }
+
+    if (input.objective === "collect_item" && !game.itemCollected) {
+      const touchingItem = circlesTouch(
+        game.player.x,
+        game.player.y,
+        game.player.radius,
+        ITEM_SPAWN_POSITION.x,
+        ITEM_SPAWN_POSITION.y,
+        ITEM_RADIUS,
+      );
+      if (touchingItem) {
+        game.itemCollected = true;
+        completeGame(createCollectedItemResult(input.itemToCollect ?? "item", game.elapsedMs, game.shotsUsed), "won");
+      }
+    }
   }
 
   useEffect(() => {
@@ -161,6 +254,15 @@ export default function MiniGameCanvas() {
       if (key === "r") {
         event.preventDefault();
         restart();
+        return;
+      }
+      if (key === "e") {
+        event.preventDefault();
+        handleObjectiveKey();
+        return;
+      }
+      if (key === "escape") {
+        onCancel?.();
         return;
       }
       if (MOVE_KEYS[key]) {
@@ -181,7 +283,7 @@ export default function MiniGameCanvas() {
       window.removeEventListener("keyup", handleKeyUp);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [input]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -199,11 +301,14 @@ export default function MiniGameCanvas() {
       const game = gameRef.current;
       const lastTimestamp = lastTimestampRef.current;
       // ~1 frame @60fps na první tik (ještě nemáme předchozí timestamp) — jen
-      // pro deltaMs odpočtů níže (shotFlash/stun/wait), pohyb zůstává fixní na tik.
+      // pro deltaMs odpočtů níže (shotFlash/stun/wait/elapsed), pohyb
+      // zůstává fixní na tik.
       const deltaMs = lastTimestamp === null ? 16.67 : timestamp - lastTimestamp;
       lastTimestampRef.current = timestamp;
 
       if (game.status === "playing") {
+        game.elapsedMs += deltaMs;
+
         if (game.shotFlashRemainingMs > 0) {
           game.shotFlashRemainingMs = Math.max(0, game.shotFlashRemainingMs - deltaMs);
         }
@@ -234,6 +339,14 @@ export default function MiniGameCanvas() {
           game.player.direction = directionFromVector(dx, dy, game.player.direction);
         }
 
+        if (!game.hasLeftStartZone) {
+          const startX = CANVAS_WIDTH / 2;
+          const startY = CANVAS_HEIGHT - 60;
+          if (distance(game.player.x, game.player.y, startX, startY) > START_ZONE_LEAVE_RADIUS_PX) {
+            game.hasLeftStartZone = true;
+          }
+        }
+
         if (game.enemy.alive) {
           game.enemy = updateEnemyAi({
             enemy: game.enemy,
@@ -249,8 +362,7 @@ export default function MiniGameCanvas() {
             game.enemy.mode !== "wounded" &&
             circlesTouch(game.player.x, game.player.y, game.player.radius, game.enemy.x, game.enemy.y, game.enemy.radius)
           ) {
-            game.status = "gameOver";
-            setStatus("gameOver");
+            completeGame(createDeadResult(game.elapsedMs, game.shotsUsed), "gameOver");
           }
 
           setEnemyMode(game.enemy.mode);
@@ -261,7 +373,7 @@ export default function MiniGameCanvas() {
         }
       }
 
-      draw(ctx, game, gridCanvas);
+      draw(ctx, game, gridCanvas, input);
       animationFrameRef.current = requestAnimationFrame(tick);
     };
 
@@ -270,7 +382,7 @@ export default function MiniGameCanvas() {
       if (animationFrameRef.current !== null) cancelAnimationFrame(animationFrameRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [input]);
 
   return (
     <div className="flex flex-col gap-3" style={{ fontFamily: "'Courier New', monospace" }}>
@@ -286,7 +398,7 @@ export default function MiniGameCanvas() {
       >
         <div style={{ textShadow: "0 0 4px rgba(111,227,160,0.8)" }}>
           STAV:{" "}
-          {status === "playing" ? "PROBÍHÁ OBCHŮZKA" : status === "won" ? "MONSTRUM ZASAŽENO" : "MONSTRUM TĚ DOSTALO"}
+          {status === "playing" ? "PROBÍHÁ OBCHŮZKA" : status === "won" ? "SPLNĚNO" : "MONSTRUM TĚ DOSTALO"}
         </div>
         <div style={{ textShadow: "0 0 4px rgba(111,227,160,0.8)" }}>NÁBOJE: {shotsLeft}</div>
         <div style={{ color: "#3f7a58" }}>REŽIM: {MODE_LABELS[enemyMode].toUpperCase()}</div>
@@ -296,7 +408,7 @@ export default function MiniGameCanvas() {
           </div>
         )}
         <div style={{ color: "#3f7a58" }}>SYSTÉM: AKTIVNÍ · MŘÍŽKA: 1.0m</div>
-        <div style={{ color: "#3f7a58" }}>WASD / šipky: pohyb · mezerník: výstřel · R: restart</div>
+        <div style={{ color: "#3f7a58" }}>WASD / šipky: pohyb · mezerník: výstřel · E: akce · R: restart</div>
       </div>
 
       {/* Rámeček herní plochy — zelený obrys + rohové radar značky + scanline overlay. */}
@@ -350,10 +462,11 @@ export default function MiniGameCanvas() {
                 {status === "won" ? (
                   <>
                     <div className="text-sm font-bold mb-1" style={{ color: "#5dffa0", textShadow: "0 0 8px rgba(93,255,160,0.7)" }}>
-                      MONSTRUM ZASAŽENO.
+                      OBJECTIVE SPLNĚNO.
                     </div>
                     <div className="text-xs mb-3" style={{ color: "#6fe3a0" }}>
-                      Prototyp dokončen.
+                      {result?.outcome === "returned" && "Vrátil ses do kanceláře."}
+                      {result?.outcome === "collected_item" && `Sebráno: ${result.itemId}.`}
                     </div>
                   </>
                 ) : (
@@ -431,7 +544,7 @@ function createGridCanvas(): HTMLCanvasElement {
   return gridCanvas;
 }
 
-function draw(ctx: CanvasRenderingContext2D, game: MiniGameRefState, gridCanvas: HTMLCanvasElement) {
+function draw(ctx: CanvasRenderingContext2D, game: MiniGameRefState, gridCanvas: HTMLCanvasElement, input: EmergencyMiniGameInput) {
   const { player, enemy, status } = game;
 
   ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
@@ -453,6 +566,35 @@ function draw(ctx: CanvasRenderingContext2D, game: MiniGameRefState, gridCanvas:
     ctx.strokeRect(wall.x, wall.y, wall.width, wall.height);
   }
   ctx.restore();
+
+  // Objective marker — exit zóna ("return_to_office") nebo item ("collect_item").
+  if (input.objective === "return_to_office") {
+    ctx.save();
+    ctx.strokeStyle = game.hasLeftStartZone ? "rgba(93, 255, 160, 0.8)" : "rgba(93, 255, 160, 0.3)";
+    ctx.setLineDash([6, 4]);
+    ctx.lineWidth = 2;
+    ctx.strokeRect(EXIT_ZONE.x, EXIT_ZONE.y, EXIT_ZONE.width, EXIT_ZONE.height);
+    ctx.setLineDash([]);
+    ctx.fillStyle = "rgba(93, 255, 160, 0.85)";
+    ctx.font = "10px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText("KANCELÁŘ (E)", EXIT_ZONE.x + EXIT_ZONE.width / 2, EXIT_ZONE.y - 6);
+    ctx.restore();
+  } else if (input.objective === "collect_item" && !game.itemCollected) {
+    ctx.save();
+    ctx.shadowColor = "rgba(250, 204, 21, 0.9)";
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = "#facc15";
+    ctx.beginPath();
+    ctx.arc(ITEM_SPAWN_POSITION.x, ITEM_SPAWN_POSITION.y, ITEM_RADIUS, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "rgba(250, 204, 21, 0.9)";
+    ctx.font = "10px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText(`${input.itemToCollect ?? "item"} (E)`, ITEM_SPAWN_POSITION.x, ITEM_SPAWN_POSITION.y - 16);
+    ctx.restore();
+  }
 
   // Výseč vidění nepřítele — samostatná od hráčovy, červená/oranžová,
   // omezená zdmi jednoduchým raycastingem (viz castVisionCone). Wounded

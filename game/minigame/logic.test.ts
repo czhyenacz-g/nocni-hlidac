@@ -6,7 +6,11 @@ import {
   circleIntersectsAnyWall,
   circleIntersectsWall,
   circlesTouch,
+  createCollectedItemResult,
+  createDeadResult,
+  createFailedResult,
   createInvestigationTarget,
+  createReturnedResult,
   directionFromVector,
   distance,
   hasLineOfSight,
@@ -15,10 +19,12 @@ import {
   isTargetInCone,
   lineIntersectsRect,
   moveWithWallSliding,
+  resolveShotsFromInput,
   tickEnemyStun,
   updateEnemyAi,
   EnemyAiConfig,
 } from "./logic";
+import { createInitialPlayer } from "./config";
 import { Enemy, Wall } from "./types";
 
 describe("distance", () => {
@@ -410,5 +416,57 @@ describe("updateEnemyAi", () => {
     // Player now far outside vision range/angle.
     const result = updateEnemyAi({ enemy, player: { x: 400, y: 0 }, walls: [], deltaMs: 16, config, rng: () => 0.5 });
     expect(result.mode).toBe("investigating");
+  });
+});
+
+// ── Kontrakt pro budoucí spuštění z hlavní hry ─────────────────────────────
+
+describe("resolveShotsFromInput", () => {
+  it("defaults to 1 when shots is not provided", () => {
+    expect(resolveShotsFromInput({})).toBe(1);
+  });
+
+  it("uses input.shots when provided", () => {
+    expect(resolveShotsFromInput({ shots: 3 })).toBe(3);
+    expect(resolveShotsFromInput({ shots: 0 })).toBe(0);
+  });
+});
+
+describe("createInitialPlayer(shots)", () => {
+  it("sets shotsLeft to the given shots count", () => {
+    expect(createInitialPlayer(1).shotsLeft).toBe(1);
+    expect(createInitialPlayer(3).shotsLeft).toBe(3);
+  });
+
+  it("defaults to 1 shot when called without an argument", () => {
+    expect(createInitialPlayer().shotsLeft).toBe(1);
+  });
+});
+
+describe("result builders", () => {
+  it("createDeadResult", () => {
+    expect(createDeadResult(1234, 2)).toEqual({ outcome: "dead", reason: "monster", elapsedMs: 1234, shotsUsed: 2 });
+  });
+
+  it("createReturnedResult", () => {
+    expect(createReturnedResult(5000, 1)).toEqual({ outcome: "returned", elapsedMs: 5000, shotsUsed: 1 });
+  });
+
+  it("createCollectedItemResult", () => {
+    expect(createCollectedItemResult("fuse", 800, 0)).toEqual({
+      outcome: "collected_item",
+      itemId: "fuse",
+      elapsedMs: 800,
+      shotsUsed: 0,
+    });
+  });
+
+  it("createFailedResult", () => {
+    expect(createFailedResult(9999, 1)).toEqual({
+      outcome: "failed",
+      reason: "objective_failed",
+      elapsedMs: 9999,
+      shotsUsed: 1,
+    });
   });
 });

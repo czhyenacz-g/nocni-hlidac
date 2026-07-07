@@ -54,3 +54,31 @@ export interface Enemy {
 }
 
 export type MiniGameStatus = "playing" | "won" | "gameOver";
+
+// ── Kontrakt pro budoucí spuštění z hlavní hry (viz
+// components/minigame/EmergencyMiniGame.tsx, app/minihra/page.tsx) — hlavní
+// hra (/play) zatím minihru vůbec nespouští, tohle je jen připravené
+// rozhraní (vstup/výstup), žádná skutečná integrace.
+
+export type MiniGameObjective = "return_to_office" | "collect_item" | "survive";
+export type MiniGameItemId = "fuse" | "bulb" | "key" | "toolbox";
+export type MiniGameDifficulty = "easy" | "medium" | "hard";
+export type MiniGameStartLocation = "office" | "hall" | "generator";
+
+export interface EmergencyMiniGameInput {
+  objective: MiniGameObjective;
+  /** Jen relevantní pro objective "collect_item" — chybí-li, view/logika použije obecné "item". */
+  itemToCollect?: MiniGameItemId;
+  /** Počet výstřelů na start — chybí-li, default 1 (viz resolveShotsFromInput). */
+  shots?: number;
+  /** Připraveno pro budoucí škálování obtížnosti (rychlost/vidění nepřítele apod.) — MVP gameplay na tomhle zatím nestaví. */
+  difficulty?: MiniGameDifficulty;
+  /** Připraveno pro budoucí výběr startovní pozice/mapy — MVP vždy startuje na stejném místě bez ohledu na tohle pole. */
+  startLocation?: MiniGameStartLocation;
+}
+
+export type EmergencyMiniGameResult =
+  | { outcome: "dead"; reason: "monster"; elapsedMs: number; shotsUsed: number }
+  | { outcome: "returned"; elapsedMs: number; shotsUsed: number }
+  | { outcome: "collected_item"; itemId: string; elapsedMs: number; shotsUsed: number }
+  | { outcome: "failed"; reason: "objective_failed"; elapsedMs: number; shotsUsed: number };

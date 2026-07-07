@@ -1,8 +1,8 @@
-import { Direction, Enemy, EnemyMode, Vec2, Wall } from "./types";
+import { Direction, Enemy, EmergencyMiniGameInput, EmergencyMiniGameResult, EnemyMode, Vec2, Wall } from "./types";
 
 // Čistá herní logika prototypu minihry — žádné canvas/DOM/React tady,
-// snadno testovatelné (viz logic.test.ts). components/minigame/MiniGameCanvas.tsx
-// tyhle funkce jen volá a kreslí podle výsledku.
+// snadno testovatelné (viz logic.test.ts). components/minigame/EmergencyMiniGame.tsx
+// tyhle funkce jen volá a kreslí/rozhoduje podle výsledku.
 
 export function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -521,4 +521,29 @@ export function updateEnemyAi(input: UpdateEnemyAiInput): Enemy {
   const moved = moveWithWallSliding(enemy.x, enemy.y, step.dx, step.dy, enemy.radius, walls, config.mapWidth, config.mapHeight);
   const visionAngle = angleBetween(enemy.x, enemy.y, target.x, target.y);
   return { ...enemy, x: moved.x, y: moved.y, mode: "investigating", visionAngle };
+}
+
+// ── Kontrakt pro budoucí spuštění z hlavní hry (viz
+// components/minigame/EmergencyMiniGame.tsx) — čisté, testovatelné funkce
+// pro vstup/výsledek, žádné React/DOM.
+
+/** `input.shots` je volitelné — chybí-li, default je přesně 1 výstřel. */
+export function resolveShotsFromInput(input: Pick<EmergencyMiniGameInput, "shots">): number {
+  return input.shots ?? 1;
+}
+
+export function createDeadResult(elapsedMs: number, shotsUsed: number): EmergencyMiniGameResult {
+  return { outcome: "dead", reason: "monster", elapsedMs, shotsUsed };
+}
+
+export function createReturnedResult(elapsedMs: number, shotsUsed: number): EmergencyMiniGameResult {
+  return { outcome: "returned", elapsedMs, shotsUsed };
+}
+
+export function createCollectedItemResult(itemId: string, elapsedMs: number, shotsUsed: number): EmergencyMiniGameResult {
+  return { outcome: "collected_item", itemId, elapsedMs, shotsUsed };
+}
+
+export function createFailedResult(elapsedMs: number, shotsUsed: number): EmergencyMiniGameResult {
+  return { outcome: "failed", reason: "objective_failed", elapsedMs, shotsUsed };
 }
