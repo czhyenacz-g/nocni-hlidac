@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { CSSProperties, useEffect, useRef, useState } from "react";
 import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
@@ -122,6 +122,12 @@ export default function MiniGameCanvas() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    // Radarová mřížka se vykreslí JEDNOU do offscreen canvasu a dál se jen
+    // kopíruje (drawImage) — kreslit desítky linek znovu každý frame by byl
+    // zbytečný výkonový náklad pro čistě dekorativní vrstvu (viz zadání
+    // "respektuj výkon").
+    const gridCanvas = createGridCanvas();
+
     const tick = () => {
       const game = gameRef.current;
 
@@ -174,7 +180,7 @@ export default function MiniGameCanvas() {
         }
       }
 
-      draw(ctx, game);
+      draw(ctx, game, gridCanvas);
       animationFrameRef.current = requestAnimationFrame(tick);
     };
 
@@ -186,81 +192,229 @@ export default function MiniGameCanvas() {
   }, []);
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="pixel-panel p-3 text-xs flex flex-wrap gap-x-6 gap-y-1">
-        <div>
-          Stav:{" "}
-          {status === "playing" ? "Probíhá obchůzka" : status === "won" ? "Monstrum zasaženo" : "Monstrum tě dostalo"}
+    <div className="flex flex-col gap-3" style={{ fontFamily: "'Courier New', monospace" }}>
+      {/* HUD panel — radarový styl: tmavé pozadí, tenké zelené linky, glow. */}
+      <div
+        className="p-3 text-xs flex flex-wrap gap-x-6 gap-y-1"
+        style={{
+          background: "rgba(3, 15, 8, 0.9)",
+          border: "1px solid #1f6b45",
+          boxShadow: "0 0 10px rgba(31,107,69,0.5), inset 0 0 12px rgba(0,0,0,0.6)",
+          color: "#6fe3a0",
+        }}
+      >
+        <div style={{ textShadow: "0 0 4px rgba(111,227,160,0.8)" }}>
+          STAV:{" "}
+          {status === "playing" ? "PROBÍHÁ OBCHŮZKA" : status === "won" ? "MONSTRUM ZASAŽENO" : "MONSTRUM TĚ DOSTALO"}
         </div>
-        <div>Náboje: {shotsLeft}</div>
-        <div className="text-gray-400">WASD / šipky: pohyb · mezerník: výstřel · R: restart</div>
+        <div style={{ textShadow: "0 0 4px rgba(111,227,160,0.8)" }}>NÁBOJE: {shotsLeft}</div>
+        <div style={{ color: "#3f7a58" }}>SYSTÉM: AKTIVNÍ · MŘÍŽKA: 1.0m</div>
+        <div style={{ color: "#3f7a58" }}>WASD / šipky: pohyb · mezerník: výstřel · R: restart</div>
       </div>
 
-      <div className="relative pixel-panel p-2 w-full">
-        <canvas
-          ref={canvasRef}
-          width={CANVAS_WIDTH}
-          height={CANVAS_HEIGHT}
-          className="w-full h-auto block"
-          style={{ maxWidth: `${CANVAS_WIDTH}px` }}
-        />
+      {/* Rámeček herní plochy — zelený obrys + rohové radar značky + scanline overlay. */}
+      <div
+        className="relative w-full"
+        style={{
+          border: "1px solid #1f6b45",
+          background: "#020a05",
+          boxShadow: "0 0 16px rgba(31,107,69,0.35)",
+          padding: "10px",
+        }}
+      >
+        {(["tl", "tr", "bl", "br"] as const).map((corner) => (
+          <CornerTick key={corner} corner={corner} />
+        ))}
 
-        {status !== "playing" && (
-          <div className="absolute inset-2 flex items-center justify-center bg-black/70">
-            <div className="pixel-panel p-6 text-center">
-              {status === "won" ? (
-                <>
-                  <div className="text-sm font-bold text-green-400 mb-1">Monstrum zasaženo.</div>
-                  <div className="text-xs text-gray-400 mb-3">Prototyp dokončen.</div>
-                </>
-              ) : (
-                <div className="text-sm font-bold text-red-500 mb-3">Monstrum tě dostalo.</div>
-              )}
-              <div className="text-xs text-gray-300">R — restart</div>
+        <div className="relative">
+          <canvas
+            ref={canvasRef}
+            width={CANVAS_WIDTH}
+            height={CANVAS_HEIGHT}
+            className="w-full h-auto block"
+            style={{ maxWidth: `${CANVAS_WIDTH}px` }}
+          />
+
+          {/* Jemný scanline efekt přes canvas — čistě CSS, žádný extra draw call. */}
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              backgroundImage: "repeating-linear-gradient(0deg, rgba(0,0,0,0.25) 0px, rgba(0,0,0,0.25) 1px, transparent 1px, transparent 3px)",
+              mixBlendMode: "multiply",
+            }}
+          />
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background: "radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(0,0,0,0.45) 100%)",
+            }}
+          />
+
+          {status !== "playing" && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/75">
+              <div
+                className="p-6 text-center"
+                style={{
+                  background: "rgba(3, 15, 8, 0.92)",
+                  border: `1px solid ${status === "won" ? "#1f6b45" : "#7a1f1f"}`,
+                  boxShadow: `0 0 18px ${status === "won" ? "rgba(31,107,69,0.6)" : "rgba(220,38,38,0.55)"}`,
+                }}
+              >
+                {status === "won" ? (
+                  <>
+                    <div className="text-sm font-bold mb-1" style={{ color: "#5dffa0", textShadow: "0 0 8px rgba(93,255,160,0.7)" }}>
+                      MONSTRUM ZASAŽENO.
+                    </div>
+                    <div className="text-xs mb-3" style={{ color: "#6fe3a0" }}>
+                      Prototyp dokončen.
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-sm font-bold mb-3" style={{ color: "#ff5c5c", textShadow: "0 0 8px rgba(255,92,92,0.8)" }}>
+                    MONSTRUM TĚ DOSTALO.
+                  </div>
+                )}
+                <div className="text-xs" style={{ color: "#6fe3a0" }}>
+                  R — restart
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-function draw(ctx: CanvasRenderingContext2D, game: MiniGameRefState) {
+// Malá "L" značka v rohu rámečku — radarový/HUD detail, čistě dekorativní.
+function CornerTick({ corner }: { corner: "tl" | "tr" | "bl" | "br" }) {
+  const size = 14;
+  const style: CSSProperties = {
+    position: "absolute",
+    width: size,
+    height: size,
+    borderColor: "#3fe08a",
+    ...(corner === "tl" && { top: 2, left: 2, borderTop: "2px solid", borderLeft: "2px solid" }),
+    ...(corner === "tr" && { top: 2, right: 2, borderTop: "2px solid", borderRight: "2px solid" }),
+    ...(corner === "bl" && { bottom: 2, left: 2, borderBottom: "2px solid", borderLeft: "2px solid" }),
+    ...(corner === "br" && { bottom: 2, right: 2, borderBottom: "2px solid", borderRight: "2px solid" }),
+  };
+  return <div style={style} aria-hidden="true" />;
+}
+
+// Offscreen canvas s jemnou radarovou mřížkou (menší linky po 20px, větší po
+// 100px, velmi nízká opacity) — vykreslí se jednou při mountu, pak se každý
+// frame jen zkopíruje (viz tick() výše).
+function createGridCanvas(): HTMLCanvasElement {
+  const gridCanvas = document.createElement("canvas");
+  gridCanvas.width = CANVAS_WIDTH;
+  gridCanvas.height = CANVAS_HEIGHT;
+  const gridCtx = gridCanvas.getContext("2d");
+  if (!gridCtx) return gridCanvas;
+
+  gridCtx.strokeStyle = "rgba(46, 143, 92, 0.08)";
+  gridCtx.lineWidth = 1;
+  for (let x = 0; x <= CANVAS_WIDTH; x += 20) {
+    gridCtx.beginPath();
+    gridCtx.moveTo(x + 0.5, 0);
+    gridCtx.lineTo(x + 0.5, CANVAS_HEIGHT);
+    gridCtx.stroke();
+  }
+  for (let y = 0; y <= CANVAS_HEIGHT; y += 20) {
+    gridCtx.beginPath();
+    gridCtx.moveTo(0, y + 0.5);
+    gridCtx.lineTo(CANVAS_WIDTH, y + 0.5);
+    gridCtx.stroke();
+  }
+
+  gridCtx.strokeStyle = "rgba(46, 143, 92, 0.18)";
+  for (let x = 0; x <= CANVAS_WIDTH; x += 100) {
+    gridCtx.beginPath();
+    gridCtx.moveTo(x + 0.5, 0);
+    gridCtx.lineTo(x + 0.5, CANVAS_HEIGHT);
+    gridCtx.stroke();
+  }
+  for (let y = 0; y <= CANVAS_HEIGHT; y += 100) {
+    gridCtx.beginPath();
+    gridCtx.moveTo(0, y + 0.5);
+    gridCtx.lineTo(CANVAS_WIDTH, y + 0.5);
+    gridCtx.stroke();
+  }
+
+  return gridCanvas;
+}
+
+function draw(ctx: CanvasRenderingContext2D, game: MiniGameRefState, gridCanvas: HTMLCanvasElement) {
   const { player, enemy, status } = game;
 
   ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-  // Pozadí.
-  ctx.fillStyle = "#111318";
+  // Pozadí — velmi tmavá zelenočerná, ne plochá šedá.
+  ctx.fillStyle = "#020a05";
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  ctx.drawImage(gridCanvas, 0, 0);
 
-  // Zdi — výrazné šedé/kovové obdélníky.
-  ctx.fillStyle = "#54585f";
-  ctx.strokeStyle = "#2a2d32";
+  // Zdi — tmavá výplň + zelený neonový obrys s glow, ať jasně čnějí z gridu.
+  ctx.save();
+  ctx.shadowColor = "rgba(63, 224, 138, 0.85)";
+  ctx.shadowBlur = 8;
+  ctx.fillStyle = "rgba(6, 26, 16, 0.9)";
+  ctx.strokeStyle = "#3fe08a";
   ctx.lineWidth = 2;
   for (const wall of WALLS) {
     ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
     ctx.strokeRect(wall.x, wall.y, wall.width, wall.height);
   }
+  ctx.restore();
 
-  // Výseč vidění/zásahu — poloprůhledný kužel ve směru pohledu hráče.
+  // Výseč vidění/zásahu — poloprůhledný radarový kužel + jasnější oblouk na
+  // konci dosahu. Stejný výpočet (facing/CONE_ANGLE_RAD/CONE_RANGE) jako
+  // dřív, mění se jen kreslení.
   const facing = DIRECTION_ANGLES[player.direction];
-  ctx.fillStyle = status === "gameOver" ? "rgba(120, 30, 30, 0.25)" : "rgba(250, 204, 21, 0.18)";
+  const coneStart = facing - CONE_ANGLE_RAD / 2;
+  const coneEnd = facing + CONE_ANGLE_RAD / 2;
+
+  ctx.save();
+  ctx.fillStyle = status === "gameOver" ? "rgba(220, 38, 38, 0.16)" : "rgba(120, 235, 130, 0.14)";
   ctx.beginPath();
   ctx.moveTo(player.x, player.y);
-  ctx.arc(player.x, player.y, CONE_RANGE, facing - CONE_ANGLE_RAD / 2, facing + CONE_ANGLE_RAD / 2);
+  ctx.arc(player.x, player.y, CONE_RANGE, coneStart, coneEnd);
   ctx.closePath();
   ctx.fill();
 
-  // Nepřítel.
-  ctx.fillStyle = enemy.alive ? "#dc2626" : "#4b5563";
+  ctx.shadowColor = "rgba(163, 255, 130, 0.8)";
+  ctx.shadowBlur = 6;
+  ctx.strokeStyle = "rgba(163, 255, 130, 0.55)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(player.x, player.y, CONE_RANGE, coneStart, coneEnd);
+  ctx.stroke();
+  ctx.restore();
+
+  // Nepřítel — červený radarový bod s výrazným glow.
+  ctx.save();
+  ctx.shadowColor = "rgba(220, 38, 38, 0.9)";
+  ctx.shadowBlur = enemy.alive ? 14 : 4;
+  ctx.fillStyle = enemy.alive ? "#ef4444" : "#4b5563";
   ctx.beginPath();
   ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
   ctx.fill();
+  ctx.restore();
 
-  // Hráč.
-  ctx.fillStyle = "#e5e7eb";
+  // Hráč — světlý zelenobílý bod s glow + malý směrník podle direction.
+  ctx.save();
+  ctx.shadowColor = "rgba(200, 255, 220, 0.9)";
+  ctx.shadowBlur = 10;
+  ctx.fillStyle = "#d9ffe8";
   ctx.beginPath();
   ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
   ctx.fill();
+
+  ctx.strokeStyle = "#3fe08a";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(player.x + Math.cos(facing) * player.radius, player.y + Math.sin(facing) * player.radius);
+  ctx.lineTo(player.x + Math.cos(facing) * (player.radius + 10), player.y + Math.sin(facing) * (player.radius + 10));
+  ctx.stroke();
+  ctx.restore();
 }
