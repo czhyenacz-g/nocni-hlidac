@@ -75,10 +75,6 @@ export const COPY = {
     // v game/cameras/), ne tady.
     lookAtMapLabel: "Podívat se na mapu",
     mapBackLabel: "Zpět ke stolu",
-    // Horní pruh vyvěšeného plánku (viz ObjectMapView.tsx) — vzhled starého
-    // požárního/evakuačního plánu, ne moderní UI nadpis.
-    mapTitle: "POŽÁRNÍ EVAKUAČNÍ PLÁN",
-    mapSubtitle: "OBJEKT 13 — NOČNÍ ÚSEK",
     generatorViewHint: "Klikni pro restart.",
     generatorStateLabels: {
       normal: "Generátor běží.",

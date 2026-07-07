@@ -20,11 +20,6 @@ export default function ObjectMapView({ onLookAtDesk }: ObjectMapViewProps) {
   return (
     <div className="flex flex-col gap-3">
       <div className="pixel-panel p-2 sm:p-3">
-        <div className="mb-2 bg-[#2b2718] px-2 py-1.5 text-center">
-          <div className="text-xs font-bold tracking-wide text-[#e4dcc4] sm:text-sm">{COPY.game.mapTitle}</div>
-          <div className="text-[9px] tracking-wide text-[#b9ae8f] sm:text-[10px]">{COPY.game.mapSubtitle}</div>
-        </div>
-
         <div className="relative w-full" style={{ height: "22rem", background: "#e4dcc4" }}>
           {!imageFailed ? (
             <img
