@@ -26,6 +26,9 @@ import {
 } from "@/game/balancing/constants";
 import CinematicScreen from "@/components/screens/CinematicScreen";
 import { CinematicSceneId } from "@/content/cinematics";
+import AchievementToast from "@/components/game/AchievementToast";
+import { Achievement, getAchievement } from "@/content/achievements";
+import { unlockAchievement } from "@/game/core/achievementStorage";
 import { getDeathCount, incrementDeathCount } from "@/game/core/deathCount";
 import { hasUsedFirstNightTechnicianWarning, markFirstNightTechnicianWarningUsed } from "@/game/core/firstNightWarning";
 import { getSurvivedNights, incrementSurvivedNights, resetSurvivedNights } from "@/game/core/survivedNights";
@@ -136,6 +139,9 @@ export default function PlayPage() {
   // zobrazí, přesně jako dnes.
   const [cinematicPending, setCinematicPending] = useState(false);
   const [activeCinematicSceneId, setActiveCinematicSceneId] = useState<CinematicSceneId | null>(null);
+  // Achievement toast (viz components/game/AchievementToast.tsx) — čistě
+  // vizuální, nezávislý na screen flow. `null` = žádný toast aktivní.
+  const [activeAchievement, setActiveAchievement] = useState<Achievement | null>(null);
 
   // Zpracuje odpověď /api/player/death nebo /api/player/survive-night —
   // na úspěch (ok+stored) aktualizuje serverRunState (viz výše), jinak jen
@@ -190,6 +196,17 @@ export default function PlayPage() {
         // a hlavně žádné volání /api/player/death — server currentRun se
         // pro tuhle událost vůbec nesmí dotknout (viz zadání).
         markFirstNightTechnicianWarningUsed();
+        // Čistě vizuální achievement toast (viz content/achievements.ts,
+        // game/core/achievementStorage.ts) — unlockAchievement vrací `true`
+        // jen při skutečně PRVNÍM odemčení (vlastní localStorage seznam,
+        // nezávislý na hasUsedFirstNightTechnicianWarning výše), takže se
+        // toast nikdy nezobrazí podruhé, ani kdyby se tahle podmínka někdy
+        // vyhodnotila vícekrát. Nijak neovlivňuje death/near-miss/cinematic
+        // flow ani server currentRun.
+        if (unlockAchievement("meet_hynek")) {
+          const achievement = getAchievement("meet_hynek");
+          if (achievement) setActiveAchievement(achievement);
+        }
       } else {
         // Counter se zvyšuje přesně tady — při přechodu hry do "death" stavu,
         // ne při kliknutí na tlačítko restartu (handleRestart) a ne při výhře.
@@ -526,6 +543,7 @@ export default function PlayPage() {
   const atmosphereVars = atmosphereStyleToCssVars(atmosphereStyle);
 
   return (
+    <>
     <div
       className="atmosphere-root"
       data-flicker={atmosphereStyle.flicker}
@@ -579,5 +597,14 @@ export default function PlayPage() {
         <WinScreen survivedNights={survivedNights} onRetry={handleRestart} onGoToMenu={handleGoToMenu} />
       )}
     </div>
+    {/* Achievement toast (viz components/game/AchievementToast.tsx) je záměrně
+        SOUROZENEC .atmosphere-root, ne jeho potomek — .atmosphere-root má
+        trvalý CSS filter (styles/atmosphere.css), který by jinak z něj
+        udělal containing block pro position: fixed potomky (stejný gotcha
+        jako u LeftWallView.tsx/CinematicScreen.tsx). */}
+    {activeAchievement && (
+      <AchievementToast achievement={activeAchievement} onDismiss={() => setActiveAchievement(null)} />
+    )}
+    </>
   );
 }

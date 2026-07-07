@@ -220,4 +220,11 @@ export const COPY = {
     noActiveRunLabel: "bez aktivní směny",
     backToGameLabel: "← Zpět do hry",
   },
+  // Malý toast popup (viz components/game/AchievementToast.tsx) — jen tenhle
+  // obecný "chrome" text; název/popis konkrétního achievementu žije v
+  // content/achievements.ts (stejná konvence jako CameraDefinition.label
+  // v game/cameras/ — obsahová data, ne UI text).
+  achievements: {
+    unlockedLabel: "Achievement odemčen",
+  },
 } as const;

@@ -114,3 +114,10 @@ export const BLACKOUT_FINAL_AMBIENCE_FADE_MS = 600;
 // AMBIENCE_DEATH_FADE_MS výše), pak tahle pauza, teprve pak CinematicScreen.
 // Jen pro Noc 1, ne pro plošnou death sekvenci.
 export const CINEMATIC_PRE_DELAY_MS = 1000;
+
+// Achievement toast (viz components/game/AchievementToast.tsx) — jak dlouho
+// zůstane plně vidět, než začne mizet, a jak dlouho trvá samotný
+// slide-in/slide-out přechod (opacity + transform). Součet je celková doba
+// "cca 4 sekundy" ze zadání.
+export const ACHIEVEMENT_TOAST_VISIBLE_MS = 3600;
+export const ACHIEVEMENT_TOAST_TRANSITION_MS = 400;
