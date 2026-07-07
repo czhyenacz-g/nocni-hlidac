@@ -108,3 +108,9 @@ export const JUMPSCARE_SILENT_GAP_MS = 200;
 // "Blackout") už nehraje žádný zvuk navíc — místo toho ambient plynule
 // doztichne úplně, ať hráč čeká na smrt potichu, ne s dalším efektem.
 export const BLACKOUT_FINAL_AMBIENCE_FADE_MS = 600;
+
+// Krátká tichá pauza mezi smrtí v Noci 1 a zobrazením cinematic scény (viz
+// content/cinematics.ts, app/play/page.tsx) — ambience se ztlumí (sdílené s
+// AMBIENCE_DEATH_FADE_MS výše), pak tahle pauza, teprve pak CinematicScreen.
+// Jen pro Noc 1, ne pro plošnou death sekvenci.
+export const CINEMATIC_PRE_DELAY_MS = 1000;

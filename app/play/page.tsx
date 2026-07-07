@@ -20,9 +20,12 @@ import { getBlackoutPhaseIndex } from "@/game/visuals/blackoutPhase";
 import {
   AMBIENCE_DEATH_FADE_MS,
   BLACKOUT_FINAL_AMBIENCE_FADE_MS,
+  CINEMATIC_PRE_DELAY_MS,
   JUMPSCARE_SILENT_GAP_MS,
   LOADING_SCREEN_DURATION_MS,
 } from "@/game/balancing/constants";
+import CinematicScreen from "@/components/screens/CinematicScreen";
+import { CinematicSceneId } from "@/content/cinematics";
 import { getDeathCount, incrementDeathCount } from "@/game/core/deathCount";
 import { getSurvivedNights, incrementSurvivedNights, resetSurvivedNights } from "@/game/core/survivedNights";
 import { getBulbsRemaining, setBulbsRemaining } from "@/game/core/bulbInventory";
@@ -123,6 +126,15 @@ export default function PlayPage() {
   // před START_SHIFT i před RESTART_SHIFT — tenhle ref si pamatuje, kterou
   // z těch dvou akcí má "Nastoupit na směnu" po skončení briefingu spustit.
   const pendingShiftKindRef = useRef<"start" | "restart">("start");
+  // Cinematic scéna při smrti v Noci 1 (viz content/cinematics.ts,
+  // components/screens/CinematicScreen.tsx) — `cinematicPending` je krátká
+  // tichá pauza PŘED zobrazením scény (CINEMATIC_PRE_DELAY_MS), `activeCinematicSceneId`
+  // je scéna samotná. Dokud je jedno z nich pravdivé, DeathScreen se
+  // nerenderuje (viz JSX níže) — po dokončení scény (onComplete) se
+  // `activeCinematicSceneId` vrátí na `null` a normální DeathScreen se
+  // zobrazí, přesně jako dnes.
+  const [cinematicPending, setCinematicPending] = useState(false);
+  const [activeCinematicSceneId, setActiveCinematicSceneId] = useState<CinematicSceneId | null>(null);
 
   // Zpracuje odpověď /api/player/death nebo /api/player/survive-night —
   // na úspěch (ok+stored) aktualizuje serverRunState (viz výše), jinak jen
@@ -146,11 +158,18 @@ export default function PlayPage() {
     if (prevScreenRef.current === state.screen) return;
 
     let jumpscareTimeout: ReturnType<typeof setTimeout> | undefined;
+    let cinematicTimeout: ReturnType<typeof setTimeout> | undefined;
 
     if (state.screen === "playing") {
       audioManager.startLoop(AUDIO_EVENTS.ambienceLoop);
     }
     if (state.screen === "death") {
+      // Zachyceno PŘED jakýmkoliv resetem níže (setSurvivedNights/serverRunState) —
+      // currentNight tady pořád odráží noc, kterou hráč právě dohrál, ne
+      // hodnotu PO resetu na 0. Jen tahle noc rozhoduje o cinematic scéně
+      // (viz níže), zbytek death sekvence se nemění pro žádnou noc.
+      const nightThatEnded = currentNight;
+
       // Útok/smrt má vlastní tříbeatovou sekvenci, ne okamžité zastavení
       // ambience + hned jumpscare: (1) ambience plynule ztiší přes
       // AMBIENCE_DEATH_FADE_MS, (2) JUMPSCARE_SILENT_GAP_MS naprostého ticha,
@@ -194,6 +213,19 @@ export default function PlayPage() {
         () => audioManager.play(AUDIO_EVENTS.jumpscare),
         AMBIENCE_DEATH_FADE_MS + JUMPSCARE_SILENT_GAP_MS,
       );
+
+      // Cinematic scéna jen při smrti v Noci 1 (viz content/cinematics.ts) —
+      // ambience se ztlumuje už výše (fadeOutLoop), tahle pauza je navíc
+      // krátká tichá prodleva PŘED zobrazením CinematicScreen (viz JSX níže),
+      // ať přechod nepůsobí okamžitě. Noc 2+ tenhle blok vůbec nespustí —
+      // DeathScreen se zobrazí rovnou jako dnes.
+      if (nightThatEnded === 1) {
+        setCinematicPending(true);
+        cinematicTimeout = setTimeout(() => {
+          setCinematicPending(false);
+          setActiveCinematicSceneId("old_guard_first_death_warning");
+        }, CINEMATIC_PRE_DELAY_MS);
+      }
     }
     if (state.screen === "win") {
       audioManager.stopLoop(AUDIO_EVENTS.ambienceLoop);
@@ -227,6 +259,7 @@ export default function PlayPage() {
 
     return () => {
       if (jumpscareTimeout) clearTimeout(jumpscareTimeout);
+      if (cinematicTimeout) clearTimeout(cinematicTimeout);
     };
   }, [state.screen, state.deathReason]);
 
@@ -499,7 +532,16 @@ export default function PlayPage() {
           onCancelBulbReplacement={handleCancelBulbReplacement}
         />
       )}
-      {state.screen === "death" && (
+      {/* Cinematic scéna (jen smrt v Noci 1, viz efekt výše) má přednost před
+          DeathScreen: nejdřív krátká tichá pauza (cinematicPending, prázdná
+          černá obrazovka), pak CinematicScreen, teprve po jejím dokončení
+          (onComplete -> activeCinematicSceneId zpět na null) se zobrazí
+          běžný DeathScreen — přesně jako dnes pro Noc 2+. */}
+      {state.screen === "death" && cinematicPending && <main className="relative min-h-screen w-full bg-black" />}
+      {state.screen === "death" && !cinematicPending && activeCinematicSceneId && (
+        <CinematicScreen sceneId={activeCinematicSceneId} onComplete={() => setActiveCinematicSceneId(null)} />
+      )}
+      {state.screen === "death" && !cinematicPending && !activeCinematicSceneId && (
         <DeathScreen reason={state.deathReason} deathCount={deathCount} onRetry={handleRestart} />
       )}
       {state.screen === "win" && (
