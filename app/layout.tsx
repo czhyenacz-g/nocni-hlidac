@@ -8,10 +8,10 @@ import { GOATCOUNTER_CODE } from "./config/analytics";
 
 export const metadata: Metadata = {
   title: "Noční hlídač — Objekt 13: První směna",
-  description: "Klaustrofobická lekací hra v prohlížeči. Sedíš v malé místnosti. Kamery šumí. Dveře nevydrží věčně. Přežij do rána.",
+  description: "Kamery šumí. Dveře nevydrží věčně. Přežij do rána.",
   openGraph: {
     title: "Noční hlídač — Objekt 13: První směna",
-    description: "Klaustrofobická lekací hra v prohlížeči. Sedíš v malé místnosti. Kamery šumí. Dveře nevydrží věčně. Přežij do rána.",
+    description: "Kamery šumí. Dveře nevydrží věčně. Přežij do rána.",
     url: "https://nocni-hlidac.cz",
     siteName: "Noční hlídač",
     locale: "cs_CZ",
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Noční hlídač — Objekt 13: První směna",
-    description: "Klaustrofobická lekací hra v prohlížeči. Sedíš v malé místnosti. Kamery šumí. Dveře nevydrží věčně. Přežij do rána.",
+    description: "Kamery šumí. Dveře nevydrží věčně. Přežij do rána.",
   },
 };
 
