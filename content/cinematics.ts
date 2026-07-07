@@ -45,7 +45,7 @@ export const CINEMATIC_SCENES: Record<CinematicSceneId, CinematicScene> = {
       { id: "watch_hallway", text: "Vidíš něco v chodbě? Sleduj, kam to jde.", responseLabel: "Dobře." },
       { id: "close_the_door", text: "Je to u dveří? Tak je zavři. To by pochopilo i malý dítě.", responseLabel: "Rozumím." },
       { id: "light_tip", text: "A občas ti pomůže rozsvítit za dveřmi. Děti se taky bojí tmy... hahaha.", responseLabel: "Polknu." },
-      { id: "farewell", text: "Tak přeju pěknou noc.", responseLabel: "Zpět do směny." },
+      { id: "farewell", text: "Tak přeju pěknou noc.", responseLabel: "Zpátky ke stolu." },
     ],
   },
 };

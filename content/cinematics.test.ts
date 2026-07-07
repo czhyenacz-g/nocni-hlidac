@@ -21,9 +21,9 @@ describe("cinematics config", () => {
     expect(scene?.segments[0].text).toBe("Baf.");
   });
 
-  it("the last segment's responseLabel is 'Zpět do směny.'", () => {
+  it("the last segment's responseLabel is 'Zpátky ke stolu.'", () => {
     const scene = getCinematicScene("old_guard_first_death_warning");
-    expect(scene?.segments.at(-1)?.responseLabel).toBe("Zpět do směny.");
+    expect(scene?.segments.at(-1)?.responseLabel).toBe("Zpátky ke stolu.");
   });
 
   it("includes the technician introduction line", () => {

@@ -27,6 +27,7 @@ import {
 import CinematicScreen from "@/components/screens/CinematicScreen";
 import { CinematicSceneId } from "@/content/cinematics";
 import { getDeathCount, incrementDeathCount } from "@/game/core/deathCount";
+import { hasUsedFirstNightTechnicianWarning, markFirstNightTechnicianWarningUsed } from "@/game/core/firstNightWarning";
 import { getSurvivedNights, incrementSurvivedNights, resetSurvivedNights } from "@/game/core/survivedNights";
 import { getBulbsRemaining, setBulbsRemaining } from "@/game/core/bulbInventory";
 import { applyDailyBulbService, getRoomBulbs, setRoomBulbs } from "@/game/core/roomBulbs";
@@ -166,44 +167,60 @@ export default function PlayPage() {
     if (state.screen === "death") {
       // Zachyceno PŘED jakýmkoliv resetem níže (setSurvivedNights/serverRunState) —
       // currentNight tady pořád odráží noc, kterou hráč právě dohrál, ne
-      // hodnotu PO resetu na 0. Jen tahle noc rozhoduje o cinematic scéně
-      // (viz níže), zbytek death sekvence se nemění pro žádnou noc.
+      // hodnotu PO resetu na 0.
       const nightThatEnded = currentNight;
+      // První smrtelná chyba v Noci 1 je "near-miss" — technikův zásah, ne
+      // skutečná smrt (viz content/cinematics.ts#old_guard_first_death_warning,
+      // game/core/firstNightWarning.ts). Jednorázové: jakmile je varování
+      // jednou spotřebované, každá další chyba v Noci 1 (i po restartu
+      // směny) už jde normálním death flow stejně jako Noc 2+.
+      const isFirstNightNearMiss = nightThatEnded === 1 && !hasUsedFirstNightTechnicianWarning();
 
       // Útok/smrt má vlastní tříbeatovou sekvenci, ne okamžité zastavení
       // ambience + hned jumpscare: (1) ambience plynule ztiší přes
       // AMBIENCE_DEATH_FADE_MS, (2) JUMPSCARE_SILENT_GAP_MS naprostého ticha,
       // (3) teprve pak jumpscare — ticho těsně před lekačkou je součást
-      // efektu (viz AUDIO_DESIGN.md "Ticho před lekačkou").
+      // efektu (viz AUDIO_DESIGN.md "Ticho před lekačkou"). Stejné pro
+      // near-miss i skutečnou smrt — jen zvukové "leknutí", ne herní stav.
       audioManager.fadeOutLoop(AUDIO_EVENTS.ambienceLoop, AMBIENCE_DEATH_FADE_MS);
-      // Counter se zvyšuje přesně tady — při přechodu hry do "death" stavu,
-      // ne při kliknutí na tlačítko restartu (handleRestart) a ne při výhře.
-      // Tenhle efekt už díky prevScreenRef diffingu (viz podmínka nahoře)
-      // firuje jen jednou za skutečný přechod, ne při každém rerenderu.
-      setDeathCount(incrementDeathCount());
-      // Aktuální hlídač skončil — survival streak jde na 0 (viz
-      // game/core/survivedNights.ts), death counter nahoře tím není dotčený.
-      setSurvivedNights(resetSurvivedNights());
-      // Žárovka je vlastnost OBJEKTU, ne hlídače — smrt ji jen uloží tak, jak
-      // byla (žádný denní servis, ten běží jen po přežité směně, viz "win"
-      // níže), ať další hlídač pokračuje přesně odtud, kde předchozí skončil.
-      setRoomBulbs(state.roomBulbs);
-      // Náhradní žárovky patří do campaignu stejně jako roomBulbs — pokud
-      // hráč spotřeboval kus dřív v týhle směně (dokončená ruční výměna),
-      // musí to přežít i smrt z jiného důvodu, ne se ztratit.
-      setBulbsRemaining(state.bulbsRemaining);
-      // Best-effort online stav (viz TECH_DESIGN.md "VPS API specifikace") —
-      // server si identitu vezme ze session, ne odsud (klient nikdy neposílá
-      // discordUserId). Nepřihlášený hráč dostane 401, nedostupné VPS API
-      // 202 — v obou případech hra pokračuje beze změny, jen zaloguje warning
-      // (viz applyGuardRunResponse), ať je z Vercel logu jasné, že server
-      // currentRun se pro tenhle běh nemusel resetovat na 0.
-      fetch("/api/player/death", { method: "POST" })
-        .then((res) => res.json())
-        .then((body: GuardRunResponse["body"]) => applyGuardRunResponse(body, "death"))
-        .catch((err) => {
-          console.warn("[nocni-hlidac] death request failed — server currentRun may not have been reset to 0", err);
-        });
+
+      if (isFirstNightNearMiss) {
+        // Tohle NENÍ smrt: žádný deathCount, žádný reset survivedNights,
+        // žádná perzistence roomBulbs/bulbsRemaining k "death" okamžiku,
+        // a hlavně žádné volání /api/player/death — server currentRun se
+        // pro tuhle událost vůbec nesmí dotknout (viz zadání).
+        markFirstNightTechnicianWarningUsed();
+      } else {
+        // Counter se zvyšuje přesně tady — při přechodu hry do "death" stavu,
+        // ne při kliknutí na tlačítko restartu (handleRestart) a ne při výhře.
+        // Tenhle efekt už díky prevScreenRef diffingu (viz podmínka nahoře)
+        // firuje jen jednou za skutečný přechod, ne při každém rerenderu.
+        setDeathCount(incrementDeathCount());
+        // Aktuální hlídač skončil — survival streak jde na 0 (viz
+        // game/core/survivedNights.ts), death counter nahoře tím není dotčený.
+        setSurvivedNights(resetSurvivedNights());
+        // Žárovka je vlastnost OBJEKTU, ne hlídače — smrt ji jen uloží tak, jak
+        // byla (žádný denní servis, ten běží jen po přežité směně, viz "win"
+        // níže), ať další hlídač pokračuje přesně odtud, kde předchozí skončil.
+        setRoomBulbs(state.roomBulbs);
+        // Náhradní žárovky patří do campaignu stejně jako roomBulbs — pokud
+        // hráč spotřeboval kus dřív v týhle směně (dokončená ruční výměna),
+        // musí to přežít i smrt z jiného důvodu, ne se ztratit.
+        setBulbsRemaining(state.bulbsRemaining);
+        // Best-effort online stav (viz TECH_DESIGN.md "VPS API specifikace") —
+        // server si identitu vezme ze session, ne odsud (klient nikdy neposílá
+        // discordUserId). Nepřihlášený hráč dostane 401, nedostupné VPS API
+        // 202 — v obou případech hra pokračuje beze změny, jen zaloguje warning
+        // (viz applyGuardRunResponse), ať je z Vercel logu jasné, že server
+        // currentRun se pro tenhle běh nemusel resetovat na 0.
+        fetch("/api/player/death", { method: "POST" })
+          .then((res) => res.json())
+          .then((body: GuardRunResponse["body"]) => applyGuardRunResponse(body, "death"))
+          .catch((err) => {
+            console.warn("[nocni-hlidac] death request failed — server currentRun may not have been reset to 0", err);
+          });
+      }
+
       if (state.deathReason === "door_open_at_attack") {
         // Poslední krok těsně u dveří hraje hned (stihne doznít dávno před
         // jumpscare, viz gap níže) — zřetelně odděleně, ne zamíchaně přes sebe.
@@ -214,12 +231,12 @@ export default function PlayPage() {
         AMBIENCE_DEATH_FADE_MS + JUMPSCARE_SILENT_GAP_MS,
       );
 
-      // Cinematic scéna jen při smrti v Noci 1 (viz content/cinematics.ts) —
-      // ambience se ztlumuje už výše (fadeOutLoop), tahle pauza je navíc
-      // krátká tichá prodleva PŘED zobrazením CinematicScreen (viz JSX níže),
-      // ať přechod nepůsobí okamžitě. Noc 2+ tenhle blok vůbec nespustí —
-      // DeathScreen se zobrazí rovnou jako dnes.
-      if (nightThatEnded === 1) {
+      // Cinematic scéna jen pro first-night near-miss (viz výše) — ambience
+      // se ztlumuje už nahoře (fadeOutLoop), tahle pauza je navíc krátká
+      // tichá prodleva PŘED zobrazením CinematicScreen (viz JSX níže), ať
+      // přechod nepůsobí okamžitě. Druhá+ chyba v Noci 1 i Noc 2+ tenhle
+      // blok vůbec nespustí — DeathScreen se zobrazí rovnou jako dnes.
+      if (isFirstNightNearMiss) {
         setCinematicPending(true);
         cinematicTimeout = setTimeout(() => {
           setCinematicPending(false);
@@ -400,6 +417,18 @@ export default function PlayPage() {
     dispatch({ type: "SHOW_BRIEFING" });
   }
 
+  // Dokončení first-night near-miss cinematic (viz efekt na state.screen ===
+  // "death" výše) — NIKDY neodkrývá DeathScreen. Místo toho pokračuje přes
+  // stejný briefing/restart flow jako běžný "retry" (handleRestart) — MVP
+  // "bezpečně obnovená Noc 1", ne chirurgický návrat doprostřed rozehrané
+  // směny. survivedNights/serverRunState nebyly touhle událostí nijak
+  // změněny, takže briefing i getNightConfig dál správně ukážou Noc 1.
+  function handleCinematicComplete() {
+    setActiveCinematicSceneId(null);
+    pendingShiftKindRef.current = "restart";
+    dispatch({ type: "SHOW_BRIEFING" });
+  }
+
   function handleGoToMenu() {
     audioManager.play(AUDIO_EVENTS.uiClick);
     dispatch({ type: "GO_TO_MENU" });
@@ -532,14 +561,16 @@ export default function PlayPage() {
           onCancelBulbReplacement={handleCancelBulbReplacement}
         />
       )}
-      {/* Cinematic scéna (jen smrt v Noci 1, viz efekt výše) má přednost před
-          DeathScreen: nejdřív krátká tichá pauza (cinematicPending, prázdná
-          černá obrazovka), pak CinematicScreen, teprve po jejím dokončení
-          (onComplete -> activeCinematicSceneId zpět na null) se zobrazí
-          běžný DeathScreen — přesně jako dnes pro Noc 2+. */}
+      {/* Cinematic scéna se spouští jen pro first-night near-miss (viz efekt
+          výše — isFirstNightNearMiss) — NIKDY nevede na DeathScreen, po
+          dokončení (handleCinematicComplete) jde přes briefing zpátky do
+          "bezpečně obnovené" Noci 1. Nejdřív krátká tichá pauza
+          (cinematicPending, prázdná černá obrazovka), pak CinematicScreen.
+          Druhá+ chyba v Noci 1 i Noc 2+ nikdy nenastaví activeCinematicSceneId
+          — DeathScreen se zobrazí rovnou jako dnes. */}
       {state.screen === "death" && cinematicPending && <main className="relative min-h-screen w-full bg-black" />}
       {state.screen === "death" && !cinematicPending && activeCinematicSceneId && (
-        <CinematicScreen sceneId={activeCinematicSceneId} onComplete={() => setActiveCinematicSceneId(null)} />
+        <CinematicScreen sceneId={activeCinematicSceneId} onComplete={handleCinematicComplete} />
       )}
       {state.screen === "death" && !cinematicPending && !activeCinematicSceneId && (
         <DeathScreen reason={state.deathReason} deathCount={deathCount} onRetry={handleRestart} />
