@@ -10,6 +10,8 @@ import {
   isEnemyHit,
   isTargetInCone,
   moveWithWallSliding,
+  resolveEnemyAiState,
+  tickEnemyStun,
 } from "./logic";
 import { Wall } from "./types";
 
@@ -175,5 +177,39 @@ describe("enemySpeedForState", () => {
 
   it("multiplies speed by the aggro multiplier when aggro", () => {
     expect(enemySpeedForState(2, "aggro", 1.5)).toBe(3);
+  });
+});
+
+describe("resolveEnemyAiState", () => {
+  const awarenessRange = 900;
+  const aggroRange = 150;
+
+  it("is wounded whenever stunRemainingMs > 0, regardless of distance", () => {
+    expect(resolveEnemyAiState(0, awarenessRange, aggroRange, 5000)).toBe("wounded");
+    expect(resolveEnemyAiState(5000, awarenessRange, aggroRange, 1)).toBe("wounded");
+  });
+
+  it("falls back to computeEnemyAiState once stunRemainingMs is 0", () => {
+    expect(resolveEnemyAiState(2000, awarenessRange, aggroRange, 0)).toBe("idle");
+    expect(resolveEnemyAiState(500, awarenessRange, aggroRange, 0)).toBe("chasing");
+    expect(resolveEnemyAiState(100, awarenessRange, aggroRange, 0)).toBe("aggro");
+  });
+});
+
+describe("tickEnemyStun", () => {
+  it("counts down by deltaMs", () => {
+    expect(tickEnemyStun(10_000, 1000)).toBe(9000);
+  });
+
+  it("never goes below 0", () => {
+    expect(tickEnemyStun(500, 1000)).toBe(0);
+  });
+
+  it("after enough ticks (10s total), the stun reaches exactly 0", () => {
+    let remaining = 10_000;
+    for (let i = 0; i < 100; i++) {
+      remaining = tickEnemyStun(remaining, 100);
+    }
+    expect(remaining).toBe(0);
   });
 });

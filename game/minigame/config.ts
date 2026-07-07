@@ -30,6 +30,12 @@ export const ENEMY_AGGRO_SPEED_MULTIPLIER = 1.5;
 /** Pomalé náhodné bloudění v "idle" stavu — výrazně pomalejší než honění. */
 export const ENEMY_IDLE_WANDER_SPEED = ENEMY_SPEED * 0.35;
 
+/** Jak dlouho (ms) zůstane nepřítel po zásahu brokovnicí "wounded" (omráčený, ne mrtvý) — viz resolveEnemyAiState. */
+export const ENEMY_STUN_DURATION_MS = 10_000;
+
+/** Jak dlouho (ms) bliká výseč po výstřelu (zásah i minutí) — čistě vizuální, neovlivňuje hit detection. */
+export const SHOT_FLASH_DURATION_MS = 150;
+
 // Pár vnitřních překážek/chodeb + krátké výběžky od obvodových zdí — obvod
 // mapy řeší clamp na hranice canvasu (viz moveWithWallSliding), ne samostatné
 // zdi, ať nevznikají zbytečně duplicitní kolizní obdélníky podél celého okraje.
@@ -64,5 +70,6 @@ export function createInitialEnemy(): Enemy {
     alive: true,
     aiState: "idle",
     wanderAngle: Math.random() * Math.PI * 2,
+    stunRemainingMs: 0,
   };
 }

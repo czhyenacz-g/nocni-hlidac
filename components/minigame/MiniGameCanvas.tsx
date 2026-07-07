@@ -10,6 +10,8 @@ import {
   ENEMY_AGGRO_SPEED_MULTIPLIER,
   ENEMY_AWARENESS_RANGE,
   ENEMY_IDLE_WANDER_SPEED,
+  ENEMY_STUN_DURATION_MS,
+  SHOT_FLASH_DURATION_MS,
   WALLS,
   createInitialEnemy,
   createInitialPlayer,
@@ -18,13 +20,14 @@ import { Direction, Enemy, MiniGameStatus, Player } from "@/game/minigame/types"
 import {
   DIRECTION_ANGLES,
   circlesTouch,
-  computeEnemyAiState,
   directionFromVector,
   distance,
   enemySpeedForState,
   isEnemyHit,
   moveWithWallSliding,
+  resolveEnemyAiState,
   stepTowards,
+  tickEnemyStun,
 } from "@/game/minigame/logic";
 
 // Izolovaný prototyp minihry (viz app/minihra/page.tsx) — vlastní
@@ -36,10 +39,12 @@ interface MiniGameRefState {
   player: Player;
   enemy: Enemy;
   status: MiniGameStatus;
+  /** > 0 = výseč krátce bliká po výstřelu (zásah i minutí) — čistě vizuální, viz fireShot/draw. */
+  shotFlashRemainingMs: number;
 }
 
 function createInitialState(): MiniGameRefState {
-  return { player: createInitialPlayer(), enemy: createInitialEnemy(), status: "playing" };
+  return { player: createInitialPlayer(), enemy: createInitialEnemy(), status: "playing", shotFlashRemainingMs: 0 };
 }
 
 const MOVE_KEYS: Record<string, { dx: number; dy: number }> = {
@@ -58,14 +63,24 @@ export default function MiniGameCanvas() {
   const gameRef = useRef<MiniGameRefState>(createInitialState());
   const heldKeysRef = useRef<Set<string>>(new Set());
   const animationFrameRef = useRef<number | null>(null);
+  // rAF timestamp z předchozího ticku — potřeba pro deltaMs (odpočet
+  // shotFlashRemainingMs/enemy.stunRemainingMs), ne pro pohyb (ten zůstává
+  // fixní na tik, beze změny oproti dřívějšku).
+  const lastTimestampRef = useRef<number | null>(null);
 
   const [status, setStatus] = useState<MiniGameStatus>("playing");
   const [shotsLeft, setShotsLeft] = useState(1);
+  // Zobrazený odpočet "Zranění: X.X s" — `null` mimo wounded stav. Aktualizuje
+  // se každý tik, ale React re-render přeskočí, dokud se zaokrouhlená hodnota
+  // skutečně nezmění (setState se stejnou hodnotou = bailout).
+  const [woundedMsLeft, setWoundedMsLeft] = useState<number | null>(null);
 
   function restart() {
     gameRef.current = createInitialState();
+    lastTimestampRef.current = null;
     setStatus("playing");
     setShotsLeft(gameRef.current.player.shotsLeft);
+    setWoundedMsLeft(null);
   }
 
   function fireShot() {
@@ -74,6 +89,8 @@ export default function MiniGameCanvas() {
 
     game.player.shotsLeft = 0;
     setShotsLeft(0);
+    // Čistě vizuální bliknutí výseče — nezávisí na tom, jestli výstřel trefí.
+    game.shotFlashRemainingMs = SHOT_FLASH_DURATION_MS;
 
     const hit = isEnemyHit({
       player: game.player,
@@ -83,11 +100,12 @@ export default function MiniGameCanvas() {
     });
 
     if (hit) {
-      game.enemy.alive = false;
-      game.status = "won";
-      setStatus("won");
+      // Zásah NENÍ smrt — monstrum zůstane na místě a dočasně se omráčí
+      // (viz ENEMY_STUN_DURATION_MS), hra dál běží (status zůstává "playing").
+      game.enemy.stunRemainingMs = ENEMY_STUN_DURATION_MS;
+      game.enemy.aiState = "wounded";
     }
-    // Miss: náboj je pryč (shotsLeft už 0), hra dál běží (nepřítel se dál blíží).
+    // Miss: náboj je pryč (shotsLeft už 0), hra dál běží, enemy nezraněn.
   }
 
   useEffect(() => {
@@ -135,10 +153,19 @@ export default function MiniGameCanvas() {
     // "respektuj výkon").
     const gridCanvas = createGridCanvas();
 
-    const tick = () => {
+    const tick = (timestamp: number) => {
       const game = gameRef.current;
+      const lastTimestamp = lastTimestampRef.current;
+      // ~1 frame @60fps na první tik (ještě nemáme předchozí timestamp) — jen
+      // pro deltaMs odpočtů níže (shotFlash/stun), pohyb zůstává fixní na tik.
+      const deltaMs = lastTimestamp === null ? 16.67 : timestamp - lastTimestamp;
+      lastTimestampRef.current = timestamp;
 
       if (game.status === "playing") {
+        if (game.shotFlashRemainingMs > 0) {
+          game.shotFlashRemainingMs = Math.max(0, game.shotFlashRemainingMs - deltaMs);
+        }
+
         let dx = 0;
         let dy = 0;
         for (const key of heldKeysRef.current) {
@@ -166,41 +193,61 @@ export default function MiniGameCanvas() {
         }
 
         if (game.enemy.alive) {
+          if (game.enemy.stunRemainingMs > 0) {
+            game.enemy.stunRemainingMs = tickEnemyStun(game.enemy.stunRemainingMs, deltaMs);
+          }
+
           const distanceToPlayer = distance(game.enemy.x, game.enemy.y, game.player.x, game.player.y);
-          game.enemy.aiState = computeEnemyAiState(distanceToPlayer, ENEMY_AWARENESS_RANGE, ENEMY_AGGRO_RANGE);
-
-          let step: { dx: number; dy: number };
-          if (game.enemy.aiState === "idle") {
-            // Mimo awareness range enemy "neví" o hráči — místo přímého
-            // honění pomalu bloudí náhodným směrem (malá odchylka úhlu
-            // každý tik, ať bloudění nevypadá cukavě).
-            game.enemy.wanderAngle += (Math.random() - 0.5) * 0.3;
-            step = {
-              dx: Math.cos(game.enemy.wanderAngle) * ENEMY_IDLE_WANDER_SPEED,
-              dy: Math.sin(game.enemy.wanderAngle) * ENEMY_IDLE_WANDER_SPEED,
-            };
-          } else {
-            const speed = enemySpeedForState(game.enemy.speed, game.enemy.aiState, ENEMY_AGGRO_SPEED_MULTIPLIER);
-            step = stepTowards(game.enemy.x, game.enemy.y, game.player.x, game.player.y, speed);
-          }
-
-          const moved = moveWithWallSliding(
-            game.enemy.x,
-            game.enemy.y,
-            step.dx,
-            step.dy,
-            game.enemy.radius,
-            WALLS,
-            CANVAS_WIDTH,
-            CANVAS_HEIGHT,
+          game.enemy.aiState = resolveEnemyAiState(
+            distanceToPlayer,
+            ENEMY_AWARENESS_RANGE,
+            ENEMY_AGGRO_RANGE,
+            game.enemy.stunRemainingMs,
           );
-          game.enemy.x = moved.x;
-          game.enemy.y = moved.y;
 
-          if (circlesTouch(game.player.x, game.player.y, game.player.radius, game.enemy.x, game.enemy.y, game.enemy.radius)) {
-            game.status = "gameOver";
-            setStatus("gameOver");
+          if (game.enemy.aiState === "wounded") {
+            // Omráčený nepřítel se nehýbe a nemůže dotykem způsobit game
+            // over — vrátí se do idle/chasing/aggro až po doznění stunu
+            // (viz resolveEnemyAiState), teprve pak zase reaguje na hráče.
+          } else {
+            let step: { dx: number; dy: number };
+            if (game.enemy.aiState === "idle") {
+              // Mimo awareness range enemy "neví" o hráči — místo přímého
+              // honění pomalu bloudí náhodným směrem (malá odchylka úhlu
+              // každý tik, ať bloudění nevypadá cukavě).
+              game.enemy.wanderAngle += (Math.random() - 0.5) * 0.3;
+              step = {
+                dx: Math.cos(game.enemy.wanderAngle) * ENEMY_IDLE_WANDER_SPEED,
+                dy: Math.sin(game.enemy.wanderAngle) * ENEMY_IDLE_WANDER_SPEED,
+              };
+            } else {
+              const speed = enemySpeedForState(game.enemy.speed, game.enemy.aiState, ENEMY_AGGRO_SPEED_MULTIPLIER);
+              step = stepTowards(game.enemy.x, game.enemy.y, game.player.x, game.player.y, speed);
+            }
+
+            const moved = moveWithWallSliding(
+              game.enemy.x,
+              game.enemy.y,
+              step.dx,
+              step.dy,
+              game.enemy.radius,
+              WALLS,
+              CANVAS_WIDTH,
+              CANVAS_HEIGHT,
+            );
+            game.enemy.x = moved.x;
+            game.enemy.y = moved.y;
+
+            if (circlesTouch(game.player.x, game.player.y, game.player.radius, game.enemy.x, game.enemy.y, game.enemy.radius)) {
+              game.status = "gameOver";
+              setStatus("gameOver");
+            }
           }
+
+          // Zaokrouhleno na desetiny sekundy — React re-render přeskočí,
+          // dokud se zobrazená hodnota skutečně nezmění (setState se stejnou
+          // hodnotou je no-op), takže tohle nezpůsobuje re-render 60×/s.
+          setWoundedMsLeft(game.enemy.aiState === "wounded" ? Math.ceil(game.enemy.stunRemainingMs / 100) * 100 : null);
         }
       }
 
@@ -232,6 +279,11 @@ export default function MiniGameCanvas() {
           {status === "playing" ? "PROBÍHÁ OBCHŮZKA" : status === "won" ? "MONSTRUM ZASAŽENO" : "MONSTRUM TĚ DOSTALO"}
         </div>
         <div style={{ textShadow: "0 0 4px rgba(111,227,160,0.8)" }}>NÁBOJE: {shotsLeft}</div>
+        {woundedMsLeft !== null && (
+          <div style={{ color: "#ff5c5c", textShadow: "0 0 4px rgba(255,92,92,0.8)" }}>
+            ZRANĚNÍ: {(woundedMsLeft / 1000).toFixed(1)} s
+          </div>
+        )}
         <div style={{ color: "#3f7a58" }}>SYSTÉM: AKTIVNÍ · MŘÍŽKA: 1.0m</div>
         <div style={{ color: "#3f7a58" }}>WASD / šipky: pohyb · mezerník: výstřel · R: restart</div>
       </div>
@@ -393,47 +445,74 @@ function draw(ctx: CanvasRenderingContext2D, game: MiniGameRefState, gridCanvas:
 
   // Výseč vidění/zásahu — poloprůhledný radarový kužel + jasnější oblouk na
   // konci dosahu. Stejný výpočet (facing/CONE_ANGLE_RAD/CONE_RANGE) jako
-  // dřív, mění se jen kreslení.
+  // dřív, mění se jen kreslení. Krátké bliknutí po výstřelu
+  // (shotFlashRemainingMs, viz fireShot) je čistě vizuální — nemění dosah
+  // ani úhel, jen dočasně zesvětlí výplň/glow.
   const facing = DIRECTION_ANGLES[player.direction];
   const coneStart = facing - CONE_ANGLE_RAD / 2;
   const coneEnd = facing + CONE_ANGLE_RAD / 2;
+  const isFlashing = game.shotFlashRemainingMs > 0;
 
   ctx.save();
-  ctx.fillStyle = status === "gameOver" ? "rgba(220, 38, 38, 0.16)" : "rgba(120, 235, 130, 0.14)";
+  ctx.fillStyle = status === "gameOver"
+    ? "rgba(220, 38, 38, 0.16)"
+    : isFlashing
+      ? "rgba(232, 255, 238, 0.55)"
+      : "rgba(120, 235, 130, 0.14)";
   ctx.beginPath();
   ctx.moveTo(player.x, player.y);
   ctx.arc(player.x, player.y, CONE_RANGE, coneStart, coneEnd);
   ctx.closePath();
   ctx.fill();
 
-  ctx.shadowColor = "rgba(163, 255, 130, 0.8)";
-  ctx.shadowBlur = 6;
-  ctx.strokeStyle = "rgba(163, 255, 130, 0.55)";
-  ctx.lineWidth = 1.5;
+  ctx.shadowColor = isFlashing ? "rgba(255, 255, 255, 0.95)" : "rgba(163, 255, 130, 0.8)";
+  ctx.shadowBlur = isFlashing ? 16 : 6;
+  ctx.strokeStyle = isFlashing ? "rgba(255, 255, 255, 0.9)" : "rgba(163, 255, 130, 0.55)";
+  ctx.lineWidth = isFlashing ? 2.5 : 1.5;
   ctx.beginPath();
   ctx.arc(player.x, player.y, CONE_RANGE, coneStart, coneEnd);
   ctx.stroke();
   ctx.restore();
 
-  // Nepřítel — červený radarový bod, glow podle AI stavu: idle slabý, chasing
-  // normální, aggro silnější a pulzující (rychlejší = nebezpečnější).
+  // Nepřítel — červený radarový bod, glow/barva podle AI stavu: idle slabý,
+  // chasing normální, aggro silnější a pulzující, wounded bliká
+  // bílá/tmavě červená + pulzující prstenec (jasně vyřazený, ne mrtvý).
   ctx.save();
-  ctx.shadowColor = "rgba(220, 38, 38, 0.9)";
+  ctx.shadowColor = enemy.aiState === "wounded" ? "rgba(255, 255, 255, 0.9)" : "rgba(220, 38, 38, 0.9)";
   if (!enemy.alive) {
     ctx.shadowBlur = 4;
+    ctx.fillStyle = "#4b5563";
+  } else if (enemy.aiState === "wounded") {
+    ctx.shadowBlur = 16;
+    ctx.fillStyle = (performance.now() / 180) % 2 < 1 ? "#ffffff" : "#7a1f1f";
   } else if (enemy.aiState === "idle") {
     ctx.shadowBlur = 5;
+    ctx.fillStyle = "#ef4444";
   } else if (enemy.aiState === "chasing") {
     ctx.shadowBlur = 14;
+    ctx.fillStyle = "#ef4444";
   } else {
     const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 100);
     ctx.shadowBlur = 16 + pulse * 10;
+    ctx.fillStyle = "#ef4444";
   }
-  ctx.fillStyle = enemy.alive ? "#ef4444" : "#4b5563";
   ctx.beginPath();
   ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
+
+  if (enemy.alive && enemy.aiState === "wounded") {
+    // Pulzující prstenec navíc kolem omráčeného nepřítele — ať je i na
+    // dálku jasné, že je dočasně vyřazený, ne jen "trochu blikající".
+    const ringPulse = 0.5 + 0.5 * Math.sin(performance.now() / 220);
+    ctx.save();
+    ctx.strokeStyle = `rgba(255, 255, 255, ${0.25 + ringPulse * 0.35})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(enemy.x, enemy.y, enemy.radius + 6 + ringPulse * 4, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
 
   // Hráč — světlý zelenobílý bod s glow + malý směrník podle direction.
   ctx.save();

@@ -183,3 +183,24 @@ export function computeEnemyAiState(distanceToPlayer: number, awarenessRange: nu
 export function enemySpeedForState(baseSpeed: number, state: EnemyAiState, aggroSpeedMultiplier: number): number {
   return state === "aggro" ? baseSpeed * aggroSpeedMultiplier : baseSpeed;
 }
+
+/**
+ * Jako computeEnemyAiState, ale "wounded" (omráčení po zásahu brokovnicí,
+ * stunRemainingMs > 0) přebíjí idle/chasing/aggro rozhodnutí úplně — dokud
+ * je nepřítel omráčený, na vzdálenosti k hráči vůbec nezáleží. Jediné místo,
+ * odkud se má v tiku číst aktuální AI stav (viz MiniGameCanvas.tsx).
+ */
+export function resolveEnemyAiState(
+  distanceToPlayer: number,
+  awarenessRange: number,
+  aggroRange: number,
+  stunRemainingMs: number,
+): EnemyAiState {
+  if (stunRemainingMs > 0) return "wounded";
+  return computeEnemyAiState(distanceToPlayer, awarenessRange, aggroRange);
+}
+
+/** Odpočítá omráčení o `deltaMs`, nikdy pod 0 — čistá funkce, ať jde snadno otestovat "po 10 s omráčení skončí". */
+export function tickEnemyStun(stunRemainingMs: number, deltaMs: number): number {
+  return Math.max(0, stunRemainingMs - deltaMs);
+}

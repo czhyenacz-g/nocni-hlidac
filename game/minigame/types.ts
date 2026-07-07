@@ -26,7 +26,9 @@ export interface Player {
 // game/minigame/logic.ts#computeEnemyAiState) — "idle" mimo awareness range
 // (enemy hráče "neví" a nejde po něm přímo), "chasing" v awareness range
 // (normální rychlost), "aggro" v aggro range (shotgunRange, o 50 % rychleji).
-export type EnemyAiState = "idle" | "chasing" | "aggro";
+// "wounded" (viz game/minigame/logic.ts#resolveEnemyAiState) přebíjí
+// všechny tři — dočasné omráčení po zásahu brokovnicí, ne trvalá smrt.
+export type EnemyAiState = "idle" | "chasing" | "aggro" | "wounded";
 
 export interface Enemy {
   x: number;
@@ -38,6 +40,8 @@ export interface Enemy {
   aiState: EnemyAiState;
   /** Úhel (rad) pro pomalé náhodné bloudění v "idle" stavu — perzistentní mezi tiky, ať bloudění nevypadá cukavě. */
   wanderAngle: number;
+  /** > 0 = omráčený po zásahu brokovnicí (viz ENEMY_STUN_DURATION_MS) — nehýbe se, nezpůsobí game over, odpočítává se v ms. */
+  stunRemainingMs: number;
 }
 
 export type MiniGameStatus = "playing" | "won" | "gameOver";
