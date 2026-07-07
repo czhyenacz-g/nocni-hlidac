@@ -51,6 +51,16 @@ export interface Enemy {
   stunRemainingMs: number;
   /** Aktuální úhel (rad) výseče vidění nepřítele — navazuje na směr pohybu/cíle/hráče podle módu, viz updateEnemyAi. Libovolný úhel, ne omezený na 8 Direction hodnot (na rozdíl od hráče). */
   visionAngle: number;
+  /**
+   * Anti-stuck detekce (viz updateEnemyAi/trackStuck v logic.ts) — jen pro
+   * "investigating"/"chasing" (módy, kde se má enemy fakticky hýbat).
+   * Pozice při poslední kontrole pohybu (každých STUCK_CHECK_INTERVAL_MS).
+   */
+  stuckCheckPosition: Vec2;
+  /** Kolik ms uplynulo od poslední kontroly pohybu — jakmile dosáhne STUCK_CHECK_INTERVAL_MS, porovná se posun a časovač se vynuluje. */
+  stuckCheckElapsedMs: number;
+  /** Kumulovaný čas (ms), po který se enemy mezi kontrolami posunul méně než STUCK_MOVE_THRESHOLD_PX — >= STUCK_TIMEOUT_MS znamená "zaseknutý o zeď". */
+  stuckTotalMs: number;
 }
 
 export type MiniGameStatus = "playing" | "won" | "gameOver";

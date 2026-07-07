@@ -338,6 +338,9 @@ describe("updateEnemyAi", () => {
     investigationMaxAttempts: 8,
     mapWidth: 800,
     mapHeight: 520,
+    stuckCheckIntervalMs: 500,
+    stuckMoveThresholdPx: 4,
+    stuckTimeoutMs: 5000,
   };
 
   function baseEnemy(overrides: Partial<Enemy> = {}): Enemy {
@@ -351,6 +354,9 @@ describe("updateEnemyAi", () => {
       waitRemainingMs: 0,
       stunRemainingMs: 0,
       visionAngle: -Math.PI / 2,
+      stuckCheckPosition: { x: 400, y: 400 },
+      stuckCheckElapsedMs: 0,
+      stuckTotalMs: 0,
       ...overrides,
     };
   }
@@ -416,6 +422,126 @@ describe("updateEnemyAi", () => {
     // Player now far outside vision range/angle.
     const result = updateEnemyAi({ enemy, player: { x: 400, y: 0 }, walls: [], deltaMs: 16, config, rng: () => 0.5 });
     expect(result.mode).toBe("investigating");
+  });
+
+  describe("anti-stuck fallback", () => {
+    it("investigating: recovers with a new investigationTarget once stuck ~5s against a wall", () => {
+      // Wall directly north of the enemy blocks the straight-up step toward the
+      // target, so moveWithWallSliding leaves x/y unchanged tick after tick.
+      const wall: Wall = { x: 380, y: 350, width: 40, height: 20 };
+      const enemy = baseEnemy({
+        x: 400,
+        y: 400,
+        investigationTarget: { x: 400, y: 100 },
+        stuckCheckPosition: { x: 400, y: 400 },
+        stuckCheckElapsedMs: 490,
+        stuckTotalMs: 4900,
+      });
+      const result = updateEnemyAi({
+        enemy,
+        player: { x: 10, y: 10 },
+        walls: [wall],
+        deltaMs: 20,
+        config,
+        rng: () => 0.5,
+      });
+      expect(result.mode).toBe("investigating");
+      expect(result.investigationTarget).not.toEqual(enemy.investigationTarget);
+      expect(result.stuckTotalMs).toBe(0);
+      expect(result.stuckCheckElapsedMs).toBe(0);
+    });
+
+    it("investigating: does not falsely trigger recovery before the 5s timeout", () => {
+      const wall: Wall = { x: 380, y: 350, width: 40, height: 20 };
+      const enemy = baseEnemy({
+        x: 400,
+        y: 400,
+        investigationTarget: { x: 400, y: 100 },
+        stuckCheckPosition: { x: 400, y: 400 },
+        stuckCheckElapsedMs: 490,
+        stuckTotalMs: 1000,
+      });
+      const result = updateEnemyAi({
+        enemy,
+        player: { x: 10, y: 10 },
+        walls: [wall],
+        deltaMs: 20,
+        config,
+        rng: () => 0.5,
+      });
+      expect(result.mode).toBe("investigating");
+      expect(result.investigationTarget).toEqual(enemy.investigationTarget);
+      expect(result.stuckTotalMs).toBe(1510);
+    });
+
+    it("investigating: real movement resets the accumulated stuck time", () => {
+      const enemy = baseEnemy({
+        x: 400,
+        y: 400,
+        investigationTarget: { x: 400, y: 100 },
+        stuckCheckPosition: { x: 400, y: 450 }, // 50px away from current position — well above the 4px threshold
+        stuckCheckElapsedMs: 490,
+        stuckTotalMs: 4900,
+      });
+      const result = updateEnemyAi({ enemy, player: { x: 10, y: 10 }, walls: [], deltaMs: 20, config, rng: () => 0.5 });
+      expect(result.mode).toBe("investigating");
+      expect(result.stuckTotalMs).toBe(0);
+    });
+
+    it("chasing: recovers into investigating (never chasing) once stuck, even though the player is still visible", () => {
+      // Player directly east and unobstructed (canSee stays true), but a wall
+      // hugging the enemy on the east side blocks the actual step so it never moves.
+      const wall: Wall = { x: 413, y: 385, width: 10, height: 30 };
+      const enemy = baseEnemy({
+        mode: "chasing",
+        x: 400,
+        y: 400,
+        visionAngle: 0,
+        stuckCheckPosition: { x: 400, y: 400 },
+        stuckCheckElapsedMs: 490,
+        stuckTotalMs: 4900,
+      });
+      const result = updateEnemyAi({
+        enemy,
+        player: { x: 450, y: 400 },
+        walls: [wall],
+        deltaMs: 20,
+        config,
+        rng: () => 0.5,
+      });
+      expect(result.mode).toBe("investigating");
+      expect(result.stuckTotalMs).toBe(0);
+    });
+
+    it("chasing freshly entered from another mode does not inherit a stale stuck counter", () => {
+      const enemy = baseEnemy({
+        mode: "investigating",
+        x: 400,
+        y: 400,
+        visionAngle: 0,
+        stuckCheckPosition: { x: 400, y: 400 },
+        stuckCheckElapsedMs: 490,
+        stuckTotalMs: 4900, // stale — belongs to the previous (investigating) mode
+      });
+      const result = updateEnemyAi({ enemy, player: { x: 450, y: 400 }, walls: [], deltaMs: 20, config });
+      expect(result.mode).toBe("chasing");
+      // Freshly entered chasing — the stale accumulated time must not have carried over.
+      expect(result.stuckTotalMs).toBeLessThan(4900);
+    });
+
+    it("waiting: stuck detection does not run — a stale stuckTotalMs above the timeout has no effect", () => {
+      const enemy = baseEnemy({ mode: "waiting", waitRemainingMs: 5000, stuckTotalMs: 9999 });
+      const result = updateEnemyAi({ enemy, player: { x: 10, y: 10 }, walls: [], deltaMs: 200, config });
+      expect(result.mode).toBe("waiting");
+      expect(result.stuckTotalMs).toBe(9999); // untouched, not evaluated
+    });
+
+    it("wounded: stuck detection does not run while stunned", () => {
+      const enemy = baseEnemy({ mode: "wounded", stunRemainingMs: 5000, stuckTotalMs: 9999 });
+      const result = updateEnemyAi({ enemy, player: { x: 100, y: 50 }, walls: [], deltaMs: 500, config });
+      expect(result.mode).toBe("wounded");
+      expect(result.stuckTotalMs).toBe(9999); // untouched, not evaluated
+    });
   });
 });
 

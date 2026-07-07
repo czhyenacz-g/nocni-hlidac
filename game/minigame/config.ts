@@ -55,6 +55,13 @@ export const ENEMY_STUN_DURATION_MS = 10_000;
 /** Jak dlouho (ms) bliká výseč po výstřelu (zásah i minutí) — čistě vizuální, neovlivňuje hit detection. */
 export const SHOT_FLASH_DURATION_MS = 150;
 
+// ── Anti-stuck fallback (viz game/minigame/logic.ts#trackStuck/updateEnemyAi)
+// — nepřítel se v "investigating"/"chasing" může zaseknout o zeď; tyhle
+// konstanty řídí, jak citlivě se to pozná a jak rychle se AI zotaví.
+export const STUCK_CHECK_INTERVAL_MS = 500;
+export const STUCK_MOVE_THRESHOLD_PX = 4;
+export const STUCK_TIMEOUT_MS = 5000;
+
 // Pár vnitřních překážek/chodeb + krátké výběžky od obvodových zdí — obvod
 // mapy řeší clamp na hranice canvasu (viz moveWithWallSliding), ne samostatné
 // zdi, ať nevznikají zbytečně duplicitní kolizní obdélníky podél celého okraje.
@@ -135,5 +142,8 @@ export function createInitialEnemy(player: Player): Enemy {
     waitRemainingMs: 0,
     stunRemainingMs: 0,
     visionAngle: angleBetween(x, y, investigationTarget.x, investigationTarget.y),
+    stuckCheckPosition: { x, y },
+    stuckCheckElapsedMs: 0,
+    stuckTotalMs: 0,
   };
 }

@@ -27,6 +27,9 @@ import {
   ITEM_SPAWN_POSITION,
   SHOT_FLASH_DURATION_MS,
   START_ZONE_LEAVE_RADIUS_PX,
+  STUCK_CHECK_INTERVAL_MS,
+  STUCK_MOVE_THRESHOLD_PX,
+  STUCK_TIMEOUT_MS,
   WALLS,
   createInitialEnemy,
   createInitialPlayer,
@@ -114,6 +117,9 @@ const ENEMY_AI_CONFIG: EnemyAiConfig = {
   investigationMaxAttempts: INVESTIGATION_MAX_ATTEMPTS,
   mapWidth: CANVAS_WIDTH,
   mapHeight: CANVAS_HEIGHT,
+  stuckCheckIntervalMs: STUCK_CHECK_INTERVAL_MS,
+  stuckMoveThresholdPx: STUCK_MOVE_THRESHOLD_PX,
+  stuckTimeoutMs: STUCK_TIMEOUT_MS,
 };
 
 const MODE_LABELS: Record<EnemyMode, string> = {

@@ -201,6 +201,48 @@ export function tickEnemyStun(stunRemainingMs: number, deltaMs: number): number 
   return Math.max(0, stunRemainingMs - deltaMs);
 }
 
+export interface StuckTrackingResult {
+  stuckCheckPosition: Vec2;
+  stuckCheckElapsedMs: number;
+  stuckTotalMs: number;
+  isStuck: boolean;
+}
+
+/**
+ * Anti-stuck detekce (viz updateEnemyAi) — jen pro módy, kde se enemy má fakticky
+ * hýbat ("investigating"/"chasing"). Každých `checkIntervalMs` porovná aktuální
+ * pozici s pozicí při poslední kontrole: posun menší než `moveThresholdPx` = enemy
+ * se "nehýbe" (zaseklý o zeď), posun přičte do `stuckTotalMs`; dost velký posun
+ * `stuckTotalMs` vynuluje. `isStuck` je `true`, jakmile `stuckTotalMs` dosáhne
+ * `timeoutMs`. Čistá funkce — volající (updateEnemyAi) se podle `isStuck` rozhodne,
+ * jestli vybrat nový investigationTarget.
+ */
+export function trackStuck(
+  currentX: number,
+  currentY: number,
+  stuckCheckPosition: Vec2,
+  stuckCheckElapsedMs: number,
+  stuckTotalMs: number,
+  deltaMs: number,
+  checkIntervalMs: number,
+  moveThresholdPx: number,
+  timeoutMs: number,
+): StuckTrackingResult {
+  const elapsedMs = stuckCheckElapsedMs + deltaMs;
+  if (elapsedMs < checkIntervalMs) {
+    return { stuckCheckPosition, stuckCheckElapsedMs: elapsedMs, stuckTotalMs, isStuck: stuckTotalMs >= timeoutMs };
+  }
+
+  const moved = distance(currentX, currentY, stuckCheckPosition.x, stuckCheckPosition.y);
+  const nextStuckTotalMs = moved < moveThresholdPx ? stuckTotalMs + elapsedMs : 0;
+  return {
+    stuckCheckPosition: { x: currentX, y: currentY },
+    stuckCheckElapsedMs: 0,
+    stuckTotalMs: nextStuckTotalMs,
+    isStuck: nextStuckTotalMs >= timeoutMs,
+  };
+}
+
 // ── Line-of-sight (zdi blokují viditelnost i výseč nepřítele) ─────────────
 
 function pointInRect(px: number, py: number, rect: Wall): boolean {
@@ -409,6 +451,12 @@ export interface EnemyAiConfig {
   investigationMaxAttempts: number;
   mapWidth: number;
   mapHeight: number;
+  /** Anti-stuck (viz trackStuck): jak často (ms) se kontroluje reálný posun. */
+  stuckCheckIntervalMs: number;
+  /** Anti-stuck: posun menší než tohle (px) mezi dvěma kontrolami se počítá jako "nehýbe se". */
+  stuckMoveThresholdPx: number;
+  /** Anti-stuck: kumulovaný čas bez reálného pohybu (ms), po kterém se enemy považuje za zaseklého. */
+  stuckTimeoutMs: number;
 }
 
 export interface UpdateEnemyAiInput {
@@ -471,7 +519,16 @@ export function updateEnemyAi(input: UpdateEnemyAiInput): Enemy {
     }
     const distanceToPlayer = distance(enemy.x, enemy.y, player.x, player.y);
     const target = pickInvestigationTarget(enemy, player, distanceToPlayer, walls, config, rng);
-    return { ...enemy, stunRemainingMs: 0, mode: "investigating", investigationTarget: target, waitRemainingMs: 0 };
+    return {
+      ...enemy,
+      stunRemainingMs: 0,
+      mode: "investigating",
+      investigationTarget: target,
+      waitRemainingMs: 0,
+      stuckCheckPosition: { x: enemy.x, y: enemy.y },
+      stuckCheckElapsedMs: 0,
+      stuckTotalMs: 0,
+    };
   }
 
   const distanceToPlayer = distance(enemy.x, enemy.y, player.x, player.y);
@@ -491,13 +548,64 @@ export function updateEnemyAi(input: UpdateEnemyAiInput): Enemy {
     const step = stepTowards(enemy.x, enemy.y, player.x, player.y, speed);
     const moved = moveWithWallSliding(enemy.x, enemy.y, step.dx, step.dy, enemy.radius, walls, config.mapWidth, config.mapHeight);
     const visionAngle = angleBetween(enemy.x, enemy.y, player.x, player.y);
-    return { ...enemy, x: moved.x, y: moved.y, mode: "chasing", visionAngle, waitRemainingMs: 0 };
+
+    // Stuck accumulaci navazujeme jen mezi po sobě jdoucími "chasing" tiky — čerstvý
+    // vstup do chasing z jiného módu nesmí zdědit starý (jinam vztažený) čítač.
+    const wasAlreadyChasing = enemy.mode === "chasing";
+    const stuck = trackStuck(
+      moved.x,
+      moved.y,
+      wasAlreadyChasing ? enemy.stuckCheckPosition : { x: enemy.x, y: enemy.y },
+      wasAlreadyChasing ? enemy.stuckCheckElapsedMs : 0,
+      wasAlreadyChasing ? enemy.stuckTotalMs : 0,
+      deltaMs,
+      config.stuckCheckIntervalMs,
+      config.stuckMoveThresholdPx,
+      config.stuckTimeoutMs,
+    );
+
+    if (stuck.isStuck) {
+      // Zaseklý o zeď při honičce — vzdáme se honičky (line-of-sight pravidla se
+      // vyhodnotí znovu příští tik) a vydáme se na nový přibližný bod.
+      const target = pickInvestigationTarget(enemy, player, distanceToPlayer, walls, config, rng);
+      return {
+        ...enemy,
+        x: moved.x,
+        y: moved.y,
+        mode: "investigating",
+        investigationTarget: target,
+        waitRemainingMs: 0,
+        stuckCheckPosition: { x: moved.x, y: moved.y },
+        stuckCheckElapsedMs: 0,
+        stuckTotalMs: 0,
+      };
+    }
+
+    return {
+      ...enemy,
+      x: moved.x,
+      y: moved.y,
+      mode: "chasing",
+      visionAngle,
+      waitRemainingMs: 0,
+      stuckCheckPosition: stuck.stuckCheckPosition,
+      stuckCheckElapsedMs: stuck.stuckCheckElapsedMs,
+      stuckTotalMs: stuck.stuckTotalMs,
+    };
   }
 
   if (enemy.mode === "chasing") {
     // Právě ztratil hráče z dohledu — jde zkontrolovat místo, kde ho naposledy viděl.
     const target = pickInvestigationTarget(enemy, player, distanceToPlayer, walls, config, rng);
-    return { ...enemy, mode: "investigating", investigationTarget: target, waitRemainingMs: 0 };
+    return {
+      ...enemy,
+      mode: "investigating",
+      investigationTarget: target,
+      waitRemainingMs: 0,
+      stuckCheckPosition: { x: enemy.x, y: enemy.y },
+      stuckCheckElapsedMs: 0,
+      stuckTotalMs: 0,
+    };
   }
 
   if (enemy.mode === "waiting") {
@@ -506,7 +614,15 @@ export function updateEnemyAi(input: UpdateEnemyAiInput): Enemy {
       return { ...enemy, waitRemainingMs, mode: "waiting" };
     }
     const target = pickInvestigationTarget(enemy, player, distanceToPlayer, walls, config, rng);
-    return { ...enemy, mode: "investigating", investigationTarget: target, waitRemainingMs: 0 };
+    return {
+      ...enemy,
+      mode: "investigating",
+      investigationTarget: target,
+      waitRemainingMs: 0,
+      stuckCheckPosition: { x: enemy.x, y: enemy.y },
+      stuckCheckElapsedMs: 0,
+      stuckTotalMs: 0,
+    };
   }
 
   // mode === "investigating"
@@ -520,7 +636,46 @@ export function updateEnemyAi(input: UpdateEnemyAiInput): Enemy {
   const step = stepTowards(enemy.x, enemy.y, target.x, target.y, config.searchSpeed);
   const moved = moveWithWallSliding(enemy.x, enemy.y, step.dx, step.dy, enemy.radius, walls, config.mapWidth, config.mapHeight);
   const visionAngle = angleBetween(enemy.x, enemy.y, target.x, target.y);
-  return { ...enemy, x: moved.x, y: moved.y, mode: "investigating", visionAngle };
+
+  const stuck = trackStuck(
+    moved.x,
+    moved.y,
+    enemy.stuckCheckPosition,
+    enemy.stuckCheckElapsedMs,
+    enemy.stuckTotalMs,
+    deltaMs,
+    config.stuckCheckIntervalMs,
+    config.stuckMoveThresholdPx,
+    config.stuckTimeoutMs,
+  );
+
+  if (stuck.isStuck) {
+    // Zaseklý o zeď při hledání podezřelého bodu — zvol nový, ať se AI neuvíznutá
+    // navěky nebijí do stejné zdi.
+    const newTarget = pickInvestigationTarget(enemy, player, distanceToPlayer, walls, config, rng);
+    return {
+      ...enemy,
+      x: moved.x,
+      y: moved.y,
+      mode: "investigating",
+      investigationTarget: newTarget,
+      visionAngle,
+      stuckCheckPosition: { x: moved.x, y: moved.y },
+      stuckCheckElapsedMs: 0,
+      stuckTotalMs: 0,
+    };
+  }
+
+  return {
+    ...enemy,
+    x: moved.x,
+    y: moved.y,
+    mode: "investigating",
+    visionAngle,
+    stuckCheckPosition: stuck.stuckCheckPosition,
+    stuckCheckElapsedMs: stuck.stuckCheckElapsedMs,
+    stuckTotalMs: stuck.stuckTotalMs,
+  };
 }
 
 // ── Kontrakt pro budoucí spuštění z hlavní hry (viz
