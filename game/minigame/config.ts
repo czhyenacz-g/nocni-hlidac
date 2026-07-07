@@ -7,6 +7,22 @@ import { EmergencyMiniGameInput, Enemy, Player, Vec2, Wall } from "./types";
 export const CANVAS_WIDTH = 800;
 export const CANVAS_HEIGHT = 520;
 
+// ── Měřítko světa / záběr mapy (viz components/minigame/EmergencyMiniGame.tsx#draw)
+// — CANVAS_WIDTH/HEIGHT zůstává fyzická velikost <canvas> na stránce (radarový
+// panel se vizuálně nemění). Herní svět je ale větší (WORLD_WIDTH/HEIGHT) a
+// vykresluje se do canvasu zmenšený o MINIGAME_WORLD_SCALE (jedno
+// `ctx.scale(MINIGAME_WORLD_SCALE, MINIGAME_WORLD_SCALE)` na začátku draw() —
+// veškerá geometrie (zdi, spawny, zóny) níže je proto rovnou v tomhle větším
+// world prostoru, ne v CANVAS_WIDTH/HEIGHT). Velikosti entit (radius, dosahy)
+// zůstávají v původních world jednotkách beze změny — díky menšímu měřítku
+// vykreslení tak vypadají cca o 20 % menší, aniž by se musely přepočítávat
+// ručně po jednom.
+export const MINIGAME_WORLD_SCALE = 0.8;
+export const WORLD_WIDTH = Math.round(CANVAS_WIDTH / MINIGAME_WORLD_SCALE);
+export const WORLD_HEIGHT = Math.round(CANVAS_HEIGHT / MINIGAME_WORLD_SCALE);
+/** Poměr, o který je nový svět prostornější než starý (WALLS/spawny/zóny jsou v layoutu škálované tímhle faktorem) — inverzní k MINIGAME_WORLD_SCALE. */
+const WORLD_LAYOUT_SCALE = WORLD_WIDTH / CANVAS_WIDTH;
+
 export const PLAYER_RADIUS = 14;
 export const ENEMY_RADIUS = 14;
 export const PLAYER_SPEED = 3.2;
@@ -63,14 +79,18 @@ export const STUCK_MOVE_THRESHOLD_PX = 4;
 export const STUCK_TIMEOUT_MS = 5000;
 
 // Pár vnitřních překážek/chodeb + krátké výběžky od obvodových zdí — obvod
-// mapy řeší clamp na hranice canvasu (viz moveWithWallSliding), ne samostatné
-// zdi, ať nevznikají zbytečně duplicitní kolizní obdélníky podél celého okraje.
+// mapy řeší clamp na hranice světa (viz moveWithWallSliding, WORLD_WIDTH/
+// WORLD_HEIGHT), ne samostatné zdi, ať nevznikají zbytečně duplicitní kolizní
+// obdélníky podél celého okraje. Pozice a délky jsou škálované WORLD_LAYOUT_SCALE
+// (větší záběr mapy), ale TLOUŠŤKA (24) zůstává v původních world jednotkách
+// beze změny — po vykreslení (MINIGAME_WORLD_SCALE) proto zdi vyjdou cca o 20 %
+// tenčí, aniž by se kolize a vizuál rozešly (obojí čte tahle stejná pole).
 export const WALLS: Wall[] = [
-  { x: 260, y: 0, width: 24, height: 230 },
-  { x: 260, y: 300, width: 24, height: 220 },
-  { x: 520, y: 140, width: 200, height: 24 },
-  { x: 120, y: 380, width: 160, height: 24 },
-  { x: 600, y: 320, width: 24, height: 160 },
+  { x: 260 * WORLD_LAYOUT_SCALE, y: 0, width: 24, height: 230 * WORLD_LAYOUT_SCALE },
+  { x: 260 * WORLD_LAYOUT_SCALE, y: 300 * WORLD_LAYOUT_SCALE, width: 24, height: 220 * WORLD_LAYOUT_SCALE },
+  { x: 520 * WORLD_LAYOUT_SCALE, y: 140 * WORLD_LAYOUT_SCALE, width: 200 * WORLD_LAYOUT_SCALE, height: 24 },
+  { x: 120 * WORLD_LAYOUT_SCALE, y: 380 * WORLD_LAYOUT_SCALE, width: 160 * WORLD_LAYOUT_SCALE, height: 24 },
+  { x: 600 * WORLD_LAYOUT_SCALE, y: 320 * WORLD_LAYOUT_SCALE, width: 24, height: 160 * WORLD_LAYOUT_SCALE },
 ];
 
 // Hráč startuje dole (u "kontrolní místnosti") — stejná prostorová logika
@@ -81,8 +101,8 @@ export const WALLS: Wall[] = [
 // beze vstupu (např. testy).
 export function createInitialPlayer(shots: number = 1): Player {
   return {
-    x: CANVAS_WIDTH / 2,
-    y: CANVAS_HEIGHT - 60,
+    x: WORLD_WIDTH / 2,
+    y: WORLD_HEIGHT - 60 * WORLD_LAYOUT_SCALE,
     radius: PLAYER_RADIUS,
     direction: "up",
     speed: PLAYER_SPEED,
@@ -101,13 +121,17 @@ export const DEFAULT_EMERGENCY_MINIGAME_INPUT: EmergencyMiniGameInput = {
 // "Návrat do kanceláře" — obdélník poblíž startovní pozice hráče (dole,
 // stejné místo jako "kontrolní místnost" v hlavní hře). Aktivuje se až po
 // opuštění startu (viz START_ZONE_LEAVE_RADIUS_PX), ať se "returned" nesplní
-// hned na startu — dokončuje se stiskem E, ne jen vstupem do zóny.
-export const EXIT_ZONE: Wall = { x: CANVAS_WIDTH / 2 - 60, y: CANVAS_HEIGHT - 110, width: 120, height: 90 };
-/** Jak daleko od startovní pozice musí hráč dojít, než se exit zóna "aktivuje" (viz EmergencyMiniGame.tsx hasLeftStartZone). */
-export const START_ZONE_LEAVE_RADIUS_PX = 70;
+// hned na startu — dokončuje se stiskem E, ne jen vstupem do zóny. Pozice
+// škálovaná WORLD_LAYOUT_SCALE (zůstává na stejném relativním místě v
+// novém, větším světě), rozměry (120×90) beze změny — po vykreslení proto
+// zóna vyjde cca o 20 % menší, stejně jako zdi/entity.
+export const EXIT_ZONE: Wall = { x: WORLD_WIDTH / 2 - 60 * WORLD_LAYOUT_SCALE, y: WORLD_HEIGHT - 110 * WORLD_LAYOUT_SCALE, width: 120, height: 90 };
+/** Jak daleko od startovní pozice musí hráč dojít, než se exit zóna "aktivuje" (viz EmergencyMiniGame.tsx hasLeftStartZone) — škálováno spolu s layoutem. */
+export const START_ZONE_LEAVE_RADIUS_PX = 70 * WORLD_LAYOUT_SCALE;
 
-// "Sebrání věci" — pro MVP jeden pevný spawn bod, mimo zdi a mimo start/enemy pozici.
-export const ITEM_SPAWN_POSITION: Vec2 = { x: 150, y: 460 };
+// "Sebrání věci" — pro MVP jeden pevný spawn bod, mimo zdi a mimo start/enemy
+// pozici. Pozice škálovaná s layoutem, ITEM_RADIUS beze změny (entita).
+export const ITEM_SPAWN_POSITION: Vec2 = { x: 150 * WORLD_LAYOUT_SCALE, y: 460 * WORLD_LAYOUT_SCALE };
 export const ITEM_RADIUS = 10;
 
 // Nepřítel startuje nahoře a hned v "investigating" (NE "chasing") — s
@@ -115,8 +139,8 @@ export const ITEM_RADIUS = 10;
 // odchylkou (viz createInvestigationTarget). Bere `player` jako parametr,
 // protože bez pozice hráče by nešlo první investigationTarget vůbec vybrat.
 export function createInitialEnemy(player: Player): Enemy {
-  const x = CANVAS_WIDTH / 2;
-  const y = 60;
+  const x = WORLD_WIDTH / 2;
+  const y = 60 * WORLD_LAYOUT_SCALE;
   const distanceToPlayer = distance(x, y, player.x, player.y);
   const investigationTarget = createInvestigationTarget({
     playerX: player.x,
@@ -127,8 +151,8 @@ export function createInitialEnemy(player: Player): Enemy {
     closeDistanceThresholdPx: INVESTIGATION_CLOSE_DISTANCE_THRESHOLD_PX,
     enemyRadius: ENEMY_RADIUS,
     walls: WALLS,
-    mapWidth: CANVAS_WIDTH,
-    mapHeight: CANVAS_HEIGHT,
+    mapWidth: WORLD_WIDTH,
+    mapHeight: WORLD_HEIGHT,
     maxAttempts: INVESTIGATION_MAX_ATTEMPTS,
   });
 

@@ -25,12 +25,15 @@ import {
   INVESTIGATION_NOISE_FAR_PX,
   ITEM_RADIUS,
   ITEM_SPAWN_POSITION,
+  MINIGAME_WORLD_SCALE,
   SHOT_FLASH_DURATION_MS,
   START_ZONE_LEAVE_RADIUS_PX,
   STUCK_CHECK_INTERVAL_MS,
   STUCK_MOVE_THRESHOLD_PX,
   STUCK_TIMEOUT_MS,
   WALLS,
+  WORLD_HEIGHT,
+  WORLD_WIDTH,
   createInitialEnemy,
   createInitialPlayer,
 } from "@/game/minigame/config";
@@ -81,6 +84,9 @@ interface MiniGameRefState {
   hasLeftStartZone: boolean;
   /** Objective "collect_item": true po sebrání — brání opakovanému dokončení. */
   itemCollected: boolean;
+  /** Hráčova startovní pozice (viz hasLeftStartZone) — uložená při vytvoření, ne přepočítávaná z CANVAS/WORLD konstant, ať vždy odpovídá skutečnému createInitialPlayer(). */
+  startX: number;
+  startY: number;
 }
 
 function createInitialState(input: EmergencyMiniGameInput): MiniGameRefState {
@@ -92,6 +98,8 @@ function createInitialState(input: EmergencyMiniGameInput): MiniGameRefState {
     enemy,
     status: "playing",
     shotFlashRemainingMs: 0,
+    startX: player.x,
+    startY: player.y,
     elapsedMs: 0,
     shotsUsed: 0,
     hasLeftStartZone: false,
@@ -115,8 +123,8 @@ const ENEMY_AI_CONFIG: EnemyAiConfig = {
   investigationNoiseFarPx: INVESTIGATION_NOISE_FAR_PX,
   investigationCloseDistanceThresholdPx: INVESTIGATION_CLOSE_DISTANCE_THRESHOLD_PX,
   investigationMaxAttempts: INVESTIGATION_MAX_ATTEMPTS,
-  mapWidth: CANVAS_WIDTH,
-  mapHeight: CANVAS_HEIGHT,
+  mapWidth: WORLD_WIDTH,
+  mapHeight: WORLD_HEIGHT,
   stuckCheckIntervalMs: STUCK_CHECK_INTERVAL_MS,
   stuckMoveThresholdPx: STUCK_MOVE_THRESHOLD_PX,
   stuckTimeoutMs: STUCK_TIMEOUT_MS,
@@ -337,8 +345,8 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
             (dy / length) * game.player.speed,
             game.player.radius,
             WALLS,
-            CANVAS_WIDTH,
-            CANVAS_HEIGHT,
+            WORLD_WIDTH,
+            WORLD_HEIGHT,
           );
           game.player.x = moved.x;
           game.player.y = moved.y;
@@ -346,9 +354,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
         }
 
         if (!game.hasLeftStartZone) {
-          const startX = CANVAS_WIDTH / 2;
-          const startY = CANVAS_HEIGHT - 60;
-          if (distance(game.player.x, game.player.y, startX, startY) > START_ZONE_LEAVE_RADIUS_PX) {
+          if (distance(game.player.x, game.player.y, game.startX, game.startY) > START_ZONE_LEAVE_RADIUS_PX) {
             game.hasLeftStartZone = true;
           }
         }
@@ -510,40 +516,43 @@ function CornerTick({ corner }: { corner: "tl" | "tr" | "bl" | "br" }) {
 
 // Offscreen canvas s jemnou radarovou mřížkou (menší linky po 20px, větší po
 // 100px, velmi nízká opacity) — vykreslí se jednou při mountu, pak se každý
-// frame jen zkopíruje (viz tick() výše).
+// frame jen zkopíruje (viz tick() výše). Velikost/rozestupy jsou ve WORLD
+// prostoru (WORLD_WIDTH/HEIGHT, ne fyzická CANVAS_WIDTH/HEIGHT) — draw() ho
+// kopíruje pod stejným ctx.scale(MINIGAME_WORLD_SCALE) jako zbytek scény, ať
+// mřížka pokryje celou (větší) mapu, ne jen její levý horní roh.
 function createGridCanvas(): HTMLCanvasElement {
   const gridCanvas = document.createElement("canvas");
-  gridCanvas.width = CANVAS_WIDTH;
-  gridCanvas.height = CANVAS_HEIGHT;
+  gridCanvas.width = WORLD_WIDTH;
+  gridCanvas.height = WORLD_HEIGHT;
   const gridCtx = gridCanvas.getContext("2d");
   if (!gridCtx) return gridCanvas;
 
   gridCtx.strokeStyle = "rgba(46, 143, 92, 0.08)";
   gridCtx.lineWidth = 1;
-  for (let x = 0; x <= CANVAS_WIDTH; x += 20) {
+  for (let x = 0; x <= WORLD_WIDTH; x += 20) {
     gridCtx.beginPath();
     gridCtx.moveTo(x + 0.5, 0);
-    gridCtx.lineTo(x + 0.5, CANVAS_HEIGHT);
+    gridCtx.lineTo(x + 0.5, WORLD_HEIGHT);
     gridCtx.stroke();
   }
-  for (let y = 0; y <= CANVAS_HEIGHT; y += 20) {
+  for (let y = 0; y <= WORLD_HEIGHT; y += 20) {
     gridCtx.beginPath();
     gridCtx.moveTo(0, y + 0.5);
-    gridCtx.lineTo(CANVAS_WIDTH, y + 0.5);
+    gridCtx.lineTo(WORLD_WIDTH, y + 0.5);
     gridCtx.stroke();
   }
 
   gridCtx.strokeStyle = "rgba(46, 143, 92, 0.18)";
-  for (let x = 0; x <= CANVAS_WIDTH; x += 100) {
+  for (let x = 0; x <= WORLD_WIDTH; x += 100) {
     gridCtx.beginPath();
     gridCtx.moveTo(x + 0.5, 0);
-    gridCtx.lineTo(x + 0.5, CANVAS_HEIGHT);
+    gridCtx.lineTo(x + 0.5, WORLD_HEIGHT);
     gridCtx.stroke();
   }
-  for (let y = 0; y <= CANVAS_HEIGHT; y += 100) {
+  for (let y = 0; y <= WORLD_HEIGHT; y += 100) {
     gridCtx.beginPath();
     gridCtx.moveTo(0, y + 0.5);
-    gridCtx.lineTo(CANVAS_WIDTH, y + 0.5);
+    gridCtx.lineTo(WORLD_WIDTH, y + 0.5);
     gridCtx.stroke();
   }
 
@@ -555,9 +564,19 @@ function draw(ctx: CanvasRenderingContext2D, game: MiniGameRefState, gridCanvas:
 
   ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-  // Pozadí — velmi tmavá zelenočerná, ne plochá šedá.
+  // Pozadí — velmi tmavá zelenočerná, ne plochá šedá. Vyplňuje se ve fyzickém
+  // pixelovém prostoru canvasu (PŘED ctx.scale níže), ať pokryje celou plochu
+  // beze zbytku.
   ctx.fillStyle = "#020a05";
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+  // Jediné místo, kde se world → screen měřítko aplikuje (viz
+  // MINIGAME_WORLD_SCALE/WORLD_WIDTH/WORLD_HEIGHT v config.ts) — od teď je
+  // celý zbytek draw() v souřadnicích herního světa (stejných, v jakých žije
+  // player/enemy/WALLS), canvas je ale fyzicky pořád CANVAS_WIDTH×CANVAS_HEIGHT.
+  ctx.save();
+  ctx.scale(MINIGAME_WORLD_SCALE, MINIGAME_WORLD_SCALE);
+
   ctx.drawImage(gridCanvas, 0, 0);
 
   // Zdi — tmavá výplň + zelený neonový obrys s glow, ať jasně čnějí z gridu.
@@ -723,5 +742,8 @@ function draw(ctx: CanvasRenderingContext2D, game: MiniGameRefState, gridCanvas:
   ctx.moveTo(player.x + Math.cos(facing) * player.radius, player.y + Math.sin(facing) * player.radius);
   ctx.lineTo(player.x + Math.cos(facing) * (player.radius + 10), player.y + Math.sin(facing) * (player.radius + 10));
   ctx.stroke();
+  ctx.restore();
+
+  // Konec world→screen měřítka nastaveného výše (ctx.scale(MINIGAME_WORLD_SCALE, ...)).
   ctx.restore();
 }
