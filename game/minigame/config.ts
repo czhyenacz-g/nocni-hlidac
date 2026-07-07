@@ -13,9 +13,22 @@ export const ENEMY_SPEED = 1.6;
 
 /** Dosah výseče (px) — kam zasáhne brokovnice i kam hráč "vidí". */
 export const CONE_RANGE = 150;
+/** Alias pro CONE_RANGE — stejná hodnota, jen jméno odpovídající AI rozsahům níže ("shotgunRange" ze zadání). */
+export const SHOTGUN_RANGE = CONE_RANGE;
 /** Celkový úhel výseče (stupně) — polovina na každou stranu od směru pohledu. */
 export const CONE_ANGLE_DEG = 70;
 export const CONE_ANGLE_RAD = (CONE_ANGLE_DEG * Math.PI) / 180;
+
+// AI nepřítele podle vzdálenosti k hráči (viz
+// game/minigame/logic.ts#computeEnemyAiState) — nepřítel nemá "vědět" o
+// hráči přes celou mapu, jen v rozumném okolí.
+/** Mimo tenhle dosah je nepřítel "idle" (bloudí, nejde přímo po hráči). */
+export const ENEMY_AWARENESS_RANGE = SHOTGUN_RANGE * 6;
+/** V tomhle dosahu (stejný jako dosah brokovnice) nepřítel zrychlí ("aggro"). */
+export const ENEMY_AGGRO_RANGE = SHOTGUN_RANGE;
+export const ENEMY_AGGRO_SPEED_MULTIPLIER = 1.5;
+/** Pomalé náhodné bloudění v "idle" stavu — výrazně pomalejší než honění. */
+export const ENEMY_IDLE_WANDER_SPEED = ENEMY_SPEED * 0.35;
 
 // Pár vnitřních překážek/chodeb + krátké výběžky od obvodových zdí — obvod
 // mapy řeší clamp na hranice canvasu (viz moveWithWallSliding), ne samostatné
@@ -49,5 +62,7 @@ export function createInitialEnemy(): Enemy {
     radius: ENEMY_RADIUS,
     speed: ENEMY_SPEED,
     alive: true,
+    aiState: "idle",
+    wanderAngle: Math.random() * Math.PI * 2,
   };
 }

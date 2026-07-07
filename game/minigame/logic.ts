@@ -1,4 +1,4 @@
-import { Direction, Wall } from "./types";
+import { Direction, EnemyAiState, Wall } from "./types";
 
 // Čistá herní logika prototypu minihry — žádné canvas/DOM/React tady,
 // snadno testovatelné (viz logic.test.ts). components/minigame/MiniGameCanvas.tsx
@@ -164,4 +164,22 @@ export function stepTowards(ax: number, ay: number, bx: number, by: number, spee
   const dist = distance(ax, ay, bx, by);
   if (dist === 0) return { dx: 0, dy: 0 };
   return { dx: ((bx - ax) / dist) * speed, dy: ((by - ay) / dist) * speed };
+}
+
+/**
+ * Odvodí AI stav nepřítele podle vzdálenosti k hráči — mimo `awarenessRange`
+ * je "idle" (neví o hráči, nejde po něm přímo), uvnitř `awarenessRange` je
+ * "chasing", uvnitř (kratšího) `aggroRange` je "aggro". `aggroRange` musí
+ * být <= `awarenessRange`, jinak by "aggro" nikdy nenastalo (typický případ:
+ * aggroRange = shotgunRange, awarenessRange = shotgunRange * 6).
+ */
+export function computeEnemyAiState(distanceToPlayer: number, awarenessRange: number, aggroRange: number): EnemyAiState {
+  if (distanceToPlayer <= aggroRange) return "aggro";
+  if (distanceToPlayer <= awarenessRange) return "chasing";
+  return "idle";
+}
+
+/** "aggro" násobí základní rychlost, "chasing"/"idle" ji nechává beze změny (idle bloudění řeší volající zvlášť, ne tahle funkce). */
+export function enemySpeedForState(baseSpeed: number, state: EnemyAiState, aggroSpeedMultiplier: number): number {
+  return state === "aggro" ? baseSpeed * aggroSpeedMultiplier : baseSpeed;
 }

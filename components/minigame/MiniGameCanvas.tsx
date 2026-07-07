@@ -6,6 +6,10 @@ import {
   CANVAS_WIDTH,
   CONE_ANGLE_RAD,
   CONE_RANGE,
+  ENEMY_AGGRO_RANGE,
+  ENEMY_AGGRO_SPEED_MULTIPLIER,
+  ENEMY_AWARENESS_RANGE,
+  ENEMY_IDLE_WANDER_SPEED,
   WALLS,
   createInitialEnemy,
   createInitialPlayer,
@@ -14,7 +18,10 @@ import { Direction, Enemy, MiniGameStatus, Player } from "@/game/minigame/types"
 import {
   DIRECTION_ANGLES,
   circlesTouch,
+  computeEnemyAiState,
   directionFromVector,
+  distance,
+  enemySpeedForState,
   isEnemyHit,
   moveWithWallSliding,
   stepTowards,
@@ -159,7 +166,24 @@ export default function MiniGameCanvas() {
         }
 
         if (game.enemy.alive) {
-          const step = stepTowards(game.enemy.x, game.enemy.y, game.player.x, game.player.y, game.enemy.speed);
+          const distanceToPlayer = distance(game.enemy.x, game.enemy.y, game.player.x, game.player.y);
+          game.enemy.aiState = computeEnemyAiState(distanceToPlayer, ENEMY_AWARENESS_RANGE, ENEMY_AGGRO_RANGE);
+
+          let step: { dx: number; dy: number };
+          if (game.enemy.aiState === "idle") {
+            // Mimo awareness range enemy "neví" o hráči — místo přímého
+            // honění pomalu bloudí náhodným směrem (malá odchylka úhlu
+            // každý tik, ať bloudění nevypadá cukavě).
+            game.enemy.wanderAngle += (Math.random() - 0.5) * 0.3;
+            step = {
+              dx: Math.cos(game.enemy.wanderAngle) * ENEMY_IDLE_WANDER_SPEED,
+              dy: Math.sin(game.enemy.wanderAngle) * ENEMY_IDLE_WANDER_SPEED,
+            };
+          } else {
+            const speed = enemySpeedForState(game.enemy.speed, game.enemy.aiState, ENEMY_AGGRO_SPEED_MULTIPLIER);
+            step = stepTowards(game.enemy.x, game.enemy.y, game.player.x, game.player.y, speed);
+          }
+
           const moved = moveWithWallSliding(
             game.enemy.x,
             game.enemy.y,
@@ -391,10 +415,20 @@ function draw(ctx: CanvasRenderingContext2D, game: MiniGameRefState, gridCanvas:
   ctx.stroke();
   ctx.restore();
 
-  // Nepřítel — červený radarový bod s výrazným glow.
+  // Nepřítel — červený radarový bod, glow podle AI stavu: idle slabý, chasing
+  // normální, aggro silnější a pulzující (rychlejší = nebezpečnější).
   ctx.save();
   ctx.shadowColor = "rgba(220, 38, 38, 0.9)";
-  ctx.shadowBlur = enemy.alive ? 14 : 4;
+  if (!enemy.alive) {
+    ctx.shadowBlur = 4;
+  } else if (enemy.aiState === "idle") {
+    ctx.shadowBlur = 5;
+  } else if (enemy.aiState === "chasing") {
+    ctx.shadowBlur = 14;
+  } else {
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 100);
+    ctx.shadowBlur = 16 + pulse * 10;
+  }
   ctx.fillStyle = enemy.alive ? "#ef4444" : "#4b5563";
   ctx.beginPath();
   ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);

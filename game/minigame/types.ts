@@ -22,12 +22,22 @@ export interface Player {
   shotsLeft: number;
 }
 
+// Jednoduchý AI stav podle vzdálenosti k hráči (viz
+// game/minigame/logic.ts#computeEnemyAiState) — "idle" mimo awareness range
+// (enemy hráče "neví" a nejde po něm přímo), "chasing" v awareness range
+// (normální rychlost), "aggro" v aggro range (shotgunRange, o 50 % rychleji).
+export type EnemyAiState = "idle" | "chasing" | "aggro";
+
 export interface Enemy {
   x: number;
   y: number;
   radius: number;
+  /** Základní rychlost — "chasing" ji používá beze změny, "aggro" ji násobí ENEMY_AGGRO_SPEED_MULTIPLIER (viz config.ts). */
   speed: number;
   alive: boolean;
+  aiState: EnemyAiState;
+  /** Úhel (rad) pro pomalé náhodné bloudění v "idle" stavu — perzistentní mezi tiky, ať bloudění nevypadá cukavě. */
+  wanderAngle: number;
 }
 
 export type MiniGameStatus = "playing" | "won" | "gameOver";

@@ -3,8 +3,10 @@ import {
   circleIntersectsAnyWall,
   circleIntersectsWall,
   circlesTouch,
+  computeEnemyAiState,
   directionFromVector,
   distance,
+  enemySpeedForState,
   isEnemyHit,
   isTargetInCone,
   moveWithWallSliding,
@@ -142,5 +144,36 @@ describe("circlesTouch", () => {
 
   it("is false when circles are far apart", () => {
     expect(circlesTouch(0, 0, 14, 100, 0, 14)).toBe(false);
+  });
+});
+
+describe("computeEnemyAiState", () => {
+  const awarenessRange = 900; // shotgunRange (150) * 6
+  const aggroRange = 150; // shotgunRange
+
+  it("is idle beyond the awareness range", () => {
+    expect(computeEnemyAiState(901, awarenessRange, aggroRange)).toBe("idle");
+    expect(computeEnemyAiState(2000, awarenessRange, aggroRange)).toBe("idle");
+  });
+
+  it("is chasing inside the awareness range but outside the aggro range", () => {
+    expect(computeEnemyAiState(900, awarenessRange, aggroRange)).toBe("chasing");
+    expect(computeEnemyAiState(151, awarenessRange, aggroRange)).toBe("chasing");
+  });
+
+  it("is aggro inside the aggro range", () => {
+    expect(computeEnemyAiState(150, awarenessRange, aggroRange)).toBe("aggro");
+    expect(computeEnemyAiState(0, awarenessRange, aggroRange)).toBe("aggro");
+  });
+});
+
+describe("enemySpeedForState", () => {
+  it("leaves speed unchanged when idle or chasing", () => {
+    expect(enemySpeedForState(2, "idle", 1.5)).toBe(2);
+    expect(enemySpeedForState(2, "chasing", 1.5)).toBe(2);
+  });
+
+  it("multiplies speed by the aggro multiplier when aggro", () => {
+    expect(enemySpeedForState(2, "aggro", 1.5)).toBe(3);
   });
 });
