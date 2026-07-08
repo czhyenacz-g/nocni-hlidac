@@ -129,6 +129,7 @@ export default function DevSoundPage() {
               <th className="p-2">Varianta</th>
               <th className="p-2">Zdroj</th>
               <th className="p-2">Licence</th>
+              <th className="p-2">Poznámka</th>
               <th className="p-2">Přehrát</th>
             </tr>
           </thead>
@@ -138,6 +139,7 @@ export default function DevSoundPage() {
                 <td className="p-2 text-amber-400 whitespace-nowrap">{candidate.label}</td>
                 <td className="p-2 text-gray-500">{candidate.source}</td>
                 <td className="p-2 text-gray-500 whitespace-nowrap">{candidate.license}</td>
+                <td className="p-2 text-gray-500 max-w-xs">{"note" in candidate ? candidate.note : ""}</td>
                 <td className="p-2">
                   <audio controls src={`/dev-sound-candidates/${candidate.file}`} className="h-8" />
                 </td>
@@ -191,16 +193,22 @@ const NEW_MONSTER_SOUND_CANDIDATES = [
     source: "freesound.org/people/Breviceps/sounds/479380/",
     license: "CC0",
   },
+  // Obě "Kroky" varianty níže znějí jako TĚŽKÉ, dunivé monstrum — pro
+  // současného nepřítele (viz game/enemies/) jsou moc masivní/pomalé.
+  // Zatím nikam nezapojujeme, schované na později pro budoucí druhý typ
+  // nepřítele ("gigant") s vlastním, těžším zvukovým profilem.
   {
     file: "footsteps/monster_stomp_footsteps_sequence.mp3",
     label: "Kroky — stomp sekvence",
     source: "freesound.org/people/Vilkas_Sound/sounds/753178/",
     license: "CC BY 4.0",
+    note: "Těžké monstrum — použít až pro budoucí typ nepřítele „gigant“.",
   },
   {
     file: "footsteps/monster_footsteps_gravel.mp3",
     label: "Kroky — štěrk (22 s, opakující se)",
     source: "freesound.org/people/AudioPapkin/sounds/712066/",
     license: "CC0",
+    note: "Těžké monstrum — použít až pro budoucí typ nepřítele „gigant“.",
   },
 ];

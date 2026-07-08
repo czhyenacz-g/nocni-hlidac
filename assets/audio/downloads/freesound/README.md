@@ -16,6 +16,11 @@ přes `AUDIO_EVENTS`/`audioConfig.ts`, doplnit zdroj sem i do `CREDITS.md`.
 
 ## footsteps/
 
+Obě varianty níže znějí jako **těžké, dunivé monstrum** — pro současného
+nepřítele jsou moc masivní/pomalé. Zatím nikam nezapojujeme, schované na
+později pro budoucí druhý typ nepřítele ("gigant") s vlastním, těžším
+zvukovým profilem.
+
 - `753178__vilkas_sound__monster-stomp-footsteps-sequence.mp3` — [Monster Stomp Footsteps Sequence – Vilkas_Sound](https://freesound.org/people/Vilkas_Sound/sounds/753178/), **CC BY 4.0** (vyžaduje atribuci v `CREDITS.md`, pokud se použije), 8.3 s
 - `712066__audiopapkin__monster-footsteps-on-gravel.wav` — [Monster footsteps on gravel – AudioPapkin](https://freesound.org/people/AudioPapkin/sounds/712066/), **CC0**, 22.3 s (opakující se kroky, jde vystřihnout kratší smyčku)
 
