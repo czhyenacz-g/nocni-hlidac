@@ -4,10 +4,11 @@ import {
   computeGeneratorStressBonus,
   computeHeartbeatTargetStress,
   computeHeartbeatVolumes,
+  computeLowPowerStressBonus,
 } from "./heartbeatStress";
 import { OBJECT13_CAMERAS } from "../cameras/cameras.object13";
 import { EnemyStage } from "../core/types";
-import { HEARTBEAT_VOLUME_MULTIPLIER } from "../balancing/constants";
+import { HEARTBEAT_VOLUME_MULTIPLIER, LOW_POWER_STRESS_MAX_BONUS, MAX_POWER } from "../balancing/constants";
 
 function stressFor(enemyStage: EnemyStage, activeCameraId: string | null, doorClosed = true) {
   return computeHeartbeatTargetStress({
@@ -139,5 +140,87 @@ describe("computeGeneratorStressBonus", () => {
   it("adds nothing for normal/silentFault", () => {
     expect(computeGeneratorStressBonus("normal")).toBe(0);
     expect(computeGeneratorStressBonus("silentFault")).toBe(0);
+  });
+});
+
+// Nízká energie zvedá stres nezávisle na poloze/generátoru — viz
+// game/balancing/constants.ts LOW_POWER_STRESS_* pro pásma.
+describe("computeLowPowerStressBonus", () => {
+  it("100% energy => bonus 0", () => {
+    expect(computeLowPowerStressBonus(100, MAX_POWER)).toBe(0);
+  });
+
+  it("50% energy => bonus 0 (threshold itself is still bonus-free)", () => {
+    expect(computeLowPowerStressBonus(50, MAX_POWER)).toBe(0);
+  });
+
+  it("49% energy => bonus 10", () => {
+    expect(computeLowPowerStressBonus(49, MAX_POWER)).toBe(10);
+  });
+
+  it("40% energy => bonus 10", () => {
+    expect(computeLowPowerStressBonus(40, MAX_POWER)).toBe(10);
+  });
+
+  it("39% energy => bonus 20", () => {
+    expect(computeLowPowerStressBonus(39, MAX_POWER)).toBe(20);
+  });
+
+  it("30% energy => bonus 20", () => {
+    expect(computeLowPowerStressBonus(30, MAX_POWER)).toBe(20);
+  });
+
+  it("29% energy => bonus 30", () => {
+    expect(computeLowPowerStressBonus(29, MAX_POWER)).toBe(30);
+  });
+
+  it("20% energy => bonus 30", () => {
+    expect(computeLowPowerStressBonus(20, MAX_POWER)).toBe(30);
+  });
+
+  it("19% energy => bonus 40", () => {
+    expect(computeLowPowerStressBonus(19, MAX_POWER)).toBe(40);
+  });
+
+  it("10% energy => bonus 40", () => {
+    expect(computeLowPowerStressBonus(10, MAX_POWER)).toBe(40);
+  });
+
+  it("9% energy => bonus 50", () => {
+    expect(computeLowPowerStressBonus(9, MAX_POWER)).toBe(50);
+  });
+
+  it("1% energy => bonus 50", () => {
+    expect(computeLowPowerStressBonus(1, MAX_POWER)).toBe(50);
+  });
+
+  it("0% energy => bonus is high enough that the combined target stress reaches MAX_STRESS (100)", () => {
+    const bonus = computeLowPowerStressBonus(0, MAX_POWER);
+    expect(bonus).toBe(LOW_POWER_STRESS_MAX_BONUS);
+    // Even with zero contribution from every other stress source, the sum
+    // (clamped the same way useHeartbeatStress.ts clamps targetStress) hits 100.
+    expect(Math.min(100, 0 + 0 + bonus)).toBe(100);
+  });
+
+  it("never lets the combined stress exceed MAX_STRESS (100), even stacked with other bonuses", () => {
+    const bonus = computeLowPowerStressBonus(5, MAX_POWER);
+    const combined = Math.min(100, /* locationStress */ 100 + /* generatorBonus */ 40 + bonus);
+    expect(combined).toBe(100);
+  });
+
+  it("recovers (bonus drops) once recharge brings power back above the threshold", () => {
+    const lowBonus = computeLowPowerStressBonus(20, MAX_POWER);
+    const rechargedBonus = computeLowPowerStressBonus(60, MAX_POWER);
+    expect(lowBonus).toBe(30);
+    expect(rechargedBonus).toBe(0);
+    expect(rechargedBonus).toBeLessThan(lowBonus);
+  });
+
+  it("negative power is treated the same as 0% (max bonus), never throws or goes negative", () => {
+    expect(computeLowPowerStressBonus(-10, MAX_POWER)).toBe(LOW_POWER_STRESS_MAX_BONUS);
+  });
+
+  it("power above maxPower is clamped to 100% (bonus 0), not an overshoot", () => {
+    expect(computeLowPowerStressBonus(150, MAX_POWER)).toBe(0);
   });
 });

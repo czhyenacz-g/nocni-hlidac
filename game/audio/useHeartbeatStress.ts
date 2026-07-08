@@ -7,9 +7,10 @@ import {
   computeGeneratorStressBonus,
   computeHeartbeatTargetStress,
   computeHeartbeatVolumes,
+  computeLowPowerStressBonus,
 } from "./heartbeatStress";
 import { GameState, NightDefinition } from "../core/types";
-import { HEARTBEAT_STRESS_FALL_MS, HEARTBEAT_STRESS_RISE_MS } from "../balancing/constants";
+import { HEARTBEAT_STRESS_FALL_MS, HEARTBEAT_STRESS_RISE_MS, MAX_POWER } from "../balancing/constants";
 
 const BASE_AMBIENT_VOLUME = AUDIO_CONFIG[AUDIO_EVENTS.ambienceLoop].volume;
 
@@ -58,7 +59,11 @@ export function useHeartbeatStress(state: GameState, night: NightDefinition): nu
     // +20 bonus, dokud fáze trvá — čerstvě odvozený z generatorState každý
     // tik (viz computeGeneratorStressBonus), ne akumulující se čítač.
     const generatorBonus = computeGeneratorStressBonus(state.generatorState);
-    const targetStress = Math.min(100, locationStress + generatorBonus);
+    // Nízká energie zvedá stres nezávisle na poloze/generátoru (viz
+    // computeLowPowerStressBonus) — čerstvě odvozený z state.power každý
+    // tik, nepočítá se do recharge, jen do cílové hladiny stresu níže.
+    const lowPowerBonus = computeLowPowerStressBonus(state.power, MAX_POWER);
+    const targetStress = Math.min(100, locationStress + generatorBonus + lowPowerBonus);
 
     const deltaMs = Math.max(0, state.elapsedMs - lastElapsedRef.current);
     lastElapsedRef.current = state.elapsedMs;
@@ -99,6 +104,7 @@ export function useHeartbeatStress(state: GameState, night: NightDefinition): nu
     state.enemyStage,
     state.doorClosed,
     state.generatorState,
+    state.power,
     night.cameras,
   ]);
 

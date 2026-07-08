@@ -3,6 +3,9 @@ import {
   BACKUP_POWER_STRESS_BONUS,
   GENERATOR_RESTART_STRESS_BONUS,
   HEARTBEAT_VOLUME_MULTIPLIER,
+  LOW_POWER_STRESS_BUCKET_PERCENT,
+  LOW_POWER_STRESS_MAX_BONUS,
+  LOW_POWER_STRESS_NO_BONUS_THRESHOLD_PERCENT,
   MIN_AMBIENT_STRESS_MULTIPLIER,
 } from "../balancing/constants";
 
@@ -66,6 +69,30 @@ export function computeGeneratorStressBonus(generatorState: GeneratorState): num
   if (generatorState === "criticalBeeping") return BACKUP_POWER_STRESS_BONUS;
   if (generatorState === "restarting") return GENERATOR_RESTART_STRESS_BONUS;
   return 0;
+}
+
+/**
+ * Nízká energie sama o sobě zvedá stres/heartbeat — nezávislé na
+ * poloze/generátoru (viz computeHeartbeatTargetStress/computeGeneratorStressBonus
+ * výše), stejný "čerstvě přepočítané z aktuálního stavu, nikdy akumulující
+ * se" vzor. Nad `LOW_POWER_STRESS_NO_BONUS_THRESHOLD_PERCENT` (50 %) žádný
+ * bonus; pod ním +`LOW_POWER_STRESS_BUCKET_PERCENT` (10) stresu za každý
+ * další celý desetiprocentní schod ztráty (49 % -> 10, 39 % -> 20, 29 % ->
+ * 30, 19 % -> 40, 1–9 % -> 50). Přesně 0 % energie je zvlášť ošetřená
+ * hranice — vrací `LOW_POWER_STRESS_MAX_BONUS`, dost vysoký na to, aby
+ * `Math.min(100, ...)` součet v useHeartbeatStress.ts vždycky vyšel na
+ * maximum bez ohledu na ostatní faktory (viz GAME_DESIGN.md "Stres a
+ * heartbeat").
+ */
+export function computeLowPowerStressBonus(power: number, maxPower: number): number {
+  const ratio = maxPower > 0 ? power / maxPower : 0;
+  const percent = clamp01(ratio) * 100;
+
+  if (percent <= 0) return LOW_POWER_STRESS_MAX_BONUS;
+  if (percent >= LOW_POWER_STRESS_NO_BONUS_THRESHOLD_PERCENT) return 0;
+
+  const bucketFloor = Math.floor(percent / LOW_POWER_STRESS_BUCKET_PERCENT) * LOW_POWER_STRESS_BUCKET_PERCENT;
+  return LOW_POWER_STRESS_NO_BONUS_THRESHOLD_PERCENT - bucketFloor;
 }
 
 export interface HeartbeatVolumes {

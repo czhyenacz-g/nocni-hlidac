@@ -72,6 +72,18 @@ export const BACKUP_POWER_STRESS_BONUS = 20;
 // bonus je vyšší — vyšší stres za vlastní chybu, ne za skutečnou poruchu.
 export const GENERATOR_RESTART_STRESS_BONUS = 40;
 
+// Nízká energie sama o sobě zvedá stres/heartbeat (viz computeLowPowerStressBonus
+// v heartbeatStress.ts) — nad tímhle procentem energie žádný bonus, pod ním
+// +10 stresu za každých dalších 10 % ztráty (49 % -> 10, 39 % -> 20, ...).
+export const LOW_POWER_STRESS_NO_BONUS_THRESHOLD_PERCENT = 50;
+// Velikost jednoho "schodu" energie (v %), po kterém přibude LOW_POWER_STRESS_NO_BONUS_THRESHOLD_PERCENT
+// další bonus — 10 % energie = jeden schod.
+export const LOW_POWER_STRESS_BUCKET_PERCENT = 10;
+// Při 0 % energie musí být výsledný stres na maximu bez ohledu na ostatní
+// faktory (poloha/generátor) — dost vysoký bonus, ať `Math.min(100, ...)`
+// součet v useHeartbeatStress.ts vždycky ořízne na 100.
+export const LOW_POWER_STRESS_MAX_BONUS = 100;
+
 // Horor efekt: při vyšším stresu ubývá "Čas do úsvitu" pomaleji (subjektivně
 // se noc vleče) — viz game/core/stressTimeScale.ts#computeStressTimeScale.
 // Nikdy neskáče čas nahoru, jen zpomaluje odpočet; 0 = normální rychlost,
