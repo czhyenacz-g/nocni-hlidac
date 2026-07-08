@@ -117,6 +117,12 @@ export const BULB_REPLACE_DURATION_MS = 10_000;
 // komponentě, ne herní stav (na rozdíl od progresu výměny samotné).
 export const BULB_REPLACE_SUCCESS_MESSAGE_MS = 1800;
 
+// Jak dlouho (ms) zůstane v GeneratorView vidět posměšná hláška po zbytečném
+// restartu FUNKČNÍHO generátoru (viz GameState.generatorAccidentalRestartSeq,
+// content/copy.ts generatorAccidentalRestartMessage) — stejný čistě kosmetický
+// lokální React timeout vzor jako BULB_REPLACE_SUCCESS_MESSAGE_MS výše.
+export const GENERATOR_ACCIDENTAL_RESTART_MESSAGE_MS = 2500;
+
 // Nouzová výprava "Jít ven" (viz game/core/types.ts EmergencyRunWindupState,
 // gameReducer.ts, LeftWallView.tsx) — stejný "drž tlačítko, ať to má cenu"
 // vzor jako ruční výměna žárovky výše: hráč musí tlačítko držet

@@ -572,6 +572,9 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             // — energie během "restarting" utíká stejně rychle, hráč to má
             // slyšet hned, ne až při dalším přirozeném pípnutí.
             generatorNextBeepAtMs: state.elapsedMs,
+            // Zbytečný klik na FUNKČNÍ generátor — GeneratorView.tsx podle
+            // změny zobrazí krátkou posměšnou hlášku (viz zadání).
+            generatorAccidentalRestartSeq: state.generatorAccidentalRestartSeq + 1,
           };
         }
 

@@ -105,6 +105,9 @@ export const COPY = {
       criticalBeeping: "PORUCHA! Restartuj generátor!",
       restarting: "Restartuje se...",
     },
+    // Krátká posměšná hláška, když hráč restartuje generátor, co běžel v
+    // pořádku (viz GameState.generatorAccidentalRestartSeq, GeneratorView.tsx).
+    generatorAccidentalRestartMessage: "To byla pěkný blbost, co jsi udělal...",
     // Zobrazí se, když hráč otevře dveře bez ověření kamerou, kam monstrum
     // odešlo (medium/hard, viz game/difficulty/difficultyConfig.ts
     // monster_check_or_return) — zatím nikde ve UI nenapojeno, jen připraveno.

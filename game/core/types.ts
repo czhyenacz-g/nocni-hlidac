@@ -403,6 +403,16 @@ export interface GameState {
    */
   bulbReplaceSuccessSeq: number;
 
+  /**
+   * Zvyšuje se přesně jednou pokaždé, když hráč restartuje generátor, co
+   * ve skutečnosti běžel v pořádku (`generatorState === "normal"`) — viz
+   * gameReducer.ts RESTART_GENERATOR. Restart během skutečné poruchy
+   * (`silentFault`/`criticalBeeping`) tenhle čítač nezvyšuje. Stejný "seq"
+   * vzor jako `bulbReplaceSuccessSeq` — GeneratorView.tsx podle změny
+   * zobrazí krátkou posměšnou hlášku ("To byla pěkný blbost...").
+   */
+  generatorAccidentalRestartSeq: number;
+
   /** Držení tlačítka "Jít ven" (viz EmergencyRunWindupState) — vždy resetováno na novou směnu, nikdy se nepřenáší mezi nocemi, stejně jako bulbReplacement. */
   emergencyRunWindup: EmergencyRunWindupState;
   /**

@@ -189,6 +189,7 @@ export default function GameScreen({
               <GeneratorView
                 generatorState={state.generatorState}
                 beepSeq={state.generatorBeepSeq}
+                accidentalRestartSeq={state.generatorAccidentalRestartSeq}
                 onRestartGenerator={onRestartGenerator}
                 onLookAtDesk={onLookAtDesk}
               />
