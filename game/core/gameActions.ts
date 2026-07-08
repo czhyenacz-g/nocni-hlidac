@@ -54,4 +54,13 @@ export type GameAction =
   // app/play/page.tsx uvidí zvýšené emergencyRunReadySeq po TICKu, který
   // držení dotáhl do konce.
   | { type: "START_EMERGENCY_RUN_WINDUP" }
-  | { type: "CANCEL_EMERGENCY_RUN_WINDUP" };
+  | { type: "CANCEL_EMERGENCY_RUN_WINDUP" }
+  // Hráč se vrátil z nouzové minihry (outcome "returned"), ale monstrum ho
+  // pronásledovalo/bylo blízko kanceláře (viz
+  // game/minigame/officeThreat.ts#evaluateOfficeThreatOnReturn,
+  // app/play/page.tsx#handleEmergencyMiniGameComplete) — posune enemyStage
+  // blíž ke kanceláři (viz gameReducer.ts OFFICE_THREAT_STAGE_CANDIDATES),
+  // NIKDY nezpůsobí smrt sama o sobě. `intensity` je prostá string union,
+  // záměrně NE `OfficeThreatIntensity` z game/minigame/types.ts — game/core/*
+  // nikdy nesmí importovat typy z game/minigame/* (viz types.ts nahoře).
+  | { type: "APPLY_OFFICE_THREAT_ON_RETURN"; intensity: "low" | "medium" | "high" };

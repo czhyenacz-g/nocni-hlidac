@@ -87,6 +87,12 @@ export const COPY = {
     // handleEmergencyMiniGameComplete) — {amount} nahrazuje počet dobité
     // energie z worldEffects (energy_recharged).
     emergencyRunEnergyRechargedLabel: "Baterie přinesena. Energie +{amount}.",
+    // Krátká zpráva po návratu z minihry, kdy monstrum pronásledovalo hráče
+    // nebo bylo blízko kanceláře (viz EmergencyMiniGameResult.officeThreatOnReturn,
+    // handleEmergencyMiniGameComplete) — "přinesl jsi to za sebou", ne text
+    // slibující okamžitou smrt (ta se tímhle nikdy nespustí, viz gameReducer.ts
+    // APPLY_OFFICE_THREAT_ON_RETURN).
+    emergencyRunThreatFollowedLabel: "Něco se vrátilo za tebou.",
     // Klik na tlačítko se zavřenými dveřmi (viz handleStartEmergencyRunWindup)
     // — hráč nemůže vyběhnout ven zavřenými dveřmi, tlačítko samo o sobě
     // zůstává klikatelné (jen vizuálně ztlumené), tenhle hint vysvětlí proč.

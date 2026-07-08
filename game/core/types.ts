@@ -29,7 +29,11 @@ export type EnemyMoveDecision =
   | "gave_up"
   | "light_repelled"
   | "attack"
-  | "returned_unverified";
+  | "returned_unverified"
+  // Monstrum se posunulo blíž ke kanceláři jako přenesená hrozba z
+  // EmergencyMiniGame (viz gameActions.ts APPLY_OFFICE_THREAT_ON_RETURN),
+  // ne z normálního postupu po trase v ENEMY_ADVANCE.
+  | "office_threat_on_return";
 
 // "briefing" = krátký panel před START_SHIFT/RESTART_SHIFT (viz
 // components/screens/BriefingScreen.tsx, game/difficulty/nightConfig.ts) —

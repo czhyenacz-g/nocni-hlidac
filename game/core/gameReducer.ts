@@ -44,6 +44,24 @@ function pickMonsterRetreatLocation(route: EnemyStage[]): EnemyStage {
   return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
+// Kam se monstrum posune jako hrozba přenesená z EmergencyMiniGame (viz
+// gameActions.ts APPLY_OFFICE_THREAT_ON_RETURN, GAME_DESIGN.md) — první
+// kandidát, který je skutečně v aktivní trase dané směny (stejný "nikdy
+// route.indexOf(...) === -1" důvod jako MONSTER_RETREAT_CANDIDATES výše).
+// "low" zůstává o kus dál od dveří (chodba), "medium" je přímo chodba před
+// camera roomem (door_hallway), "high" je u dveří samotných — ale POŘÁD bez
+// jakéhokoliv útoku tady, ten se (pokud vůbec) rozhodne až v příští
+// ENEMY_ADVANCE, na jejím vlastním pravidelném tiku (viz doorEncounter.ts).
+const OFFICE_THREAT_STAGE_CANDIDATES: Record<"low" | "medium" | "high", EnemyStage[]> = {
+  low: ["right_hallway", "left_hallway", "outer_yard"],
+  medium: ["door_hallway", "right_hallway", "left_hallway"],
+  high: ["at_door", "breach", "door_hallway"],
+};
+
+function pickOfficeThreatStage(route: EnemyStage[], intensity: "low" | "medium" | "high"): EnemyStage | null {
+  return OFFICE_THREAT_STAGE_CANDIDATES[intensity].find((stage) => route.includes(stage)) ?? null;
+}
+
 // Když hráč aktivně sleduje kamery (otevřená kamera v pohledu na stůl), energie
 // jen ubývá. Jinak (dveře/pohled zavřené kamery) se pomalu dobíjí, ale spotřeba
 // zavřených dveří / rozsvíceného světla dobíjení dál přebíjí — viz GAME_DESIGN.md.
@@ -921,6 +939,36 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         // ENEMY_ADVANCE výše) — jen spuštěný zvenčí, ne z herní smyčky.
         if (!state.isRunning) return state;
         return { ...state, isRunning: false, screen: "death", deathReason: "emergency_run" };
+
+      case "APPLY_OFFICE_THREAT_ON_RETURN": {
+        // Stejné guardy jako ENEMY_ADVANCE — v blackoutu/doorDeathRevealu už
+        // je pozice nepřítele/výsledek směny beztak rozhodnutý, hrozba z
+        // minihry na tom nic nemění.
+        if (!state.isRunning || state.gameStatus === "blackout" || state.doorDeathRevealUntilMs !== null)
+          return state;
+
+        const nextStage = pickOfficeThreatStage(state.enemyRoute, action.intensity);
+        // Žádný vhodný stage v aktuální trase (nemělo by nastat pro běžné
+        // noci, ale route se losuje z routeVariants — bezpečný no-op, ne
+        // pád/nekonzistentní stav) — NIKDY nespadne na náhodnou/neplatnou stage.
+        if (nextStage === null) return state;
+
+        const nextIsAtDoor = nextStage === "at_door" || nextStage === "breach";
+
+        return {
+          ...state,
+          enemyStage: nextStage,
+          lastEnemyDecision: "office_threat_on_return",
+          // Stejný reset jako běžný postup v ENEMY_ADVANCE (viz výše) — ať se
+          // door-hold časovač/verifikace ústupu nezaseknou na stavu z úplně
+          // jiné (předchozí) situace u dveří.
+          enemyAtDoorSinceMs: nextIsAtDoor ? state.elapsedMs : null,
+          enemyDoorHoldTargetMs: null,
+          enemyDoorHoldProgressMs: 0,
+          monsterRetreatedTo: null,
+          monsterRetreatVerified: false,
+        };
+      }
 
       default:
         return state;

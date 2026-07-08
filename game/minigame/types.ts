@@ -150,6 +150,22 @@ export type EmergencyWorldEffect =
   | { type: "shotgun_acquired" }
   | { type: "ammo_acquired"; amount: number };
 
+// ── Hrozba přenesená zpět do hlavní hry (viz
+// game/minigame/officeThreat.ts#evaluateOfficeThreatOnReturn) — vyhodnotí se
+// jen při "returned" (útěk/smrt v minihře žádnou hrozbu nepřenáší, viz
+// EmergencyMiniGameResult níže). Hlavní hra (app/play/page.tsx) z tohohle
+// PŘELOŽÍ jen `intensity` na vlastní GameAction (APPLY_OFFICE_THREAT_ON_RETURN)
+// — game/core/* si tenhle typ NIKDY nesmí importovat (stejná nezávislost
+// jako zbytek game/minigame/*, viz komentář nahoře v tomhle souboru).
+export type OfficeThreatReason = "monster_chasing" | "monster_near_office" | "monster_near_player";
+export type OfficeThreatIntensity = "low" | "medium" | "high";
+
+export interface OfficeThreatOnReturn {
+  active: boolean;
+  reason: OfficeThreatReason;
+  intensity: OfficeThreatIntensity;
+}
+
 // "collected_item" už NENÍ finální outcome — sebrání věci je jen mezistav
 // mise (viz EmergencyMissionPhase výše). Jediný způsob, jak minihra vrátí
 // splněný dílčí úkol volajícímu, je "returned" s vyplněným completedObjective
@@ -162,5 +178,7 @@ export type EmergencyMiniGameResult =
       shotsUsed: number;
       completedObjective?: EmergencyCompletedObjective;
       worldEffects?: EmergencyWorldEffect[];
+      /** Chybí/`active: false`, pokud monstrum na návrat nemělo vliv — viz evaluateOfficeThreatOnReturn. */
+      officeThreatOnReturn?: OfficeThreatOnReturn;
     }
   | { outcome: "failed"; reason: "objective_failed"; elapsedMs: number; shotsUsed: number };

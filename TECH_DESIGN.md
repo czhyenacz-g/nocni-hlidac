@@ -1696,3 +1696,47 @@ pevná start/enemy pozice). Teď je mapa **datově definovaná** (`MiniGameLayou
   neověřuje automaticky — nová mapa byla ručně prověřená (žádný slot uvnitř zdi/mimo bounds,
   viz testy), ale žádný test negarantuje, že cesta MEZI nimi vždy existuje. Přidat jako
   budoucí krok, pokud se ukáže potřeba (např. flood-fill přes hrubou mřížku volných buněk).
+
+## Nouzová minihra — hrozba přenesená zpět do kanceláře ("threat on return")
+
+Úspěšný návrat z EmergencyMiniGame (`outcome: "returned"`) může nést informaci, že
+monstrum hráče v minihře pronásledovalo nebo bylo blízko kanceláře — "donesl jsem
+baterii, ale přivedl jsem si to za sebou". Nikdy nezpůsobuje okamžitou smrt.
+
+- **`game/minigame/officeThreat.ts#evaluateOfficeThreatOnReturn`** — čistá funkce,
+  volaná z `EmergencyMiniGame.tsx#handleObjectiveKey` přesně v okamžiku úspěšného
+  návratu (ne dřív). Vstup: `enemy.mode`, pozice enemy/player, `exitZone` (bounds
+  místnosti "office"), dva dosahy (`OFFICE_THREAT_NEAR_PLAYER_RADIUS_PX`/
+  `OFFICE_THREAT_NEAR_OFFICE_RADIUS_PX`, `config.ts`). `undefined` = žádná hrozba.
+  Aktivní, když platí aspoň jedno: `enemyMode === "chasing"`, vzdálenost enemy↔player
+  ≤ near-player dosah, nebo vzdálenost enemy↔officeZone ≤ near-office dosah (bod-k-
+  obdélníku, stejný "closest point" vzor jako `circleIntersectsWall`). Intenzita:
+  honička ZÁROVEŇ blízko kanceláře → `"high"`; jen jedno z toho → `"medium"`; jen
+  blízkost hráči (bez honičky/blízkosti kanceláři) → `"low"`.
+- **`EmergencyMiniGameResult`** (`"returned"` varianta) má nové volitelné pole
+  `officeThreatOnReturn?: OfficeThreatOnReturn` (`{ active, reason, intensity }`).
+  `createReturnedResult()` ho jen předá dál, pokud `active` — `game/minigame/*` samo
+  o sobě o hlavní hře nic neví (stejná nezávislost jako zbytek minihry).
+- **`app/play/page.tsx#handleEmergencyMiniGameComplete`** přečte jen `intensity` (ne
+  celý objekt) a dispatchne novou akci `APPLY_OFFICE_THREAT_ON_RETURN` — překlad mezi
+  `game/minigame`'s `OfficeThreatIntensity` a `game/core`'s vlastní `"low"|"medium"|
+  "high"` union je záměrně bezobslužný (stejné literály), `game/core/gameActions.ts`
+  ale typ z `game/minigame/*` NIKDY neimportuje (viz komentář v souboru). Zároveň
+  přidá krátkou zprávu (`COPY.game.emergencyRunThreatFollowedLabel`, "Něco se vrátilo
+  za tebou.") do stejného transient `emergencyRunMessage` stavu jako recharge hlášku
+  (spojené jedním řetězcem, pokud nastanou obě najednou) — žádný nový audio event:
+  existující `enemyStep`/`enemyNear` efekt (`useEffect` na `state.enemyStage`) se
+  spustí automaticky, protože akce mění `enemyStage` stejně jako normální postup.
+- **`gameReducer.ts` `APPLY_OFFICE_THREAT_ON_RETURN`** — stejné guardy jako
+  `ENEMY_ADVANCE` (`isRunning`/blackout/doorDeathReveal). `pickOfficeThreatStage(route,
+  intensity)` vybere první kandidát z `OFFICE_THREAT_STAGE_CANDIDATES[intensity]`
+  (`low`: right_hallway/left_hallway/outer_yard; `medium`: door_hallway; `high`:
+  at_door/breach), který je SKUTEČNĚ v `state.enemyRoute` (stejný "nikdy
+  `route.indexOf(...) === -1`" důvod jako `MONSTER_RETREAT_CANDIDATES`) — bez
+  kandidáta bezpečný no-op. Nastaví `enemyStage`, `lastEnemyDecision:
+  "office_threat_on_return"`, resetuje door-hold časovač i
+  `monsterRetreatedTo`/`monsterRetreatVerified` (stejný reset jako normální posun v
+  ENEMY_ADVANCE) — **NIKDY** samo nevyhodnocuje/nezpůsobuje útok. I `"high"` (`at_door`)
+  čeká na příští normální `ENEMY_ADVANCE` tik (`night.enemyTickMs` interval), který teprve
+  rozhodne o skutečném útoku/blokaci zavřenými dveřmi (viz `doorEncounter.ts`) — hráč
+  má reálné okno zareagovat.

@@ -11,6 +11,7 @@ import {
   EnemyMode,
   MiniGameObjective,
   MiniGameStatus,
+  OfficeThreatOnReturn,
   Vec2,
   Wall,
 } from "./types";
@@ -833,18 +834,24 @@ export function createWorldEffectsForCompletedObjective(completedObjective: Emer
  * collect_item ho vyplní (viz completeObjective/canReturnToOffice níže).
  * Když je vyplněný, `worldEffects` se odvodí automaticky (viz
  * createWorldEffectsForCompletedObjective) — volající si je nevymýšlí ručně.
+ * `officeThreatOnReturn` (viz officeThreat.ts#evaluateOfficeThreatOnReturn) se
+ * jen předá dál beze změny, pokud je aktivní — volající (EmergencyMiniGame.tsx)
+ * si ho spočítá sám z aktuálního stavu enemy/player/exitZone.
  */
 export function createReturnedResult(
   elapsedMs: number,
   shotsUsed: number,
   completedObjective?: EmergencyCompletedObjective,
+  officeThreatOnReturn?: OfficeThreatOnReturn,
 ): EmergencyMiniGameResult {
-  if (!completedObjective) return { outcome: "returned", elapsedMs, shotsUsed };
+  const threat = officeThreatOnReturn?.active ? { officeThreatOnReturn } : {};
+
+  if (!completedObjective) return { outcome: "returned", elapsedMs, shotsUsed, ...threat };
 
   const worldEffects = createWorldEffectsForCompletedObjective(completedObjective);
   return worldEffects.length > 0
-    ? { outcome: "returned", elapsedMs, shotsUsed, completedObjective, worldEffects }
-    : { outcome: "returned", elapsedMs, shotsUsed, completedObjective };
+    ? { outcome: "returned", elapsedMs, shotsUsed, completedObjective, worldEffects, ...threat }
+    : { outcome: "returned", elapsedMs, shotsUsed, completedObjective, ...threat };
 }
 
 export function createFailedResult(elapsedMs: number, shotsUsed: number): EmergencyMiniGameResult {

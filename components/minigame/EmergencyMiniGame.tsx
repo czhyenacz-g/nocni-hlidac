@@ -23,6 +23,8 @@ import {
   INVESTIGATION_NOISE_CLOSE_PX,
   INVESTIGATION_NOISE_FAR_PX,
   ITEM_RADIUS,
+  OFFICE_THREAT_NEAR_OFFICE_RADIUS_PX,
+  OFFICE_THREAT_NEAR_PLAYER_RADIUS_PX,
   SHOT_FLASH_DURATION_MS,
   START_ZONE_LEAVE_RADIUS_PX,
   STUCK_CHECK_INTERVAL_MS,
@@ -73,6 +75,7 @@ import { DEFAULT_MINIGAME_LAYOUT_ID, getMiniGameLayout } from "@/game/minigame/l
 import { ResolvedMiniGamePlacement, getRoomBoundsForSlot, resolveMiniGamePlacement } from "@/game/minigame/layoutPlacement";
 import { createRandomSeed } from "@/game/minigame/seededRandom";
 import { getMiniGameSlotDebugLabel, getRoomAtPoint, getSelectedSlotIds, isMiniGameDevToggleHit } from "@/game/minigame/devOverlay";
+import { evaluateOfficeThreatOnReturn } from "@/game/minigame/officeThreat";
 
 interface EmergencyMiniGameProps {
   input: EmergencyMiniGameInput;
@@ -407,7 +410,26 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
     if (inExitZoneNow && canReturnToOffice(input.objective, game.mission, game.hasLeftStartZone)) {
       game.mission = updateMissionPhase(game.mission, "completed");
       setMissionPhase(game.mission.phase);
-      completeGame(createReturnedResult(game.elapsedMs, game.shotsUsed, game.mission.completedObjective), "won");
+
+      // "Donesl jsem baterii, ale přivedl jsem si to za sebou" (viz zadání) —
+      // vyhodnotí se jen TEĎ, při skutečném návratu, z aktuálního stavu
+      // enemy/player/exitZone. Nikdy nezpůsobí smrt tady ani v hlavní hře
+      // instantně — app/play/page.tsx z výsledku přečte jen `intensity` a
+      // dispatchne gameReducer.ts#APPLY_OFFICE_THREAT_ON_RETURN, které jen
+      // posune enemyStage, nikdy sama o sobě nezabije.
+      const officeThreatOnReturn = evaluateOfficeThreatOnReturn({
+        enemyMode: game.enemy.mode,
+        enemyPosition: { x: game.enemy.x, y: game.enemy.y },
+        playerPosition: { x: game.player.x, y: game.player.y },
+        officeZone: game.exitZone,
+        nearPlayerRadiusPx: OFFICE_THREAT_NEAR_PLAYER_RADIUS_PX,
+        nearOfficeRadiusPx: OFFICE_THREAT_NEAR_OFFICE_RADIUS_PX,
+      });
+
+      completeGame(
+        createReturnedResult(game.elapsedMs, game.shotsUsed, game.mission.completedObjective, officeThreatOnReturn),
+        "won",
+      );
     }
   }
 

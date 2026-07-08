@@ -658,6 +658,7 @@ export default function PlayPage() {
     if (result.outcome === "returned") {
       const newPower = applyEmergencyWorldEffects(state.power, result.worldEffects);
       const rechargedAmount = newPower - state.power;
+      const messages: string[] = [];
       if (rechargedAmount > 0) {
         dispatch({ type: "RECHARGE_POWER", amount: rechargedAmount });
         // Zaokrouhleno na celé číslo — power je plynule odčerpávaný float
@@ -665,10 +666,20 @@ export default function PlayPage() {
         // jinak v textu ukazoval desetinná místa (a při clampu na MAX_POWER
         // i necelé zbytkové "+12.7"), zatímco HUD (PowerMeter.tsx) energii
         // vždy zobrazuje zaokrouhlenou (Math.round).
-        setEmergencyRunMessage(
-          COPY.game.emergencyRunEnergyRechargedLabel.replace("{amount}", String(Math.round(rechargedAmount))),
-        );
+        messages.push(COPY.game.emergencyRunEnergyRechargedLabel.replace("{amount}", String(Math.round(rechargedAmount))));
       }
+
+      // "Donesl jsem baterii, ale přivedl jsem si to za sebou" (viz zadání) —
+      // posune enemyStage blíž ke kanceláři, NIKDY nezpůsobí smrt tady ani v
+      // gameReducer.ts (viz APPLY_OFFICE_THREAT_ON_RETURN) — skutečný
+      // útok/smrt se dál rozhoduje jen v normálním ENEMY_ADVANCE tiku, hráč
+      // má reálné okno zareagovat dveřmi/světlem/kamerou.
+      if (result.officeThreatOnReturn?.active) {
+        dispatch({ type: "APPLY_OFFICE_THREAT_ON_RETURN", intensity: result.officeThreatOnReturn.intensity });
+        messages.push(COPY.game.emergencyRunThreatFollowedLabel);
+      }
+
+      if (messages.length > 0) setEmergencyRunMessage(messages.join(" "));
       return;
     }
 

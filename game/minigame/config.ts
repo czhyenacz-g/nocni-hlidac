@@ -86,6 +86,13 @@ export const STUCK_CHECK_INTERVAL_MS = 500;
 export const STUCK_MOVE_THRESHOLD_PX = 4;
 export const STUCK_TIMEOUT_MS = 5000;
 
+// ── Hrozba přenesená zpět do hlavní hry po návratu (viz
+// game/minigame/officeThreat.ts#evaluateOfficeThreatOnReturn) — dosahy pro
+// "blízko hráče"/"blízko kanceláře", stejného řádu jako CONE_RANGE/
+// ENEMY_VISION_RANGE výše, ne nová vlastní škála.
+export const OFFICE_THREAT_NEAR_PLAYER_RADIUS_PX = 150;
+export const OFFICE_THREAT_NEAR_OFFICE_RADIUS_PX = 200;
+
 // Zdi baseline mapy — teď datově v game/minigame/layouts/serviceFloorAlpha.ts,
 // tohle je jen zpětně kompatibilní re-export (stejná geometrie/hodnoty jako
 // dřív). MiniGameLayoutWall je strukturální nadmnožina Wall (x/y/width/height
