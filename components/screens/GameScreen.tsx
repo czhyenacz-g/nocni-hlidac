@@ -220,6 +220,7 @@ export default function GameScreen({
                 onCancelThinkItOverWindup={onCancelThinkItOverWindup}
                 thinkItOverWindupActive={state.thinkItOverWindup.active}
                 thinkItOverWindupProgressMs={state.thinkItOverWindup.progressMs}
+                hasWoundedMonsterToday={state.monsterHitsToday > 0}
               />
             )}
             {state.playerView === "object_map" && <ObjectMapView onLookAtDesk={onLookAtDesk} />}

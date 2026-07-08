@@ -6,6 +6,7 @@ import {
   CANVAS_WIDTH,
   CONE_ANGLE_RAD,
   CONE_RANGE,
+  EMERGENCY_RETURN_UNLOCK_DELAY_MS,
   ENEMY_AGGRO_RANGE,
   ENEMY_AGGRO_SPEED_MULTIPLIER,
   ENEMY_CHASE_SPEED,
@@ -248,6 +249,7 @@ function getMissionHint(
   itemToCollect: MiniGameItemId | undefined,
   missionPhase: EmergencyMissionPhase,
   inExitZone: boolean,
+  returnUnlockedByTime: boolean,
 ): string {
   if (objective === "survive") return "Cíl: Přežij hlídku.";
 
@@ -259,7 +261,12 @@ function getMissionHint(
   // objective === "collect_item"
   const itemLabel = ITEM_LABELS_ACCUSATIVE[itemToCollect ?? "fuse"];
   if (missionPhase === "outbound") {
-    return inExitZone ? "Nejdřív splň úkol." : `Cíl: Najdi a seber ${itemLabel}. [E]`;
+    // returnUnlockedByTime (viz EMERGENCY_RETURN_UNLOCK_DELAY_MS,
+    // canReturnToOffice) — po pár vteřinách jde do kanceláře i bez splněného
+    // loot objective (hidden true ending loot smyčka, viz zadání), hint musí
+    // přestat lhát "Nejdřív splň úkol.", jakmile E fakticky funguje.
+    if (inExitZone) return returnUnlockedByTime ? "Stiskni E pro návrat do kanceláře." : "Nejdřív splň úkol.";
+    return `Cíl: Najdi a seber ${itemLabel}. [E]`;
   }
   if (missionPhase === "returning") {
     return inExitZone ? "Stiskni E pro návrat do kanceláře." : "Věc získána. Vrať se do kanceláře.";
@@ -354,6 +361,11 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
   // "VRÁTIT DO KANCELÁŘE" tlačítko spolehlivě zobrazí hned, jakmile to
   // poprvé platí, stejný bailout vzor jako inExitZone.
   const [hasLeftStartZone, setHasLeftStartZone] = useState(false);
+  // Jestli už uplynul EMERGENCY_RETURN_UNLOCK_DELAY_MS od startu výpravy (viz
+  // zadání, canReturnToOffice) — po týhle době jde do kanceláře i bez
+  // splněného loot objective. Stejný bailout vzor jako hasLeftStartZone
+  // výše — React re-render nastane jen na skutečném přechodu false -> true.
+  const [returnUnlockedByTime, setReturnUnlockedByTime] = useState(false);
   // Mobilní/dotykové ovládání (viz zadání, game/minigame/touchControls.ts) —
   // zjišťuje se jednou po mountu (viz effect níže), ne přepočítává za běhu.
   const [isTouchDevice, setIsTouchDevice] = useState(false);
@@ -532,7 +544,10 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
     }
 
     const inExitZoneNow = circleIntersectsWall(game.player.x, game.player.y, game.player.radius, game.exitZone);
-    if (inExitZoneNow && canReturnToOffice(input.objective, game.mission, game.hasLeftStartZone)) {
+    if (
+      inExitZoneNow &&
+      canReturnToOffice(input.objective, game.mission, game.hasLeftStartZone, game.elapsedMs >= EMERGENCY_RETURN_UNLOCK_DELAY_MS)
+    ) {
       game.mission = updateMissionPhase(game.mission, "completed");
       setMissionPhase(game.mission.phase);
 
@@ -711,6 +726,13 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
           }
         }
 
+        // Odemčení návratu časem (viz EMERGENCY_RETURN_UNLOCK_DELAY_MS,
+        // canReturnToOffice) — stejný "volej pokaždé, setState bailout na
+        // stejné hodnotě" vzor jako setInExitZone níže (NE ref-based
+        // jednorázový přechod jako hasLeftStartZone výše, protože tenhle
+        // stav nikdy zpátky neklesá, prostý opakovaný zápis je nejjednodušší).
+        setReturnUnlockedByTime(game.elapsedMs >= EMERGENCY_RETURN_UNLOCK_DELAY_MS);
+
         // Čistě pro HUD hint (viz getMissionHint) — setState bailout, mění se
         // jen při skutečném vstupu/opuštění zóny, ne 60×/s.
         setInExitZone(circleIntersectsWall(game.player.x, game.player.y, game.player.radius, game.exitZone));
@@ -805,7 +827,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
   // neslibuje něco, co neudělá; chybějící krok dál ukazuje jen getMissionHint.
   const canReturnNow = canShowReturnButton(
     { status, inExitZone, objective: input.objective, mission: { phase: missionPhase }, hasLeftStartZone },
-    canReturnToOffice(input.objective, { phase: missionPhase }, hasLeftStartZone),
+    canReturnToOffice(input.objective, { phase: missionPhase }, hasLeftStartZone, returnUnlockedByTime),
   );
   const showMobileFireButton = canShowMobileFireButton({ isTouchDevice, hasShotgun: gameRef.current.player.hasShotgun });
   const isMobileFireDisabled = isMobileFireButtonDisabled(ammoLeft);
@@ -835,7 +857,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
         <div style={{ color: "#3f7a58" }}>REŽIM: {MODE_LABELS[enemyMode].toUpperCase()}</div>
         {status === "playing" && (
           <div style={{ color: "#5dffa0", textShadow: "0 0 4px rgba(93,255,160,0.6)" }}>
-            {getMissionHint(input.objective, input.itemToCollect, missionPhase, inExitZone)}
+            {getMissionHint(input.objective, input.itemToCollect, missionPhase, inExitZone, returnUnlockedByTime)}
           </div>
         )}
         {woundedMsLeft !== null && (
@@ -1223,7 +1245,13 @@ function draw(
   // (ta žije jen v canReturnToOffice/handleObjectiveKey).
   {
     const inExitZoneNow = circleIntersectsWall(player.x, player.y, player.radius, game.exitZone);
-    const officeLabel = getOfficeMarkerLabel(game.mission, input.objective, inExitZoneNow, game.hasLeftStartZone);
+    const officeLabel = getOfficeMarkerLabel(
+      game.mission,
+      input.objective,
+      inExitZoneNow,
+      game.hasLeftStartZone,
+      game.elapsedMs >= EMERGENCY_RETURN_UNLOCK_DELAY_MS,
+    );
     // Lehké blikání (officePulse, viz nahoře) — jen když je marker zvýrazněný
     // (úkol splněný, vracíš se), ne v klidovém stavu (ten zůstává statický,
     // ať mapa nebliká zbytečně po celou dobu "outbound" fáze).

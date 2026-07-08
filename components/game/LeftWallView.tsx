@@ -48,6 +48,14 @@ interface LeftWallViewProps {
   onCancelThinkItOverWindup: () => void;
   thinkItOverWindupActive: boolean;
   thinkItOverWindupProgressMs: number;
+  /**
+   * `true`, jakmile hráč tuhle noc aspoň jednou zranil monstrum brokovnicí
+   * (viz GameState.monsterHitsToday, game/core/monsterEnding.ts) — přepne
+   * text tlačítka "Jít ven" z `startEmergencyRunLabel` na
+   * `startEmergencyRunHuntingLabel` ("Vyrazit na lov"). Stejné tlačítko/
+   * mechanika, jen jiný text.
+   */
+  hasWoundedMonsterToday: boolean;
 }
 
 /** Prázdný stojan na zbraň — beze změny oproti dřívějšku, dokud hráč brokovnici nemá (viz hasShotgun). */
@@ -76,6 +84,7 @@ export default function LeftWallView({
   onCancelThinkItOverWindup,
   thinkItOverWindupActive,
   thinkItOverWindupProgressMs,
+  hasWoundedMonsterToday,
 }: LeftWallViewProps) {
   const [imageFailed, setImageFailed] = useState(false);
   const wallImageSrc = hasShotgun ? SHOTGUN_LEFT_WALL_IMAGE_SRC : EMPTY_LEFT_WALL_IMAGE_SRC;
@@ -154,7 +163,9 @@ export default function LeftWallView({
             >
               {emergencyRunWindupActive
                 ? COPY.game.emergencyRunHoldingLabel.replace("{seconds}", windupSeconds)
-                : COPY.game.startEmergencyRunLabel}
+                : hasWoundedMonsterToday
+                  ? COPY.game.startEmergencyRunHuntingLabel
+                  : COPY.game.startEmergencyRunLabel}
             </button>
           )}
         </div>

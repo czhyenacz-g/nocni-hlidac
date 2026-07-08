@@ -898,15 +898,24 @@ export function completeObjective(mission: EmergencyMissionState, completedObjec
  * Jestli teď (v exit zóně, E stisknuté) může mise skončit jako "returned".
  * Vždy vyžaduje, aby hráč už opustil startovní zónu (viz
  * START_ZONE_LEAVE_RADIUS_PX/hasLeftStartZone) — beze změny oproti
- * dosavadnímu chování return_to_office. Pro "collect_item" navíc vyžaduje
- * dokončený dílčí úkol (mission.phase === "returning"); dokud úkol není
- * splněný, návrat do kanceláře misi neukončí (jen HUD hint "Nejdřív splň
- * úkol."). Pro "survive" v MVP exit zóna misi nekončí vůbec.
+ * dosavadnímu chování return_to_office. Pro "collect_item" stačí JEDNA ze
+ * dvou podmínek: dokončený dílčí úkol (mission.phase === "returning"), NEBO
+ * uplynulý `returnUnlockedByTime` (viz EMERGENCY_RETURN_UNLOCK_DELAY_MS
+ * v config.ts) — hidden true ending loot smyčka (viz zadání) potřebuje jít
+ * ven, střelit monstrum a vrátit se pro další náboj, i když loot objective
+ * (baterie/žárovka/brokovnice) vůbec nesplní. Dokud ani jedna podmínka
+ * neplatí, návrat do kanceláře misi neukončí (jen HUD hint "Nejdřív splň
+ * úkol."/"Počkej chvíli."). Pro "survive" v MVP exit zóna misi nekončí vůbec.
  */
-export function canReturnToOffice(objective: MiniGameObjective, mission: EmergencyMissionState, hasLeftStartZone: boolean): boolean {
+export function canReturnToOffice(
+  objective: MiniGameObjective,
+  mission: EmergencyMissionState,
+  hasLeftStartZone: boolean,
+  returnUnlockedByTime: boolean,
+): boolean {
   if (!hasLeftStartZone) return false;
   if (objective === "return_to_office") return true;
-  if (objective === "collect_item") return mission.phase === "returning";
+  if (objective === "collect_item") return mission.phase === "returning" || returnUnlockedByTime;
   return false;
 }
 
@@ -931,17 +940,21 @@ export function shouldHighlightOfficeMarker(mission: EmergencyMissionState, obje
 /**
  * Text markeru kanceláře na mapě — "KANCELÁŘ" jako tlumený orientační bod,
  * "KANCELÁŘ — E pro návrat" jakmile má stisk E v exit zóně reálně smysl
- * (collect_item po sebrání věci, nebo return_to_office po opuštění startu
- * A skutečném vstupu do exit zóny). Nikdy nerozhoduje, jestli E skutečně
- * dokončí misi — o tom rozhoduje výhradně canReturnToOffice.
+ * (collect_item po sebrání věci NEBO po uplynutém returnUnlockedByTime, nebo
+ * return_to_office po opuštění startu A skutečném vstupu do exit zóny).
+ * Nikdy nerozhoduje, jestli E skutečně dokončí misi — o tom rozhoduje
+ * výhradně canReturnToOffice; tahle funkce jen drží marker text v souladu
+ * s ním, ať UI nikdy neslibuje "KANCELÁŘ" bez akce, když E fakticky funguje.
  */
 export function getOfficeMarkerLabel(
   mission: EmergencyMissionState,
   objective: MiniGameObjective,
   inExitZone: boolean,
   hasLeftStartZone: boolean,
+  returnUnlockedByTime: boolean,
 ): string {
   if (shouldHighlightOfficeMarker(mission, objective)) return "KANCELÁŘ — E pro návrat";
   if (objective === "return_to_office" && hasLeftStartZone && inExitZone) return "KANCELÁŘ — E pro návrat";
+  if (objective === "collect_item" && hasLeftStartZone && inExitZone && returnUnlockedByTime) return "KANCELÁŘ — E pro návrat";
   return "KANCELÁŘ";
 }

@@ -34,6 +34,11 @@ describe("COPY.game shotgun copy", () => {
     expect(COPY.game.shotgunAmmoEmptyLabel.length).toBeGreaterThan(0);
     expect(COPY.game.shotgunAmmoEmptyLabel).not.toBe(COPY.game.shotgunAmmoReadyLabel);
   });
+
+  it("startEmergencyRunHuntingLabel is the exact required 'Vyrazit na lov' text, distinct from the default label", () => {
+    expect(COPY.game.startEmergencyRunHuntingLabel).toBe("Vyrazit na lov");
+    expect(COPY.game.startEmergencyRunHuntingLabel).not.toBe(COPY.game.startEmergencyRunLabel);
+  });
 });
 
 // "Nechat si to projít hlavou" — vedlejší tlačítko vidět jen s brokovnicí

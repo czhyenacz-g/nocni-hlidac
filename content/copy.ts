@@ -91,6 +91,12 @@ export const COPY = {
     // záměrně ne "Jít ven" — má znít jako riskantní, nevratné rozhodnutí, ne
     // ležérní odchod.
     startEmergencyRunLabel: "Nouzově opustit místnost",
+    // Nahrazuje startEmergencyRunLabel, jakmile hráč monstrum tuhle noc
+    // aspoň jednou zranil brokovnicí (viz GameState.monsterHitsToday,
+    // game/core/monsterEnding.ts) — hidden true ending loot smyčka, hráč už
+    // ví, že jde cíleně "na lov", ne jen nouzově pryč. Stejné tlačítko/
+    // mechanika, jen jiný text (viz LeftWallView.tsx).
+    startEmergencyRunHuntingLabel: "Vyrazit na lov",
     // Varování zobrazené hned při zahájení držení tlačítka (viz
     // handleStartEmergencyRunWindup, EMERGENCY_RUN_WINDUP_DURATION_MS) —
     // hráč musí tlačítko držet, ne jen kliknout, a tohle mu jasně řekne, že

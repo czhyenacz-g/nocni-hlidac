@@ -173,6 +173,16 @@ export const EXIT_ZONE: Wall = getRoomBoundsForSlot(SERVICE_FLOOR_ALPHA, ALPHA_D
 /** Jak daleko od startovní pozice musí hráč dojít, než se exit zóna "aktivuje" (viz EmergencyMiniGame.tsx hasLeftStartZone) — beze změny hodnoty oproti dřívějšku (70 × dřívější WORLD_LAYOUT_SCALE 1.25). */
 export const START_ZONE_LEAVE_RADIUS_PX = 87.5;
 
+/**
+ * Jak dlouho (ms) po startu emergency výpravy zůstává vchod do kanceláře
+ * zablokovaný, i kdyby hráč nesplnil loot objective (collect_item) — po
+ * uplynutí se návrat povolí i bez sebrané věci (viz
+ * game/minigame/logic.ts#canReturnToOffice). Řeší hidden true ending loot
+ * smyčku (viz zadání): jít ven, střelit monstrum, vrátit se pro další náboj,
+ * bez nutnosti sebrat i baterii/žárovku/brokovnici cestou.
+ */
+export const EMERGENCY_RETURN_UNLOCK_DELAY_MS = 5_000;
+
 // "Sebrání věci" — service_floor_alpha má jeden univerzální item slot
 // (item_generic_01, nese VŠECHNY item tagy), stejně jako dřív jeden pevný
 // ITEM_SPAWN_POSITION sloužil pro libovolný itemToCollect. Hledá se přímo
