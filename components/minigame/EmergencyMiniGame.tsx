@@ -23,6 +23,12 @@ import {
   INVESTIGATION_NOISE_CLOSE_PX,
   INVESTIGATION_NOISE_FAR_PX,
   ITEM_RADIUS,
+  MINIGAME_PLAYER_DIRECTIONAL_VISION_RANGE_PX,
+  MINIGAME_PLAYER_PERIPHERAL_VISION_RANGE_PX,
+  MINIGAME_PLAYER_VISION_ANGLE_DEG,
+  MINIGAME_PLAYER_VISION_ANGLE_RAD,
+  MINIGAME_PLAYER_VISION_RAY_COUNT,
+  MINIGAME_PLAYER_VISION_RAY_STEP_PX,
   OFFICE_THREAT_NEAR_OFFICE_RADIUS_PX,
   OFFICE_THREAT_NEAR_PLAYER_RADIUS_PX,
   SHOT_FLASH_DURATION_MS,
@@ -77,6 +83,7 @@ import { ResolvedMiniGamePlacement, getRoomBoundsForSlot, resolveMiniGamePlaceme
 import { createRandomSeed } from "@/game/minigame/seededRandom";
 import { getMiniGameSlotDebugLabel, getRoomAtPoint, getSelectedSlotIds, isMiniGameDevToggleHit } from "@/game/minigame/devOverlay";
 import { evaluateOfficeThreatOnReturn } from "@/game/minigame/officeThreat";
+import { PlayerVisionConfig, getPlayerVisibilityAtPoint } from "@/game/minigame/playerVision";
 
 interface EmergencyMiniGameProps {
   input: EmergencyMiniGameInput;
@@ -133,6 +140,14 @@ interface MiniGameRefState {
   itemPosition?: Vec2;
   /** Statická AI konfigurace se souřadnicemi TOHOTO layoutu (mapWidth/mapHeight) — jednou spočítaná při vytvoření, ne module-level konstanta (různé layouty mají různě velký svět). */
   enemyAiConfig: EnemyAiConfig;
+  /**
+   * Jestli je monstrum TEĎ ve viditelnosti hráče (viz
+   * game/minigame/playerVision.ts#getPlayerVisibilityAtPoint) — počítá se
+   * jednou za tik (ne opakovaně v draw()), draw() i dev lišta čtou stejnou
+   * hodnotu. Mimo viditelnost se monstrum v běžném režimu vůbec nekreslí
+   * (hlavní hororový efekt fogu, viz zadání).
+   */
+  enemyVisibleToPlayer: boolean;
 }
 
 function createInitialState(input: EmergencyMiniGameInput): MiniGameRefState {
@@ -165,6 +180,7 @@ function createInitialState(input: EmergencyMiniGameInput): MiniGameRefState {
     exitZone,
     itemPosition: placement.objectivePosition,
     enemyAiConfig: createEnemyAiConfig(layout.world.width, layout.world.height),
+    enemyVisibleToPlayer: false,
   };
 }
 
@@ -241,6 +257,15 @@ function createEnemyAiConfig(mapWidth: number, mapHeight: number): EnemyAiConfig
   };
 }
 
+// Omezená viditelnost hráče (fog of war, viz game/minigame/playerVision.ts)
+// — na rozdíl od ENEMY_AI_CONFIG nezávisí na layoutu/světě, stačí jedna
+// statická konfigurace složená jednou z config.ts konstant.
+const PLAYER_VISION_CONFIG: PlayerVisionConfig = {
+  peripheralRangePx: MINIGAME_PLAYER_PERIPHERAL_VISION_RANGE_PX,
+  directionalRangePx: MINIGAME_PLAYER_DIRECTIONAL_VISION_RANGE_PX,
+  directionalAngleRad: MINIGAME_PLAYER_VISION_ANGLE_RAD,
+};
+
 const MODE_LABELS: Record<EnemyMode, string> = {
   investigating: "Pátrání",
   waiting: "Čeká",
@@ -308,6 +333,11 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
   // setState se stejnou hodnotou je React no-op, takže tohle nepůsobí re-render
   // 60×/s, stejný bailout vzor jako inExitZone/enemyMode výše.
   const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
+  // Jestli je monstrum TEĎ ve viditelnosti hráče — jen pro dev lištu (viz
+  // zadání "zda je monster currently visible"), stejný bailout vzor jako
+  // currentRoomId výše. Skutečné SKRÝVÁNÍ monstra na canvasu čte
+  // gameRef.current.enemyVisibleToPlayer přímo v draw(), ne tenhle state.
+  const [isMonsterVisibleToPlayer, setIsMonsterVisibleToPlayer] = useState(false);
 
   function handleCanvasContextMenu(event: ReactMouseEvent<HTMLCanvasElement>) {
     const hit = isMiniGameDevToggleHit({
@@ -497,6 +527,15 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
     // natvrdo jedné mapě — layout se mezi mounty téhle komponenty nemění
     // (nový scénář/input vždy remountuje přes `key`, viz app/minihra/page.tsx).
     const gridCanvas = createGridCanvas(gameRef.current.worldWidth, gameRef.current.worldHeight);
+    // Fog of war (viz game/minigame/playerVision.ts) se kreslí do vlastního
+    // offscreen canvasu KAŽDÝ frame (obsah se mění s pozicí/směrem hráče, na
+    // rozdíl od statické gridCanvas výše) — pořád stejná world-space
+    // velikost, jen znovu vykreslená přes destination-out kompozici (viz
+    // draw()), ať jde jednoduše přes ctx.drawImage přenést do hlavního
+    // canvasu jedním voláním.
+    const fogCanvas = document.createElement("canvas");
+    fogCanvas.width = gameRef.current.worldWidth;
+    fogCanvas.height = gameRef.current.worldHeight;
 
     const tick = (timestamp: number) => {
       const game = gameRef.current;
@@ -576,6 +615,25 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
             completeGame(createDeadResult(game.elapsedMs, game.shotsUsed), "gameOver");
           }
 
+          // Omezená viditelnost hráče (fog of war, viz
+          // game/minigame/playerVision.ts) — počítá se jednou tady, ne
+          // znovu v draw(); draw() i dev lišta (React state níže) čtou
+          // stejnou hodnotu z gameRef.
+          game.enemyVisibleToPlayer = getPlayerVisibilityAtPoint(
+            {
+              playerX: game.player.x,
+              playerY: game.player.y,
+              facingAngle: DIRECTION_ANGLES[game.player.direction],
+              pointX: game.enemy.x,
+              pointY: game.enemy.y,
+            },
+            game.walls,
+            PLAYER_VISION_CONFIG,
+          ).visible;
+          if (isDevOverlayEnabledRef.current) {
+            setIsMonsterVisibleToPlayer(game.enemyVisibleToPlayer);
+          }
+
           setEnemyMode(game.enemy.mode);
           // Zaokrouhleno na desetiny sekundy — React re-render přeskočí,
           // dokud se zobrazená hodnota skutečně nezmění (setState se stejnou
@@ -584,7 +642,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
         }
       }
 
-      draw(ctx, game, gridCanvas, input, isDevOverlayEnabledRef.current);
+      draw(ctx, game, gridCanvas, fogCanvas, input, isDevOverlayEnabledRef.current);
       animationFrameRef.current = requestAnimationFrame(tick);
     };
 
@@ -654,6 +712,11 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
           <div>MONSTER SPAWN: {gameRef.current.placement.monsterSpawnSlotId}</div>
           {gameRef.current.placement.objectiveSlotId && <div>OBJECTIVE SLOT: {gameRef.current.placement.objectiveSlotId}</div>}
           <div>ROOM: {currentRoomId ?? "?"}</div>
+          <div>
+            VISION: {MINIGAME_PLAYER_VISION_ANGLE_DEG}° / peripheral {MINIGAME_PLAYER_PERIPHERAL_VISION_RANGE_PX}px / directional{" "}
+            {MINIGAME_PLAYER_DIRECTIONAL_VISION_RANGE_PX}px
+          </div>
+          <div>MONSTER VISIBLE: {isMonsterVisibleToPlayer ? "YES" : "NO"}</div>
         </div>
       )}
 
@@ -801,10 +864,24 @@ function draw(
   ctx: CanvasRenderingContext2D,
   game: MiniGameRefState,
   gridCanvas: HTMLCanvasElement,
+  fogCanvas: HTMLCanvasElement,
   input: EmergencyMiniGameInput,
   devOverlayEnabled: boolean,
 ) {
   const { player, enemy, status } = game;
+  const facing = DIRECTION_ANGLES[player.direction];
+  // Dev overlay ignoruje fog úplně (ladicí režim má vidět celou mapu, viz
+  // zadání) — běžný hráč (devOverlayEnabled === false) vidí jen to, co je
+  // ve viditelnosti (game.enemyVisibleToPlayer, itemVisible níže).
+  const enemyVisible = devOverlayEnabled || game.enemyVisibleToPlayer;
+  const itemVisible =
+    devOverlayEnabled ||
+    (game.itemPosition !== undefined &&
+      getPlayerVisibilityAtPoint(
+        { playerX: player.x, playerY: player.y, facingAngle: facing, pointX: game.itemPosition.x, pointY: game.itemPosition.y },
+        game.walls,
+        PLAYER_VISION_CONFIG,
+      ).visible);
 
   ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
@@ -968,8 +1045,10 @@ function draw(
     ctx.restore();
   }
 
-  // Item marker — jen "collect_item", dokud věc není sebraná (viz mission.phase).
-  if (input.objective === "collect_item" && game.mission.phase === "outbound" && game.itemPosition) {
+  // Item marker — jen "collect_item", dokud věc není sebraná (viz mission.phase),
+  // a jen ve viditelnosti hráče (fog, viz zadání "item samotný kresli až ve
+  // viditelnosti") — dev overlay ho ukáže vždycky (itemVisible výše).
+  if (input.objective === "collect_item" && game.mission.phase === "outbound" && game.itemPosition && itemVisible) {
     const itemPosition = game.itemPosition;
     ctx.save();
     ctx.shadowColor = "rgba(250, 204, 21, 0.9)";
@@ -988,8 +1067,10 @@ function draw(
 
   // Výseč vidění nepřítele — samostatná od hráčovy, červená/oranžová,
   // omezená zdmi jednoduchým raycastingem (viz castVisionCone). Wounded
-  // nic nevyhodnocuje, takže se nevykresluje vůbec.
-  if (enemy.alive && enemy.mode !== "wounded") {
+  // nic nevyhodnocuje, takže se nevykresluje vůbec. Mimo viditelnost hráče
+  // (fog, viz enemyVisible výše) se nekreslí vůbec — hlavní hororový efekt
+  // fogu (monstrum, které hráč nevidí, se nesmí prozradit vlastní výsečí).
+  if (enemy.alive && enemy.mode !== "wounded" && enemyVisible) {
     const points = castVisionCone({
       originX: enemy.x,
       originY: enemy.y,
@@ -1028,7 +1109,6 @@ function draw(
   // false) je to jen "směr pohledu", ne "dostřel" — slabší výplň/obrys, žádná
   // bojová konotace (shot flash se navíc bez brokovnice nikdy nespustí, viz
   // fireShot/applyShot).
-  const facing = DIRECTION_ANGLES[player.direction];
   const coneStart = facing - CONE_ANGLE_RAD / 2;
   const coneEnd = facing + CONE_ANGLE_RAD / 2;
   const isFlashing = game.shotFlashRemainingMs > 0;
@@ -1060,42 +1140,47 @@ function draw(
   // Nepřítel — červený radarový bod, glow/barva podle módu: investigating
   // normální, waiting lehce pulzuje, chasing silnější a pulzující, wounded
   // bliká bílá/tmavě červená + pulzující prstenec (jasně vyřazený, ne mrtvý).
-  ctx.save();
-  ctx.shadowColor = enemy.mode === "wounded" ? "rgba(255, 255, 255, 0.9)" : "rgba(220, 38, 38, 0.9)";
-  if (!enemy.alive) {
-    ctx.shadowBlur = 4;
-    ctx.fillStyle = "#4b5563";
-  } else if (enemy.mode === "wounded") {
-    ctx.shadowBlur = 16;
-    ctx.fillStyle = (performance.now() / 180) % 2 < 1 ? "#ffffff" : "#7a1f1f";
-  } else if (enemy.mode === "investigating") {
-    ctx.shadowBlur = 6;
-    ctx.fillStyle = "#ef4444";
-  } else if (enemy.mode === "waiting") {
-    const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 260);
-    ctx.shadowBlur = 6 + pulse * 4;
-    ctx.fillStyle = "#ef4444";
-  } else {
-    const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 100);
-    ctx.shadowBlur = 16 + pulse * 10;
-    ctx.fillStyle = "#ef4444";
-  }
-  ctx.beginPath();
-  ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-
-  if (enemy.alive && enemy.mode === "wounded") {
-    // Pulzující prstenec navíc kolem omráčeného nepřítele — ať je i na
-    // dálku jasné, že je dočasně vyřazený, ne jen "trochu blikající".
-    const ringPulse = 0.5 + 0.5 * Math.sin(performance.now() / 220);
+  // Celý blok (bod i prstenec) je mimo viditelnost hráče (fog) skrytý úplně
+  // — to je hlavní hororový efekt fogu (viz zadání "monster mimo viditelnost
+  // nesmí být normálně vidět"), dev overlay ho vždycky ukáže (enemyVisible výše).
+  if (enemyVisible) {
     ctx.save();
-    ctx.strokeStyle = `rgba(255, 255, 255, ${0.25 + ringPulse * 0.35})`;
-    ctx.lineWidth = 2;
+    ctx.shadowColor = enemy.mode === "wounded" ? "rgba(255, 255, 255, 0.9)" : "rgba(220, 38, 38, 0.9)";
+    if (!enemy.alive) {
+      ctx.shadowBlur = 4;
+      ctx.fillStyle = "#4b5563";
+    } else if (enemy.mode === "wounded") {
+      ctx.shadowBlur = 16;
+      ctx.fillStyle = (performance.now() / 180) % 2 < 1 ? "#ffffff" : "#7a1f1f";
+    } else if (enemy.mode === "investigating") {
+      ctx.shadowBlur = 6;
+      ctx.fillStyle = "#ef4444";
+    } else if (enemy.mode === "waiting") {
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 260);
+      ctx.shadowBlur = 6 + pulse * 4;
+      ctx.fillStyle = "#ef4444";
+    } else {
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 100);
+      ctx.shadowBlur = 16 + pulse * 10;
+      ctx.fillStyle = "#ef4444";
+    }
     ctx.beginPath();
-    ctx.arc(enemy.x, enemy.y, enemy.radius + 6 + ringPulse * 4, 0, Math.PI * 2);
-    ctx.stroke();
+    ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
+
+    if (enemy.alive && enemy.mode === "wounded") {
+      // Pulzující prstenec navíc kolem omráčeného nepřítele — ať je i na
+      // dálku jasné, že je dočasně vyřazený, ne jen "trochu blikající".
+      const ringPulse = 0.5 + 0.5 * Math.sin(performance.now() / 220);
+      ctx.save();
+      ctx.strokeStyle = `rgba(255, 255, 255, ${0.25 + ringPulse * 0.35})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(enemy.x, enemy.y, enemy.radius + 6 + ringPulse * 4, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   // Hráč — světlý zelenobílý bod s glow + malý směrník podle direction.
@@ -1114,6 +1199,68 @@ function draw(
   ctx.lineTo(player.x + Math.cos(facing) * (player.radius + 10), player.y + Math.sin(facing) * (player.radius + 10));
   ctx.stroke();
   ctx.restore();
+
+  // Fog of war (viz zadání, game/minigame/playerVision.ts) — hráč vidí jen
+  // periferní kruh (MINIGAME_PLAYER_PERIPHERAL_VISION_RANGE_PX, všechny
+  // směry) a směrovou výseč před sebou (MINIGAME_PLAYER_DIRECTIONAL_VISION_RANGE_PX,
+  // MINIGAME_PLAYER_VISION_ANGLE_RAD) — obojí omezené zdmi STEJNÝM
+  // raycastingem (castVisionCone) jako nepřítelova výseč výše, ne vlastní
+  // přepsaná verze. Vykreslí se do samostatného offscreen fogCanvasu (tmavá
+  // výplň, pak "destination-out" vyříznutí viditelných tvarů), teprve pak
+  // jedním drawImage přenese na hlavní canvas — nutné, protože kdyby se
+  // "destination-out" použilo přímo na už vykreslenou scénu, smazalo by i
+  // samotnou scénu pod sebou, ne jen tmavou vrstvu navrch. Dev overlay fog
+  // úplně přeskočí (ladicí režim vidí celou mapu, viz zadání).
+  if (!devOverlayEnabled) {
+    const fogCtx = fogCanvas.getContext("2d");
+    if (fogCtx) {
+      fogCtx.clearRect(0, 0, fogCanvas.width, fogCanvas.height);
+      fogCtx.fillStyle = "rgba(2, 8, 4, 0.94)";
+      fogCtx.fillRect(0, 0, fogCanvas.width, fogCanvas.height);
+
+      fogCtx.globalCompositeOperation = "destination-out";
+      // Měkký okraj zdarma — canvas 2D filter blur na vyříznuté tvary (viz
+      // zadání "měkký okraj, pokud to jde jednoduše"), ne vlastní gradient
+      // matematika navíc.
+      fogCtx.filter = "blur(10px)";
+
+      const peripheralPoints = castVisionCone({
+        originX: player.x,
+        originY: player.y,
+        facingAngle: 0,
+        coneAngleRad: Math.PI * 2,
+        range: MINIGAME_PLAYER_PERIPHERAL_VISION_RANGE_PX,
+        walls: game.walls,
+        rayCount: MINIGAME_PLAYER_VISION_RAY_COUNT,
+        stepPx: MINIGAME_PLAYER_VISION_RAY_STEP_PX,
+      });
+      fogCtx.beginPath();
+      fogCtx.moveTo(peripheralPoints[0].x, peripheralPoints[0].y);
+      for (const p of peripheralPoints) fogCtx.lineTo(p.x, p.y);
+      fogCtx.closePath();
+      fogCtx.fill();
+
+      const directionalPoints = castVisionCone({
+        originX: player.x,
+        originY: player.y,
+        facingAngle: facing,
+        coneAngleRad: MINIGAME_PLAYER_VISION_ANGLE_RAD,
+        range: MINIGAME_PLAYER_DIRECTIONAL_VISION_RANGE_PX,
+        walls: game.walls,
+        rayCount: MINIGAME_PLAYER_VISION_RAY_COUNT,
+        stepPx: MINIGAME_PLAYER_VISION_RAY_STEP_PX,
+      });
+      fogCtx.beginPath();
+      fogCtx.moveTo(player.x, player.y);
+      for (const p of directionalPoints) fogCtx.lineTo(p.x, p.y);
+      fogCtx.closePath();
+      fogCtx.fill();
+
+      fogCtx.filter = "none";
+      fogCtx.globalCompositeOperation = "source-over";
+    }
+    ctx.drawImage(fogCanvas, 0, 0);
+  }
 
   // Skrytý developer overlay (viz zadání, devOverlay.ts) — kreslí se JAKO
   // POSLEDNÍ (přes všechno ostatní), ať jsou room obrysy/sloty vždy vidět

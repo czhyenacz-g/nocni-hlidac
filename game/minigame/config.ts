@@ -89,6 +89,24 @@ export const STUCK_CHECK_INTERVAL_MS = 500;
 export const STUCK_MOVE_THRESHOLD_PX = 4;
 export const STUCK_TIMEOUT_MS = 5000;
 
+// ── Omezená viditelnost hráče / fog of war (viz zadání, game/minigame/playerVision.ts)
+// — DVĚ vrstvy, obě odvozené z CONE_RANGE ("zásahová vzdálenost", stejná
+// hodnota jako dostřel brokovnice, viz výše), NE z vlastní nezávislé škály:
+//   1. periferní kruh kolem hráče, dosah 1× CONE_RANGE — blízké okolí, všechny směry.
+//   2. směrová výseč před hráčem, úhel 170°, dosah 3× CONE_RANGE.
+// Úmyslně ŠIRŠÍ/DELŠÍ než existující útočná výseč (CONE_ANGLE_DEG=70/CONE_RANGE
+// výše) — tohle je VIDĚNÍ (fog reveal), ne dostřel/zásah; hit-detekce
+// (isEnemyHit/applyShot) se tímhle vůbec nemění.
+export const MINIGAME_PLAYER_VISION_ANGLE_DEG = 170;
+export const MINIGAME_PLAYER_VISION_ANGLE_RAD = (MINIGAME_PLAYER_VISION_ANGLE_DEG * Math.PI) / 180;
+export const MINIGAME_PLAYER_PERIPHERAL_VISION_RANGE_MULTIPLIER = 1;
+export const MINIGAME_PLAYER_DIRECTIONAL_VISION_RANGE_MULTIPLIER = 3;
+export const MINIGAME_PLAYER_PERIPHERAL_VISION_RANGE_PX = CONE_RANGE * MINIGAME_PLAYER_PERIPHERAL_VISION_RANGE_MULTIPLIER;
+export const MINIGAME_PLAYER_DIRECTIONAL_VISION_RANGE_PX = CONE_RANGE * MINIGAME_PLAYER_DIRECTIONAL_VISION_RANGE_MULTIPLIER;
+/** Počet paprsků / krok (px) pro raycasting fog polygonů (viz castVisionCone) — samostatné od ENEMY_VISION_RAY_* výše, i když podobného řádu. */
+export const MINIGAME_PLAYER_VISION_RAY_COUNT = 48;
+export const MINIGAME_PLAYER_VISION_RAY_STEP_PX = 8;
+
 // ── Hrozba přenesená zpět do hlavní hry po návratu (viz
 // game/minigame/officeThreat.ts#evaluateOfficeThreatOnReturn) — dosahy pro
 // "blízko hráče"/"blízko kanceláře", stejného řádu jako CONE_RANGE/

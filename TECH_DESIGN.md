@@ -1721,6 +1721,30 @@ pevná start/enemy pozice). Teď je mapa **datově definovaná** (`MiniGameLayou
   skladu A, mimo nový regál) — všechny ostatní sloty zůstaly na původních souřadnicích a
   prošly beze změny stejnou validací (`validateMiniGameLayout`) i testy
   (`serviceFloorEvacPlan.test.ts`, `layoutPlacement.test.ts`).
+- **Omezená viditelnost hráče / fog of war** (`game/minigame/playerVision.ts`) — dvě
+  vrstvy, obě odvozené z `CONE_RANGE` (dostřel brokovnice), NE vlastní škála: periferní
+  kruh (`MINIGAME_PLAYER_PERIPHERAL_VISION_RANGE_PX` = `CONE_RANGE × 1`, všechny směry) a
+  směrová výseč před hráčem (`MINIGAME_PLAYER_DIRECTIONAL_VISION_RANGE_PX` = `CONE_RANGE × 3`,
+  úhel `MINIGAME_PLAYER_VISION_ANGLE_DEG` = 170°, mnohem širší než útočná výseč
+  `CONE_ANGLE_DEG`=70° — vidění a dostřel/zásah jsou záměrně oddělené, hit-detekce se
+  neměnila). `getPlayerVisibilityAtPoint(point, walls, config)` = (periferní NEBO
+  směrová) A ZÁROVEŇ `hasLineOfSight` (stejný LOS helper jako enemy vidění/shotgun,
+  žádná vlastní přepsaná verze) — vrací `{ visible, reason }`
+  (`peripheral`/`directional`/`blocked`/`out_of_range`). Facing úhel = `DIRECTION_ANGLES[player.direction]`,
+  stejný jako pro existující útočnou výseč.
+  `EmergencyMiniGame.tsx#draw` počítá `game.enemyVisibleToPlayer` jednou za tik (ne
+  opakovaně v draw()) a mimo viditelnost NEKRESLÍ monstrum vůbec (dot, vision cone,
+  wounded prstenec) — hlavní hororový efekt. Item marker (`collect_item`) se stejně
+  kreslí jen ve viditelnosti; existující "office marker" (exit zóna) zůstává vždy
+  viditelný beze změny (orientační bod pro návrat, ne "objective"). Fog samotný se
+  vykresluje do vlastního offscreen `fogCanvas` (world-space, přerenderovaný KAŽDÝ
+  frame, na rozdíl od statické `gridCanvas`) — tmavá výplň + `globalCompositeOperation
+  = "destination-out"` vyříznutí viditelných polygonů (`castVisionCone`, STEJNÝ
+  raycasting helper jako enemy vision cone rendering, žádný nový systém), `ctx.filter =
+  "blur(10px)"` na vyříznutí pro měkký okraj zdarma. Dev overlay (`devOverlayEnabled`)
+  fog úplně přeskočí a monstrum/item kreslí vždycky — dev lišta navíc ukazuje vision
+  angle/peripheral/directional dosah a jestli je monstrum TEĎ viditelné
+  (`isMonsterVisibleToPlayer`, počítáno jen když je dev overlay zapnutý).
 - **Neřešeno/TODO**: dosažitelnost start → objective → exit (pathfinding/flood-fill) se
   neověřuje automaticky — nová mapa byla ručně prověřená (žádný slot uvnitř zdi/mimo bounds,
   viz testy), ale žádný test negarantuje, že cesta MEZI nimi vždy existuje. Přidat jako
