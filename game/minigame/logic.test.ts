@@ -19,6 +19,7 @@ import {
   createWorldEffectsForCompletedObjective,
   directionFromVector,
   distance,
+  getOfficeMarkerLabel,
   hasLineOfSight,
   isEnemyHit,
   isPointInCone,
@@ -26,6 +27,7 @@ import {
   lineIntersectsRect,
   moveWithWallSliding,
   resolveEquipmentFromInput,
+  shouldHighlightOfficeMarker,
   tickEnemyStun,
   updateEnemyAi,
   updateMissionPhase,
@@ -846,5 +848,61 @@ describe("mission — completeObjective / canReturnToOffice / updateMissionPhase
 
   it("canReturnToOffice: survive never completes via the exit zone in the MVP", () => {
     expect(canReturnToOffice("survive", createInitialMissionState(), true)).toBe(false);
+  });
+});
+
+// ── Kancelářský marker (viz EmergencyMiniGame.tsx#draw) — čistě orientační/
+// vizuální, nesmí ovlivnit canReturnToOffice/mission loop pravidla.
+describe("office marker — getOfficeMarkerLabel / shouldHighlightOfficeMarker", () => {
+  it("outbound phase (collect_item): plain 'KANCELÁŘ' label, not highlighted", () => {
+    const mission = createInitialMissionState();
+    expect(shouldHighlightOfficeMarker(mission, "collect_item")).toBe(false);
+    expect(getOfficeMarkerLabel(mission, "collect_item", false, true)).toBe("KANCELÁŘ");
+  });
+
+  it("returning phase (collect_item): highlighted 'KANCELÁŘ — E pro návrat', regardless of player position", () => {
+    const returning = completeObjective(createInitialMissionState(), { type: "collected_item", itemId: "fuse" });
+    expect(shouldHighlightOfficeMarker(returning, "collect_item")).toBe(true);
+    expect(getOfficeMarkerLabel(returning, "collect_item", false, true)).toBe("KANCELÁŘ — E pro návrat");
+    expect(getOfficeMarkerLabel(returning, "collect_item", true, true)).toBe("KANCELÁŘ — E pro návrat");
+  });
+
+  it("collect_item before the objective is done: marker stays visible with the plain label, even standing in the exit zone", () => {
+    const outbound = createInitialMissionState();
+    expect(getOfficeMarkerLabel(outbound, "collect_item", true, true)).toBe("KANCELÁŘ");
+  });
+
+  it("return_to_office: plain label before leaving the start zone", () => {
+    const mission = createInitialMissionState();
+    expect(getOfficeMarkerLabel(mission, "return_to_office", false, false)).toBe("KANCELÁŘ");
+  });
+
+  it("return_to_office: plain label after leaving start but before actually standing in the exit zone", () => {
+    const mission = createInitialMissionState();
+    expect(getOfficeMarkerLabel(mission, "return_to_office", false, true)).toBe("KANCELÁŘ");
+  });
+
+  it("return_to_office: highlighted label once the player has left start AND is standing in the exit zone", () => {
+    const mission = createInitialMissionState();
+    expect(getOfficeMarkerLabel(mission, "return_to_office", true, true)).toBe("KANCELÁŘ — E pro návrat");
+  });
+
+  it("return_to_office never sets shouldHighlightOfficeMarker (handled separately via hasLeftStartZone/inExitZone)", () => {
+    expect(shouldHighlightOfficeMarker(createInitialMissionState(), "return_to_office")).toBe(false);
+  });
+
+  it("survive: always the plain label, never highlighted", () => {
+    const mission = createInitialMissionState();
+    expect(shouldHighlightOfficeMarker(mission, "survive")).toBe(false);
+    expect(getOfficeMarkerLabel(mission, "survive", true, true)).toBe("KANCELÁŘ");
+  });
+
+  it("does not change canReturnToOffice's decision either way", () => {
+    const outbound = createInitialMissionState();
+    // collect_item still can't complete before the objective is done, no
+    // matter what the marker helpers say about label/highlight.
+    expect(canReturnToOffice("collect_item", outbound, true)).toBe(false);
+    // return_to_office still completes normally once hasLeftStartZone is true.
+    expect(canReturnToOffice("return_to_office", outbound, true)).toBe(true);
   });
 });

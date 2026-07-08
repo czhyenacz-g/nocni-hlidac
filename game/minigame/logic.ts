@@ -890,3 +890,39 @@ export function canReturnToOffice(objective: MiniGameObjective, mission: Emergen
   if (objective === "collect_item") return mission.phase === "returning";
   return false;
 }
+
+// ── Kancelářský marker (viz EmergencyMiniGame.tsx#draw) — čistě orientační/
+// vizuální pomůcka, NEMĚNÍ pravidla dokončení mise (ta zůstávají výhradně v
+// canReturnToOffice výše). Marker je vidět od startu bez ohledu na objective,
+// jen se liší tón/text podle toho, jak blízko je hráč skutečnému návratu.
+
+/**
+ * Jestli je "vracím se" už aktivní krok mise PRÁVĚ TEĎ (bez ohledu na
+ * hráčovu aktuální pozici) — pro "collect_item" je to přesně
+ * `mission.phase === "returning"` (item už je sebraný). Pro
+ * "return_to_office" mise do "returning" nikdy nepřejde (žádný dílčí úkol k
+ * dokončení, viz completeObjective) — ten případ řeší getOfficeMarkerLabel
+ * zvlášť přes hasLeftStartZone/inExitZone. Pro "survive" žádný return krok
+ * neexistuje.
+ */
+export function shouldHighlightOfficeMarker(mission: EmergencyMissionState, objective: MiniGameObjective): boolean {
+  return objective === "collect_item" && mission.phase === "returning";
+}
+
+/**
+ * Text markeru kanceláře na mapě — "KANCELÁŘ" jako tlumený orientační bod,
+ * "KANCELÁŘ — E pro návrat" jakmile má stisk E v exit zóně reálně smysl
+ * (collect_item po sebrání věci, nebo return_to_office po opuštění startu
+ * A skutečném vstupu do exit zóny). Nikdy nerozhoduje, jestli E skutečně
+ * dokončí misi — o tom rozhoduje výhradně canReturnToOffice.
+ */
+export function getOfficeMarkerLabel(
+  mission: EmergencyMissionState,
+  objective: MiniGameObjective,
+  inExitZone: boolean,
+  hasLeftStartZone: boolean,
+): string {
+  if (shouldHighlightOfficeMarker(mission, objective)) return "KANCELÁŘ — E pro návrat";
+  if (objective === "return_to_office" && hasLeftStartZone && inExitZone) return "KANCELÁŘ — E pro návrat";
+  return "KANCELÁŘ";
+}

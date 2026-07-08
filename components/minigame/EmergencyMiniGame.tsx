@@ -64,8 +64,10 @@ import {
   createWeaponHudLabel,
   directionFromVector,
   distance,
+  getOfficeMarkerLabel,
   moveWithWallSliding,
   resolveEquipmentFromInput,
+  shouldHighlightOfficeMarker,
   updateEnemyAi,
   updateMissionPhase,
 } from "@/game/minigame/logic";
@@ -689,20 +691,61 @@ function draw(ctx: CanvasRenderingContext2D, game: MiniGameRefState, gridCanvas:
   }
   ctx.restore();
 
-  // Objective marker — exit zóna ("return_to_office") nebo item ("collect_item").
-  if (input.objective === "return_to_office") {
+  // Kancelářský marker (exit zóna) — orientační bod pro návrat, VŽDY vidět
+  // bez ohledu na objective (viz zadání "hráč hned po startu ví, kam se má
+  // vrátit"), ne jen pro return_to_office jako dřív. Text/zvýraznění řídí
+  // čisté helpery getOfficeMarkerLabel/shouldHighlightOfficeMarker (viz
+  // game/minigame/logic.ts) — čistě vizuální, NEMĚNÍ pravidla dokončení mise
+  // (ta žije jen v canReturnToOffice/handleObjectiveKey).
+  {
+    const inExitZoneNow = circleIntersectsWall(player.x, player.y, player.radius, EXIT_ZONE);
+    const officeHighlighted =
+      shouldHighlightOfficeMarker(game.mission, input.objective) ||
+      (input.objective === "return_to_office" && game.hasLeftStartZone);
+    const officeLabel = getOfficeMarkerLabel(game.mission, input.objective, inExitZoneNow, game.hasLeftStartZone);
+
     ctx.save();
-    ctx.strokeStyle = game.hasLeftStartZone ? "rgba(93, 255, 160, 0.8)" : "rgba(93, 255, 160, 0.3)";
+    ctx.fillStyle = officeHighlighted ? "rgba(93, 255, 160, 0.14)" : "rgba(93, 255, 160, 0.05)";
+    ctx.fillRect(EXIT_ZONE.x, EXIT_ZONE.y, EXIT_ZONE.width, EXIT_ZONE.height);
+
+    ctx.shadowColor = "rgba(93, 255, 160, 0.85)";
+    ctx.shadowBlur = officeHighlighted ? 10 : 4;
+    ctx.strokeStyle = officeHighlighted ? "rgba(93, 255, 160, 0.85)" : "rgba(93, 255, 160, 0.35)";
     ctx.setLineDash([6, 4]);
     ctx.lineWidth = 2;
     ctx.strokeRect(EXIT_ZONE.x, EXIT_ZONE.y, EXIT_ZONE.width, EXIT_ZONE.height);
     ctx.setLineDash([]);
-    ctx.fillStyle = "rgba(93, 255, 160, 0.85)";
+
+    // Rohové značky (stejný radarový detail jako rámeček canvasu, viz
+    // CornerTick v JSX níže) — plné linky přes rohy, ať zóna čte jasně jako
+    // "cíl" i bez zaostření na celý (přerušovaný) obrys.
+    const tick = 10;
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = officeHighlighted ? "rgba(163, 255, 200, 0.95)" : "rgba(163, 255, 200, 0.5)";
+    const corners: Array<[number, number, number, number]> = [
+      [EXIT_ZONE.x, EXIT_ZONE.y, 1, 1],
+      [EXIT_ZONE.x + EXIT_ZONE.width, EXIT_ZONE.y, -1, 1],
+      [EXIT_ZONE.x, EXIT_ZONE.y + EXIT_ZONE.height, 1, -1],
+      [EXIT_ZONE.x + EXIT_ZONE.width, EXIT_ZONE.y + EXIT_ZONE.height, -1, -1],
+    ];
+    for (const [cx, cy, dx, dy] of corners) {
+      ctx.beginPath();
+      ctx.moveTo(cx + tick * dx, cy);
+      ctx.lineTo(cx, cy);
+      ctx.lineTo(cx, cy + tick * dy);
+      ctx.stroke();
+    }
+
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = officeHighlighted ? "rgba(163, 255, 200, 0.95)" : "rgba(93, 255, 160, 0.6)";
     ctx.font = "10px monospace";
     ctx.textAlign = "center";
-    ctx.fillText("KANCELÁŘ (E)", EXIT_ZONE.x + EXIT_ZONE.width / 2, EXIT_ZONE.y - 6);
+    ctx.fillText(officeLabel, EXIT_ZONE.x + EXIT_ZONE.width / 2, EXIT_ZONE.y - 6);
     ctx.restore();
-  } else if (input.objective === "collect_item" && game.mission.phase === "outbound") {
+  }
+
+  // Item marker — jen "collect_item", dokud věc není sebraná (viz mission.phase).
+  if (input.objective === "collect_item" && game.mission.phase === "outbound") {
     ctx.save();
     ctx.shadowColor = "rgba(250, 204, 21, 0.9)";
     ctx.shadowBlur = 10;
