@@ -41,8 +41,13 @@ Definováno v `game/audio/audioEvents.ts` a nakonfigurováno v `game/audio/audio
 - `monster_door_bang` — bušení do dveří, když nepřítel u zavřených dveří útočí, ale útok
   je zablokovaný (viz "Dveře" v `GAME_DESIGN.md`, `game/core/doorEncounter.ts`,
   `GameState.doorBangSeq`) — potvrzení nárazu, ne lekací výkřik. Spouští se výhradně jako
-  přímý důsledek zablokovaného útoku, nikdy náhodně/časem. Žádný reálný soubor zatím
-  neexistuje, fallback je jeden krátký nízký "úder" tón.
+  přímý důsledek zablokovaného útoku, nikdy náhodně/časem. Přehraje se jako 1–2 rychle po
+  sobě jdoucí údery (viz `chooseDoorBangPlaybackPlan` v `app/play/page.tsx`) a má vlastní
+  cooldown proti spamu, dokud monstrum tlačí na dveře opakovaně (viz
+  `MONSTER_DOOR_BANG_COOLDOWN_MS`) — obojí čistě audio vrstva, `doorBangSeq`
+  samotné se dál zvyšuje při každém zablokovaném útoku beze změny. Reálný soubor
+  (`monster_door_bang.mp3`, CC0, Freesound.org — viz `assets/audio/README.md`) už
+  existuje, syntetizovaný fallback zůstává pro případ, že by se nepodařilo načíst.
 - `blackout_howl` — vzdálené zavytí jednou na začátku blackoutu (viz "Blackout" v
   `GAME_DESIGN.md`); normální pípání generátoru se v blackoutu samo zastaví (jeho `TICK`
   větev se nevolá), žádný speciální "vypni zvuk" krok není potřeba

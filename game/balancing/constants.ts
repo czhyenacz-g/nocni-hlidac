@@ -32,6 +32,18 @@ export const DOOR_DEATH_REVEAL_DURATION_MS = 700;
 // slyšitelné vzdalování. Viz app/play/page.tsx.
 export const MONSTER_RETREAT_STEPS_DELAY_MS = 400;
 
+// Bušení do dveří (monster_door_bang, viz GameState.doorBangSeq,
+// game/audio/doorBangPlayback.ts#chooseDoorBangPlaybackPlan) — doorBangSeq se
+// může zvyšovat opakovaně (monstrum tlačí na zavřené dveře tik za tikem), ale
+// samotné PŘEHRÁNÍ zvuku má cooldown proti spamu (viz app/play/page.tsx) —
+// gameplay (doorBangSeq samotné) se tímhle nemění, jen audio vrstva navrch.
+export const MONSTER_DOOR_BANG_COOLDOWN_MS = 3200;
+// Jeden zablokovaný útok zní jako 1 nebo 2 rychle po sobě jdoucí údery (viz
+// chooseDoorBangPlaybackPlan) — druhý úder (pokud padne) přijde s náhodným
+// zpožděním v tomhle rozsahu, ať to zní přirozeně, ne jako metronom.
+export const MONSTER_DOOR_BANG_REPEAT_MIN_DELAY_MS = 180;
+export const MONSTER_DOOR_BANG_REPEAT_MAX_DELAY_MS = 320;
+
 // Jak často (ms) se v detailu kamery pomalu prostřídá obrázek bez monstra —
 // viz game/cameras/cameraAssets.object13.ts#getCameraImageSrc. Záměrně
 // pomalé (ne animace) — jen ať obraz kamery nepůsobí jako jedna mrtvá fotka.

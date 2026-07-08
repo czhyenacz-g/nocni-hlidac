@@ -27,6 +27,19 @@ definuje `fallbackSynth` — krátký tón/sekvenci syntetizovanou přímo přes
 souborů je slyšet aspoň placeholder pípnutí/řev. Jakmile soubor přibude, fallback se
 přestane používat sám od sebe.
 
+## Monster door bang
+
+`monster_door_bang.mp3` — bušení do dveří při zablokovaném útoku (viz
+`AUDIO_EVENTS.monsterDoorBang`, `game/core/doorEncounter.ts`, GAME_DESIGN.md "Dveře").
+Zdroj: [194365__macif__door-knocking-angry.wav — "Door knocking (Angry).wav"](https://freesound.org/people/Macif/sounds/194365/)
+(Freesound.org, autor **Macif**, licence **CC0** — bez nutnosti attribution, ale
+uvedeno tady pro pořádek/vysledovatelnost). Staženo 2026-07-08, raw originál
+zůstává v `assets/audio/downloads/freesound/door_pound/`. Peak byl už na `0dB`
+(mean_volume −21,5 dB — krátký úder s tichým okolím, ne plochý zvuk), takže beze
+změny gainu, jen konverze na mp3 (`ffmpeg -codec:a libmp3lame -b:a 128k`).
+Nahrazuje dřívější syntetizovaný fallback (jeden krátký nízký "úder" tón), který
+se teď použije, jen kdyby se `monster_door_bang.mp3` nepodařilo načíst.
+
 ## Monster retreat roar
 
 `monster_retreat_roar.mp3` — řev při door-light repelu (`AUDIO_EVENTS.monsterRetreatRoar`,

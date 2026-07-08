@@ -23,8 +23,10 @@ import {
   CINEMATIC_PRE_DELAY_MS,
   JUMPSCARE_SILENT_GAP_MS,
   LOADING_SCREEN_DURATION_MS,
+  MONSTER_DOOR_BANG_COOLDOWN_MS,
   MONSTER_RETREAT_STEPS_DELAY_MS,
 } from "@/game/balancing/constants";
+import { chooseDoorBangPlaybackPlan } from "@/game/audio/doorBangPlayback";
 import CinematicScreen from "@/components/screens/CinematicScreen";
 import { CinematicSceneId } from "@/content/cinematics";
 import AchievementToast from "@/components/game/AchievementToast";
@@ -141,6 +143,17 @@ export default function PlayPage() {
   const prevGeneratorBeepSeqRef = useRef(state.generatorBeepSeq);
   const prevMonsterRetreatRoarSeqRef = useRef(state.monsterRetreatRoarSeq);
   const prevDoorBangSeqRef = useRef(state.doorBangSeq);
+  // Cooldown proti audio spamu, když doorBangSeq roste tik za tikem
+  // (monstrum tlačí na zavřené dveře) — reálný čas (performance.now()), ne
+  // herní elapsedMs, protože jde čistě o to, aby zvuk nezněl jako kulomet,
+  // ne o herní pravidlo. `doorBangSeq` samotné se dál zvyšuje beze změny,
+  // tohle jen omezuje PŘEHRÁVÁNÍ.
+  const doorBangCooldownUntilRef = useRef(0);
+  // Naplánovaný druhý úder (viz chooseDoorBangPlaybackPlan) — žije v ref, ne
+  // jen v uzávěře efektu, ať ho nezruší cleanup NÁSLEDUJÍCÍHO re-runu efektu
+  // (další doorBangSeq v cooldownu by jinak zrušil ještě nedohraný druhý
+  // úder z předchozího bušení). Skutečně zrušen jen na unmount.
+  const doorBangRepeatTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevGameStatusRef = useRef(state.gameStatus);
   const prevBlackoutPhaseSeqRef = useRef(state.blackoutPhaseSeq);
   const prevBulbBreakSeqRef = useRef(state.bulbBreakSeq);
@@ -396,14 +409,38 @@ export default function PlayPage() {
     return () => clearTimeout(stepsTimeout);
   }, [state.monsterRetreatRoarSeq]);
 
+  // Zruší naplánovaný druhý úder bušení jen při SKUTEČNÉM odmountování
+  // stránky — viz doorBangRepeatTimeoutRef výše (žádná jiná definice tady,
+  // ať to nejde omylem zrušit re-runem jiného efektu).
+  useEffect(() => {
+    return () => {
+      if (doorBangRepeatTimeoutRef.current) clearTimeout(doorBangRepeatTimeoutRef.current);
+    };
+  }, []);
+
   useEffect(() => {
     // Bušení do dveří — zablokovaný útok (viz game/core/doorEncounter.ts,
     // GameState.doorBangSeq). Nezávislé na death/jumpscare sekvenci výše
-    // (ta se vůbec nespustí, dveře zůstaly zavřené, hráč neumřel) — hraje
-    // okamžitě, žádné zpoždění/tichý gap.
-    if (prevDoorBangSeqRef.current !== state.doorBangSeq) {
-      audioManager.play(AUDIO_EVENTS.monsterDoorBang);
-      prevDoorBangSeqRef.current = state.doorBangSeq;
+    // (ta se vůbec nespustí, dveře zůstaly zavřené, hráč neumřel).
+    if (prevDoorBangSeqRef.current === state.doorBangSeq) return;
+    prevDoorBangSeqRef.current = state.doorBangSeq;
+
+    // Cooldown proti spamu — pokud další zablokovaný útok přijde moc brzy po
+    // předchozím přehrání, tenhle bang se prostě tiše přeskočí (doorBangSeq
+    // se v GameState přesto zvýšil, jen se pro něj nic nepřehraje).
+    const now = performance.now();
+    if (now < doorBangCooldownUntilRef.current) return;
+    doorBangCooldownUntilRef.current = now + MONSTER_DOOR_BANG_COOLDOWN_MS;
+
+    const plan = chooseDoorBangPlaybackPlan();
+    audioManager.play(AUDIO_EVENTS.monsterDoorBang);
+
+    if (plan.count === 2 && plan.repeatDelayMs !== undefined) {
+      if (doorBangRepeatTimeoutRef.current) clearTimeout(doorBangRepeatTimeoutRef.current);
+      doorBangRepeatTimeoutRef.current = setTimeout(() => {
+        audioManager.play(AUDIO_EVENTS.monsterDoorBang);
+        doorBangRepeatTimeoutRef.current = null;
+      }, plan.repeatDelayMs);
     }
   }, [state.doorBangSeq]);
 

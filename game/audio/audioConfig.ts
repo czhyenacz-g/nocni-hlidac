@@ -107,10 +107,13 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
     },
   },
   // Bušení do dveří — zablokovaný útok monstra na zavřené dveře (viz
-  // game/core/doorEncounter.ts, GameState.doorBangSeq). Má znít jako těžká,
-  // krátká, fyzická rána do kovových dveří — potvrzení nárazu, ne lekací
-  // výkřik (ten zůstává jumpscare, jen pro skutečnou smrt). Žádný reálný
-  // soubor zatím neexistuje, fallback je jeden krátký nízký "úder" tón.
+  // game/core/doorEncounter.ts, GameState.doorBangSeq). Zní jako těžká,
+  // krátká, fyzická rána do dveří — potvrzení nárazu, ne lekací výkřik (ten
+  // zůstává jumpscare, jen pro skutečnou smrt, proto nižší volume než 1.0).
+  // Reálný soubor (CC0, Freesound.org — viz assets/audio/README.md),
+  // fallback (jeden krátký nízký "úder" tón) zůstává pro případ selhání
+  // načtení. Přehrávání (1–2 údery + cooldown proti spamu) řeší
+  // game/audio/doorBangPlayback.ts + app/play/page.tsx, ne tenhle config.
   [AUDIO_EVENTS.monsterDoorBang]: {
     src: "/assets/audio/monster_door_bang.mp3",
     volume: 0.8,

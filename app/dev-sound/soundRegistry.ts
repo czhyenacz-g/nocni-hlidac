@@ -130,8 +130,9 @@ export const SOUND_REGISTRY: Record<AudioEventId, SoundRegistryEntry> = {
     label: "Monster door bang",
     description:
       "Monstrum u zavřených dveří útočí, ale útok je zablokovaný (viz " +
-      "game/core/doorEncounter.ts#isDoorAttackBlockedByClosedDoor) — jen jako přímý důsledek téhle podmínky, nikdy náhodně.",
-    guess: "Těžká, krátká, fyzická rána do kovových dveří — potvrzení nárazu, ne lekací výkřik.",
+      "game/core/doorEncounter.ts#isDoorAttackBlockedByClosedDoor) — jen jako přímý důsledek téhle podmínky, nikdy náhodně. " +
+      "Přehraje se jako 1–2 údery (chooseDoorBangPlaybackPlan) s cooldownem proti spamu (MONSTER_DOOR_BANG_COOLDOWN_MS).",
+    guess: "Těžká, krátká, fyzická rána do dveří — potvrzení nárazu, ne lekací výkřik.",
     usedIn: "app/play/page.tsx — efekt na state.doorBangSeq.",
   },
   [AUDIO_EVENTS.monsterRetreatSteps]: {
