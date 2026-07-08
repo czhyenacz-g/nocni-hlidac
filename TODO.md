@@ -388,6 +388,15 @@
       jen na přechod screen "win"/"death" (fire-and-forget, `.catch()` ignoruje chyby).
       Skutečná implementace VPS appky (routes/DB) NENÍ součástí tohoto repozitáře — jen
       přesná specifikace + adapter na straně nocni-hlidac.
+- [x] Nouzová minihra — datově definované mapové layouty (`MiniGameLayout`, viz
+      TECH_DESIGN.md "Nouzová minihra — datové mapové layouty"): místnosti/zdi/sloty místo
+      natvrdo zadaných konstant, `resolveMiniGamePlacement` (deterministický seed přes
+      `createSeededRandom`, ne `Math.random`) vybírá start/exit/monster spawn/objective JEN
+      z připravených slotů, `validateMiniGameLayout` prohání každý layout v registru.
+      Původní mapa převedená do `service_floor_alpha` (kompatibilní baseline, beze změny
+      hratelnosti), nový komplexnější `service_floor_storage` (8 místností kolem centrální
+      chodby, dveřní mezery místo plných zdí, regály/stroje jako překážky, víc tras).
+      NENÍ procedurální generování (viz "Explicitně odložené věci" níže) — pořád ruční data.
 
 ## Další kroky po MVP
 

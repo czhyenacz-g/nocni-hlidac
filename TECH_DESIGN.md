@@ -1627,3 +1627,72 @@ Testy: `lib/leaderboard/ensureHubPlayer.test.ts` (nikdy nevyhodí, loguje jen na
 nikdy neloguje token), rozšířené `guardRunRequestHandlers.test.ts` (nové response shape,
 ensure se volá před survive-night/death — ověřeno přes fetch spy na obě cesty, bezpečné
 chování i když samotný ensure selže).
+
+## Nouzová minihra — datové mapové layouty
+
+Mapa `EmergencyMiniGame` (viz `app/minihra/page.tsx`) PŮVODNĚ byla jedna natvrdo zadaná
+sada konstant přímo v `game/minigame/config.ts` (`WALLS`, `EXIT_ZONE`, `ITEM_SPAWN_POSITION`,
+pevná start/enemy pozice). Teď je mapa **datově definovaná** (`MiniGameLayout`, viz
+`game/minigame/layoutTypes.ts`) — NENÍ to procedurální generování (to zůstává v TODO.md
+"Explicitně odložené věci"), jen ruční data místo natvrdo psaného kódu v komponentě.
+
+- **`MiniGameLayout`** (`layoutTypes.ts`): `id`/`name`/`description`, `world: {width, height}`,
+  `rooms: MiniGameLayoutRoom[]` (id/name/kind/bounds), `walls: MiniGameLayoutWall[]`
+  (id/x/y/width/height/kind — strukturální nadmnožina `Wall`, jde předat rovnou do
+  `circleIntersectsAnyWall`/`moveWithWallSliding`/`hasLineOfSight` beze změny tvaru), a
+  `slots: MiniGameLayoutSlot[]` (id/roomId/x/y/tags/weight/debugName). Tagy
+  (`MiniGameLayoutSlotTag`) = `"player_start" | "player_exit" | "monster_spawn" |
+  "generic_loot" | MiniGameItemId` (battery/bulb/fuse/shotgun/ammo/key/toolbox).
+- **`validateMiniGameLayout(layout)`** (`layoutValidation.ts`) — čistá strukturální validace:
+  id/name, kladné rozměry světa, unikátní room/wall/slot id, sloty odkazující na existující
+  `roomId`, sloty/zdi uvnitř world bounds, sloty ne uvnitř zdi/překážky, a povinná přítomnost
+  aspoň jednoho `player_start`/`player_exit`/`monster_spawn` slotu. **Neověřuje** dosažitelnost
+  start → objective → exit (pathfinding) — záměrně ponecháno jako TODO (viz TODO.md), validace
+  je čistě geometrická/strukturální. Test `layoutValidation.test.ts` prohání validátor přes
+  KAŽDÝ layout v `MINIGAME_LAYOUTS` registru.
+- **`createSeededRandom(seed)`** (`seededRandom.ts`) — deterministický RNG (xmur3 hash +
+  mulberry32 stream), stejný seed = stejná sekvence. `createRandomSeed()` generuje
+  nedeterministický seed jen pro skutečnou hru bez explicitně zadaného seedu.
+- **`resolveMiniGamePlacement(layout, input, seed)`** (`layoutPlacement.ts`) — vybere
+  KONKRÉTNÍ sloty (player_start/player_exit/monster_spawn/objective podle
+  `input.itemToCollect` pro `collect_item`) váhovaným losem (`slot.weight`, default 1) přes
+  `createSeededRandom(seed)`, v pevném pořadí (start, exit, monster spawn, objective) —
+  stejný `(layout, input, seed)` vrací vždy stejný výsledek. Chybí-li v layoutu slot s
+  potřebným tagem, vyhodí `MiniGamePlacementError` — NIKDY tiché spadnutí na náhodnou pozici.
+  `getRoomBoundsForSlot(layout, slotId)` vrátí bounds místnosti obsahující daný slot — použito
+  jako "exit zóna" (obdélník pro E/return interakci), datově z layoutu, ne natvrdo.
+- **`game/minigame/layouts/`** — `serviceFloorAlpha.ts` (baseline, 1:1 převod PŮVODNÍ natvrdo
+  psané mapy, world 1000×650, jeden univerzální item slot se všemi item tagy — přesně
+  zachovává starou "jeden item spot pro cokoliv" hratelnost) a `serviceFloorStorage.ts` (nová
+  komplexnější servisně-skladová mapa, world 1400×900, 8 místností kolem centrální vertikální
+  chodby s dveřními mezerami — ne jednou dlouhou zdí — na každé sdílené hranici, regálové/
+  strojní překážky uvnitř místností, 2 sloupy přímo v chodbě, plný sady slotů podle zadání).
+  `layouts/index.ts` je registr (`MINIGAME_LAYOUTS`, `getMiniGameLayout(id)` s fallbackem na
+  `service_floor_alpha` pro neznámé id, stejný vzor jako `getMiniGameDebugScenario`).
+- **`config.ts`** teď WALLS/EXIT_ZONE/ITEM_SPAWN_POSITION/WORLD_WIDTH/WORLD_HEIGHT/
+  `MINIGAME_WORLD_SCALE` odvozuje z `SERVICE_FLOOR_ALPHA` (přes jeden pevný interní
+  `resolveMiniGamePlacement` volání), ne obráceně — zpětně kompatibilní re-export, beze změny
+  číselných hodnot, ať `config.test.ts`/`logic.test.ts` (`createInitialPlayer(equipment)`,
+  `createInitialEnemy(player)` beze změny signatury pro staré 1-argumentové volání) projdou
+  dál beze změny. Nová funkce `computeMiniGameWorldScale(worldWidth, worldHeight)` počítá
+  JEDNOTNÉ měřítko (`Math.min(CANVAS_WIDTH/w, CANVAS_HEIGHT/h)`), kterým se libovolně velký
+  layout vejde do stejného `CANVAS_WIDTH×CANVAS_HEIGHT` panelu — pro `service_floor_alpha`
+  vychází přesně 0.8 (stejně jako dřívější pevná konstanta).
+- **`EmergencyMiniGame.tsx`** — `createInitialState(input)` zvolí layout
+  (`input.layoutId ?? DEFAULT_MINIGAME_LAYOUT_ID`), seed (`input.seed ?? createRandomSeed()`),
+  zavolá `resolveMiniGamePlacement`, a z výsledku postaví `player`/`enemy`
+  (`createInitialPlayer(equipment, placement.playerStart)`,
+  `createInitialEnemy(player, placement.monsterSpawn, layout.walls, layout.world.width,
+  layout.world.height)`), `exitZone` (`getRoomBoundsForSlot`), `itemPosition`
+  (`placement.objectivePosition`) a `scale` (`computeMiniGameWorldScale`). Tick/draw/fireShot
+  čtou tyhle hodnoty z `gameRef.current` (walls/worldWidth/worldHeight/exitZone/itemPosition/
+  scale/enemyAiConfig), ne z module-level konstant — libovolný layout tak funguje beze změny
+  zbytku komponenty. Debug HUD panel navíc zobrazuje `layoutId`/name/seed/vybrané sloty (viz
+  zadání "Debug UI").
+- **`EmergencyMiniGameInput`** má dvě nová volitelná pole: `layoutId?: string` (fallback na
+  baseline) a `seed?: string` (fallback na nedeterministický `createRandomSeed()`) — debug
+  scénáře (`debugScenarios.ts`) je nastavují explicitně, ať jsou reprodukovatelné.
+- **Neřešeno/TODO**: dosažitelnost start → objective → exit (pathfinding/flood-fill) se
+  neověřuje automaticky — nová mapa byla ručně prověřená (žádný slot uvnitř zdi/mimo bounds,
+  viz testy), ale žádný test negarantuje, že cesta MEZI nimi vždy existuje. Přidat jako
+  budoucí krok, pokud se ukáže potřeba (např. flood-fill přes hrubou mřížku volných buněk).

@@ -1,4 +1,5 @@
 import { DEFAULT_EMERGENCY_MINIGAME_INPUT } from "./config";
+import { SERVICE_FLOOR_STORAGE } from "./layouts/serviceFloorStorage";
 import { EmergencyMiniGameInput } from "./types";
 
 // Vývojářské scénáře pro debug stránku /minihra (viz app/minihra/page.tsx)
@@ -80,6 +81,101 @@ export const MINIGAME_DEBUG_SCENARIOS: MiniGameDebugScenario[] = [
     label: "Přežít",
     description: "Volný test přežití proti monstru — exit zóna misi v tomhle scénáři nekončí.",
     input: { objective: "survive", equipment: { hasShotgun: true, ammo: 1 }, difficulty: "medium" },
+  },
+
+  // ── Layoutové scénáře (viz game/minigame/layoutTypes.ts, layouts/) ────────
+  // Stejná mise (battery) na baseline mapě vs. novém skladovém layoutu, +
+  // dva různé seedy na stejném layoutu, ať jde na /minihra ověřit, že (1)
+  // stejná mise může mít jiný objective slot/monster spawn podle seedu, (2)
+  // nová mapa je funkční.
+  {
+    id: "battery_alpha_default",
+    label: "Baterie — service_floor_alpha (výchozí mapa)",
+    description: "Stejná baterie mise jako collect_battery, jen výslovně na baseline mapě (service_floor_alpha) s pevným seedem.",
+    input: { objective: "collect_item", itemToCollect: "battery", equipment: { hasShotgun: false, ammo: 0 }, layoutId: "service_floor_alpha", seed: "battery_alpha_default" },
+  },
+  {
+    id: "battery_storage_layout",
+    label: "Baterie — skladové patro",
+    description: "Baterie mise na novém, komplexnějším skladově-servisním layoutu (service_floor_storage).",
+    input: {
+      objective: "collect_item",
+      itemToCollect: "battery",
+      equipment: { hasShotgun: false, ammo: 0 },
+      layoutId: SERVICE_FLOOR_STORAGE.id,
+      seed: "battery_storage_layout",
+    },
+  },
+  {
+    id: "battery_storage_layout_seed_1",
+    label: "Baterie — skladové patro (seed 1)",
+    description: "Stejná mise/mapa jako battery_storage_layout, jiný seed — jiný objective/monster spawn slot.",
+    input: {
+      objective: "collect_item",
+      itemToCollect: "battery",
+      equipment: { hasShotgun: false, ammo: 0 },
+      layoutId: SERVICE_FLOOR_STORAGE.id,
+      seed: "battery_storage_layout_seed_1",
+    },
+  },
+  {
+    id: "battery_storage_layout_seed_2",
+    label: "Baterie — skladové patro (seed 2)",
+    description: "Stejná mise/mapa jako battery_storage_layout, další jiný seed — ověř, že se spawn/objective liší od seed_1.",
+    input: {
+      objective: "collect_item",
+      itemToCollect: "battery",
+      equipment: { hasShotgun: false, ammo: 0 },
+      layoutId: SERVICE_FLOOR_STORAGE.id,
+      seed: "battery_storage_layout_seed_2",
+    },
+  },
+  {
+    id: "bulb_storage_layout",
+    label: "Žárovka — skladové patro",
+    description: "Žárovka mise na skladovém layoutu — vybírá jen ze slotů s tagem bulb.",
+    input: {
+      objective: "collect_item",
+      itemToCollect: "bulb",
+      equipment: { hasShotgun: true, ammo: 1 },
+      layoutId: SERVICE_FLOOR_STORAGE.id,
+      seed: "bulb_storage_layout",
+    },
+  },
+  {
+    id: "fuse_storage_layout",
+    label: "Pojistka — skladové patro",
+    description: "Pojistka mise na skladovém layoutu — vybírá jen ze slotů s tagem fuse.",
+    input: {
+      objective: "collect_item",
+      itemToCollect: "fuse",
+      equipment: { hasShotgun: true, ammo: 1 },
+      layoutId: SERVICE_FLOOR_STORAGE.id,
+      seed: "fuse_storage_layout",
+    },
+  },
+  {
+    id: "shotgun_storage_layout",
+    label: "Brokovnice — skladové patro",
+    description: "Sebrání brokovnice na skladovém layoutu — vybírá jen ze slotů s tagem shotgun. Hráč začíná bez zbraně.",
+    input: {
+      objective: "collect_item",
+      itemToCollect: "shotgun",
+      equipment: { hasShotgun: false, ammo: 0 },
+      layoutId: SERVICE_FLOOR_STORAGE.id,
+      seed: "shotgun_storage_layout",
+    },
+  },
+  {
+    id: "no_weapon_storage_layout",
+    label: "Návrat bez zbraně — skladové patro",
+    description: "Čistá skrývačka (bez brokovnice) na skladovém layoutu — víc místa/tras k obcházení monstra než na baseline mapě.",
+    input: {
+      objective: "return_to_office",
+      equipment: { hasShotgun: false, ammo: 0 },
+      layoutId: SERVICE_FLOOR_STORAGE.id,
+      seed: "no_weapon_storage_layout",
+    },
   },
 ];
 

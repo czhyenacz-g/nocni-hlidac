@@ -121,6 +121,20 @@ export interface EmergencyMiniGameInput {
   difficulty?: MiniGameDifficulty;
   /** Připraveno pro budoucí výběr startovní pozice/mapy — MVP vždy startuje na stejném místě bez ohledu na tohle pole. */
   startLocation?: MiniGameStartLocation;
+  /**
+   * Která datově definovaná mapa (viz game/minigame/layoutTypes.ts,
+   * game/minigame/layouts/index.ts) — chybí-li, použije se
+   * DEFAULT_MINIGAME_LAYOUT_ID (service_floor_alpha, kompatibilní baseline).
+   */
+  layoutId?: string;
+  /**
+   * Seed pro deterministický výběr slotů (start/exit/monster spawn/objective,
+   * viz game/minigame/layoutPlacement.ts#resolveMiniGamePlacement) — chybí-li,
+   * EmergencyMiniGame.tsx vygeneruje nedeterministický seed sám (viz
+   * createRandomSeed v seededRandom.ts); debug scénáře ho dávají explicitně,
+   * ať jsou reprodukovatelné.
+   */
+  seed?: string;
 }
 
 // ── Efekty pro hlavní hru (viz

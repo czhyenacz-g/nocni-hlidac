@@ -1,5 +1,7 @@
 import { DEFAULT_EQUIPMENT, angleBetween, createInvestigationTarget, distance } from "./logic";
 import { EmergencyMiniGameEquipment, EmergencyMiniGameInput, Enemy, Player, Vec2, Wall } from "./types";
+import { SERVICE_FLOOR_ALPHA } from "./layouts/serviceFloorAlpha";
+import { resolveMiniGamePlacement, getRoomBoundsForSlot } from "./layoutPlacement";
 
 // Konfigurace izolovaného prototypu minihry — žádná hodnota odsud neovlivňuje
 // balancing hlavní hry (game/balancing/constants.ts zůstává nedotčené).
@@ -9,19 +11,25 @@ export const CANVAS_HEIGHT = 520;
 
 // ── Měřítko světa / záběr mapy (viz components/minigame/EmergencyMiniGame.tsx#draw)
 // — CANVAS_WIDTH/HEIGHT zůstává fyzická velikost <canvas> na stránce (radarový
-// panel se vizuálně nemění). Herní svět je ale větší (WORLD_WIDTH/HEIGHT) a
-// vykresluje se do canvasu zmenšený o MINIGAME_WORLD_SCALE (jedno
-// `ctx.scale(MINIGAME_WORLD_SCALE, MINIGAME_WORLD_SCALE)` na začátku draw() —
-// veškerá geometrie (zdi, spawny, zóny) níže je proto rovnou v tomhle větším
-// world prostoru, ne v CANVAS_WIDTH/HEIGHT). Velikosti entit (radius, dosahy)
-// zůstávají v původních world jednotkách beze změny — díky menšímu měřítku
-// vykreslení tak vypadají cca o 20 % menší, aniž by se musely přepočítávat
-// ručně po jednom.
+// panel se vizuálně nemění). Herní svět je ale větší a vykresluje se do
+// canvasu zmenšený o měřítko (jedno `ctx.scale(scale, scale)` na začátku
+// draw()). PŮVODNĚ (jediná pevná mapa) bylo tohle měřítko jeden natvrdo
+// zadaný konstantní poměr (0.8) a WORLD_WIDTH/HEIGHT z něj odvozené. Teď má
+// každý layout (viz game/minigame/layouts/) VLASTNÍ world.width/height a
+// EmergencyMiniGame.tsx si měřítko dopočítá dynamicky přes
+// computeMiniGameWorldScale() níže, ať se libovolně velká/malá mapa vejde do
+// stejného CANVAS_WIDTH×CANVAS_HEIGHT panelu. WORLD_WIDTH/HEIGHT a
+// MINIGAME_WORLD_SCALE tady zůstávají jen jako zpětně kompatibilní alias pro
+// baseline layout (service_floor_alpha) — beze změny hodnoty (1000×650, 0.8),
+// ať existující testy/volání beze změny projdou dál.
 export const MINIGAME_WORLD_SCALE = 0.8;
-export const WORLD_WIDTH = Math.round(CANVAS_WIDTH / MINIGAME_WORLD_SCALE);
-export const WORLD_HEIGHT = Math.round(CANVAS_HEIGHT / MINIGAME_WORLD_SCALE);
-/** Poměr, o který je nový svět prostornější než starý (WALLS/spawny/zóny jsou v layoutu škálované tímhle faktorem) — inverzní k MINIGAME_WORLD_SCALE. */
-const WORLD_LAYOUT_SCALE = WORLD_WIDTH / CANVAS_WIDTH;
+export const WORLD_WIDTH = SERVICE_FLOOR_ALPHA.world.width;
+export const WORLD_HEIGHT = SERVICE_FLOOR_ALPHA.world.height;
+
+/** Jednotné (ne roztažené) měřítko, kterým se layout.world vejde do CANVAS_WIDTH×CANVAS_HEIGHT beze zbytku/přetečení — pro service_floor_alpha (1000×650) vychází přesně 0.8, stejně jako dřívější pevná MINIGAME_WORLD_SCALE. */
+export function computeMiniGameWorldScale(worldWidth: number, worldHeight: number): number {
+  return Math.min(CANVAS_WIDTH / worldWidth, CANVAS_HEIGHT / worldHeight);
+}
 
 export const PLAYER_RADIUS = 14;
 export const ENEMY_RADIUS = 14;
@@ -78,38 +86,11 @@ export const STUCK_CHECK_INTERVAL_MS = 500;
 export const STUCK_MOVE_THRESHOLD_PX = 4;
 export const STUCK_TIMEOUT_MS = 5000;
 
-// Pár vnitřních překážek/chodeb + krátké výběžky od obvodových zdí — obvod
-// mapy řeší clamp na hranice světa (viz moveWithWallSliding, WORLD_WIDTH/
-// WORLD_HEIGHT), ne samostatné zdi, ať nevznikají zbytečně duplicitní kolizní
-// obdélníky podél celého okraje. Pozice a délky jsou škálované WORLD_LAYOUT_SCALE
-// (větší záběr mapy), ale TLOUŠŤKA (24) zůstává v původních world jednotkách
-// beze změny — po vykreslení (MINIGAME_WORLD_SCALE) proto zdi vyjdou cca o 20 %
-// tenčí, aniž by se kolize a vizuál rozešly (obojí čte tahle stejná pole).
-export const WALLS: Wall[] = [
-  { x: 260 * WORLD_LAYOUT_SCALE, y: 0, width: 24, height: 230 * WORLD_LAYOUT_SCALE },
-  { x: 260 * WORLD_LAYOUT_SCALE, y: 300 * WORLD_LAYOUT_SCALE, width: 24, height: 220 * WORLD_LAYOUT_SCALE },
-  { x: 520 * WORLD_LAYOUT_SCALE, y: 140 * WORLD_LAYOUT_SCALE, width: 200 * WORLD_LAYOUT_SCALE, height: 24 },
-  { x: 120 * WORLD_LAYOUT_SCALE, y: 380 * WORLD_LAYOUT_SCALE, width: 160 * WORLD_LAYOUT_SCALE, height: 24 },
-  { x: 600 * WORLD_LAYOUT_SCALE, y: 320 * WORLD_LAYOUT_SCALE, width: 24, height: 160 * WORLD_LAYOUT_SCALE },
-];
-
-// Hráč startuje dole (u "kontrolní místnosti") — stejná prostorová logika
-// jako v hlavní hře (viz game/map/objectMap.ts), ale úplně nezávislá data.
-// `equipment` = skutečná výbava na start (viz EmergencyMiniGameInput.equipment,
-// resolveEquipmentFromInput v logic.ts) — volající (EmergencyMiniGame.tsx) sem
-// pošle už rozřešenou hodnotu, tenhle default je jen pro přímé volání beze
-// vstupu (např. testy).
-export function createInitialPlayer(equipment: EmergencyMiniGameEquipment = DEFAULT_EQUIPMENT): Player {
-  return {
-    x: WORLD_WIDTH / 2,
-    y: WORLD_HEIGHT - 60 * WORLD_LAYOUT_SCALE,
-    radius: PLAYER_RADIUS,
-    direction: "up",
-    speed: PLAYER_SPEED,
-    hasShotgun: equipment.hasShotgun,
-    ammo: equipment.ammo,
-  };
-}
+// Zdi baseline mapy — teď datově v game/minigame/layouts/serviceFloorAlpha.ts,
+// tohle je jen zpětně kompatibilní re-export (stejná geometrie/hodnoty jako
+// dřív). MiniGameLayoutWall je strukturální nadmnožina Wall (x/y/width/height
+// + volitelné id/kind navíc), jde ho proto přiřadit rovnou beze změny tvaru.
+export const WALLS: Wall[] = SERVICE_FLOOR_ALPHA.walls;
 
 // ── Kontrakt pro budoucí spuštění z hlavní hry ─────────────────────────────
 
@@ -119,29 +100,68 @@ export const DEFAULT_EMERGENCY_MINIGAME_INPUT: EmergencyMiniGameInput = {
   difficulty: "medium",
 };
 
-// "Návrat do kanceláře" — obdélník poblíž startovní pozice hráče (dole,
-// stejné místo jako "kontrolní místnost" v hlavní hře). Aktivuje se až po
-// opuštění startu (viz START_ZONE_LEAVE_RADIUS_PX), ať se "returned" nesplní
-// hned na startu — dokončuje se stiskem E, ne jen vstupem do zóny. Pozice
-// škálovaná WORLD_LAYOUT_SCALE (zůstává na stejném relativním místě v
-// novém, větším světě), rozměry (120×90) beze změny — po vykreslení proto
-// zóna vyjde cca o 20 % menší, stejně jako zdi/entity.
-export const EXIT_ZONE: Wall = { x: WORLD_WIDTH / 2 - 60 * WORLD_LAYOUT_SCALE, y: WORLD_HEIGHT - 110 * WORLD_LAYOUT_SCALE, width: 120, height: 90 };
-/** Jak daleko od startovní pozice musí hráč dojít, než se exit zóna "aktivuje" (viz EmergencyMiniGame.tsx hasLeftStartZone) — škálováno spolu s layoutem. */
-export const START_ZONE_LEAVE_RADIUS_PX = 70 * WORLD_LAYOUT_SCALE;
+// Vyřešené sloty baseline mapy pro DEFAULT_EMERGENCY_MINIGAME_INPUT — pevný
+// interní seed (jen tahle jedna konkrétní kombinace layout+seed má být
+// zpětně kompatibilní se starými natvrdo zadanými pozicemi, nezávisí na
+// žádném runtime náhodném vstupu). service_floor_alpha má přesně jeden slot
+// na tag (player_start/player_exit/monster_spawn), takže seed samotný na
+// VÝSLEDEK nemá vliv — je tu jen proto, že resolveMiniGamePlacement seed vyžaduje.
+const ALPHA_DEFAULT_PLACEMENT = resolveMiniGamePlacement(SERVICE_FLOOR_ALPHA, DEFAULT_EMERGENCY_MINIGAME_INPUT, "config-default-alpha");
 
-// "Sebrání věci" — pro MVP jeden pevný spawn bod, mimo zdi a mimo start/enemy
-// pozici. Pozice škálovaná s layoutem, ITEM_RADIUS beze změny (entita).
-export const ITEM_SPAWN_POSITION: Vec2 = { x: 150 * WORLD_LAYOUT_SCALE, y: 460 * WORLD_LAYOUT_SCALE };
+// Hráč startuje dole (u "kontrolní místnosti") — pozice teď pochází z layoutu
+// (viz ALPHA_DEFAULT_PLACEMENT.playerStart), ne z natvrdo počítaného vzorce.
+// `equipment` = skutečná výbava na start (viz EmergencyMiniGameInput.equipment,
+// resolveEquipmentFromInput v logic.ts) — volající (EmergencyMiniGame.tsx) sem
+// pošle už rozřešenou hodnotu i pozici (resolvedPlacement.playerStart pro
+// zvolený layout/seed); oba parametry mají defaulty, ať staré volání
+// `createInitialPlayer(equipment)` (např. testy) beze změny projde dál.
+export function createInitialPlayer(
+  equipment: EmergencyMiniGameEquipment = DEFAULT_EQUIPMENT,
+  position: Vec2 = ALPHA_DEFAULT_PLACEMENT.playerStart,
+): Player {
+  return {
+    x: position.x,
+    y: position.y,
+    radius: PLAYER_RADIUS,
+    direction: "up",
+    speed: PLAYER_SPEED,
+    hasShotgun: equipment.hasShotgun,
+    ammo: equipment.ammo,
+  };
+}
+
+// "Návrat do kanceláře" — teď obdélník MÍSTNOSTI "office" v layoutu (viz
+// getRoomBoundsForSlot), ne samostatná natvrdo zadaná zóna. Aktivuje se až
+// po opuštění startu (viz START_ZONE_LEAVE_RADIUS_PX), ať se "returned"
+// nesplní hned na startu — dokončuje se stiskem E, ne jen vstupem do zóny.
+export const EXIT_ZONE: Wall = getRoomBoundsForSlot(SERVICE_FLOOR_ALPHA, ALPHA_DEFAULT_PLACEMENT.playerExitSlotId);
+/** Jak daleko od startovní pozice musí hráč dojít, než se exit zóna "aktivuje" (viz EmergencyMiniGame.tsx hasLeftStartZone) — beze změny hodnoty oproti dřívějšku (70 × dřívější WORLD_LAYOUT_SCALE 1.25). */
+export const START_ZONE_LEAVE_RADIUS_PX = 87.5;
+
+// "Sebrání věci" — service_floor_alpha má jeden univerzální item slot
+// (item_generic_01, nese VŠECHNY item tagy), stejně jako dřív jeden pevný
+// ITEM_SPAWN_POSITION sloužil pro libovolný itemToCollect. Hledá se přímo
+// podle id (ne přes resolveMiniGamePlacement/objective), protože tenhle
+// zpětně kompatibilní export nemá žádnou konkrétní misi/seed k dispozici.
+const ALPHA_ITEM_SLOT = SERVICE_FLOOR_ALPHA.slots.find((slot) => slot.id === "item_generic_01")!;
+export const ITEM_SPAWN_POSITION: Vec2 = { x: ALPHA_ITEM_SLOT.x, y: ALPHA_ITEM_SLOT.y };
 export const ITEM_RADIUS = 10;
 
 // Nepřítel startuje nahoře a hned v "investigating" (NE "chasing") — s
 // prvním podezřelým bodem poblíž hráčovy startovní pozice, s náhodnou
 // odchylkou (viz createInvestigationTarget). Bere `player` jako parametr,
 // protože bez pozice hráče by nešlo první investigationTarget vůbec vybrat.
-export function createInitialEnemy(player: Player): Enemy {
-  const x = WORLD_WIDTH / 2;
-  const y = 60 * WORLD_LAYOUT_SCALE;
+// `position`/`walls`/`mapWidth`/`mapHeight` mají defaulty na baseline layout,
+// ať staré volání `createInitialEnemy(player)` (např. testy) beze změny
+// projde dál — EmergencyMiniGame.tsx pošle skutečné hodnoty zvoleného layoutu.
+export function createInitialEnemy(
+  player: Player,
+  position: Vec2 = ALPHA_DEFAULT_PLACEMENT.monsterSpawn,
+  walls: Wall[] = WALLS,
+  mapWidth: number = WORLD_WIDTH,
+  mapHeight: number = WORLD_HEIGHT,
+): Enemy {
+  const { x, y } = position;
   const distanceToPlayer = distance(x, y, player.x, player.y);
   const investigationTarget = createInvestigationTarget({
     playerX: player.x,
@@ -151,9 +171,9 @@ export function createInitialEnemy(player: Player): Enemy {
     noiseFarPx: INVESTIGATION_NOISE_FAR_PX,
     closeDistanceThresholdPx: INVESTIGATION_CLOSE_DISTANCE_THRESHOLD_PX,
     enemyRadius: ENEMY_RADIUS,
-    walls: WALLS,
-    mapWidth: WORLD_WIDTH,
-    mapHeight: WORLD_HEIGHT,
+    walls,
+    mapWidth,
+    mapHeight,
     maxAttempts: INVESTIGATION_MAX_ATTEMPTS,
   });
 

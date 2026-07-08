@@ -17,23 +17,18 @@ import {
   ENEMY_VISION_RAY_STEP_PX,
   ENEMY_WAIT_MAX_MS,
   ENEMY_WAIT_MIN_MS,
-  EXIT_ZONE,
   INVESTIGATION_ARRIVAL_RADIUS_PX,
   INVESTIGATION_CLOSE_DISTANCE_THRESHOLD_PX,
   INVESTIGATION_MAX_ATTEMPTS,
   INVESTIGATION_NOISE_CLOSE_PX,
   INVESTIGATION_NOISE_FAR_PX,
   ITEM_RADIUS,
-  ITEM_SPAWN_POSITION,
-  MINIGAME_WORLD_SCALE,
   SHOT_FLASH_DURATION_MS,
   START_ZONE_LEAVE_RADIUS_PX,
   STUCK_CHECK_INTERVAL_MS,
   STUCK_MOVE_THRESHOLD_PX,
   STUCK_TIMEOUT_MS,
-  WALLS,
-  WORLD_HEIGHT,
-  WORLD_WIDTH,
+  computeMiniGameWorldScale,
   createInitialEnemy,
   createInitialPlayer,
 } from "@/game/minigame/config";
@@ -48,6 +43,8 @@ import {
   MiniGameItemId,
   MiniGameStatus,
   Player,
+  Vec2,
+  Wall,
 } from "@/game/minigame/types";
 import {
   DIRECTION_ANGLES,
@@ -71,6 +68,10 @@ import {
   updateEnemyAi,
   updateMissionPhase,
 } from "@/game/minigame/logic";
+import { MiniGameLayout } from "@/game/minigame/layoutTypes";
+import { DEFAULT_MINIGAME_LAYOUT_ID, getMiniGameLayout } from "@/game/minigame/layouts";
+import { ResolvedMiniGamePlacement, getRoomBoundsForSlot, resolveMiniGamePlacement } from "@/game/minigame/layoutPlacement";
+import { createRandomSeed } from "@/game/minigame/seededRandom";
 
 interface EmergencyMiniGameProps {
   input: EmergencyMiniGameInput;
@@ -97,19 +98,41 @@ interface MiniGameRefState {
   elapsedMs: number;
   /** Kolik výstřelů hráč skutečně vypálil (ne kolik mu zbylo) — vrací se v EmergencyMiniGameResult.shotsUsed. */
   shotsUsed: number;
-  /** Objective "return_to_office": true, jakmile hráč aspoň jednou opustí okolí startu — EXIT_ZONE se počítá až pak (viz zadání "ne hned na startu"). */
+  /** Objective "return_to_office": true, jakmile hráč aspoň jednou opustí okolí startu — game.exitZone se počítá až pak (viz zadání "ne hned na startu"). */
   hasLeftStartZone: boolean;
   /** Základní smyčka mise (viz game/minigame/logic.ts#completeObjective/canReturnToOffice) — nahrazuje dřívější jednoduché `itemCollected: boolean`: sebrání věci je jen mezistav ("returning"), ne konec minihry. */
   mission: EmergencyMissionState;
   /** Hráčova startovní pozice (viz hasLeftStartZone) — uložená při vytvoření, ne přepočítávaná z CANVAS/WORLD konstant, ať vždy odpovídá skutečnému createInitialPlayer(). */
   startX: number;
   startY: number;
+  /** Datově definovaná mapa (viz game/minigame/layoutTypes.ts) — zvolená podle input.layoutId, DEFAULT_MINIGAME_LAYOUT_ID jako fallback. */
+  layout: MiniGameLayout;
+  /** Vyřešené sloty (start/exit/monster spawn/objective) pro tenhle konkrétní run — viz game/minigame/layoutPlacement.ts. Debug HUD z tohohle čte layoutId/seed/vybrané sloty. */
+  placement: ResolvedMiniGamePlacement;
+  /** = layout.walls, uložené zvlášť ať tick()/draw()/fireShot() nemusí pokaždé sahat do gameRef.current.layout.walls. */
+  walls: Wall[];
+  worldWidth: number;
+  worldHeight: number;
+  /** Jednotné měřítko pro vykreslení tohohle konkrétního (libovolně velkého) layoutu do CANVAS_WIDTH×CANVAS_HEIGHT — viz computeMiniGameWorldScale. */
+  scale: number;
+  /** "Návratová zóna" pro E/exit interakci — bounds místnosti obsahující placement.playerExitSlotId, ne natvrdo zadaný obdélník. */
+  exitZone: Wall;
+  /** Pozice objective itemu ("collect_item") pro tenhle run — chybí pro jiné objective. */
+  itemPosition?: Vec2;
+  /** Statická AI konfigurace se souřadnicemi TOHOTO layoutu (mapWidth/mapHeight) — jednou spočítaná při vytvoření, ne module-level konstanta (různé layouty mají různě velký svět). */
+  enemyAiConfig: EnemyAiConfig;
 }
 
 function createInitialState(input: EmergencyMiniGameInput): MiniGameRefState {
+  const layout = getMiniGameLayout(input.layoutId ?? DEFAULT_MINIGAME_LAYOUT_ID);
+  const seed = input.seed ?? createRandomSeed();
+  const placement = resolveMiniGamePlacement(layout, input, seed);
+
   const equipment = resolveEquipmentFromInput(input);
-  const player = createInitialPlayer(equipment);
-  const enemy = createInitialEnemy(player);
+  const player = createInitialPlayer(equipment, placement.playerStart);
+  const enemy = createInitialEnemy(player, placement.monsterSpawn, layout.walls, layout.world.width, layout.world.height);
+  const exitZone = getRoomBoundsForSlot(layout, placement.playerExitSlotId);
+
   return {
     player,
     enemy,
@@ -121,6 +144,15 @@ function createInitialState(input: EmergencyMiniGameInput): MiniGameRefState {
     shotsUsed: 0,
     hasLeftStartZone: false,
     mission: createInitialMissionState(),
+    layout,
+    placement,
+    walls: layout.walls,
+    worldWidth: layout.world.width,
+    worldHeight: layout.world.height,
+    scale: computeMiniGameWorldScale(layout.world.width, layout.world.height),
+    exitZone,
+    itemPosition: placement.objectivePosition,
+    enemyAiConfig: createEnemyAiConfig(layout.world.width, layout.world.height),
   };
 }
 
@@ -170,28 +202,32 @@ function getMissionHint(
   return "Splněno.";
 }
 
-// Statická konfigurace AI (viz game/minigame/logic.ts#updateEnemyAi) — složená
-// jednou z config.ts konstant, ne přepočítávaná každý tik.
-const ENEMY_AI_CONFIG: EnemyAiConfig = {
-  searchSpeed: ENEMY_SEARCH_SPEED,
-  chaseSpeed: ENEMY_CHASE_SPEED,
-  aggroSpeedMultiplier: ENEMY_AGGRO_SPEED_MULTIPLIER,
-  aggroRange: ENEMY_AGGRO_RANGE,
-  visionRange: ENEMY_VISION_RANGE,
-  visionAngleRad: ENEMY_VISION_ANGLE_RAD,
-  waitMinMs: ENEMY_WAIT_MIN_MS,
-  waitMaxMs: ENEMY_WAIT_MAX_MS,
-  investigationArrivalRadius: INVESTIGATION_ARRIVAL_RADIUS_PX,
-  investigationNoiseCloseRangePx: INVESTIGATION_NOISE_CLOSE_PX,
-  investigationNoiseFarPx: INVESTIGATION_NOISE_FAR_PX,
-  investigationCloseDistanceThresholdPx: INVESTIGATION_CLOSE_DISTANCE_THRESHOLD_PX,
-  investigationMaxAttempts: INVESTIGATION_MAX_ATTEMPTS,
-  mapWidth: WORLD_WIDTH,
-  mapHeight: WORLD_HEIGHT,
-  stuckCheckIntervalMs: STUCK_CHECK_INTERVAL_MS,
-  stuckMoveThresholdPx: STUCK_MOVE_THRESHOLD_PX,
-  stuckTimeoutMs: STUCK_TIMEOUT_MS,
-};
+// Konfigurace AI (viz game/minigame/logic.ts#updateEnemyAi) — mapWidth/
+// mapHeight teď závisí na ZVOLENÉM layoutu (různé mapy mají různě velký
+// svět), proto funkce místo dřívější module-level konstanty; volá se jednou
+// při createInitialState, ne přepočítává se každý tik.
+function createEnemyAiConfig(mapWidth: number, mapHeight: number): EnemyAiConfig {
+  return {
+    searchSpeed: ENEMY_SEARCH_SPEED,
+    chaseSpeed: ENEMY_CHASE_SPEED,
+    aggroSpeedMultiplier: ENEMY_AGGRO_SPEED_MULTIPLIER,
+    aggroRange: ENEMY_AGGRO_RANGE,
+    visionRange: ENEMY_VISION_RANGE,
+    visionAngleRad: ENEMY_VISION_ANGLE_RAD,
+    waitMinMs: ENEMY_WAIT_MIN_MS,
+    waitMaxMs: ENEMY_WAIT_MAX_MS,
+    investigationArrivalRadius: INVESTIGATION_ARRIVAL_RADIUS_PX,
+    investigationNoiseCloseRangePx: INVESTIGATION_NOISE_CLOSE_PX,
+    investigationNoiseFarPx: INVESTIGATION_NOISE_FAR_PX,
+    investigationCloseDistanceThresholdPx: INVESTIGATION_CLOSE_DISTANCE_THRESHOLD_PX,
+    investigationMaxAttempts: INVESTIGATION_MAX_ATTEMPTS,
+    mapWidth,
+    mapHeight,
+    stuckCheckIntervalMs: STUCK_CHECK_INTERVAL_MS,
+    stuckMoveThresholdPx: STUCK_MOVE_THRESHOLD_PX,
+    stuckTimeoutMs: STUCK_TIMEOUT_MS,
+  };
+}
 
 const MODE_LABELS: Record<EnemyMode, string> = {
   investigating: "Pátrání",
@@ -281,7 +317,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
       enemy: game.enemy,
       coneAngleRad: CONE_ANGLE_RAD,
       range: CONE_RANGE,
-      walls: WALLS,
+      walls: game.walls,
       status: game.status,
       shotFlashDurationMs: SHOT_FLASH_DURATION_MS,
     });
@@ -308,7 +344,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
   // 1. Sebrání věci (collect_item, dotyk s itemem, mise ještě "outbound") —
   //    NEKONČÍ minihru, jen přepne misi do "returning" (viz
   //    completeObjective) — hráč se musí ještě vrátit do kanceláře.
-  // 2. Návrat do kanceláře (EXIT_ZONE, hráč opustil start, viz
+  // 2. Návrat do kanceláře (game.exitZone, hráč opustil start, viz
   //    canReturnToOffice) — tohle JE jediné místo, které volá onComplete.
   //    Pro collect_item vyžaduje dokončený dílčí úkol (mission.phase ===
   //    "returning"); dokud není, E v kanceláři misi neukončí.
@@ -316,13 +352,13 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
     const game = gameRef.current;
     if (game.status !== "playing") return;
 
-    if (input.objective === "collect_item" && game.mission.phase === "outbound") {
+    if (input.objective === "collect_item" && game.mission.phase === "outbound" && game.itemPosition) {
       const touchingItem = circlesTouch(
         game.player.x,
         game.player.y,
         game.player.radius,
-        ITEM_SPAWN_POSITION.x,
-        ITEM_SPAWN_POSITION.y,
+        game.itemPosition.x,
+        game.itemPosition.y,
         ITEM_RADIUS,
       );
       if (touchingItem) {
@@ -335,7 +371,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
       }
     }
 
-    const inExitZoneNow = circleIntersectsWall(game.player.x, game.player.y, game.player.radius, EXIT_ZONE);
+    const inExitZoneNow = circleIntersectsWall(game.player.x, game.player.y, game.player.radius, game.exitZone);
     if (inExitZoneNow && canReturnToOffice(input.objective, game.mission, game.hasLeftStartZone)) {
       game.mission = updateMissionPhase(game.mission, "completed");
       setMissionPhase(game.mission.phase);
@@ -394,8 +430,11 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
     // Radarová mřížka se vykreslí JEDNOU do offscreen canvasu a dál se jen
     // kopíruje (drawImage) — kreslit desítky linek znovu každý frame by byl
     // zbytečný výkonový náklad pro čistě dekorativní vrstvu (viz zadání
-    // "respektuj výkon").
-    const gridCanvas = createGridCanvas();
+    // "respektuj výkon"). Velikost mřížky odpovídá SKUTEČNÉMU světu
+    // zvoleného layoutu (gameRef.current.worldWidth/worldHeight), ne
+    // natvrdo jedné mapě — layout se mezi mounty téhle komponenty nemění
+    // (nový scénář/input vždy remountuje přes `key`, viz app/minihra/page.tsx).
+    const gridCanvas = createGridCanvas(gameRef.current.worldWidth, gameRef.current.worldHeight);
 
     const tick = (timestamp: number) => {
       const game = gameRef.current;
@@ -430,9 +469,9 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
             (dx / length) * game.player.speed,
             (dy / length) * game.player.speed,
             game.player.radius,
-            WALLS,
-            WORLD_WIDTH,
-            WORLD_HEIGHT,
+            game.walls,
+            game.worldWidth,
+            game.worldHeight,
           );
           game.player.x = moved.x;
           game.player.y = moved.y;
@@ -447,15 +486,15 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
 
         // Čistě pro HUD hint (viz getMissionHint) — setState bailout, mění se
         // jen při skutečném vstupu/opuštění zóny, ne 60×/s.
-        setInExitZone(circleIntersectsWall(game.player.x, game.player.y, game.player.radius, EXIT_ZONE));
+        setInExitZone(circleIntersectsWall(game.player.x, game.player.y, game.player.radius, game.exitZone));
 
         if (game.enemy.alive) {
           game.enemy = updateEnemyAi({
             enemy: game.enemy,
             player: { x: game.player.x, y: game.player.y },
-            walls: WALLS,
+            walls: game.walls,
             deltaMs,
-            config: ENEMY_AI_CONFIG,
+            config: game.enemyAiConfig,
           });
 
           // Game over jen když enemy NENÍ wounded a fyzicky se dotkne hráče —
@@ -518,6 +557,28 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
         )}
         <div style={{ color: "#3f7a58" }}>SYSTÉM: AKTIVNÍ · MŘÍŽKA: 1.0m</div>
         <div style={{ color: "#3f7a58" }}>WASD / šipky: pohyb · mezerník: výstřel · E: akce · R: restart</div>
+      </div>
+
+      {/* Debug info o zvoleném layoutu/placementu (viz zadání "Debug UI má
+          ukazovat layoutId, seed, selected sloty") — čte se přímo z
+          gameRef.current (layout/placement se v rámci jednoho běhu neměně,
+          mění se jen při restartu, který stejně vynutí re-render). */}
+      <div
+        className="p-2 text-[10px] flex flex-wrap gap-x-4 gap-y-1"
+        style={{ background: "rgba(3, 15, 8, 0.7)", border: "1px solid #1f6b45", color: "#4c8a6a" }}
+      >
+        <div>
+          LAYOUT: {gameRef.current.layout.id} ({gameRef.current.layout.name})
+        </div>
+        <div>SEED: {gameRef.current.placement.seed}</div>
+        <div>START: {gameRef.current.placement.playerStartSlotId}</div>
+        <div>EXIT: {gameRef.current.placement.playerExitSlotId}</div>
+        <div>MONSTER SPAWN: {gameRef.current.placement.monsterSpawnSlotId}</div>
+        {gameRef.current.placement.objectiveSlotId && (
+          <div>
+            OBJECTIVE: {gameRef.current.placement.objectiveSlotId} ({input.itemToCollect ?? "fuse"})
+          </div>
+        )}
       </div>
 
       {/* Rámeček herní plochy — zelený obrys + rohové radar značky + scanline overlay. */}
@@ -616,42 +677,43 @@ function CornerTick({ corner }: { corner: "tl" | "tr" | "bl" | "br" }) {
 // Offscreen canvas s jemnou radarovou mřížkou (menší linky po 20px, větší po
 // 100px, velmi nízká opacity) — vykreslí se jednou při mountu, pak se každý
 // frame jen zkopíruje (viz tick() výše). Velikost/rozestupy jsou ve WORLD
-// prostoru (WORLD_WIDTH/HEIGHT, ne fyzická CANVAS_WIDTH/HEIGHT) — draw() ho
-// kopíruje pod stejným ctx.scale(MINIGAME_WORLD_SCALE) jako zbytek scény, ať
-// mřížka pokryje celou (větší) mapu, ne jen její levý horní roh.
-function createGridCanvas(): HTMLCanvasElement {
+// prostoru zvoleného layoutu (worldWidth/worldHeight, ne fyzická
+// CANVAS_WIDTH/HEIGHT) — draw() ho kopíruje pod stejným ctx.scale(game.scale)
+// jako zbytek scény, ať mřížka pokryje celou (libovolně velkou) mapu, ne jen
+// její levý horní roh.
+function createGridCanvas(worldWidth: number, worldHeight: number): HTMLCanvasElement {
   const gridCanvas = document.createElement("canvas");
-  gridCanvas.width = WORLD_WIDTH;
-  gridCanvas.height = WORLD_HEIGHT;
+  gridCanvas.width = worldWidth;
+  gridCanvas.height = worldHeight;
   const gridCtx = gridCanvas.getContext("2d");
   if (!gridCtx) return gridCanvas;
 
   gridCtx.strokeStyle = "rgba(46, 143, 92, 0.08)";
   gridCtx.lineWidth = 1;
-  for (let x = 0; x <= WORLD_WIDTH; x += 20) {
+  for (let x = 0; x <= worldWidth; x += 20) {
     gridCtx.beginPath();
     gridCtx.moveTo(x + 0.5, 0);
-    gridCtx.lineTo(x + 0.5, WORLD_HEIGHT);
+    gridCtx.lineTo(x + 0.5, worldHeight);
     gridCtx.stroke();
   }
-  for (let y = 0; y <= WORLD_HEIGHT; y += 20) {
+  for (let y = 0; y <= worldHeight; y += 20) {
     gridCtx.beginPath();
     gridCtx.moveTo(0, y + 0.5);
-    gridCtx.lineTo(WORLD_WIDTH, y + 0.5);
+    gridCtx.lineTo(worldWidth, y + 0.5);
     gridCtx.stroke();
   }
 
   gridCtx.strokeStyle = "rgba(46, 143, 92, 0.18)";
-  for (let x = 0; x <= WORLD_WIDTH; x += 100) {
+  for (let x = 0; x <= worldWidth; x += 100) {
     gridCtx.beginPath();
     gridCtx.moveTo(x + 0.5, 0);
-    gridCtx.lineTo(x + 0.5, WORLD_HEIGHT);
+    gridCtx.lineTo(x + 0.5, worldHeight);
     gridCtx.stroke();
   }
-  for (let y = 0; y <= WORLD_HEIGHT; y += 100) {
+  for (let y = 0; y <= worldHeight; y += 100) {
     gridCtx.beginPath();
     gridCtx.moveTo(0, y + 0.5);
-    gridCtx.lineTo(WORLD_WIDTH, y + 0.5);
+    gridCtx.lineTo(worldWidth, y + 0.5);
     gridCtx.stroke();
   }
 
@@ -670,11 +732,11 @@ function draw(ctx: CanvasRenderingContext2D, game: MiniGameRefState, gridCanvas:
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
   // Jediné místo, kde se world → screen měřítko aplikuje (viz
-  // MINIGAME_WORLD_SCALE/WORLD_WIDTH/WORLD_HEIGHT v config.ts) — od teď je
-  // celý zbytek draw() v souřadnicích herního světa (stejných, v jakých žije
-  // player/enemy/WALLS), canvas je ale fyzicky pořád CANVAS_WIDTH×CANVAS_HEIGHT.
+  // computeMiniGameWorldScale v config.ts, game.scale) — od teď je celý
+  // zbytek draw() v souřadnicích herního světa (stejných, v jakých žije
+  // player/enemy/game.walls), canvas je ale fyzicky pořád CANVAS_WIDTH×CANVAS_HEIGHT.
   ctx.save();
-  ctx.scale(MINIGAME_WORLD_SCALE, MINIGAME_WORLD_SCALE);
+  ctx.scale(game.scale, game.scale);
 
   ctx.drawImage(gridCanvas, 0, 0);
 
@@ -685,7 +747,7 @@ function draw(ctx: CanvasRenderingContext2D, game: MiniGameRefState, gridCanvas:
   ctx.fillStyle = "rgba(6, 26, 16, 0.9)";
   ctx.strokeStyle = "#3fe08a";
   ctx.lineWidth = 2;
-  for (const wall of WALLS) {
+  for (const wall of game.walls) {
     ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
     ctx.strokeRect(wall.x, wall.y, wall.width, wall.height);
   }
@@ -698,7 +760,7 @@ function draw(ctx: CanvasRenderingContext2D, game: MiniGameRefState, gridCanvas:
   // game/minigame/logic.ts) — čistě vizuální, NEMĚNÍ pravidla dokončení mise
   // (ta žije jen v canReturnToOffice/handleObjectiveKey).
   {
-    const inExitZoneNow = circleIntersectsWall(player.x, player.y, player.radius, EXIT_ZONE);
+    const inExitZoneNow = circleIntersectsWall(player.x, player.y, player.radius, game.exitZone);
     const officeHighlighted =
       shouldHighlightOfficeMarker(game.mission, input.objective) ||
       (input.objective === "return_to_office" && game.hasLeftStartZone);
@@ -706,14 +768,14 @@ function draw(ctx: CanvasRenderingContext2D, game: MiniGameRefState, gridCanvas:
 
     ctx.save();
     ctx.fillStyle = officeHighlighted ? "rgba(93, 255, 160, 0.14)" : "rgba(93, 255, 160, 0.05)";
-    ctx.fillRect(EXIT_ZONE.x, EXIT_ZONE.y, EXIT_ZONE.width, EXIT_ZONE.height);
+    ctx.fillRect(game.exitZone.x, game.exitZone.y, game.exitZone.width, game.exitZone.height);
 
     ctx.shadowColor = "rgba(93, 255, 160, 0.85)";
     ctx.shadowBlur = officeHighlighted ? 10 : 4;
     ctx.strokeStyle = officeHighlighted ? "rgba(93, 255, 160, 0.85)" : "rgba(93, 255, 160, 0.35)";
     ctx.setLineDash([6, 4]);
     ctx.lineWidth = 2;
-    ctx.strokeRect(EXIT_ZONE.x, EXIT_ZONE.y, EXIT_ZONE.width, EXIT_ZONE.height);
+    ctx.strokeRect(game.exitZone.x, game.exitZone.y, game.exitZone.width, game.exitZone.height);
     ctx.setLineDash([]);
 
     // Rohové značky (stejný radarový detail jako rámeček canvasu, viz
@@ -723,10 +785,10 @@ function draw(ctx: CanvasRenderingContext2D, game: MiniGameRefState, gridCanvas:
     ctx.lineWidth = 2;
     ctx.strokeStyle = officeHighlighted ? "rgba(163, 255, 200, 0.95)" : "rgba(163, 255, 200, 0.5)";
     const corners: Array<[number, number, number, number]> = [
-      [EXIT_ZONE.x, EXIT_ZONE.y, 1, 1],
-      [EXIT_ZONE.x + EXIT_ZONE.width, EXIT_ZONE.y, -1, 1],
-      [EXIT_ZONE.x, EXIT_ZONE.y + EXIT_ZONE.height, 1, -1],
-      [EXIT_ZONE.x + EXIT_ZONE.width, EXIT_ZONE.y + EXIT_ZONE.height, -1, -1],
+      [game.exitZone.x, game.exitZone.y, 1, 1],
+      [game.exitZone.x + game.exitZone.width, game.exitZone.y, -1, 1],
+      [game.exitZone.x, game.exitZone.y + game.exitZone.height, 1, -1],
+      [game.exitZone.x + game.exitZone.width, game.exitZone.y + game.exitZone.height, -1, -1],
     ];
     for (const [cx, cy, dx, dy] of corners) {
       ctx.beginPath();
@@ -740,24 +802,25 @@ function draw(ctx: CanvasRenderingContext2D, game: MiniGameRefState, gridCanvas:
     ctx.fillStyle = officeHighlighted ? "rgba(163, 255, 200, 0.95)" : "rgba(93, 255, 160, 0.6)";
     ctx.font = "10px monospace";
     ctx.textAlign = "center";
-    ctx.fillText(officeLabel, EXIT_ZONE.x + EXIT_ZONE.width / 2, EXIT_ZONE.y - 6);
+    ctx.fillText(officeLabel, game.exitZone.x + game.exitZone.width / 2, game.exitZone.y - 6);
     ctx.restore();
   }
 
   // Item marker — jen "collect_item", dokud věc není sebraná (viz mission.phase).
-  if (input.objective === "collect_item" && game.mission.phase === "outbound") {
+  if (input.objective === "collect_item" && game.mission.phase === "outbound" && game.itemPosition) {
+    const itemPosition = game.itemPosition;
     ctx.save();
     ctx.shadowColor = "rgba(250, 204, 21, 0.9)";
     ctx.shadowBlur = 10;
     ctx.fillStyle = "#facc15";
     ctx.beginPath();
-    ctx.arc(ITEM_SPAWN_POSITION.x, ITEM_SPAWN_POSITION.y, ITEM_RADIUS, 0, Math.PI * 2);
+    ctx.arc(itemPosition.x, itemPosition.y, ITEM_RADIUS, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
     ctx.fillStyle = "rgba(250, 204, 21, 0.9)";
     ctx.font = "10px monospace";
     ctx.textAlign = "center";
-    ctx.fillText(`${ITEM_LABELS_NOMINATIVE[input.itemToCollect ?? "fuse"].toUpperCase()} (E)`, ITEM_SPAWN_POSITION.x, ITEM_SPAWN_POSITION.y - 16);
+    ctx.fillText(`${ITEM_LABELS_NOMINATIVE[input.itemToCollect ?? "fuse"].toUpperCase()} (E)`, itemPosition.x, itemPosition.y - 16);
     ctx.restore();
   }
 
@@ -771,7 +834,7 @@ function draw(ctx: CanvasRenderingContext2D, game: MiniGameRefState, gridCanvas:
       facingAngle: enemy.visionAngle,
       coneAngleRad: ENEMY_VISION_ANGLE_RAD,
       range: ENEMY_VISION_RANGE,
-      walls: WALLS,
+      walls: game.walls,
       rayCount: ENEMY_VISION_RAY_COUNT,
       stepPx: ENEMY_VISION_RAY_STEP_PX,
     });
@@ -890,6 +953,6 @@ function draw(ctx: CanvasRenderingContext2D, game: MiniGameRefState, gridCanvas:
   ctx.stroke();
   ctx.restore();
 
-  // Konec world→screen měřítka nastaveného výše (ctx.scale(MINIGAME_WORLD_SCALE, ...)).
+  // Konec world→screen měřítka nastaveného výše (ctx.scale(game.scale, ...)).
   ctx.restore();
 }
