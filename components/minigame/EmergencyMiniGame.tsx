@@ -882,6 +882,15 @@ function draw(
         game.walls,
         PLAYER_VISION_CONFIG,
       ).visible);
+  // Jestli je kancelářský marker "zvýrazněný" (úkol splněný / return_to_office
+  // po opuštění startu, viz shouldHighlightOfficeMarker) — spočítané tady
+  // nahoře, ať ho může použít i marker samotný (níže) i "maják přes fog"
+  // blok po vykreslení fogu (viz zadání "má blikat i ve tmě").
+  const officeHighlighted =
+    shouldHighlightOfficeMarker(game.mission, input.objective) || (input.objective === "return_to_office" && game.hasLeftStartZone);
+  // Jedna sdílená pulzující hodnota (0..1) pro "lehké blikání" zvýrazněného
+  // markeru — stejný sinusový pulz vzor jako jinde (enemy waiting/wounded).
+  const officePulse = 0.5 + 0.5 * Math.sin(performance.now() / 260);
 
   ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
@@ -1000,18 +1009,19 @@ function draw(
   // (ta žije jen v canReturnToOffice/handleObjectiveKey).
   {
     const inExitZoneNow = circleIntersectsWall(player.x, player.y, player.radius, game.exitZone);
-    const officeHighlighted =
-      shouldHighlightOfficeMarker(game.mission, input.objective) ||
-      (input.objective === "return_to_office" && game.hasLeftStartZone);
     const officeLabel = getOfficeMarkerLabel(game.mission, input.objective, inExitZoneNow, game.hasLeftStartZone);
+    // Lehké blikání (officePulse, viz nahoře) — jen když je marker zvýrazněný
+    // (úkol splněný, vracíš se), ne v klidovém stavu (ten zůstává statický,
+    // ať mapa nebliká zbytečně po celou dobu "outbound" fáze).
+    const highlightAlpha = officeHighlighted ? 0.65 + officePulse * 0.35 : 1;
 
     ctx.save();
-    ctx.fillStyle = officeHighlighted ? "rgba(93, 255, 160, 0.14)" : "rgba(93, 255, 160, 0.05)";
+    ctx.fillStyle = officeHighlighted ? `rgba(93, 255, 160, ${0.1 + officePulse * 0.1})` : "rgba(93, 255, 160, 0.05)";
     ctx.fillRect(game.exitZone.x, game.exitZone.y, game.exitZone.width, game.exitZone.height);
 
     ctx.shadowColor = "rgba(93, 255, 160, 0.85)";
-    ctx.shadowBlur = officeHighlighted ? 10 : 4;
-    ctx.strokeStyle = officeHighlighted ? "rgba(93, 255, 160, 0.85)" : "rgba(93, 255, 160, 0.35)";
+    ctx.shadowBlur = officeHighlighted ? 6 + officePulse * 8 : 4;
+    ctx.strokeStyle = officeHighlighted ? `rgba(93, 255, 160, ${highlightAlpha})` : "rgba(93, 255, 160, 0.35)";
     ctx.setLineDash([6, 4]);
     ctx.lineWidth = 2;
     ctx.strokeRect(game.exitZone.x, game.exitZone.y, game.exitZone.width, game.exitZone.height);
@@ -1022,7 +1032,7 @@ function draw(
     // "cíl" i bez zaostření na celý (přerušovaný) obrys.
     const tick = 10;
     ctx.lineWidth = 2;
-    ctx.strokeStyle = officeHighlighted ? "rgba(163, 255, 200, 0.95)" : "rgba(163, 255, 200, 0.5)";
+    ctx.strokeStyle = officeHighlighted ? `rgba(163, 255, 200, ${highlightAlpha})` : "rgba(163, 255, 200, 0.5)";
     const corners: Array<[number, number, number, number]> = [
       [game.exitZone.x, game.exitZone.y, 1, 1],
       [game.exitZone.x + game.exitZone.width, game.exitZone.y, -1, 1],
@@ -1260,6 +1270,24 @@ function draw(
       fogCtx.globalCompositeOperation = "source-over";
     }
     ctx.drawImage(fogCanvas, 0, 0);
+  }
+
+  // Kancelářský "maják" — když je marker zvýrazněný (úkol splněný, vracíš
+  // se), zbytek jeho lehce blikajícího obrysu se kreslí ZNOVU, tentokrát AŽ
+  // PO fogu (viz zadání "má blikat i ve tmě") — ať ho hráč vidí/tuší i mimo
+  // vlastní viditelnost, jako maják navádějící zpátky do kanceláře. Mimo
+  // zvýrazněný stav se nic navíc nekreslí (marker zůstává jen pod fogem,
+  // jako dřív).
+  if (officeHighlighted) {
+    ctx.save();
+    ctx.shadowColor = "rgba(93, 255, 160, 0.9)";
+    ctx.shadowBlur = 8 + officePulse * 10;
+    ctx.strokeStyle = `rgba(163, 255, 200, ${0.3 + officePulse * 0.5})`;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.strokeRect(game.exitZone.x, game.exitZone.y, game.exitZone.width, game.exitZone.height);
+    ctx.setLineDash([]);
+    ctx.restore();
   }
 
   // Skrytý developer overlay (viz zadání, devOverlay.ts) — kreslí se JAKO
