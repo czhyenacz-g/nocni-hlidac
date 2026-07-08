@@ -162,6 +162,13 @@ export interface BlackoutDefinition {
   phaseThresholdsMs: [number, number, number];
   /** Pokud směna doběhne do konce dřív, než blackout skončí, hráč přežije. */
   canBeSurvivedIfShiftEnds: boolean;
+  /**
+   * O kolik ms PŘED `durationMs` (koncem blackoutu, smrtí) zahraje
+   * `blackout_monster_roar` — viz GameState.blackoutRoarSeq. Musí být menší
+   * než `durationMs` a dost velké, ať roar stihne doznít před samotnou smrtí
+   * (viz GAME_DESIGN.md "Blackout scare sequence").
+   */
+  roarLeadMs: number;
 }
 
 export interface GeneratorDefinition {
@@ -269,6 +276,16 @@ export interface GameState {
    * z blackoutElapsedMs, kdykoliv je potřeba (BlackoutView, DebugPanel).
    */
   blackoutPhaseSeq: number;
+  /**
+   * Zvyšuje se přesně jednou za blackout, v okamžiku, kdy blackoutElapsedMs
+   * poprvé dosáhne `night.blackout.durationMs - night.blackout.roarLeadMs`
+   * (viz gameReducer.ts TICK, "gameStatus === blackout" větev) — signál pro
+   * app/play/page.tsx, ať zahraje `blackout_monster_roar` krátce PŘED
+   * finálním přechodem na screen "death" (deathReason "blackout_timeout"),
+   * ne až spolu s ním. Stejný "seq counter, reducer nikdy nevolá audio"
+   * vzor jako blackoutPhaseSeq výše.
+   */
+  blackoutRoarSeq: number;
 
   playerView: PlayerView;
 

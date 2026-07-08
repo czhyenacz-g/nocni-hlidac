@@ -38,5 +38,9 @@ export const NIGHT_01: NightDefinition = {
     durationMs: 12000,
     phaseThresholdsMs: [2000, 5000, 8000],
     canBeSurvivedIfShiftEnds: true,
+    // Roar zahraje 1 s před koncem blackoutu (11000 ms) — dost dlouho po
+    // začátku poslední fáze (8000 ms), aby zbylo ticho/heartbeat "před"
+    // roarem, a dost před durationMs, aby roar stihl doznít před smrtí.
+    roarLeadMs: 1000,
   },
 };

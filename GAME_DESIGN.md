@@ -419,13 +419,19 @@ fáze má i svůj zvuk (viz AUDIO_DESIGN.md "Blackout"), text nikdy neslibuje
 zvuk, který se nepřehraje:
 
 0. "Nouzová baterie převzala napájení." — hraje `blackoutHowl` (zavytí při vstupu do blackoutu).
-1. "Zámek slábne. Odněkud se ozvaly vzdálené kroky." — hraje `enemyStep`.
-2. "Chodba utichla. Kroky se zrychlují." — hraje `enemyNear`.
-3. "Něco je za dveřmi." — nehraje žádný nový zvuk, ambient místo toho plynule doztichne
-   úplně (`BLACKOUT_FINAL_AMBIENCE_FADE_MS`) — hráč čeká na smrt potichu, ne s dalším efektem.
+1. "Zámek slábne. Odněkud se ozvaly vzdálené kroky." — hraje `blackoutStepsFar` (vlastní
+   "těžká přítomnost" event, ne stejný zvuk jako normální přiblížení nepřítele).
+2. "Chodba utichla. Kroky se zrychlují." — hraje `blackoutStepsNear`.
+3. "Něco je za dveřmi." — nehraje žádný nový krokový zvuk, ambient místo toho plynule
+   doztichne úplně (`BLACKOUT_FINAL_AMBIENCE_FADE_MS`) — hráč čeká ve tichu (dominantní
+   heartbeat mezitím zajišťuje `computeLowPowerStressBonus` sám — energie na 0 % =
+   maximální stres bez ohledu na cokoliv jiného, viz "Stres a heartbeat" níže).
 
-Na úplném konci (`deathReason: "blackout_timeout"`) hraje `jumpscare` — stejný
-efekt jako u každé jiné smrti (viz `app/play/page.tsx`, `screen === "death"`).
+Krátce PŘED koncem (`night.blackout.roarLeadMs` ms před `durationMs`, výchozí 1 s)
+zahraje `blackoutMonsterRoar` (`GameState.blackoutRoarSeq`) — odlišený od
+`monsterRetreatRoar` (ústup) i od finálního `jumpscare`, který hraje až o kus
+později na `screen === "death"`. Na úplném konci (`deathReason: "blackout_timeout"`)
+tedy zní: roar -> (zbytek existující smrtové sekvence, viz "Smrt" níže) -> jumpscare.
 
 **Přežití:** pokud `remainingMs` klesne na 0 dřív, než blackout doběhne
 (`night.blackout.canBeSurvivedIfShiftEnds`), hráč **vyhrává** — i uprostřed

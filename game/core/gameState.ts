@@ -46,6 +46,7 @@ export function createInitialGameState(
     gameStatus: "normal",
     blackoutElapsedMs: 0,
     blackoutPhaseSeq: 0,
+    blackoutRoarSeq: 0,
 
     playerView: "desk",
 

@@ -64,7 +64,7 @@ export default function DebugPanel({
         <div>
           gameStatus: {state.gameStatus}
           {state.gameStatus === "blackout" &&
-            ` (${state.blackoutElapsedMs.toFixed(0)} / ${night.blackout.durationMs} ms, phase ${getBlackoutPhaseIndex(state.blackoutElapsedMs, night.blackout)}, seq ${state.blackoutPhaseSeq})`}
+            ` (${state.blackoutElapsedMs.toFixed(0)} / ${night.blackout.durationMs} ms, phase ${getBlackoutPhaseIndex(state.blackoutElapsedMs, night.blackout)}, phaseSeq ${state.blackoutPhaseSeq}, roarSeq ${state.blackoutRoarSeq})`}
         </div>
         {state.doorDeathRevealUntilMs !== null && (
           <div>doorDeathReveal: {(state.doorDeathRevealUntilMs - state.elapsedMs).toFixed(0)} ms zbývá</div>

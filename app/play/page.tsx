@@ -156,6 +156,7 @@ export default function PlayPage() {
   const doorBangRepeatTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevGameStatusRef = useRef(state.gameStatus);
   const prevBlackoutPhaseSeqRef = useRef(state.blackoutPhaseSeq);
+  const prevBlackoutRoarSeqRef = useRef(state.blackoutRoarSeq);
   const prevBulbBreakSeqRef = useRef(state.bulbBreakSeq);
   const prevBulbReplaceSuccessSeqRef = useRef(state.bulbReplaceSuccessSeq);
   const prevEmergencyRunReadySeqRef = useRef(state.emergencyRunReadySeq);
@@ -477,21 +478,34 @@ export default function PlayPage() {
   }, [state.gameStatus]);
 
   // Fáze 1/2 blackoutu (viz getBlackoutPhaseIndex) mají svůj zvuk — vzdálený
-  // krok, blížící se krok. Fázi 0 (start) pokrývá blackoutHowl výše. Poslední
-  // fáze (3, těsně před koncem) záměrně NEhraje žádný další zvuk — místo
-  // toho ambient plynule doztichne úplně (viz BLACKOUT_FINAL_AMBIENCE_FADE_MS),
-  // ať hráč čeká na smrt potichu, ne s dalším efektem navrch. Konec
-  // (jumpscare) pokrývá efekt na screen === "death" beze změny.
+  // krok, blížící se krok (vlastní blackoutSteps* eventy, ne enemyStep/
+  // enemyNear normálního provozu — v blackoutu má "něco" znít jako těžká
+  // přítomnost, ne jako běžný přiblížení nepřítele). Fázi 0 (start) pokrývá
+  // blackoutHowl výše. Poslední fáze (3, těsně před koncem) NEhraje vlastní
+  // krokový zvuk — místo toho ambient plynule doztichne úplně (viz
+  // BLACKOUT_FINAL_AMBIENCE_FADE_MS), ať hráč čeká ve tichu. Roar těsně před
+  // smrtí i finální jumpscare řeší samostatné efekty níže/na screen === "death".
   useEffect(() => {
     if (prevBlackoutPhaseSeqRef.current !== state.blackoutPhaseSeq) {
       const phase = getBlackoutPhaseIndex(state.blackoutElapsedMs, night.blackout);
-      if (phase === 1) audioManager.play(AUDIO_EVENTS.enemyStep);
-      else if (phase === 2) audioManager.play(AUDIO_EVENTS.enemyNear);
+      if (phase === 1) audioManager.play(AUDIO_EVENTS.blackoutStepsFar);
+      else if (phase === 2) audioManager.play(AUDIO_EVENTS.blackoutStepsNear);
       else if (phase === 3) audioManager.fadeOutLoop(AUDIO_EVENTS.ambienceLoop, BLACKOUT_FINAL_AMBIENCE_FADE_MS);
       prevBlackoutPhaseSeqRef.current = state.blackoutPhaseSeq;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.blackoutPhaseSeq]);
+
+  // Roar krátce PŘED smrtí v blackoutu (viz BlackoutDefinition.roarLeadMs,
+  // GameState.blackoutRoarSeq) — čistý seq diff jako ostatní blackout efekty
+  // výše, žádný vlastní setTimeout: časování už řeší reducer/TICK, tenhle
+  // efekt jen přehraje zvuk v tiku, kdy seq vzroste.
+  useEffect(() => {
+    if (prevBlackoutRoarSeqRef.current !== state.blackoutRoarSeq) {
+      audioManager.play(AUDIO_EVENTS.blackoutMonsterRoar);
+      prevBlackoutRoarSeqRef.current = state.blackoutRoarSeq;
+    }
+  }, [state.blackoutRoarSeq]);
 
   // Falešný loading screen — po LOADING_SCREEN_DURATION_MS automaticky
   // přejde na briefing (viz components/screens/BriefingScreen.tsx), ne rovnou

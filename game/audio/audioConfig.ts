@@ -156,6 +156,59 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
       waveform: "sawtooth",
     },
   },
+  // Vzdálené/blížící se kroky v blackoutu (viz GameState.blackoutPhaseSeq,
+  // app/play/page.tsx) — mají znít jako těžká přítomnost/monstrum, ne jako
+  // normální enemyStep/enemyNear, proto nižší, těžší tón než tam. Žádný
+  // reálný soubor zatím není vybraný (viz assets/audio/downloads/freesound/
+  // footsteps/ — obě "těžké monstrum" varianty jsou schované pro budoucí
+  // "gigant" typ nepřítele, ne pro tohle), fallback zatím stačí.
+  [AUDIO_EVENTS.blackoutStepsFar]: {
+    src: "/assets/audio/blackout_steps_far.mp3",
+    volume: 0.5,
+    loop: false,
+    fallbackSynth: {
+      notes: [
+        { frequency: 90, durationMs: 90, gapMs: 260 },
+        { frequency: 85, durationMs: 90 },
+      ],
+      volume: 0.3,
+      waveform: "sine",
+    },
+  },
+  [AUDIO_EVENTS.blackoutStepsNear]: {
+    src: "/assets/audio/blackout_steps_near.mp3",
+    volume: 0.6,
+    loop: false,
+    fallbackSynth: {
+      notes: [
+        { frequency: 100, durationMs: 100, gapMs: 140 },
+        { frequency: 95, durationMs: 100, gapMs: 140 },
+        { frequency: 90, durationMs: 100 },
+      ],
+      volume: 0.38,
+      waveform: "sine",
+    },
+  },
+  // Krátký, výrazný řev těsně PŘED smrtí v blackoutu (viz
+  // BlackoutDefinition.roarLeadMs, GameState.blackoutRoarSeq) — odlišený od
+  // monsterRetreatRoar (ústup po repelu) i od jumpscare (samotná smrt, hraje
+  // až o kus později, viz efekt na screen === "death"). Reálný soubor
+  // (CC0, Freesound.org, Breviceps — viz assets/audio/downloads/freesound/README.md,
+  // vybraný krátký segment roar_08 z rozřezané 60s nahrávky) — fallback pro
+  // případ selhání načtení zůstává.
+  [AUDIO_EVENTS.blackoutMonsterRoar]: {
+    src: "/assets/audio/blackout_monster_roar.mp3",
+    volume: 0.9,
+    loop: false,
+    fallbackSynth: {
+      notes: [
+        { frequency: 140, durationMs: 260, gapMs: 30 },
+        { frequency: 80, durationMs: 320 },
+      ],
+      volume: 0.45,
+      waveform: "sawtooth",
+    },
+  },
   // Praskne žárovka v místnosti (viz game/core/roomBulbs.ts) — krátký, ostrý
   // "cvak/sklo" zvuk, žádný reálný soubor zatím neexistuje, fallback synth
   // je jen krátký vysoký "prasknutí" tón + tišší dozvuk.

@@ -668,8 +668,8 @@ ticha, časové okno poruchy, délka `restarting` penalizace) je v `NightDefinit
 ## Blackout
 
 `GameState.gameStatus: "normal" | "blackout"` + `blackoutElapsedMs: number`. Balanc
-(`durationMs`, `phaseThresholdsMs`, `canBeSurvivedIfShiftEnds`) je `NightDefinition.blackout:
-BlackoutDefinition` (`game/nights/night01.ts`).
+(`durationMs`, `phaseThresholdsMs`, `canBeSurvivedIfShiftEnds`, `roarLeadMs`) je
+`NightDefinition.blackout: BlackoutDefinition` (`game/nights/night01.ts`).
 
 - `TICK` v `gameReducer.ts` má na začátku samostatnou větev pro `gameStatus === "blackout"` —
   žádné volání `applyPowerDelta`/`updateGenerator`/`updateDoorLightRepel` (mrtvé systémy, nic
@@ -684,6 +684,12 @@ BlackoutDefinition` (`game/nights/night01.ts`).
     potřeba (BlackoutView, DebugPanel) se spočítá čistou funkcí z `blackoutElapsedMs`.
     `blackoutPhaseSeq` je čistě sekvenční čítač pro edge-detekci v UI, stejný vzor jako
     `generatorBeepSeq`/`monsterRetreatRoarSeq` — reducer sám žádné audio nevolá.
+  - Nezávisle na fázích výše se stejně porovná `blackoutElapsedMs` proti
+    `night.blackout.durationMs - night.blackout.roarLeadMs` — při prvním překročení
+    (`state.blackoutElapsedMs < roarThresholdMs && blackoutElapsedMs >= roarThresholdMs`)
+    se `blackoutRoarSeq` zvýší o 1, stejný sekvenční-čítač vzor, žádné volání audia z
+    reduceru. Nezávislé na `blackoutPhaseSeq`/`getBlackoutPhaseIndex` — roar nemá
+    vlastní "fázi" v `BlackoutView`, je to čistě audio signál těsně před smrtí.
 - `ENEMY_ADVANCE` je v blackoutu no-op (`isRunning` zůstává `true`, ale `gameStatus ===
   "blackout"` guard vrátí `state` beze změny) — pozice nepřítele zamrzne, hrozbu dál
   representuje jen `blackoutElapsedMs` odpočet, ne další simulace trasy.
@@ -703,15 +709,18 @@ BlackoutDefinition` (`game/nights/night01.ts`).
   pípat sám od sebe (jeho `TICK` větev se v blackoutu nevolá). Samostatný `useEffect` sleduje
   `blackoutPhaseSeq` (stejný `useRef`-diffing vzor) a podle aktuální fáze
   (`getBlackoutPhaseIndex(state.blackoutElapsedMs, night.blackout)`, přepočítané v efektu, ne
-  jako závislost) přehraje `enemyStep` (fáze 1) nebo `enemyNear` (fáze 2); fáze 3 (těsně před
-  koncem) místo dalšího zvuku zavolá `audioManager.fadeOutLoop(ambienceLoop,
-  BLACKOUT_FINAL_AMBIENCE_FADE_MS)` — ambient plynule doztichne úplně, žádný nový
-  `blackout_door_hit`-like event (ten byl kvůli tomu z `AUDIO_EVENTS`/`audioConfig.ts`/
-  `soundRegistry.ts` odstraněný, byl by nepoužitý) — viz AUDIO_DESIGN.md "Blackout". Konečný
-  `jumpscare` řeší už existující efekt na `screen === "death"`, nic navíc se pro konec
-  blackoutu nepřidává.
+  jako závislost) přehraje `blackoutStepsFar` (fáze 1) nebo `blackoutStepsNear` (fáze 2) —
+  VLASTNÍ eventy, ne znovupoužité `enemyStep`/`enemyNear`; fáze 3 (těsně před koncem) místo
+  dalšího zvuku zavolá `audioManager.fadeOutLoop(ambienceLoop, BLACKOUT_FINAL_AMBIENCE_FADE_MS)`
+  — ambient plynule doztichne úplně. Další, nezávislý `useEffect` sleduje `blackoutRoarSeq`
+  (stejný `useRef`-diffing vzor, žádný vlastní `setTimeout` — časování řídí `TICK`) a při
+  změně přehraje `blackoutMonsterRoar`, krátce před finálním `screen === "death"`. Konečný
+  `jumpscare` řeší už existující efekt na `screen === "death"`, beze změny.
+  Dominantní heartbeat v blackoutu není nový kód — `power` se nastaví na `0` v okamžiku
+  vstupu do blackoutu a zůstává tam po celou dobu, takže `computeLowPowerStressBonus`
+  (viz "Stres a heartbeat" v AUDIO_DESIGN.md) od prvního tiku dál vždy vrací maximum.
 - `DebugPanel.tsx` k `gameStatus`/`blackoutElapsedMs` navíc zobrazuje aktuální fázi
-  (`getBlackoutPhaseIndex`) a `blackoutPhaseSeq`.
+  (`getBlackoutPhaseIndex`), `blackoutPhaseSeq` a `blackoutRoarSeq`.
 
 ## LoadingScreen
 

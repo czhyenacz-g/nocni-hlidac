@@ -671,6 +671,17 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           const nextPhase = getBlackoutPhaseIndex(blackoutElapsedMs, night.blackout);
           const blackoutPhaseSeq = nextPhase !== prevPhase ? state.blackoutPhaseSeq + 1 : state.blackoutPhaseSeq;
 
+          // Roar krátce PŘED smrtí (viz BlackoutDefinition.roarLeadMs,
+          // GameState.blackoutRoarSeq) — hranice je nezávislá na
+          // phaseThresholdsMs/fázovém textu výše, jen na durationMs. Zvyšuje
+          // se přesně jednou, v tiku, kdy se blackoutElapsedMs poprvé
+          // dostane přes tuhle hranici.
+          const roarThresholdMs = night.blackout.durationMs - night.blackout.roarLeadMs;
+          const blackoutRoarSeq =
+            state.blackoutElapsedMs < roarThresholdMs && blackoutElapsedMs >= roarThresholdMs
+              ? state.blackoutRoarSeq + 1
+              : state.blackoutRoarSeq;
+
           if (night.blackout.canBeSurvivedIfShiftEnds && remainingMs <= 0) {
             return {
               ...state,
@@ -678,6 +689,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
               remainingMs: 0,
               blackoutElapsedMs,
               blackoutPhaseSeq,
+              blackoutRoarSeq,
               isRunning: false,
               screen: "win",
             };
@@ -690,13 +702,14 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
               remainingMs,
               blackoutElapsedMs,
               blackoutPhaseSeq,
+              blackoutRoarSeq,
               isRunning: false,
               screen: "death",
               deathReason: "blackout_timeout",
             };
           }
 
-          return { ...state, elapsedMs, remainingMs, blackoutElapsedMs, blackoutPhaseSeq };
+          return { ...state, elapsedMs, remainingMs, blackoutElapsedMs, blackoutPhaseSeq, blackoutRoarSeq };
         }
 
         const generatorUpdate = updateGenerator(state, night, elapsedMs);

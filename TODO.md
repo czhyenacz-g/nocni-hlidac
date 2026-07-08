@@ -59,6 +59,12 @@
       audio fáze blackoutu (`blackoutPhaseSeq` v reduceru, `enemy_step`/`enemy_near`/
       `blackout_door_hit` v `app/play/page.tsx`, jumpscare na konci), `BlackoutView` texty
       sladěné se skutečně přehrávaným audiem, `DebugPanel` ukazuje fázi
+- [x] Blackout scare sequence — vlastní `blackout_steps_far`/`blackout_steps_near` eventy
+      místo znovupoužitých `enemy_step`/`enemy_near`, nový `blackout_monster_roar`
+      (`GameState.blackoutRoarSeq`, `night.blackout.roarLeadMs`) krátce před smrtí, reálný
+      asset `blackout_monster_roar.mp3` (vybraný `roar_08` segment z `/dev-sound`). Dominantní
+      heartbeat/ducknutý ambient v blackoutu se ukázaly být už hotové (`computeLowPowerStressBonus`
+      + `power: 0`), žádný nový kód nebyl potřeba
 - [x] Kamerový panel overview/detail (`cameraViewMode`) místo čtyř tlačítek —
       `CameraMonitorGrid`/`CameraMonitorTile` (2×2 mřížka, jen štítek + šum, žádný živý
       obraz) a `CameraDetailView` (zvětšená kamera + "Zpět na přehled"), `CameraPanel` jen

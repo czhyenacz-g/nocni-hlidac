@@ -51,8 +51,21 @@ Definováno v `game/audio/audioEvents.ts` a nakonfigurováno v `game/audio/audio
 - `blackout_howl` — vzdálené zavytí jednou na začátku blackoutu (viz "Blackout" v
   `GAME_DESIGN.md`); normální pípání generátoru se v blackoutu samo zastaví (jeho `TICK`
   větev se nevolá), žádný speciální "vypni zvuk" krok není potřeba
-- Poslední atmosférická fáze blackoutu (těsně před koncem) nemá vlastní zvukový event —
-  místo dalšího efektu ambient plynule doztichne úplně (viz "Blackout" níže)
+- `blackout_steps_far` / `blackout_steps_near` — vzdálené/blížící se kroky v blackoutu
+  (fáze 1/2, viz `GameState.blackoutPhaseSeq`), záměrně VLASTNÍ eventy, ne znovupoužité
+  `enemy_step`/`enemy_near` normálního provozu — v blackoutu má "něco" znít jako těžká
+  přítomnost, ne jako běžné přiblížení. Reálný soubor zatím není vybraný (obě "těžké
+  monstrum" varianty ve `assets/audio/downloads/freesound/footsteps/` jsou schované pro
+  budoucí "gigant" typ nepřítele, ne pro tohle) — zatím jen syntetizovaný fallback.
+- `blackout_monster_roar` — krátký, výrazný řev těsně PŘED smrtí (`night.blackout.roarLeadMs`
+  ms před `durationMs`, viz `GameState.blackoutRoarSeq`), odlišený od `monster_retreat_roar`
+  (ústup) i od finálního `jumpscare` (hraje až o kus později, na `screen === "death"`).
+  Reálný soubor (`blackout_monster_roar.mp3`, CC0, Breviceps/Freesound.org — konkrétně
+  `roar_08.mp3` z rozřezané 60s nahrávky, viz `assets/audio/downloads/freesound/README.md`)
+  už existuje, syntetizovaný fallback zůstává pro případ selhání načtení.
+- Poslední atmosférická fáze blackoutu (těsně před koncem) nemá vlastní krokový zvuk —
+  místo dalšího efektu ambient plynule doztichne úplně (viz "Blackout" níže); roar výše
+  hraje nezávisle na týhle fázi, podle vlastní `roarLeadMs` hranice
 
 ## Ambientní zvuková vrstva
 
@@ -186,25 +199,35 @@ nemožné, aby se řev spustil vícekrát za tik nebo z jiného místa v kódu.
 Blackout není jen ticho s odpočtem — má vlastní zvukovou sekvenci, ať je smrt na konci
 čitelná jako `blackout_timeout`, ne jako nejasný útok:
 
-0. **Start** (`gameStatus` hrana `"normal" → "blackout"`) — `blackout_howl`.
-1. **Fáze 1** (`blackoutElapsedMs` překročí první práh `phaseThresholdsMs[0]`) — `enemy_step`
-   (vzdálený krok), stejný zvuk jako běžný pohyb nepřítele mimo blackout.
-2. **Fáze 2** (druhý práh) — `enemy_near` (kroky se zrychlují/blíží).
-3. **Fáze 3** (třetí práh, těsně před koncem) — žádný nový zvuk. Místo dalšího efektu
-   (dřív `blackout_door_hit`) se `ambience_loop` plynule ztiší úplně
+0. **Start** (`gameStatus` hrana `"normal" → "blackout"`) — `blackout_howl`. Zároveň se
+   `power` nastaví na 0, takže `computeLowPowerStressBonus` (viz "Stres a heartbeat" výše)
+   od tohohle tiku dál vždycky vrací maximum — heartbeat je dominantní hned od startu
+   blackoutu, beze změny v tomhle souboru.
+1. **Fáze 1** (`blackoutElapsedMs` překročí první práh `phaseThresholdsMs[0]`) —
+   `blackout_steps_far` (vzdálený, těžký krok) — VLASTNÍ event, ne `enemy_step` běžného
+   provozu (viz "Zvukové eventy" výše).
+2. **Fáze 2** (druhý práh) — `blackout_steps_near` (kroky se zrychlují/blíží).
+3. **Fáze 3** (třetí práh, těsně před koncem) — žádný nový krokový zvuk. Místo dalšího
+   efektu se `ambience_loop` plynule ztiší úplně
    (`audioManager.fadeOutLoop(ambienceLoop, BLACKOUT_FINAL_AMBIENCE_FADE_MS)`,
-   `game/balancing/constants.ts`) — hráč čeká na smrt potichu, ne s dalším "leknutím" navíc.
-4. **Konec** (`blackoutElapsedMs >= durationMs`, `screen` přejde na `"death"`) — `jumpscare`,
-   stejný efekt jako u každé jiné smrti, žádný speciální blackout kód navíc. Ambient je v tu
-   chvíli už tichý z fáze 3, takže se death-sekvenční fade (viz "Ticho před lekačkou" výše)
-   nemá co dál ztlumit.
+   `game/balancing/constants.ts`) — hráč čeká ve tichu (s dominantním heartbeatem, ne s
+   ambientem).
+4. **Roar** (`blackoutElapsedMs` překročí `durationMs - night.blackout.roarLeadMs`,
+   nezávislá hranice na fázích 0–3 výše, vlastní `blackoutRoarSeq`) — `blackout_monster_roar`,
+   krátký výrazný řev, POSLEDNÍ varování těsně před smrtí.
+5. **Konec** (`blackoutElapsedMs >= durationMs`, `screen` přejde na `"death"`) — pokračuje
+   existující obecná smrtová sekvence (fade ambience + ticho + `jumpscare`, viz "Ticho před
+   lekačkou" výše) beze změny — žádný speciální blackout kód navíc. Ambient je v tu chvíli
+   už tichý z fáze 3, takže se death-sekvenční fade nemá co dál ztlumit.
 
 Mechanismus je stejný sekvenční-čítač vzor jako `generatorBeepSeq`/`monsterRetreatRoarSeq`:
 `gameReducer.ts` v `TICK` větvi pro `gameStatus === "blackout"` porovná
 `getBlackoutPhaseIndex` (`game/visuals/blackoutPhase.ts`) pro starou a novou hodnotu
 `blackoutElapsedMs` a při posunu fáze zvýší `blackoutPhaseSeq` o 1 — žádné volání audia z
-reduceru. `app/play/page.tsx` sleduje `blackoutPhaseSeq` přes `useRef` a při změně přehraje
-zvuk odpovídající aktuální fázi (`getBlackoutPhaseIndex` přepočítané v efektu).
+reduceru. Nezávisle na tom stejná `TICK` větev porovná `blackoutElapsedMs` s
+`durationMs - roarLeadMs` a při prvním překročení zvýší `blackoutRoarSeq` o 1. `app/play/page.tsx`
+sleduje oba čítače přes `useRef` a při změně přehraje odpovídající zvuk — žádný vlastní
+`setTimeout`, celé časování řídí reálný herní tik (`TICK`), ne React efekt.
 
 `BlackoutView.tsx` texty (`content/copy.ts` `COPY.blackout.phaseTexts`) jsou navržené tak, aby
 odpovídaly těmto skutečně přehrávaným zvukům — žádný text neslibuje krok/dech, který by se

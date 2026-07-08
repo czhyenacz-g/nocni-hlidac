@@ -149,6 +149,27 @@ export const SOUND_REGISTRY: Record<AudioEventId, SoundRegistryEntry> = {
     guess: "Vzdálené zavytí.",
     usedIn: 'app/play/page.tsx — efekt na přechod state.gameStatus "normal" -> "blackout".',
   },
+  [AUDIO_EVENTS.blackoutStepsFar]: {
+    id: AUDIO_EVENTS.blackoutStepsFar,
+    label: "Blackout — kroky (vzdálené)",
+    description: "Blackout fáze 1 (viz game/visuals/blackoutPhase.ts).",
+    guess: "Tichý, vzdálený, těžký krok — něco je v budově.",
+    usedIn: "app/play/page.tsx — efekt na state.blackoutPhaseSeq (fáze 1).",
+  },
+  [AUDIO_EVENTS.blackoutStepsNear]: {
+    id: AUDIO_EVENTS.blackoutStepsNear,
+    label: "Blackout — kroky (blízké)",
+    description: "Blackout fáze 2 (viz game/visuals/blackoutPhase.ts).",
+    guess: "Hlasitější, bližší, těžký krok.",
+    usedIn: "app/play/page.tsx — efekt na state.blackoutPhaseSeq (fáze 2).",
+  },
+  [AUDIO_EVENTS.blackoutMonsterRoar]: {
+    id: AUDIO_EVENTS.blackoutMonsterRoar,
+    label: "Blackout — řev (těsně před smrtí)",
+    description: "Blackout, roarLeadMs před koncem (viz GameState.blackoutRoarSeq).",
+    guess: "Krátký, výrazný řev, ne ještě jumpscare.",
+    usedIn: "app/play/page.tsx — efekt na state.blackoutRoarSeq.",
+  },
   [AUDIO_EVENTS.bulbBreak]: {
     id: AUDIO_EVENTS.bulbBreak,
     label: "Bulb break",

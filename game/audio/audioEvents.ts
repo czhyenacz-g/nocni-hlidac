@@ -23,6 +23,15 @@ export const AUDIO_EVENTS = {
   // hraje krátce po monsterRetreatRoar, ne samostatně spouštěné.
   monsterRetreatSteps: "monster_retreat_steps",
   blackoutHowl: "blackout_howl",
+  // Blackout scare sequence (viz GameState.blackoutPhaseSeq/blackoutRoarSeq,
+  // gameReducer.ts TICK "gameStatus === blackout") — vzdálené/blížící se
+  // kroky v místnosti bez proudu mají znít jako těžká přítomnost, ne jako
+  // normální enemyStep/enemyNear za denního provozu, proto vlastní eventy.
+  blackoutStepsFar: "blackout_steps_far",
+  blackoutStepsNear: "blackout_steps_near",
+  // Krátce PŘED finálním jumpscare/smrtí (viz BlackoutDefinition.roarLeadMs) —
+  // odlišené od monsterRetreatRoar (ústup) i jumpscare (samotná smrt).
+  blackoutMonsterRoar: "blackout_monster_roar",
   bulbBreak: "bulb_break",
   bulbReplaceSuccess: "bulb_replace_success",
 } as const;
