@@ -114,6 +114,38 @@ export default function DevSoundPage() {
           </tbody>
         </table>
       </div>
+
+      <h2 className="text-lg font-bold text-green-400 mt-8 mb-1">Kandidáti — bušení na dveře / řev monstra / kroky (Freesound)</h2>
+      <p className="text-xs text-gray-500 mb-4">
+        Zatím nikam nezapojené kandidáti pro budoucí zvukové eventy (bušení na dveře, řev
+        monstra, kroky při přiblížení) — viz{" "}
+        <code className="text-gray-400">assets/audio/downloads/freesound/</code> pro originální
+        soubory a licence. Přehrávač níže je jen dev náhled, ne herní audio systém.
+      </p>
+      <div className="overflow-x-auto pixel-panel">
+        <table className="w-full border-collapse text-xs">
+          <thead>
+            <tr className="text-left text-gray-400 border-b border-gray-700">
+              <th className="p-2">Varianta</th>
+              <th className="p-2">Zdroj</th>
+              <th className="p-2">Licence</th>
+              <th className="p-2">Přehrát</th>
+            </tr>
+          </thead>
+          <tbody>
+            {NEW_MONSTER_SOUND_CANDIDATES.map((candidate) => (
+              <tr key={candidate.file} className="border-b border-gray-800 align-top">
+                <td className="p-2 text-amber-400 whitespace-nowrap">{candidate.label}</td>
+                <td className="p-2 text-gray-500">{candidate.source}</td>
+                <td className="p-2 text-gray-500 whitespace-nowrap">{candidate.license}</td>
+                <td className="p-2">
+                  <audio controls src={`/dev-sound-candidates/${candidate.file}`} className="h-8" />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </main>
   );
 }
@@ -143,5 +175,32 @@ const HEARTBEAT_CANDIDATES = [
     file: "heartbeat_single.mp3",
     label: "Single beat",
     source: "opengameart.org/content/heartbeat-single-sound",
+  },
+];
+
+const NEW_MONSTER_SOUND_CANDIDATES = [
+  {
+    file: "door_pound/door_knocking_angry.mp3",
+    label: "Bušení na dveře",
+    source: "freesound.org/people/Macif/sounds/194365/",
+    license: "CC0",
+  },
+  {
+    file: "monster_roar/dragon_roars_growls_snarls.mp3",
+    label: "Řev monstra (60 s, víc variant)",
+    source: "freesound.org/people/Breviceps/sounds/479380/",
+    license: "CC0",
+  },
+  {
+    file: "footsteps/monster_stomp_footsteps_sequence.mp3",
+    label: "Kroky — stomp sekvence",
+    source: "freesound.org/people/Vilkas_Sound/sounds/753178/",
+    license: "CC BY 4.0",
+  },
+  {
+    file: "footsteps/monster_footsteps_gravel.mp3",
+    label: "Kroky — štěrk (22 s, opakující se)",
+    source: "freesound.org/people/AudioPapkin/sounds/712066/",
+    license: "CC0",
   },
 ];
