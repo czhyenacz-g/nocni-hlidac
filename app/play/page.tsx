@@ -51,6 +51,7 @@ import { COPY } from "@/content/copy";
 import type { AuthenticatedPlayer } from "@/lib/auth/types";
 import type { GuardRunState } from "@/lib/leaderboard/types";
 import type { GuardRunResponse } from "@/lib/leaderboard/guardRunRequestHandlers";
+import { DEFAULT_GAME_MODE, GameMode } from "@/game/core/gameMode";
 
 const night = NIGHT_01;
 const gameReducer = createGameReducer(night);
@@ -169,6 +170,9 @@ export default function PlayPage() {
   // před START_SHIFT i před RESTART_SHIFT — tenhle ref si pamatuje, kterou
   // z těch dvou akcí má "Nastoupit na směnu" po skončení briefingu spustit.
   const pendingShiftKindRef = useRef<"start" | "restart">("start");
+  // Režim zvolený na MainMenuScreen (viz game/core/gameMode.ts) — zatím jen
+  // uložený pro budoucí krok, žádná herní logika ho ještě nečte.
+  const selectedGameModeRef = useRef<GameMode>(DEFAULT_GAME_MODE);
   // Cinematic scéna při smrti v Noci 1 (viz content/cinematics.ts,
   // components/screens/CinematicScreen.tsx) — `cinematicPending` je krátká
   // tichá pauza PŘED zobrazením scény (CINEMATIC_PRE_DELAY_MS), `activeCinematicSceneId`
@@ -528,7 +532,10 @@ export default function PlayPage() {
     return () => clearTimeout(timeout);
   }, [state.screen]);
 
-  function handleStart() {
+  function handleStart(gameMode: GameMode) {
+    // gameMode zatím jen uložený pro budoucí krok (life count/death flow/
+    // leaderboard zápis se podle něj ještě neliší, viz game/core/gameMode.ts).
+    selectedGameModeRef.current = gameMode;
     audioManager.init();
     audioManager.play(AUDIO_EVENTS.uiClick);
     dispatch({ type: "START_LOADING" });

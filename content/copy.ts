@@ -6,8 +6,24 @@ export const COPY = {
     intro: "Sedíš v malé místnosti. Kamery šumí. Dveře nevydrží věčně. Přežij do rána.",
     startButton: "Nastoupit na směnu",
     termsLinkLabel: "Podmínky noční služby",
-    leaderboardLinkLabel: "Žebříček hlídačů",
+    // Přejmenováno ze "Žebříček hlídačů" na žádost — route/link (/leaderboard)
+    // zůstává beze změny, mění se jen viditelný text.
+    leaderboardLinkLabel: "Síň slávy hlídačů",
     authorEmail: "hynek@darbujan.com",
+  },
+  // Výběr herního režimu na úvodní obrazovce (viz MainMenuScreen.tsx,
+  // game/core/gameMode.ts) — zatím jen UI/tooltip texty, žádná death/
+  // leaderboard logika se tímhle nemění (viz TODO.md).
+  gameMode: {
+    normalLabel: "NORMAL",
+    hardcoreLabel: "HARDCORE",
+    normalTooltip: "Normal: 3 životy. Nezapisuje se do Síně slávy.",
+    hardcoreTooltip: "Hardcore: 1 život. Smrt znamená návrat na noc 1. Zapisuje se do Síně slávy. Vyžaduje Discord.",
+    // Zobrazí se při kliknutí na HARDCORE bez Discord přihlášení (viz
+    // MainMenuScreen.tsx#handleSelectHardcore) — hráč zůstává v Normal,
+    // dokud se nepřihlásí.
+    hardcoreLoginPromptText: "Hardcore režim se zapisuje do Síně slávy, proto vyžaduje přihlášení přes Discord.",
+    hardcoreLoginPromptStayNormalLabel: "Zůstat v Normal",
   },
   // Nenápadný login box v hlavním menu (viz components/auth/AuthStatus.tsx,
   // lib/auth/session.ts) — základ identity hráče pro budoucí žebříček, hra
