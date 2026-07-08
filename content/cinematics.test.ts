@@ -38,9 +38,18 @@ describe("cinematics config", () => {
     expect(scene?.segments.every((segment) => Boolean(segment.responseLabel))).toBe(true);
   });
 
-  it("no segment has an audioSrc yet", () => {
+  it("every segment has an audioSrc pointing into public/object_13/story/segments/", () => {
     const scene = getCinematicScene("old_guard_first_death_warning");
-    expect(scene?.segments.every((segment) => segment.audioSrc === undefined)).toBe(true);
+    expect(scene?.segments.every((segment) => segment.audioSrc?.startsWith("/object_13/story/segments/story_1_"))).toBe(
+      true,
+    );
+  });
+
+  it("each segment's audioSrc filename matches its id", () => {
+    const scene = getCinematicScene("old_guard_first_death_warning");
+    expect(scene?.segments.every((segment) => segment.audioSrc === `/object_13/story/segments/story_1_${segment.id}.m4a`)).toBe(
+      true,
+    );
   });
 
   it("getCinematicScene returns the exact same data as CINEMATIC_SCENES", () => {
