@@ -187,9 +187,29 @@ const NEW_MONSTER_SOUND_CANDIDATES = [
     source: "freesound.org/people/Macif/sounds/194365/",
     license: "CC0",
   },
+  // Původní 60s nahrávka rozřezaná (ffmpeg silencedetect) na 12 samostatných
+  // řevů/zavrčení, ať jde každý poslechnout/vybrat zvlášť, ne jen jako jeden
+  // dlouhý soubor s víc variantami za sebou. Zdroj/licence stejné jako celek.
+  { file: "monster_roar/roar_01.mp3", label: "Řev monstra #1", source: "freesound.org/people/Breviceps/sounds/479380/", license: "CC0" },
+  { file: "monster_roar/roar_02.mp3", label: "Řev monstra #2", source: "freesound.org/people/Breviceps/sounds/479380/", license: "CC0" },
+  { file: "monster_roar/roar_03.mp3", label: "Řev monstra #3", source: "freesound.org/people/Breviceps/sounds/479380/", license: "CC0" },
+  { file: "monster_roar/roar_04.mp3", label: "Řev monstra #4", source: "freesound.org/people/Breviceps/sounds/479380/", license: "CC0" },
+  { file: "monster_roar/roar_05.mp3", label: "Řev monstra #5", source: "freesound.org/people/Breviceps/sounds/479380/", license: "CC0" },
+  { file: "monster_roar/roar_06.mp3", label: "Řev monstra #6", source: "freesound.org/people/Breviceps/sounds/479380/", license: "CC0" },
+  { file: "monster_roar/roar_07.mp3", label: "Řev monstra #7", source: "freesound.org/people/Breviceps/sounds/479380/", license: "CC0" },
+  { file: "monster_roar/roar_08.mp3", label: "Řev monstra #8", source: "freesound.org/people/Breviceps/sounds/479380/", license: "CC0" },
+  { file: "monster_roar/roar_09.mp3", label: "Řev monstra #9", source: "freesound.org/people/Breviceps/sounds/479380/", license: "CC0" },
+  {
+    file: "monster_roar/roar_10.mp3",
+    label: "Řev monstra #10 (delší, 10 s)",
+    source: "freesound.org/people/Breviceps/sounds/479380/",
+    license: "CC0",
+  },
+  { file: "monster_roar/roar_11.mp3", label: "Řev monstra #11", source: "freesound.org/people/Breviceps/sounds/479380/", license: "CC0" },
+  { file: "monster_roar/roar_12.mp3", label: "Řev monstra #12", source: "freesound.org/people/Breviceps/sounds/479380/", license: "CC0" },
   {
     file: "monster_roar/dragon_roars_growls_snarls.mp3",
-    label: "Řev monstra (60 s, víc variant)",
+    label: "Řev monstra — celá nahrávka (60 s, referenční)",
     source: "freesound.org/people/Breviceps/sounds/479380/",
     license: "CC0",
   },
@@ -210,5 +230,19 @@ const NEW_MONSTER_SOUND_CANDIDATES = [
     source: "freesound.org/people/AudioPapkin/sounds/712066/",
     license: "CC0",
     note: "Těžké monstrum — použít až pro budoucí typ nepřítele „gigant“.",
+  },
+  // Lidské kroky (ne monstrum, ne gigant) — kandidáti pro současného nepřítele.
+  {
+    file: "footsteps_human/footsteps_concrete_inspectorj.mp3",
+    label: "Kroky — člověk, beton (40 s)",
+    source: "freesound.org/people/InspectorJ/sounds/336598/",
+    license: "CC BY 4.0",
+    note: "Vyžaduje atribuci v CREDITS.md, pokud se použije. Tvrdší podpatek na betonu.",
+  },
+  {
+    file: "footsteps_human/footsteps_stone_securesubset.mp3",
+    label: "Kroky — člověk, kámen (7 s)",
+    source: "freesound.org/people/SecureSubset/sounds/813622/",
+    license: "CC0",
   },
 ];
