@@ -17,6 +17,7 @@ import { computeStressTimeScale } from "./stressTimeScale";
 import { isNearRoomLightActive } from "./roomBulbs";
 import { computePowerDrainBreakdown } from "./powerDrain";
 import { canStartBatteryEmergencyRun } from "./emergencyMiniGameIntegration";
+import { resolveLivesRemainingAfterDeath } from "./gameMode";
 import {
   isDoorAttackBlockedByClosedDoor,
   isDoorAttackGraceActive,
@@ -397,7 +398,14 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
 
       case "START_SHIFT":
         return {
-          ...createInitialGameState(night, action.roomBulbs, action.bulbsRemaining, action.nightFeatures),
+          ...createInitialGameState(
+            night,
+            action.roomBulbs,
+            action.bulbsRemaining,
+            action.nightFeatures,
+            action.gameMode,
+            action.livesRemaining,
+          ),
           audioMuted: state.audioMuted,
           screen: "playing",
           isRunning: true,
@@ -405,7 +413,14 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
 
       case "RESTART_SHIFT":
         return {
-          ...createInitialGameState(night, action.roomBulbs, action.bulbsRemaining, action.nightFeatures),
+          ...createInitialGameState(
+            night,
+            action.roomBulbs,
+            action.bulbsRemaining,
+            action.nightFeatures,
+            action.gameMode,
+            action.livesRemaining,
+          ),
           audioMuted: state.audioMuted,
           screen: "playing",
           isRunning: true,
@@ -695,7 +710,14 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         // irelevantní, hra je fakticky rozhodnutá).
         if (state.doorDeathRevealUntilMs !== null) {
           if (elapsedMs >= state.doorDeathRevealUntilMs) {
-            return { ...state, elapsedMs, remainingMs, isRunning: false, screen: "death" };
+            return {
+              ...state,
+              elapsedMs,
+              remainingMs,
+              isRunning: false,
+              screen: "death",
+              livesRemaining: resolveLivesRemainingAfterDeath(state.gameMode, state.livesRemaining),
+            };
           }
           return { ...state, elapsedMs, remainingMs };
         }
@@ -749,6 +771,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
               isRunning: false,
               screen: "death",
               deathReason: "blackout_timeout",
+              livesRemaining: resolveLivesRemainingAfterDeath(state.gameMode, state.livesRemaining),
             };
           }
 
@@ -921,6 +944,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             isRunning: false,
             screen: "death",
             deathReason: "door_open_at_attack",
+            livesRemaining: resolveLivesRemainingAfterDeath(state.gameMode, state.livesRemaining),
           };
         }
 
@@ -968,7 +992,13 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         // Stejný death flow jako ostatní smrti (viz TICK blackout_timeout /
         // ENEMY_ADVANCE výše) — jen spuštěný zvenčí, ne z herní smyčky.
         if (!state.isRunning) return state;
-        return { ...state, isRunning: false, screen: "death", deathReason: "emergency_run" };
+        return {
+          ...state,
+          isRunning: false,
+          screen: "death",
+          deathReason: "emergency_run",
+          livesRemaining: resolveLivesRemainingAfterDeath(state.gameMode, state.livesRemaining),
+        };
 
       case "APPLY_OFFICE_THREAT_ON_RETURN": {
         // Stejné guardy jako ENEMY_ADVANCE — v blackoutu/doorDeathRevealu už

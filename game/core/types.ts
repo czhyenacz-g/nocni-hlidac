@@ -1,5 +1,6 @@
 // Sdílené typy pro herní stav, nezávislé na UI.
 import { NightFeatureFlags } from "../difficulty/nightConfig";
+import { GameMode } from "./gameMode";
 
 // Fyzické pozice nepřítele na trase. "outside" (mimo dohled žádné kamery) a
 // "at_door" (u dveří — stav pro DoorView, ne kamera) nejsou nutně kamerou
@@ -453,6 +454,25 @@ export interface GameState {
    * stejný "resolve při startu, čti ze state" vzor jako roomBulbs/bulbsRemaining.
    */
   nightFeatures: NightFeatureFlags;
+
+  /**
+   * Zvolený herní režim (viz game/core/gameMode.ts) — na rozdíl od většiny
+   * `GameState` polí se NErepretuje na výchozí hodnotu při restartu stejné
+   * směny: `createInitialGameState` ho přebírá jako volitelný override,
+   * stejná konvence jako `roomBulbs`/`bulbsRemaining` výše. Zvolí se jednou na
+   * MainMenuScreen a zůstává neměnný po celou dobu jednoho runu (do návratu
+   * do menu), gameReducer.ts ho jen předává dál.
+   */
+  gameMode: GameMode;
+  /**
+   * Kolik životů zbývá (viz GAME_MODE_CONFIG.startingLives) — stejná
+   * "přenáší se přes restart" konvence jako `gameMode` výše. Smrt ho sníží
+   * (viz gameReducer.ts#resolveLivesRemainingAfterDeath); `app/play/page.tsx`
+   * podle výsledné hodnoty pozná, jestli Normal run pokračuje (>0) nebo
+   * skutečně skončil (0), a při dalším RESTART_SHIFT/START_SHIFT pošle
+   * odpovídající hodnotu dál (zachovanou, nebo čerstvou při novém runu).
+   */
+  livesRemaining: number;
 
   isRunning: boolean;
   audioMuted: boolean;

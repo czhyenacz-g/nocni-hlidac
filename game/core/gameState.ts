@@ -2,6 +2,7 @@ import { EnemyStage, GameState, NightDefinition, RoomBulbsState } from "./types"
 import { createDefaultRoomBulbs } from "./roomBulbs";
 import { BULBS_CONFIG } from "./bulbsConfig";
 import { DEFAULT_NIGHT_FEATURES, NightFeatureFlags } from "../difficulty/nightConfig";
+import { DEFAULT_GAME_MODE, GAME_MODE_CONFIG, GameMode } from "./gameMode";
 
 // Vylosuje okamžik (elapsedMs) poruchy generátoru v rámci nastaveného okna —
 // mimo tento modul se nikdy nevolá Math.random() přímo, ať je losování na jednom místě.
@@ -34,7 +35,11 @@ export function createInitialGameState(
   roomBulbsOverride?: RoomBulbsState,
   bulbsRemainingOverride?: number,
   nightFeaturesOverride?: NightFeatureFlags,
+  gameModeOverride?: GameMode,
+  livesRemainingOverride?: number,
 ): GameState {
+  const gameMode = gameModeOverride ?? DEFAULT_GAME_MODE;
+
   return {
     screen: "menu",
     nightId: night.id,
@@ -96,6 +101,9 @@ export function createInitialGameState(
     emergencyRunReadySeq: 0,
 
     nightFeatures: nightFeaturesOverride ?? DEFAULT_NIGHT_FEATURES,
+
+    gameMode,
+    livesRemaining: livesRemainingOverride ?? GAME_MODE_CONFIG[gameMode].startingLives,
 
     isRunning: false,
     audioMuted: false,

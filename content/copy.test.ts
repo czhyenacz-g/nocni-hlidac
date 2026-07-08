@@ -38,3 +38,25 @@ describe("COPY.gameMode", () => {
     expect(COPY.gameMode.hardcoreLoginPromptStayNormalLabel).toBe("Zůstat v Normal");
   });
 });
+
+// Death screen copy podle gameMode/livesRemaining (viz DeathScreen.tsx,
+// game/core/gameMode.ts) — Normal se zbývajícím životem pokračuje,
+// cokoliv jiné run definitivně ukončí.
+describe("COPY.death mode-specific copy", () => {
+  it("normal-continue copy mentions the remaining lives placeholder", () => {
+    expect(COPY.death.normalContinueLivesLabel).toContain("{lives}");
+    expect(COPY.death.normalContinueNightLabel).toContain("{night}");
+    expect(COPY.death.normalContinueButton).toBe("POKRAČOVAT");
+  });
+
+  it("normal-game-over copy mentions lives running out and the Síň slávy exclusion", () => {
+    expect(COPY.death.normalGameOverLabel).toContain("Životy došly");
+    expect(COPY.death.normalGameOverButton).toBe("NOVÁ HRA");
+    expect(COPY.death.normalLeaderboardNote).toContain("Síně slávy");
+  });
+
+  it("hardcore-game-over copy mentions the return to night 1", () => {
+    expect(COPY.death.hardcoreGameOverLabel).toContain("noc 1");
+    expect(COPY.death.hardcoreGameOverButton).toBe("NOVÁ HRA");
+  });
+});

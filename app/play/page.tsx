@@ -51,7 +51,7 @@ import { COPY } from "@/content/copy";
 import type { AuthenticatedPlayer } from "@/lib/auth/types";
 import type { GuardRunState } from "@/lib/leaderboard/types";
 import type { GuardRunResponse } from "@/lib/leaderboard/guardRunRequestHandlers";
-import { DEFAULT_GAME_MODE, GameMode } from "@/game/core/gameMode";
+import { DEFAULT_GAME_MODE, GAME_MODE_CONFIG, GameMode, resolveGameMode } from "@/game/core/gameMode";
 
 const night = NIGHT_01;
 const gameReducer = createGameReducer(night);
@@ -79,12 +79,27 @@ export default function PlayPage() {
   // směny, ať zavření prohlížeče uprostřed noci currentRun nezmění (viz
   // handleBeginShift níže — ten jen ČTE, nikdy nezapisuje serverRunState).
   const [serverRunState, setServerRunState] = useState<GuardRunState | null>(null);
+  // Jestli je hráč přihlášený přes Discord (viz /api/auth/me efekt níže) —
+  // jediný zdroj pravdy pro handleStart#hardcore safety fallback (viz zadání
+  // "i start handler by měl být bezpečný"), ať se nemusí volat druhý
+  // (duplicitní) /api/auth/me fetch jen pro tenhle jeden check.
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // Režim zvolený na MainMenuScreen (viz game/core/gameMode.ts) — čte se v
+  // handleBeginShift (START_SHIFT gameMode/livesRemaining) i v `currentNight`
+  // níže. Deklarováno tady (ne u ostatních refů, viz pendingShiftKindRef níže)
+  // jen proto, že `currentNight` na něj musí odkazovat hned za deklarací.
+  const selectedGameModeRef = useRef<GameMode>(DEFAULT_GAME_MODE);
   // Jediný zdroj "kolikátá noc" — používá ho HUD (ShiftTimer přes nightNumber
   // prop níže), night scaling (game/difficulty/nightScaling.ts) i briefing
-  // (getNightConfig). Serverový currentRun má přednost, jakmile je k
-  // dispozici — lokální survivedNights je jen fallback (anonymní hráč, nebo
-  // než se server stav stihne načíst).
-  const currentNight = serverRunState ? serverRunState.currentRun + 1 : survivedNights + 1;
+  // (getNightConfig). Serverový currentRun má přednost, ale JEN pro Hardcore
+  // (viz zadání "Normal progress může být dočasně lokální, server currentRun
+  // zůstává jen Hardcore") — Normal vždy počítá z lokálního survivedNights, i
+  // když je hráč přihlášený a serverRunState je k dispozici z dřívějšího
+  // Hardcore runu ve stejné session. `selectedGameModeRef` (ne `state.gameMode`)
+  // je tu záměrně — musí platit i v krátkém okně menu -> loading -> briefing,
+  // PŘED tím, než START_SHIFT skutečně zapíše gameMode do GameState.
+  const currentNight =
+    selectedGameModeRef.current === "hardcore" && serverRunState ? serverRunState.currentRun + 1 : survivedNights + 1;
   // Aktivní nouzová minihra (viz components/minigame/EmergencyMiniGame.tsx,
   // handleStartEmergencyRun/handleEmergencyMiniGameComplete níže) — sourozenec
   // GameState, ne jeho pole (stejný vzor jako cinematicPending níže): dokud je
@@ -106,6 +121,7 @@ export default function PlayPage() {
       .then((res) => res.json())
       .then((data: { player: AuthenticatedPlayer | null }) => {
         if (cancelled || !data.player) return;
+        setIsAuthenticated(true);
         if (data.player.currentRun !== null && data.player.bestRun !== null) {
           setServerRunState({ currentRun: data.player.currentRun, bestRun: data.player.bestRun });
         }
@@ -170,9 +186,13 @@ export default function PlayPage() {
   // před START_SHIFT i před RESTART_SHIFT — tenhle ref si pamatuje, kterou
   // z těch dvou akcí má "Nastoupit na směnu" po skončení briefingu spustit.
   const pendingShiftKindRef = useRef<"start" | "restart">("start");
-  // Režim zvolený na MainMenuScreen (viz game/core/gameMode.ts) — zatím jen
-  // uložený pro budoucí krok, žádná herní logika ho ještě nečte.
-  const selectedGameModeRef = useRef<GameMode>(DEFAULT_GAME_MODE);
+  // První smrt v Noci 1 NENÍ smrt (viz isFirstNightNearMiss níže) — reducer to
+  // ale neví a livesRemaining sníží stejně jako u každé jiné smrti (stejná
+  // "screen/deathReason se mění unconditionally, jen bookkeeping v page.tsx
+  // rozhoduje, co se počítá" konvence jako survivedNights/API volání níže).
+  // Tenhle ref řekne handleBeginShift, aby ten jeden život vrátil zpátky, ať
+  // scriptovaný "near miss" hráče nikdy nestojí život.
+  const restoreNearMissLifeRef = useRef(false);
   // Cinematic scéna při smrti v Noci 1 (viz content/cinematics.ts,
   // components/screens/CinematicScreen.tsx) — `cinematicPending` je krátká
   // tichá pauza PŘED zobrazením scény (CINEMATIC_PRE_DELAY_MS), `activeCinematicSceneId`
@@ -250,6 +270,11 @@ export default function PlayPage() {
         // a hlavně žádné volání /api/player/death — server currentRun se
         // pro tuhle událost vůbec nesmí dotknout (viz zadání).
         markFirstNightTechnicianWarningUsed();
+        // Reducer už livesRemaining snížil (viz gameReducer.ts
+        // resolveLivesRemainingAfterDeath, volá se unconditionally u každé
+        // smrti) — tenhle náhodný technikův zásah ale život stát nesmí, viz
+        // zadání/komentář u restoreNearMissLifeRef výše.
+        restoreNearMissLifeRef.current = true;
         // Čistě vizuální achievement toast (viz content/achievements.ts,
         // game/core/achievementStorage.ts) — unlockAchievement vrací `true`
         // jen při skutečně PRVNÍM odemčení (vlastní localStorage seznam,
@@ -267,29 +292,52 @@ export default function PlayPage() {
         // Tenhle efekt už díky prevScreenRef diffingu (viz podmínka nahoře)
         // firuje jen jednou za skutečný přechod, ne při každém rerenderu.
         setDeathCount(incrementDeathCount());
-        // Aktuální hlídač skončil — survival streak jde na 0 (viz
-        // game/core/survivedNights.ts), death counter nahoře tím není dotčený.
-        setSurvivedNights(resetSurvivedNights());
         // Žárovka je vlastnost OBJEKTU, ne hlídače — smrt ji jen uloží tak, jak
         // byla (žádný denní servis, ten běží jen po přežité směně, viz "win"
         // níže), ať další hlídač pokračuje přesně odtud, kde předchozí skončil.
+        // Beze změny podle gameMode — bulby patří objektu, ne konkrétnímu runu.
         setRoomBulbs(state.roomBulbs);
         // Náhradní žárovky patří do campaignu stejně jako roomBulbs — pokud
         // hráč spotřeboval kus dřív v týhle směně (dokončená ruční výměna),
         // musí to přežít i smrt z jiného důvodu, ne se ztratit.
         setBulbsRemaining(state.bulbsRemaining);
-        // Best-effort online stav (viz TECH_DESIGN.md "VPS API specifikace") —
-        // server si identitu vezme ze session, ne odsud (klient nikdy neposílá
-        // discordUserId). Nepřihlášený hráč dostane 401, nedostupné VPS API
-        // 202 — v obou případech hra pokračuje beze změny, jen zaloguje warning
-        // (viz applyGuardRunResponse), ať je z Vercel logu jasné, že server
-        // currentRun se pro tenhle běh nemusel resetovat na 0.
-        fetch("/api/player/death", { method: "POST" })
-          .then((res) => res.json())
-          .then((body: GuardRunResponse["body"]) => applyGuardRunResponse(body, "death"))
-          .catch((err) => {
-            console.warn("[nocni-hlidac] death request failed — server currentRun may not have been reset to 0", err);
-          });
+
+        // Normal se zbývajícím životem "opakuje noc" — run nekončí, takže
+        // survivedNights se NErestuje a server API se vůbec nevolá (viz
+        // zadání "neresetuj currentRun", "nezapisuj leaderboard"). Cokoliv
+        // jiné (Normal bez životů, nebo Hardcore — ten vždy) je skutečný
+        // konec runu, viz gameMode.ts.
+        const isNormalContinuing = state.gameMode === "normal" && state.livesRemaining > 0;
+
+        if (!isNormalContinuing) {
+          // Aktuální hlídač skončil — survival streak jde na 0 (viz
+          // game/core/survivedNights.ts), death counter nahoře tím není dotčený.
+          setSurvivedNights(resetSurvivedNights());
+        }
+
+        if (state.gameMode === "hardcore") {
+          // Hardcore je nové jméno pro původní soutěžní chování (viz zadání)
+          // — jediný gameMode, který smí zapisovat na server. Best-effort
+          // online stav (viz TECH_DESIGN.md "VPS API specifikace") — server
+          // si identitu vezme ze session, ne odsud (klient nikdy neposílá
+          // discordUserId). Nepřihlášený hráč dostane 401, nedostupné VPS API
+          // 202 — v obou případech hra pokračuje beze změny, jen zaloguje
+          // warning (viz applyGuardRunResponse). gameMode se posílá v těle
+          // requestu jako DRUHÁ (server-side) pojistka nad rámec toho, že
+          // Normal tenhle fetch vůbec nevolá (viz app/api/player/death/route.ts).
+          fetch("/api/player/death", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ gameMode: "hardcore" }),
+          })
+            .then((res) => res.json())
+            .then((body: GuardRunResponse["body"]) => applyGuardRunResponse(body, "death"))
+            .catch((err) => {
+              console.warn("[nocni-hlidac] death request failed — server currentRun may not have been reset to 0", err);
+            });
+        }
+        // Normal (ať už pokračuje, nebo mu došly životy) na server nikdy
+        // nesahá — nesmí ovlivnit Hardcore currentRun/bestRun (viz zadání).
       }
 
       if (state.deathReason === "door_open_at_attack") {
@@ -331,17 +379,24 @@ export default function PlayPage() {
       const serviced = applyDailyBulbService(state.roomBulbs, state.bulbsRemaining);
       setRoomBulbs(serviced.roomBulbs);
       setBulbsRemaining(serviced.bulbsRemaining);
-      // Best-effort online stav — stejná pravidla jako u "death" výše
-      // (identita ze session, žádné opakované volání každou sekundu, jen
-      // jednou za skutečný přechod na "win"). Úspěch aktualizuje
-      // serverRunState, ať příští briefing ukáže SKUTEČNĚ další noc podle
-      // serveru, ne lokální counter.
-      fetch("/api/player/survive-night", { method: "POST" })
-        .then((res) => res.json())
-        .then((body: GuardRunResponse["body"]) => applyGuardRunResponse(body, "survive-night"))
-        .catch((err) => {
-          console.warn("[nocni-hlidac] survive-night request failed — server currentRun may not have advanced", err);
-        });
+      // Jen Hardcore je leaderboard eligible (viz GAME_MODE_CONFIG) — Normal
+      // přežití noci posune jen lokální survivedNights výše, nikdy nevolá
+      // server API, ať nemůže Normal run vylepšit Hardcore bestRun/currentRun
+      // (viz zadání). Stejná pravidla jako u "death" výše (identita ze
+      // session, žádné opakované volání, jen jednou za skutečný přechod na
+      // "win"); gameMode v těle requestu je server-side pojistka navíc.
+      if (state.gameMode === "hardcore") {
+        fetch("/api/player/survive-night", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ gameMode: "hardcore" }),
+        })
+          .then((res) => res.json())
+          .then((body: GuardRunResponse["body"]) => applyGuardRunResponse(body, "survive-night"))
+          .catch((err) => {
+            console.warn("[nocni-hlidac] survive-night request failed — server currentRun may not have advanced", err);
+          });
+      }
     }
     prevScreenRef.current = state.screen;
 
@@ -533,9 +588,13 @@ export default function PlayPage() {
   }, [state.screen]);
 
   function handleStart(gameMode: GameMode) {
-    // gameMode zatím jen uložený pro budoucí krok (life count/death flow/
-    // leaderboard zápis se podle něj ještě neliší, viz game/core/gameMode.ts).
-    selectedGameModeRef.current = gameMode;
+    // Bezpečnostní pojistka navíc (MainMenuScreen už Hardcore bez přihlášení
+    // blokuje/nabídne login prompt, viz zadání "i start handler by měl být
+    // bezpečný") — kdyby sem přesto nějak prošlo "hardcore" bez session,
+    // spadne na Normal, nikdy na hru s neplatným kombinovaným stavem.
+    // resolveGameMode navíc chrání proti jakékoliv jiné neplatné hodnotě.
+    const safeGameMode = resolveGameMode(gameMode === "hardcore" && !isAuthenticated ? "normal" : gameMode);
+    selectedGameModeRef.current = safeGameMode;
     audioManager.init();
     audioManager.play(AUDIO_EVENTS.uiClick);
     dispatch({ type: "START_LOADING" });
@@ -545,7 +604,16 @@ export default function PlayPage() {
   // z menu/loading) nebo RESTART_SHIFT (retry po smrti/výhře), podle toho,
   // odkud hráč na briefing přišel (viz pendingShiftKindRef). Oba dostávají
   // stejná data: persistovaný stav žárovek + čerstvě rozřešený night config
-  // pro aktuální noc (getNightConfig(currentNight).features).
+  // pro aktuální noc (getNightConfig(currentNight).features) + gameMode/
+  // livesRemaining (viz game/core/gameMode.ts).
+  //
+  // livesRemaining pravidlo: `state.livesRemaining > 0` znamená "Normal run
+  // ještě pokračuje" (životy zůstaly ze smrti, viz gameReducer.ts
+  // resolveLivesRemainingAfterDeath) — v tom případě se zachová BEZE ZMĚNY
+  // (opakuje se stejná noc). Cokoliv jiné (0 = run skutečně skončil, ať už
+  // Normal bez životů nebo Hardcore) znamená čerstvý start s plným počtem
+  // životů pro aktuálně zvolený režim. Tahle jedna podmínka pokrývá i
+  // "POKRAČOVAT" (win retry — lives nikdy neklesly, > 0 platí) i "NOVÁ HRA".
   function handleBeginShift() {
     audioManager.play(AUDIO_EVENTS.uiClick);
     // Druhá pojistka proti bugu popsanému výše (viz emergencyRunReadySeq
@@ -556,9 +624,31 @@ export default function PlayPage() {
     setActiveMiniGame(null);
     const nightFeatures = getNightConfig(currentNight).features;
     if (pendingShiftKindRef.current === "restart") {
-      dispatch({ type: "RESTART_SHIFT", roomBulbs: getRoomBulbs(), bulbsRemaining: getBulbsRemaining(), nightFeatures });
+      const gameMode = state.gameMode;
+      // restoreNearMissLifeRef: viz komentář u deklarace výše — scriptovaný
+      // "near miss" v Noci 1 nesmí stát život, i když ho reducer unconditionally
+      // odečetl. Spotřebuje se přesně jednou (další restart už je normální).
+      const rawLivesRemaining = restoreNearMissLifeRef.current ? state.livesRemaining + 1 : state.livesRemaining;
+      restoreNearMissLifeRef.current = false;
+      const livesRemaining = rawLivesRemaining > 0 ? rawLivesRemaining : GAME_MODE_CONFIG[gameMode].startingLives;
+      dispatch({
+        type: "RESTART_SHIFT",
+        roomBulbs: getRoomBulbs(),
+        bulbsRemaining: getBulbsRemaining(),
+        nightFeatures,
+        gameMode,
+        livesRemaining,
+      });
     } else {
-      dispatch({ type: "START_SHIFT", roomBulbs: getRoomBulbs(), bulbsRemaining: getBulbsRemaining(), nightFeatures });
+      const gameMode = selectedGameModeRef.current;
+      dispatch({
+        type: "START_SHIFT",
+        roomBulbs: getRoomBulbs(),
+        bulbsRemaining: getBulbsRemaining(),
+        nightFeatures,
+        gameMode,
+        livesRemaining: GAME_MODE_CONFIG[gameMode].startingLives,
+      });
     }
   }
 
@@ -824,7 +914,14 @@ export default function PlayPage() {
         <CinematicScreen sceneId={activeCinematicSceneId} onComplete={handleCinematicComplete} />
       )}
       {state.screen === "death" && !cinematicPending && !activeCinematicSceneId && (
-        <DeathScreen reason={state.deathReason} deathCount={deathCount} onRetry={handleRestart} />
+        <DeathScreen
+          reason={state.deathReason}
+          deathCount={deathCount}
+          gameMode={state.gameMode}
+          livesRemaining={state.livesRemaining}
+          nightNumber={currentNight}
+          onRetry={handleRestart}
+        />
       )}
       {state.screen === "win" && (
         <WinScreen survivedNights={survivedNights} onRetry={handleRestart} onGoToMenu={handleGoToMenu} />

@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { COPY } from "@/content/copy";
 import { DeathReason } from "@/game/core/types";
+import { GameMode } from "@/game/core/gameMode";
 import SceneBackground from "@/components/SceneBackground";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 
@@ -10,10 +11,20 @@ interface DeathScreenProps {
   reason: DeathReason | null;
   /** Kolik hlídačů už na téhle pozici selhalo — viz game/core/deathCount.ts. */
   deathCount: number;
+  /** Režim runu, který právě skončil (viz game/core/gameMode.ts) — řídí, jestli hráč pokračuje, nebo run definitivně končí. */
+  gameMode: GameMode;
+  /** GameState.livesRemaining PO téhle smrti (už snížené reducerem) — > 0 jen pro Normal, který ještě může pokračovat. */
+  livesRemaining: number;
+  /** Noc, kterou hráč právě dohrál — pro Normal-continue text "Opakovat noc X.". */
+  nightNumber: number;
   onRetry: () => void;
 }
 
-export default function DeathScreen({ reason, deathCount, onRetry }: DeathScreenProps) {
+export default function DeathScreen({ reason, deathCount, gameMode, livesRemaining, nightNumber, onRetry }: DeathScreenProps) {
+  // Normal se zbývajícím životem pokračuje stejnou nocí ("POKRAČOVAT"),
+  // cokoliv jiné (Normal bez životů, nebo Hardcore — ten vždy) run
+  // definitivně ukončí ("NOVÁ HRA"), viz zadání.
+  const isNormalContinuing = gameMode === "normal" && livesRemaining > 0;
   // door_open_at_attack nemá samostatnou "útok probíhá" fázi (reducer
   // přepíná enemyStage na "attack" a screen na "death" ve stejném dispatchi,
   // viz gameReducer.ts ENEMY_ADVANCE) — deathDoorAttack je proto pozadí
@@ -42,11 +53,31 @@ export default function DeathScreen({ reason, deathCount, onRetry }: DeathScreen
         <h1 className="text-2xl font-bold mb-2 text-red-500">{COPY.death.title}</h1>
         <p className="text-sm text-gray-400 mb-4">{reason ? COPY.death.reasons[reason] : ""}</p>
         <p className="text-xs text-gray-300 mb-2 italic">{corporateMessage}</p>
-        <p className="text-xs text-gray-400 mb-8">
+        <p className="text-xs text-gray-400 mb-4">
           {COPY.death.previousGuardsLabel.replace("{count}", String(deathCount))}
         </p>
+
+        {isNormalContinuing ? (
+          <p className="text-sm text-amber-400 mb-6">
+            {COPY.death.normalContinueLivesLabel.replace("{lives}", String(livesRemaining))}
+            <br />
+            {COPY.death.normalContinueNightLabel.replace("{night}", String(nightNumber))}
+          </p>
+        ) : (
+          <div className="mb-6">
+            <p className="text-sm text-red-400">
+              {gameMode === "hardcore" ? COPY.death.hardcoreGameOverLabel : COPY.death.normalGameOverLabel}
+            </p>
+            {gameMode === "normal" && <p className="text-[11px] text-gray-500 mt-2">{COPY.death.normalLeaderboardNote}</p>}
+          </div>
+        )}
+
         <button className="pixel-button tap-target px-6 py-3 text-sm w-full" onClick={onRetry}>
-          {COPY.death.retryButton}
+          {isNormalContinuing
+            ? COPY.death.normalContinueButton
+            : gameMode === "hardcore"
+              ? COPY.death.hardcoreGameOverButton
+              : COPY.death.normalGameOverButton}
         </button>
       </div>
     </main>

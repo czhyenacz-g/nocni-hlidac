@@ -12,8 +12,9 @@ export const COPY = {
     authorEmail: "hynek@darbujan.com",
   },
   // Výběr herního režimu na úvodní obrazovce (viz MainMenuScreen.tsx,
-  // game/core/gameMode.ts) — zatím jen UI/tooltip texty, žádná death/
-  // leaderboard logika se tímhle nemění (viz TODO.md).
+  // game/core/gameMode.ts) — Normal/Hardcore životy a death/leaderboard
+  // pravidla jsou teď skutečně zapojené (viz gameReducer.ts, app/play/page.tsx,
+  // DeathScreen.tsx), tenhle blok nese jen texty.
   gameMode: {
     normalLabel: "NORMAL",
     hardcoreLabel: "HARDCORE",
@@ -139,7 +140,6 @@ export const COPY = {
   },
   death: {
     title: "Předčasný konec směny.",
-    retryButton: "Přijmout nového hlídače",
     reasons: {
       door_open_at_attack: "Tvou poslední chybou byly otevřené dveře.",
       blackout_timeout: "Nabíjení selhalo. Nouzová baterie vydržela jen pár sekund. Ve tmě povolil zámek.",
@@ -160,6 +160,21 @@ export const COPY = {
     ],
     /** {count} se nahradí ve DeathScreen.tsx. */
     previousGuardsLabel: "Předchozí hlídači: {count}",
+    // Podle gameMode/livesRemaining (viz DeathScreen.tsx, game/core/gameMode.ts)
+    // — Normal se zbývajícím životem pokračuje ("POKRAČOVAT"), Normal bez
+    // životů i Hardcore run definitivně končí ("NOVÁ HRA"). {lives}/{night}
+    // nahrazuje DeathScreen.tsx.
+    normalContinueLivesLabel: "Zbývající životy: {lives}",
+    /** {night} = noc, kterou hráč právě dohrál a bude opakovat. */
+    normalContinueNightLabel: "Opakovat noc {night}.",
+    normalContinueButton: "POKRAČOVAT",
+    normalGameOverLabel: "Životy došly. Směna končí.",
+    normalGameOverButton: "NOVÁ HRA",
+    // Vidět jen na Normal death screen (viz zadání "Síň slávy je pouze pro
+    // Hardcore") — připomínka, proč tahle smrt nikde v žebříčku nepřibyla.
+    normalLeaderboardNote: "Normal režim se nezapisuje do Síně slávy.",
+    hardcoreGameOverLabel: "Hardcore run končí. Smrt tě vrací na noc 1.",
+    hardcoreGameOverButton: "NOVÁ HRA",
   },
   blackout: {
     // Čtyři atmosférické fáze podle game/visuals/blackoutPhase.ts#getBlackoutPhaseIndex.

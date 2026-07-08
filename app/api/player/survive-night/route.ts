@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { handleSurviveNightRequest } from "@/lib/leaderboard/guardRunRequestHandlers";
+import { readGameModeFromRequest } from "@/lib/leaderboard/requestGameMode";
 
 /**
  * Voláno best-effort z app/play/page.tsx při přechodu na screen "win"
@@ -12,9 +13,15 @@ import { handleSurviveNightRequest } from "@/lib/leaderboard/guardRunRequestHand
  * cookie z doby před VPS wiringem. Selhání/chybějící config VPS API vrátí
  * 202 `{ ok: false, stored: false }` — nikdy nerozbije hru. Úspěch: 200
  * `{ ok: true, stored: true, player: GuardRunState }`.
+ *
+ * Tělo requestu je VOLITELNÉ `{ gameMode?: "normal" | "hardcore" }` (viz
+ * lib/leaderboard/requestGameMode.ts) — klient ho posílá jen pro Hardcore
+ * (Normal server API vůbec nevolá). Server zápis pro gameMode "normal"
+ * odmítne (handleSurviveNightRequest) — server-side guard, ne jen frontend.
  */
-export async function POST(): Promise<NextResponse> {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   const session = await getSession();
-  const { status, body } = await handleSurviveNightRequest(session);
+  const gameMode = await readGameModeFromRequest(request);
+  const { status, body } = await handleSurviveNightRequest(session, gameMode);
   return NextResponse.json(body, { status });
 }

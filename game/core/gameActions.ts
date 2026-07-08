@@ -1,5 +1,6 @@
 import { CameraId, RoomBulbsState } from "./types";
 import { NightFeatureFlags } from "../difficulty/nightConfig";
+import { GameMode } from "./gameMode";
 
 export type GameAction =
   | { type: "START_LOADING" }
@@ -13,8 +14,28 @@ export type GameAction =
   // posílá načtené z localStorage / spočítané přes getNightConfig, chybí-li
   // se použijí čerstvé výchozí hodnoty (createDefaultRoomBulbs,
   // BULBS_CONFIG.startingCount, DEFAULT_NIGHT_FEATURES).
-  | { type: "START_SHIFT"; roomBulbs?: RoomBulbsState; bulbsRemaining?: number; nightFeatures?: NightFeatureFlags }
-  | { type: "RESTART_SHIFT"; roomBulbs?: RoomBulbsState; bulbsRemaining?: number; nightFeatures?: NightFeatureFlags }
+  // gameMode/livesRemaining jsou stejně volitelné jako pole výše — chybí-li,
+  // createInitialGameState spadne na DEFAULT_GAME_MODE / čerstvé
+  // GAME_MODE_CONFIG[gameMode].startingLives (nový run). app/play/page.tsx
+  // pošle skutečnou hodnotu: čerstvou při novém startu (vybranou na
+  // MainMenuScreen), nebo zachovanou `state.gameMode`/`state.livesRemaining`
+  // při RESTART_SHIFT (viz gameMode.ts, handleBeginShift).
+  | {
+      type: "START_SHIFT";
+      roomBulbs?: RoomBulbsState;
+      bulbsRemaining?: number;
+      nightFeatures?: NightFeatureFlags;
+      gameMode?: GameMode;
+      livesRemaining?: number;
+    }
+  | {
+      type: "RESTART_SHIFT";
+      roomBulbs?: RoomBulbsState;
+      bulbsRemaining?: number;
+      nightFeatures?: NightFeatureFlags;
+      gameMode?: GameMode;
+      livesRemaining?: number;
+    }
   | { type: "TOGGLE_DOOR" }
   | { type: "TOGGLE_LIGHT" }
   | { type: "LOOK_AT_DOOR" }
