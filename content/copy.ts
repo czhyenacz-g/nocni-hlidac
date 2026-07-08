@@ -76,6 +76,10 @@ export const COPY = {
     // handleEmergencyMiniGameComplete) — {amount} nahrazuje počet dobité
     // energie z worldEffects (energy_recharged).
     emergencyRunEnergyRechargedLabel: "Baterie přinesena. Energie +{amount}.",
+    // Klik na "Jít ven" se zavřenými dveřmi (viz handleStartEmergencyRun) —
+    // hráč nemůže vyběhnout ven zavřenými dveřmi, tlačítko samo o sobě
+    // zůstává klikatelné (jen vizuálně ztlumené), tenhle hint vysvětlí proč.
+    emergencyRunNeedsOpenDoorLabel: "Nejdřív musíš otevřít dveře.",
     // Statický plánek objektu bez interaktivity (viz ObjectMapView.tsx,
     // gameReducer.ts LOOK_AT_MAP, game/map/objectMap.ts pro data uzlů/hran) —
     // vlastní texty, stejný vzor jako left_wall. Popisky místností samotné

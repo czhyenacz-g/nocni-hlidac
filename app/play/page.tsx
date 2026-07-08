@@ -514,9 +514,16 @@ export default function PlayPage() {
   // integrovaný emergency scénář, záměrně bez brokovnice/nábojů (stealth
   // varianta, viz createBatteryEmergencyInput). Hlavní herní smyčka
   // (useGameLoop níže) se zastaví, dokud activeMiniGame běží — TICK/
-  // ENEMY_ADVANCE hlavní hry nesmí utíkat na pozadí za minihrou.
+  // ENEMY_ADVANCE hlavní hry nesmí utíkat na pozadí za minihrou. Se
+  // zavřenými dveřmi minihru nespustí — tlačítko v LeftWallView zůstává
+  // klikatelné (jen vizuálně ztlumené), takže sem klik dorazí vždy; tady se
+  // rozhodne, jestli se opravdu spustí, nebo jen ukáže hint.
   function handleStartEmergencyRun() {
     audioManager.play(AUDIO_EVENTS.uiClick);
+    if (state.doorClosed) {
+      setEmergencyRunMessage(COPY.game.emergencyRunNeedsOpenDoorLabel);
+      return;
+    }
     setActiveMiniGame({ id: "battery_run", input: createBatteryEmergencyInput() });
   }
 

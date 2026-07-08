@@ -171,7 +171,7 @@ export default function GameScreen({
               />
             )}
             {state.playerView === "left_wall" && (
-              <LeftWallView onLookAtDesk={onLookAtDesk} onStartEmergencyRun={onStartEmergencyRun} />
+              <LeftWallView onLookAtDesk={onLookAtDesk} onStartEmergencyRun={onStartEmergencyRun} doorClosed={state.doorClosed} />
             )}
             {state.playerView === "object_map" && <ObjectMapView onLookAtDesk={onLookAtDesk} />}
           </>
