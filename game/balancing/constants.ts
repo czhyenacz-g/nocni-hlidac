@@ -32,6 +32,19 @@ export const DOOR_DEATH_REVEAL_DURATION_MS = 700;
 // slyšitelné vzdalování. Viz app/play/page.tsx.
 export const MONSTER_RETREAT_STEPS_DELAY_MS = 400;
 
+// Grace period po návratu z EmergencyMiniGame s aktivní officeThreatOnReturn
+// (viz GameState.enemyDoorAttackGraceUntilMs, gameReducer.ts
+// APPLY_OFFICE_THREAT_ON_RETURN/ENEMY_ADVANCE, doorEncounter.ts#isDoorAttackGraceActive)
+// — po tuhle dobu (ms od návratu) nesmí otevřené dveře + monstrum u dveří
+// dokončit smrtelný útok, ať má hráč reálnou šanci dveře zavřít. Zavřené
+// dveře blokují útok/spustí door bang stejně jako kdykoliv jindy, grace na
+// to nemá vliv. "low" hrozba se k samotným dveřím typicky vůbec nedostane,
+// ale i tak dostane krátkou grace pro jistotu (další přirozený postup by ji
+// tam mohl brzy dotáhnout).
+export const OFFICE_THREAT_GRACE_LOW_MS = 1000;
+export const OFFICE_THREAT_GRACE_MEDIUM_MS = 1800;
+export const OFFICE_THREAT_GRACE_HIGH_MS = 1500;
+
 // Bušení do dveří (monster_door_bang, viz GameState.doorBangSeq,
 // game/audio/doorBangPlayback.ts#chooseDoorBangPlaybackPlan) — doorBangSeq se
 // může zvyšovat opakovaně (monstrum tlačí na zavřené dveře tik za tikem), ale

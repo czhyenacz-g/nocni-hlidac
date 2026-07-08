@@ -33,7 +33,12 @@ export type EnemyMoveDecision =
   // Monstrum se posunulo blíž ke kanceláři jako přenesená hrozba z
   // EmergencyMiniGame (viz gameActions.ts APPLY_OFFICE_THREAT_ON_RETURN),
   // ne z normálního postupu po trase v ENEMY_ADVANCE.
-  | "office_threat_on_return";
+  | "office_threat_on_return"
+  // Útok by NASTAL (otevřené dveře, monstrum u dveří), ale grace period po
+  // návratu z minihry (enemyDoorAttackGraceUntilMs) ho zadržela — viz
+  // doorEncounter.ts#isDoorAttackGraceActive. Žádná smrt, žádný door bang
+  // (ten je jen pro zavřené dveře) — monstrum jen dál čeká u dveří.
+  | "office_threat_grace";
 
 // "briefing" = krátký panel před START_SHIFT/RESTART_SHIFT (viz
 // components/screens/BriefingScreen.tsx, game/difficulty/nightConfig.ts) —
@@ -347,6 +352,19 @@ export interface GameState {
    * app/play/page.tsx) — stejný "seq" vzor jako monsterRetreatRoarSeq/bulbBreakSeq.
    */
   doorBangSeq: number;
+
+  /**
+   * elapsedMs, do kterého ENEMY_ADVANCE nesmí u dveří dokončit smrtelný útok
+   * (otevřené dveře) — `null` mimo tohle okno. Nastavuje VÝHRADNĚ
+   * APPLY_OFFICE_THREAT_ON_RETURN (viz gameReducer.ts, game/minigame/officeThreat.ts)
+   * hned po úspěšném návratu z EmergencyMiniGame s aktivní hrozbou — hráč má
+   * pár vteřin na to stihnout zavřít dveře, než se door encounter chová
+   * normálně. Zavřené dveře BĚHEM týhle doby útok blokují úplně stejně jako
+   * jindy (isDoorAttackBlockedByClosedDoor se na tomhle poli vůbec neptá) —
+   * grace mění jen výsledek OTEVŘENÝCH dveří, nikdy zavřených. Mimo tenhle
+   * návrat se nikdy nenastavuje, takže běžný door encounter je beze změny.
+   */
+  enemyDoorAttackGraceUntilMs: number | null;
 
   /**
    * Kam monstrum odešlo poté, co se u zavřených dveří "vzdalo" čekání

@@ -679,7 +679,7 @@ export default function PlayPage() {
         messages.push(COPY.game.emergencyRunThreatFollowedLabel);
       }
 
-      if (messages.length > 0) setEmergencyRunMessage(messages.join(" "));
+      if (messages.length > 0) setEmergencyRunMessage(messages.join("\n"));
       return;
     }
 
@@ -836,7 +836,7 @@ export default function PlayPage() {
         záměrně bez nového toast systému (žádná animace, jen auto-mizející text). */}
     {emergencyRunMessage && (
       <div className="fixed top-4 left-4 z-[100] pointer-events-none w-[calc(100%-2rem)] max-w-xs sm:w-80">
-        <div className="pixel-panel p-3 text-xs text-amber-300">{emergencyRunMessage}</div>
+        <div className="pixel-panel p-3 text-xs text-amber-300 whitespace-pre-line">{emergencyRunMessage}</div>
       </div>
     )}
     </>

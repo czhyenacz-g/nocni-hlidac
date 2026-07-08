@@ -75,6 +75,7 @@ export function createInitialGameState(
     doorLightRepelMs: 0,
     monsterRetreatRoarSeq: 0,
     doorBangSeq: 0,
+    enemyDoorAttackGraceUntilMs: null,
     monsterRetreatedTo: null,
     monsterRetreatVerified: false,
 

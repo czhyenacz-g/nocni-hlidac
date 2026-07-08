@@ -102,3 +102,117 @@ describe("APPLY_OFFICE_THREAT_ON_RETURN — safety guards", () => {
     expect(result).toBe(state);
   });
 });
+
+describe("APPLY_OFFICE_THREAT_ON_RETURN — high threat prefers at_door over breach", () => {
+  it("picks at_door when both at_door and breach are in the route (at_door listed first)", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = baseState({ enemyRoute: ["outside", "outer_yard", "door_hallway", "breach", "at_door", "attack"] });
+
+    const result = reducer(state, { type: "APPLY_OFFICE_THREAT_ON_RETURN", intensity: "high" });
+    expect(result.enemyStage).toBe("at_door");
+  });
+
+  it("falls back to breach only when at_door is not in the route", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = baseState({ enemyRoute: ["outside", "outer_yard", "door_hallway", "breach", "attack"] });
+
+    const result = reducer(state, { type: "APPLY_OFFICE_THREAT_ON_RETURN", intensity: "high" });
+    expect(result.enemyStage).toBe("breach");
+  });
+});
+
+describe("APPLY_OFFICE_THREAT_ON_RETURN — grace period", () => {
+  it("high threat sets enemyDoorAttackGraceUntilMs into the future", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = baseState({ elapsedMs: 10_000 });
+
+    const result = reducer(state, { type: "APPLY_OFFICE_THREAT_ON_RETURN", intensity: "high" });
+    expect(result.enemyDoorAttackGraceUntilMs).not.toBeNull();
+    expect(result.enemyDoorAttackGraceUntilMs!).toBeGreaterThan(10_000);
+  });
+
+  it("medium threat also sets a grace period", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = baseState({ elapsedMs: 10_000 });
+
+    const result = reducer(state, { type: "APPLY_OFFICE_THREAT_ON_RETURN", intensity: "medium" });
+    expect(result.enemyDoorAttackGraceUntilMs!).toBeGreaterThan(10_000);
+  });
+
+  it("low threat sets a shorter grace period than medium/high", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = baseState({ elapsedMs: 0 });
+
+    const low = reducer(state, { type: "APPLY_OFFICE_THREAT_ON_RETURN", intensity: "low" });
+    const medium = reducer(state, { type: "APPLY_OFFICE_THREAT_ON_RETURN", intensity: "medium" });
+    const high = reducer(state, { type: "APPLY_OFFICE_THREAT_ON_RETURN", intensity: "high" });
+
+    expect(low.enemyDoorAttackGraceUntilMs!).toBeLessThan(medium.enemyDoorAttackGraceUntilMs!);
+    expect(low.enemyDoorAttackGraceUntilMs!).toBeLessThan(high.enemyDoorAttackGraceUntilMs!);
+  });
+});
+
+describe("ENEMY_ADVANCE during the office-threat grace period — no instant death", () => {
+  it("open door + at_door + grace active does NOT kill the player", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const afterThreat = reducer(
+      baseState({ doorClosed: false, playerView: "desk" }),
+      { type: "APPLY_OFFICE_THREAT_ON_RETURN", intensity: "high" },
+    );
+    expect(afterThreat.enemyStage).toBe("at_door");
+
+    const result = reducer(afterThreat, { type: "ENEMY_ADVANCE" });
+    expect(result.screen).toBe("playing");
+    expect(result.isRunning).toBe(true);
+    expect(result.deathReason).toBeNull();
+    expect(result.lastEnemyDecision).toBe("office_threat_grace");
+  });
+
+  it("still no death even if the player is looking straight at the door during grace", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const afterThreat = reducer(
+      baseState({ doorClosed: false, playerView: "door" }),
+      { type: "APPLY_OFFICE_THREAT_ON_RETURN", intensity: "high" },
+    );
+
+    const result = reducer(afterThreat, { type: "ENEMY_ADVANCE" });
+    expect(result.doorDeathRevealUntilMs).toBeNull();
+    expect(result.screen).toBe("playing");
+  });
+
+  it("closing the door during grace still produces a blocked attack + door bang, not death", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const afterThreat = reducer(baseState({ doorClosed: false }), { type: "APPLY_OFFICE_THREAT_ON_RETURN", intensity: "high" });
+    const doorClosedDuringGrace = { ...afterThreat, doorClosed: true };
+
+    const result = reducer(doorClosedDuringGrace, { type: "ENEMY_ADVANCE" });
+    expect(result.screen).toBe("playing");
+    expect(result.deathReason).toBeNull();
+    expect(result.doorBangSeq).toBe(doorClosedDuringGrace.doorBangSeq + 1);
+  });
+
+  it("after the grace period elapses, an open door + at_door ENEMY_ADVANCE causes normal death", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const afterThreat = reducer(baseState({ doorClosed: false, elapsedMs: 0 }), {
+      type: "APPLY_OFFICE_THREAT_ON_RETURN",
+      intensity: "high",
+    });
+    // Fast-forward elapsedMs well past the grace window without changing enemyStage/doorClosed.
+    const graceExpired = { ...afterThreat, elapsedMs: afterThreat.enemyDoorAttackGraceUntilMs! + 1 };
+
+    const result = reducer(graceExpired, { type: "ENEMY_ADVANCE" });
+    expect(result.enemyStage).toBe("attack");
+    expect(result.deathReason).toBe("door_open_at_attack");
+  });
+});
+
+describe("ENEMY_ADVANCE without any office threat — normal door encounter is unaffected", () => {
+  it("open door + at_door with no grace set (enemyDoorAttackGraceUntilMs null) still causes normal death", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = baseState({ enemyStage: "at_door", doorClosed: false, enemyDoorAttackGraceUntilMs: null });
+
+    const result = reducer(state, { type: "ENEMY_ADVANCE" });
+    expect(result.enemyStage).toBe("attack");
+    expect(result.deathReason).toBe("door_open_at_attack");
+  });
+});

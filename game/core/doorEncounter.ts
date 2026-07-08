@@ -61,6 +61,19 @@ export function shouldDoorLightForceRetreat(state: GameState): boolean {
   return isMonsterAtDoor(state) && state.doorClosed && state.lightOn;
 }
 
+/**
+ * Jestli běží grace period po návratu z EmergencyMiniGame s aktivní
+ * officeThreatOnReturn (viz GameState.enemyDoorAttackGraceUntilMs,
+ * gameReducer.ts APPLY_OFFICE_THREAT_ON_RETURN) — jediné místo, kde se tenhle
+ * časový check dělá, ať se ENEMY_ADVANCE a případný budoucí kód nikdy
+ * nerozejdou. NEOVLIVŇUJE isDoorAttackBlockedByClosedDoor/isDoorAttackLethal
+ * výše (ty zůstávají přesně stejné, beze změny běžného door encounter) —
+ * volající si grace kontroluje sám, navíc, jen pro OTEVŘENÉ dveře.
+ */
+export function isDoorAttackGraceActive(state: GameState): boolean {
+  return state.enemyDoorAttackGraceUntilMs !== null && state.elapsedMs < state.enemyDoorAttackGraceUntilMs;
+}
+
 /** Souhrnný, čistě diagnostický pohled na "door encounter" — viz DebugPanel.tsx, testy. Nic nerozhoduje, jen shrnuje výsledky helperů výše pro jedno místo ke čtení. */
 export interface DoorMonsterEncounter {
   atDoor: boolean;

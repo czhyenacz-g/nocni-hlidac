@@ -733,6 +733,23 @@ describe("result builders", () => {
     });
   });
 
+  it("createReturnedResult includes both worldEffects (battery) and an active officeThreatOnReturn together", () => {
+    const threat = { active: true as const, reason: "monster_chasing" as const, intensity: "high" as const };
+    expect(createReturnedResult(42150, 1, { type: "collected_item", itemId: "battery" }, threat)).toEqual({
+      outcome: "returned",
+      elapsedMs: 42150,
+      shotsUsed: 1,
+      completedObjective: { type: "collected_item", itemId: "battery" },
+      worldEffects: [{ type: "energy_recharged", amount: 35 }],
+      officeThreatOnReturn: threat,
+    });
+  });
+
+  it("createReturnedResult omits officeThreatOnReturn entirely when it is inactive", () => {
+    const inactiveThreat = { active: false as const, reason: "monster_chasing" as const, intensity: "low" as const };
+    expect(createReturnedResult(5000, 1, undefined, inactiveThreat)).toEqual({ outcome: "returned", elapsedMs: 5000, shotsUsed: 1 });
+  });
+
   it("createFailedResult", () => {
     expect(createFailedResult(9999, 1)).toEqual({
       outcome: "failed",

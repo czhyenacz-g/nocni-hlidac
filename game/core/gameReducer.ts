@@ -1,7 +1,15 @@
 import { GameAction } from "./gameActions";
 import { createInitialGameState } from "./gameState";
 import { EnemyDefinition, EnemyStage, GameState, NightDefinition } from "./types";
-import { BULB_REPLACE_DURATION_MS, DOOR_DEATH_REVEAL_DURATION_MS, EMERGENCY_RUN_WINDUP_DURATION_MS, MAX_POWER } from "../balancing/constants";
+import {
+  BULB_REPLACE_DURATION_MS,
+  DOOR_DEATH_REVEAL_DURATION_MS,
+  EMERGENCY_RUN_WINDUP_DURATION_MS,
+  MAX_POWER,
+  OFFICE_THREAT_GRACE_HIGH_MS,
+  OFFICE_THREAT_GRACE_LOW_MS,
+  OFFICE_THREAT_GRACE_MEDIUM_MS,
+} from "../balancing/constants";
 import { getBlackoutPhaseIndex } from "../visuals/blackoutPhase";
 import { DEFAULT_DIFFICULTY, DIFFICULTY_RULES, Difficulty } from "../difficulty/difficultyConfig";
 import { computeNightScaling, NightScaling } from "../difficulty/nightScaling";
@@ -9,7 +17,12 @@ import { computeStressTimeScale } from "./stressTimeScale";
 import { isNearRoomLightActive } from "./roomBulbs";
 import { computePowerDrainBreakdown } from "./powerDrain";
 import { canStartBatteryEmergencyRun } from "./emergencyMiniGameIntegration";
-import { isDoorAttackBlockedByClosedDoor, isMonsterAtDoor, shouldDoorLightForceRetreat } from "./doorEncounter";
+import {
+  isDoorAttackBlockedByClosedDoor,
+  isDoorAttackGraceActive,
+  isMonsterAtDoor,
+  shouldDoorLightForceRetreat,
+} from "./doorEncounter";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -61,6 +74,15 @@ const OFFICE_THREAT_STAGE_CANDIDATES: Record<"low" | "medium" | "high", EnemySta
 function pickOfficeThreatStage(route: EnemyStage[], intensity: "low" | "medium" | "high"): EnemyStage | null {
   return OFFICE_THREAT_STAGE_CANDIDATES[intensity].find((stage) => route.includes(stage)) ?? null;
 }
+
+// Jak dlouho (ms od návratu) běží enemyDoorAttackGraceUntilMs podle intenzity
+// hrozby — viz OFFICE_THREAT_GRACE_*_MS v balancing/constants.ts,
+// doorEncounter.ts#isDoorAttackGraceActive.
+const OFFICE_THREAT_GRACE_DURATION_MS: Record<"low" | "medium" | "high", number> = {
+  low: OFFICE_THREAT_GRACE_LOW_MS,
+  medium: OFFICE_THREAT_GRACE_MEDIUM_MS,
+  high: OFFICE_THREAT_GRACE_HIGH_MS,
+};
 
 // Když hráč aktivně sleduje kamery (otevřená kamera v pohledu na stůl), energie
 // jen ubývá. Jinak (dveře/pohled zavřené kamery) se pomalu dobíjí, ale spotřeba
@@ -862,7 +884,15 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             };
           }
 
-          // Dveře otevřené a nepřítel je u nich -> útok.
+          // Dveře otevřené a nepřítel je u nich -> útok BY nastal, POKUD
+          // neběží grace period po návratu z minihry (viz
+          // GameState.enemyDoorAttackGraceUntilMs, doorEncounter.ts
+          // #isDoorAttackGraceActive) — hráč dostal krátké okno stihnout
+          // zavřít dveře, monstrum jen dál čeká u dveří, žádná smrt.
+          if (isDoorAttackGraceActive(state)) {
+            return { ...state, lastEnemyDecision: "office_threat_grace" };
+          }
+
           if (state.playerView === "door") {
             // Hráč se dívá přímo na dveře — smrt se nefinalizuje hned
             // (isRunning/screen zůstávají beze změny), nejdřív krátký
@@ -967,6 +997,10 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           enemyDoorHoldProgressMs: 0,
           monsterRetreatedTo: null,
           monsterRetreatVerified: false,
+          // Krátké férové okno zavřít dveře (viz OFFICE_THREAT_GRACE_*_MS,
+          // doorEncounter.ts#isDoorAttackGraceActive) — jen pro OTEVŘENÉ dveře;
+          // zavřené dveře blokují útok/spustí door bang bez ohledu na tohle.
+          enemyDoorAttackGraceUntilMs: state.elapsedMs + OFFICE_THREAT_GRACE_DURATION_MS[action.intensity],
         };
       }
 

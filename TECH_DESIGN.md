@@ -1736,7 +1736,29 @@ baterii, ale přivedl jsem si to za sebou". Nikdy nezpůsobuje okamžitou smrt.
   kandidáta bezpečný no-op. Nastaví `enemyStage`, `lastEnemyDecision:
   "office_threat_on_return"`, resetuje door-hold časovač i
   `monsterRetreatedTo`/`monsterRetreatVerified` (stejný reset jako normální posun v
-  ENEMY_ADVANCE) — **NIKDY** samo nevyhodnocuje/nezpůsobuje útok. I `"high"` (`at_door`)
-  čeká na příští normální `ENEMY_ADVANCE` tik (`night.enemyTickMs` interval), který teprve
-  rozhodne o skutečném útoku/blokaci zavřenými dveřmi (viz `doorEncounter.ts`) — hráč
-  má reálné okno zareagovat.
+  ENEMY_ADVANCE) — **NIKDY** samo nevyhodnocuje/nezpůsobuje útok. `OFFICE_THREAT_STAGE_CANDIDATES.high`
+  je `["at_door", "breach", "door_hallway"]` — `at_door` má přednost před `breach`
+  (pole se prochází v pořadí, `.find()` vrátí první shodu), `breach` je jen fallback,
+  pokud `at_door` v aktuální trase není.
+- **Grace period po návratu** (`GameState.enemyDoorAttackGraceUntilMs`,
+  `doorEncounter.ts#isDoorAttackGraceActive`) — `APPLY_OFFICE_THREAT_ON_RETURN` navíc
+  nastaví `enemyDoorAttackGraceUntilMs: state.elapsedMs + OFFICE_THREAT_GRACE_*_MS`
+  (`balancing/constants.ts`: low 1000 ms, medium 1800 ms, high 1500 ms). `ENEMY_ADVANCE`
+  ve větvi "dveře otevřené + monstrum u dveří" nejdřív zkontroluje
+  `isDoorAttackGraceActive(state)` (`enemyDoorAttackGraceUntilMs !== null &&
+  elapsedMs < enemyDoorAttackGraceUntilMs`) — pokud běží, vrátí jen
+  `lastEnemyDecision: "office_threat_grace"`, **žádnou smrt**, monstrum dál čeká u
+  dveří. Grace se **vůbec neptá** na zavřené dveře — `isDoorAttackBlockedByClosedDoor`
+  (běžné bušení/door bang) se vyhodnocuje úplně stejně jako dřív, grace ovlivňuje
+  jen výsledek OTEVŘENÝCH dveří. Po vypršení (`elapsedMs >= enemyDoorAttackGraceUntilMs`)
+  se `isDoorAttackGraceActive` vrátí `false` samo (žádné explicitní "ukončení" v
+  reduceru potřeba) a `ENEMY_ADVANCE` pokračuje běžnou smrtovou větví beze změny.
+  Pole se nastavuje VÝHRADNĚ v `APPLY_OFFICE_THREAT_ON_RETURN` — běžný door encounter
+  mimo návrat z minihry (`enemyDoorAttackGraceUntilMs` zůstává `null` z
+  `createInitialGameState`) je beze změny, ověřeno beze změny existujícími testy
+  (`doorAttack.test.ts`, `doorEncounter.test.ts`).
+- **Hláška při aktivní hrozbě** — `COPY.game.emergencyRunThreatFollowedLabel`
+  (přesný text ze zadání, dvouřádkový přes `\n`: "Zdá se, že se nevracíš sám.\nZavři
+  dveře!") se zobrazí ve stejném transient `emergencyRunMessage` boxu jako recharge
+  hláška; box teď má `whitespace-pre-line`, ať se `\n` skutečně zalomí. Víc zpráv
+  najednou (recharge + threat) se spojí `\n` (`messages.join("\n")`), ne mezerou.

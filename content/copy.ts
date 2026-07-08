@@ -89,10 +89,12 @@ export const COPY = {
     emergencyRunEnergyRechargedLabel: "Baterie přinesena. Energie +{amount}.",
     // Krátká zpráva po návratu z minihry, kdy monstrum pronásledovalo hráče
     // nebo bylo blízko kanceláře (viz EmergencyMiniGameResult.officeThreatOnReturn,
-    // handleEmergencyMiniGameComplete) — "přinesl jsi to za sebou", ne text
-    // slibující okamžitou smrt (ta se tímhle nikdy nespustí, viz gameReducer.ts
-    // APPLY_OFFICE_THREAT_ON_RETURN).
-    emergencyRunThreatFollowedLabel: "Něco se vrátilo za tebou.",
+    // handleEmergencyMiniGameComplete) — hráč má hned pochopit "musím zavřít
+    // dveře" (viz GameState.enemyDoorAttackGraceUntilMs — grace period mu na
+    // to dá pár vteřin reálný čas). Přesný text ze zadání, dvouřádkový (\n) —
+    // zobrazovací element (app/play/page.tsx) má whitespace-pre-line, ať se
+    // \n skutečně zalomí, ne slibuje okamžitou smrt (ta se tímhle nespustí).
+    emergencyRunThreatFollowedLabel: "Zdá se, že se nevracíš sám.\nZavři dveře!",
     // Klik na tlačítko se zavřenými dveřmi (viz handleStartEmergencyRunWindup)
     // — hráč nemůže vyběhnout ven zavřenými dveřmi, tlačítko samo o sobě
     // zůstává klikatelné (jen vizuálně ztlumené), tenhle hint vysvětlí proč.
