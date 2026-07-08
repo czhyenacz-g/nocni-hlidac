@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { CameraId, GameState, NightDefinition } from "@/game/core/types";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 import { STRESS_DEV_HUD_ENABLED } from "@/game/balancing/constants";
@@ -94,6 +95,15 @@ export default function GameScreen({
   // v komponentách, které to dopočítá; LeftWallView dostane jen hotový
   // boolean, ne celou nightFeatures strukturu.
   const canStartBatteryRun = canStartBatteryEmergencyRun(state.nightFeatures);
+  // DEV panel je schválně skrytý ve výchozím stavu (ne jen collapsed <details>
+  // jako dřív) — objeví se jen po pravém kliku na popisek "Noc {n}" v
+  // ShiftTimeru (viz onNightLabelContextMenu níže). Čistě UI viditelnost dev
+  // nástroje, ne herní stav — nepatří do GameState/reduceru.
+  const [debugPanelVisible, setDebugPanelVisible] = useState(false);
+  function handleToggleDebugPanel(e: React.MouseEvent) {
+    e.preventDefault();
+    setDebugPanelVisible((visible) => !visible);
+  }
   // Dev debug text pro PowerMeter — přesný údaj v sekundách, ne finální
   // atmosférický text (viz game/core/roomBulbs.ts, content/copy.ts).
   const nearRoomBulb = state.roomBulbs.nearRoom;
@@ -125,7 +135,11 @@ export default function GameScreen({
         {!isWideSceneView && (
           <>
             <div className="flex justify-between items-center">
-              <ShiftTimer remainingMs={state.remainingMs} nightNumber={nightNumber} />
+              <ShiftTimer
+                remainingMs={state.remainingMs}
+                nightNumber={nightNumber}
+                onNightLabelContextMenu={handleToggleDebugPanel}
+              />
               <AudioToggle muted={state.audioMuted} onToggle={onToggleAudio} />
             </div>
 
@@ -194,18 +208,20 @@ export default function GameScreen({
           </>
         )}
 
-        <div className={isWideSceneView ? "w-full max-w-md mx-auto" : ""}>
-          <DebugPanel
-            state={state}
-            night={night}
-            tensionLevel={tensionLevel}
-            nightNumber={nightNumber}
-            serverCurrentRun={serverCurrentRun}
-            localSurvivedNights={localSurvivedNights}
-            onDebugToggleDoor={onDebugToggleDoor}
-            onDebugRestartGenerator={onDebugRestartGenerator}
-          />
-        </div>
+        {debugPanelVisible && (
+          <div className={isWideSceneView ? "w-full max-w-md mx-auto" : ""}>
+            <DebugPanel
+              state={state}
+              night={night}
+              tensionLevel={tensionLevel}
+              nightNumber={nightNumber}
+              serverCurrentRun={serverCurrentRun}
+              localSurvivedNights={localSurvivedNights}
+              onDebugToggleDoor={onDebugToggleDoor}
+              onDebugRestartGenerator={onDebugRestartGenerator}
+            />
+          </div>
+        )}
       </div>
     </main>
   );
