@@ -260,6 +260,21 @@ export interface EmergencyRunWindupState {
   progressMs: number;
 }
 
+/**
+ * Držení "Nechat si to projít hlavou" (viz zadání) — vedlejší tlačítko na
+ * left_wall, vidět jen s brokovnicí (GameState.hasShotgun). Stejný
+ * "drž a riskuj" vzor jako EmergencyRunWindupState výše (`progressMs` roste
+ * v TICKu, dokud `active`), ale po dosažení THINK_IT_OVER_WINDUP_DURATION_MS
+ * se NESPOUŠTÍ žádná minihra — `GameState.thinkItOverReadySeq` se jen zvýší
+ * a app/play/page.tsx podle toho zobrazí čistě textovou hlášku (viz
+ * gameReducer.ts, THINK_IT_OVER_WINDUP_DURATION_MS v game/balancing/constants.ts).
+ */
+export interface ThinkItOverWindupState {
+  active: boolean;
+  startedAtMs: number | null;
+  progressMs: number;
+}
+
 export type GameStatus = "normal" | "blackout";
 
 export interface GameState {
@@ -446,6 +461,15 @@ export interface GameState {
    * o EmergencyMiniGame nic neví, jen odpočítává držení.
    */
   emergencyRunReadySeq: number;
+
+  /** Držení "Nechat si to projít hlavou" (viz ThinkItOverWindupState) — vždy resetováno na novou směnu, stejná konvence jako emergencyRunWindup. */
+  thinkItOverWindup: ThinkItOverWindupState;
+  /**
+   * Zvyšuje se přesně jednou při ÚSPĚŠNÉM dokončení držení "Nechat si to
+   * projít hlavou" — stejný "seq" vzor jako `emergencyRunReadySeq` výše, ale
+   * app/play/page.tsx podle změny jen zobrazí textovou hlášku, žádnou minihru.
+   */
+  thinkItOverReadySeq: number;
 
   /**
    * Které mechaniky jsou tuhle noc zapnuté (viz game/difficulty/nightConfig.ts)

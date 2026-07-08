@@ -119,6 +119,15 @@ export const COPY = {
     /** {ammo}/{max} u LeftWallView, jen když hasShotgun === true (viz zadání "nenápadná informace o munici"). */
     shotgunAmmoReadyLabel: "Brokovnice: {ammo}/{max}",
     shotgunAmmoEmptyLabel: "Náboj: prázdno",
+    // Vedlejší tlačítko na left_wall, vidět jen s brokovnicí (viz zadání,
+    // GameState.hasShotgun) — stejný "drž tlačítko" vzor jako
+    // startEmergencyRunLabel výše, jen delší (THINK_IT_OVER_WINDUP_DURATION_MS)
+    // a bez spuštění minihry na konci.
+    startThinkItOverLabel: "Nechat si to projít hlavou",
+    /** Text tlačítka během držení (viz GameState.thinkItOverWindup) — {seconds} se nahradí zbývajícím počtem sekund. */
+    thinkItOverHoldingLabel: "Přemýšlím… {seconds} s",
+    // Zobrazí se po doběhnutí držení (viz thinkItOverReadySeq) — přesný text ze zadání.
+    thinkItOverResultLabel: "Nevzdávej se a bojuj! To monstrum určitě lze nějak zabít. Potřebuješ možná více ran, nebo větší kalibr.",
     // Klik na tlačítko se zavřenými dveřmi (viz handleStartEmergencyRunWindup)
     // — hráč nemůže vyběhnout ven zavřenými dveřmi, tlačítko samo o sobě
     // zůstává klikatelné (jen vizuálně ztlumené), tenhle hint vysvětlí proč.

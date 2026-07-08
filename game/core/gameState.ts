@@ -102,6 +102,9 @@ export function createInitialGameState(
     emergencyRunWindup: { active: false, startedAtMs: null, progressMs: 0 },
     emergencyRunReadySeq: 0,
 
+    thinkItOverWindup: { active: false, startedAtMs: null, progressMs: 0 },
+    thinkItOverReadySeq: 0,
+
     nightFeatures: nightFeaturesOverride ?? DEFAULT_NIGHT_FEATURES,
 
     gameMode,

@@ -36,6 +36,24 @@ describe("COPY.game shotgun copy", () => {
   });
 });
 
+// "Nechat si to projít hlavou" — vedlejší tlačítko vidět jen s brokovnicí
+// (viz LeftWallView.tsx, game/core/thinkItOverWindup*.ts).
+describe("COPY.game think-it-over copy", () => {
+  it("startThinkItOverLabel is the exact required button text", () => {
+    expect(COPY.game.startThinkItOverLabel).toBe("Nechat si to projít hlavou");
+  });
+
+  it("thinkItOverHoldingLabel contains the {seconds} placeholder", () => {
+    expect(COPY.game.thinkItOverHoldingLabel).toContain("{seconds}");
+  });
+
+  it("thinkItOverResultLabel is the exact required message", () => {
+    expect(COPY.game.thinkItOverResultLabel).toBe(
+      "Nevzdávej se a bojuj! To monstrum určitě lze nějak zabít. Potřebuješ možná více ran, nebo větší kalibr.",
+    );
+  });
+});
+
 describe("COPY.gameMode", () => {
   it("has the exact NORMAL/HARDCORE mode labels", () => {
     expect(COPY.gameMode.normalLabel).toBe("NORMAL");

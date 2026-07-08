@@ -9,7 +9,7 @@ import DeathScreen from "@/components/screens/DeathScreen";
 import WinScreen from "@/components/screens/WinScreen";
 import { NIGHT_01 } from "@/game/nights/night01";
 import { createInitialGameState } from "@/game/core/gameState";
-import { createGameReducer } from "@/game/core/gameReducer";
+import { canStartThinkItOverWindup, createGameReducer } from "@/game/core/gameReducer";
 import { useGameLoop } from "@/game/core/gameLoop";
 import { CameraId } from "@/game/core/types";
 import { audioManager } from "@/game/audio/audioManager";
@@ -183,6 +183,7 @@ export default function PlayPage() {
   const prevBulbBreakSeqRef = useRef(state.bulbBreakSeq);
   const prevBulbReplaceSuccessSeqRef = useRef(state.bulbReplaceSuccessSeq);
   const prevEmergencyRunReadySeqRef = useRef(state.emergencyRunReadySeq);
+  const prevThinkItOverReadySeqRef = useRef(state.thinkItOverReadySeq);
   // Zvuk překvapení na nejbližší kameře smí zaznít jen jednou za "návštěvu" —
   // dokud tam nepřítel je, další kliknutí na kameru (ani na jinou a zpátky) ho
   // znovu nespustí. Resetuje se, až nepřítel z téhle stage odejde (uteče/postoupí).
@@ -553,6 +554,18 @@ export default function PlayPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.emergencyRunReadySeq]);
 
+  // Držení "Nechat si to projít hlavou" doběhlo celé (viz gameReducer.ts
+  // START_THINK_IT_OVER_WINDUP/TICK) — na rozdíl od emergencyRunReadySeq
+  // výše tady nic nespouštíme, jen zobrazíme hlášku. Stejný `>` (ne `!==`)
+  // diff jako emergencyRunReadySeq — nová směna resetuje thinkItOverReadySeq
+  // zpět na 0, což by prostý `!==` diff mylně vzal za "windup zrovna doběhl".
+  useEffect(() => {
+    if (state.thinkItOverReadySeq > prevThinkItOverReadySeqRef.current) {
+      setEmergencyRunMessage(COPY.game.thinkItOverResultLabel);
+    }
+    prevThinkItOverReadySeqRef.current = state.thinkItOverReadySeq;
+  }, [state.thinkItOverReadySeq]);
+
   useEffect(() => {
     if (prevGameStatusRef.current !== "blackout" && state.gameStatus === "blackout") {
       audioManager.play(AUDIO_EVENTS.blackoutHowl);
@@ -771,6 +784,21 @@ export default function PlayPage() {
     dispatch({ type: "CANCEL_EMERGENCY_RUN_WINDUP" });
   }
 
+  // "Nechat si to projít hlavou" (viz zadání) — stejný vzor jako
+  // handleStartEmergencyRunWindup výše, ale bez "potřebuje otevřené dveře"
+  // větve (canStartThinkItOverWindup nevyžaduje doorClosed). Guard je i tady
+  // zdvojený (LeftWallView tlačítko se stejně zobrazí jen s hasShotgun) —
+  // kdyby se přesto zobrazilo omylem, spuštění se bezpečně odmítne.
+  function handleStartThinkItOverWindup() {
+    if (!canStartThinkItOverWindup(state)) return;
+    audioManager.play(AUDIO_EVENTS.uiClick);
+    dispatch({ type: "START_THINK_IT_OVER_WINDUP" });
+  }
+
+  function handleCancelThinkItOverWindup() {
+    dispatch({ type: "CANCEL_THINK_IT_OVER_WINDUP" });
+  }
+
   // Jediné místo, které zpracuje EmergencyMiniGameResult (viz
   // EmergencyMiniGame onComplete kontrakt) — vždy zavře minihru, pak podle
   // outcome buď dobije energii (returned + worldEffects), spustí existující
@@ -926,6 +954,8 @@ export default function PlayPage() {
           onCancelBulbReplacement={handleCancelBulbReplacement}
           onStartEmergencyRunWindup={handleStartEmergencyRunWindup}
           onCancelEmergencyRunWindup={handleCancelEmergencyRunWindup}
+          onStartThinkItOverWindup={handleStartThinkItOverWindup}
+          onCancelThinkItOverWindup={handleCancelThinkItOverWindup}
         />
       )}
       {/* Nouzová minihra (viz components/minigame/EmergencyMiniGame.tsx) —

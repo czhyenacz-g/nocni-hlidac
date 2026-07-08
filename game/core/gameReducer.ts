@@ -9,6 +9,7 @@ import {
   OFFICE_THREAT_GRACE_HIGH_MS,
   OFFICE_THREAT_GRACE_LOW_MS,
   OFFICE_THREAT_GRACE_MEDIUM_MS,
+  THINK_IT_OVER_WINDUP_DURATION_MS,
 } from "../balancing/constants";
 import { getBlackoutPhaseIndex } from "../visuals/blackoutPhase";
 import { DEFAULT_DIFFICULTY, DIFFICULTY_RULES, Difficulty } from "../difficulty/difficultyConfig";
@@ -353,6 +354,47 @@ function updateEmergencyRunWindup(
 
 const INACTIVE_EMERGENCY_RUN_WINDUP: GameState["emergencyRunWindup"] = { active: false, startedAtMs: null, progressMs: 0 };
 
+// Progres držení "Nechat si to projít hlavou" — stejná mechanika jako
+// updateEmergencyRunWindup výše, jen jiná konstanta a jiné "seq" pole. Po
+// dosažení THINK_IT_OVER_WINDUP_DURATION_MS se `thinkItOverReadySeq` jednou
+// zvýší — app/play/page.tsx podle toho zobrazí jen textovou hlášku, žádnou
+// minihru (na rozdíl od emergencyRunReadySeq).
+function updateThinkItOverWindup(
+  state: GameState,
+  deltaMs: number,
+): Pick<GameState, "thinkItOverWindup" | "thinkItOverReadySeq"> {
+  if (!state.thinkItOverWindup.active) {
+    return { thinkItOverWindup: state.thinkItOverWindup, thinkItOverReadySeq: state.thinkItOverReadySeq };
+  }
+
+  const progressMs = state.thinkItOverWindup.progressMs + deltaMs;
+  if (progressMs >= THINK_IT_OVER_WINDUP_DURATION_MS) {
+    return {
+      thinkItOverWindup: { active: false, startedAtMs: null, progressMs: 0 },
+      thinkItOverReadySeq: state.thinkItOverReadySeq + 1,
+    };
+  }
+
+  return { thinkItOverWindup: { ...state.thinkItOverWindup, progressMs }, thinkItOverReadySeq: state.thinkItOverReadySeq };
+}
+
+const INACTIVE_THINK_IT_OVER_WINDUP: GameState["thinkItOverWindup"] = { active: false, startedAtMs: null, progressMs: 0 };
+
+/**
+ * Jestli hráč MŮŽE teď začít držet "Nechat si to projít hlavou" na
+ * left_wall — vyžaduje brokovnici (GameState.hasShotgun, viz zadání "ve
+ * chvíli, kdy už budu vlastnit brokovnici"), jinak stejné herní guardy jako
+ * canStartEmergencyRunWindup. Na rozdíl od "Jít ven" nevyžaduje otevřené
+ * dveře — hráč jen přemýšlí, nikam neodchází.
+ */
+export function canStartThinkItOverWindup(state: GameState): boolean {
+  if (!state.hasShotgun) return false;
+  if (!state.isRunning || state.gameStatus === "blackout" || state.doorDeathRevealUntilMs !== null) return false;
+  if (state.playerView !== "left_wall") return false;
+  if (state.thinkItOverWindup.active) return false;
+  return true;
+}
+
 /**
  * Jestli hráč MŮŽE teď začít držet "Jít ven" na left_wall — sdílená podmínka
  * mezi `START_EMERGENCY_RUN_WINDUP` (reducer) a UI (`LeftWallView.tsx` přes
@@ -474,6 +516,18 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         if (!state.emergencyRunWindup.active) return state;
         return { ...state, emergencyRunWindup: INACTIVE_EMERGENCY_RUN_WINDUP };
 
+      case "START_THINK_IT_OVER_WINDUP": {
+        if (!canStartThinkItOverWindup(state)) return state;
+        return {
+          ...state,
+          thinkItOverWindup: { active: true, startedAtMs: state.elapsedMs, progressMs: 0 },
+        };
+      }
+
+      case "CANCEL_THINK_IT_OVER_WINDUP":
+        if (!state.thinkItOverWindup.active) return state;
+        return { ...state, thinkItOverWindup: INACTIVE_THINK_IT_OVER_WINDUP };
+
       case "TOGGLE_DOOR":
         // Dveře jde přepnout jen v pohledu na dveře — hráč se tam musí nejdřív
         // otočit (LOOK_AT_DOOR). Debug panel simuluje oba kroky najednou.
@@ -568,6 +622,9 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           // důvod jako bulbReplacement výše) — riziko musí trvat, dokud hráč
           // fyzicky drží tlačítko, ne přežít přechod na jiný pohled.
           emergencyRunWindup: state.emergencyRunWindup.active ? INACTIVE_EMERGENCY_RUN_WINDUP : state.emergencyRunWindup,
+          // Stejný důvod jako emergencyRunWindup výše, jen pro "Nechat si to
+          // projít hlavou" (viz zadání).
+          thinkItOverWindup: state.thinkItOverWindup.active ? INACTIVE_THINK_IT_OVER_WINDUP : state.thinkItOverWindup,
         };
 
       case "LOOK_AT_GENERATOR":
@@ -581,6 +638,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           cameraFocusUntilMs: null,
           bulbReplacement: state.bulbReplacement.active ? INACTIVE_BULB_REPLACEMENT : state.bulbReplacement,
           emergencyRunWindup: state.emergencyRunWindup.active ? INACTIVE_EMERGENCY_RUN_WINDUP : state.emergencyRunWindup,
+          thinkItOverWindup: state.thinkItOverWindup.active ? INACTIVE_THINK_IT_OVER_WINDUP : state.thinkItOverWindup,
         };
 
       case "LOOK_AT_LEFT_WALL":
@@ -612,6 +670,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           cameraFocusUntilMs: null,
           bulbReplacement: state.bulbReplacement.active ? INACTIVE_BULB_REPLACEMENT : state.bulbReplacement,
           emergencyRunWindup: state.emergencyRunWindup.active ? INACTIVE_EMERGENCY_RUN_WINDUP : state.emergencyRunWindup,
+          thinkItOverWindup: state.thinkItOverWindup.active ? INACTIVE_THINK_IT_OVER_WINDUP : state.thinkItOverWindup,
         };
 
       case "RESTART_GENERATOR": {
@@ -797,6 +856,10 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         // jiný pohled (left_wall, ne door), oba mohou nanejvýš být "active"
         // po jednom, nikdy současně (LOOK_AT_* mezi nimi vždy zruší tu druhou).
         const emergencyRunWindupUpdate = updateEmergencyRunWindup(state, action.deltaMs);
+        // Nezávislé na obou výše — jiná riskantní/vedlejší akce (viz zadání
+        // "Nechat si to projít hlavou"), stejný "nanejvýš jedna active"
+        // vzor (LOOK_AT_* mezi nimi zruší tu druhou).
+        const thinkItOverWindupUpdate = updateThinkItOverWindup(state, action.deltaMs);
         const power = applyPowerDelta({ ...state, ...generatorUpdate }, night, action.deltaMs, nightScaling);
 
         if (power <= 0) {
@@ -823,6 +886,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             cameraFocusUntilMs: null,
             bulbReplacement: INACTIVE_BULB_REPLACEMENT,
             emergencyRunWindup: INACTIVE_EMERGENCY_RUN_WINDUP,
+            thinkItOverWindup: INACTIVE_THINK_IT_OVER_WINDUP,
           };
         }
 
@@ -834,6 +898,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             ...roomBulbsUpdate,
             ...bulbReplacementUpdate,
             ...emergencyRunWindupUpdate,
+            ...thinkItOverWindupUpdate,
             elapsedMs,
             remainingMs: 0,
             power,
@@ -849,6 +914,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           ...roomBulbsUpdate,
           ...bulbReplacementUpdate,
           ...emergencyRunWindupUpdate,
+          ...thinkItOverWindupUpdate,
           elapsedMs,
           remainingMs,
           power,

@@ -145,6 +145,13 @@ export const GENERATOR_ACCIDENTAL_RESTART_MESSAGE_MS = 2500;
 // výměny žárovky reálně v ohrožení, ne jen "čeká na loading".
 export const EMERGENCY_RUN_WINDUP_DURATION_MS = 3000;
 
+// "Nechat si to projít hlavou" (viz zadání) — vedlejší tlačítko na left_wall,
+// vidět jen s brokovnicí (GameState.hasShotgun), stejný "drž tlačítko" vzor
+// jako EMERGENCY_RUN_WINDUP_DURATION_MS výše, jen delší a bez spuštění
+// minihry na konci — po dokončení se jen zobrazí hláška (viz
+// game/core/types.ts ThinkItOverWindupState, app/play/page.tsx).
+export const THINK_IT_OVER_WINDUP_DURATION_MS = 10_000;
+
 // Sekvence útoku/smrti (viz app/play/page.tsx, efekt na state.screen ===
 // "death", AUDIO_DESIGN.md "Ticho před lekačkou"): ambience plynule ztlumí
 // přes AMBIENCE_DEATH_FADE_MS, pak JUMPSCARE_SILENT_GAP_MS ticha, teprve

@@ -1,7 +1,8 @@
 import { useEffect, useState, type PointerEvent } from "react";
 import { COPY } from "@/content/copy";
-import { EMERGENCY_RUN_WINDUP_DURATION_MS } from "@/game/balancing/constants";
+import { EMERGENCY_RUN_WINDUP_DURATION_MS, THINK_IT_OVER_WINDUP_DURATION_MS } from "@/game/balancing/constants";
 import { computeEmergencyRunWindupProgressRatio } from "@/game/core/emergencyRunWindupProgress";
+import { computeThinkItOverWindupProgressRatio } from "@/game/core/thinkItOverWindupProgress";
 import { SHOTGUN_MAX_AMMO } from "@/game/core/shotgunEquipment";
 import ViewSwitchArrow from "./ViewSwitchArrow";
 
@@ -36,6 +37,17 @@ interface LeftWallViewProps {
   hasShotgun: boolean;
   /** Aktuální munice (0 nebo SHOTGUN_MAX_AMMO) — zobrazuje se jen když hasShotgun je true. */
   shotgunAmmo: number;
+  /**
+   * Zahájí/zruší držení "Nechat si to projít hlavou" (viz
+   * app/play/page.tsx#handleStartThinkItOverWindup, GameState.thinkItOverWindup)
+   * — vedlejší tlačítko vidět jen s brokovnicí (hasShotgun), stejný "drž
+   * tlačítko" vzor jako emergency run výše, jen bez otevřených dveří a bez
+   * minihry na konci.
+   */
+  onStartThinkItOverWindup: () => void;
+  onCancelThinkItOverWindup: () => void;
+  thinkItOverWindupActive: boolean;
+  thinkItOverWindupProgressMs: number;
 }
 
 /** Prázdný stojan na zbraň — beze změny oproti dřívějšku, dokud hráč brokovnici nemá (viz hasShotgun). */
@@ -60,6 +72,10 @@ export default function LeftWallView({
   emergencyRunWindupProgressMs,
   hasShotgun,
   shotgunAmmo,
+  onStartThinkItOverWindup,
+  onCancelThinkItOverWindup,
+  thinkItOverWindupActive,
+  thinkItOverWindupProgressMs,
 }: LeftWallViewProps) {
   const [imageFailed, setImageFailed] = useState(false);
   const wallImageSrc = hasShotgun ? SHOTGUN_LEFT_WALL_IMAGE_SRC : EMPTY_LEFT_WALL_IMAGE_SRC;
@@ -83,8 +99,19 @@ export default function LeftWallView({
     onCancelEmergencyRunWindup();
   }
 
+  function handleThinkItOverPointerDown(event: PointerEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    onStartThinkItOverWindup();
+  }
+
+  function handleThinkItOverPointerUp() {
+    onCancelThinkItOverWindup();
+  }
+
   const windupSeconds = Math.max(0, (EMERGENCY_RUN_WINDUP_DURATION_MS - emergencyRunWindupProgressMs) / 1000).toFixed(1);
   const windupPercent = computeEmergencyRunWindupProgressRatio(emergencyRunWindupProgressMs) * 100;
+  const thinkItOverSeconds = Math.max(0, (THINK_IT_OVER_WINDUP_DURATION_MS - thinkItOverWindupProgressMs) / 1000).toFixed(1);
+  const thinkItOverPercent = computeThinkItOverWindupProgressRatio(thinkItOverWindupProgressMs) * 100;
 
   return (
     <div className="flex flex-col gap-3">
@@ -144,6 +171,33 @@ export default function LeftWallView({
             {shotgunAmmo > 0
               ? COPY.game.shotgunAmmoReadyLabel.replace("{ammo}", String(shotgunAmmo)).replace("{max}", String(SHOTGUN_MAX_AMMO))
               : COPY.game.shotgunAmmoEmptyLabel}
+          </div>
+        )}
+
+        {/* "Nechat si to projít hlavou" (viz zadání) — vedlejší tlačítko
+            vidět jen s brokovnicí, stejný "drž tlačítko" vzor jako emergency
+            run výše, jen delší (THINK_IT_OVER_WINDUP_DURATION_MS) a bez
+            spuštění minihry na konci — jen textová hláška (viz
+            app/play/page.tsx#thinkItOverReadySeq efekt). */}
+        {hasShotgun && (
+          <div className="w-full flex items-center justify-end gap-3">
+            <button
+              type="button"
+              className="pixel-button tap-target px-3 py-2 text-xs touch-none select-none"
+              onPointerDown={handleThinkItOverPointerDown}
+              onPointerUp={handleThinkItOverPointerUp}
+              onPointerLeave={handleThinkItOverPointerUp}
+              onPointerCancel={handleThinkItOverPointerUp}
+            >
+              {thinkItOverWindupActive
+                ? COPY.game.thinkItOverHoldingLabel.replace("{seconds}", thinkItOverSeconds)
+                : COPY.game.startThinkItOverLabel}
+            </button>
+          </div>
+        )}
+        {hasShotgun && thinkItOverWindupActive && (
+          <div className="w-32 h-1 bg-gray-800 border border-gray-700 rounded overflow-hidden">
+            <div className="h-full bg-amber-500 transition-all duration-150" style={{ width: `${thinkItOverPercent}%` }} />
           </div>
         )}
       </div>

@@ -45,6 +45,9 @@ interface GameScreenProps {
   /** Zahájí/zruší držení "Nouzově opustit místnost" (viz app/play/page.tsx#handleStartEmergencyRunWindup/handleCancelEmergencyRunWindup, GameState.emergencyRunWindup) — jen na left_wall pohledu, viz LeftWallView.tsx. */
   onStartEmergencyRunWindup: () => void;
   onCancelEmergencyRunWindup: () => void;
+  /** Zahájí/zruší držení "Nechat si to projít hlavou" (viz app/play/page.tsx#handleStartThinkItOverWindup/handleCancelThinkItOverWindup, GameState.thinkItOverWindup) — jen na left_wall pohledu, jen s brokovnicí. */
+  onStartThinkItOverWindup: () => void;
+  onCancelThinkItOverWindup: () => void;
   onRestartGenerator: () => void;
   onDebugToggleDoor: () => void;
   onDebugRestartGenerator: () => void;
@@ -73,6 +76,8 @@ export default function GameScreen({
   onLookAtMap,
   onStartEmergencyRunWindup,
   onCancelEmergencyRunWindup,
+  onStartThinkItOverWindup,
+  onCancelThinkItOverWindup,
   onRestartGenerator,
   onDebugToggleDoor,
   onDebugRestartGenerator,
@@ -211,6 +216,10 @@ export default function GameScreen({
                 emergencyRunWindupProgressMs={state.emergencyRunWindup.progressMs}
                 hasShotgun={state.hasShotgun}
                 shotgunAmmo={state.shotgunAmmo}
+                onStartThinkItOverWindup={onStartThinkItOverWindup}
+                onCancelThinkItOverWindup={onCancelThinkItOverWindup}
+                thinkItOverWindupActive={state.thinkItOverWindup.active}
+                thinkItOverWindupProgressMs={state.thinkItOverWindup.progressMs}
               />
             )}
             {state.playerView === "object_map" && <ObjectMapView onLookAtDesk={onLookAtDesk} />}

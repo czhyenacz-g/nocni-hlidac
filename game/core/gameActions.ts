@@ -83,6 +83,12 @@ export type GameAction =
   // držení dotáhl do konce.
   | { type: "START_EMERGENCY_RUN_WINDUP" }
   | { type: "CANCEL_EMERGENCY_RUN_WINDUP" }
+  // Držení "Nechat si to projít hlavou" (viz ThinkItOverWindupState,
+  // LeftWallView.tsx) — stejný start/cancel pár jako
+  // START_EMERGENCY_RUN_WINDUP/CANCEL_EMERGENCY_RUN_WINDUP výše, ale po
+  // doběhnutí se jen zvýší thinkItOverReadySeq (žádná minihra).
+  | { type: "START_THINK_IT_OVER_WINDUP" }
+  | { type: "CANCEL_THINK_IT_OVER_WINDUP" }
   // Hráč se vrátil z nouzové minihry (outcome "returned"), ale monstrum ho
   // pronásledovalo/bylo blízko kanceláře (viz
   // game/minigame/officeThreat.ts#evaluateOfficeThreatOnReturn,
