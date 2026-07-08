@@ -70,7 +70,8 @@ import {
   updateEnemyAi,
   updateMissionPhase,
 } from "@/game/minigame/logic";
-import { MiniGameLayout } from "@/game/minigame/layoutTypes";
+import { MiniGameLayout, MiniGameLayoutWall } from "@/game/minigame/layoutTypes";
+import { getMiniGameRoomDisplayLabel, getMiniGameWallRenderStyle, shouldShowRoomLabelByDefault } from "@/game/minigame/mapVisuals";
 import { DEFAULT_MINIGAME_LAYOUT_ID, getMiniGameLayout } from "@/game/minigame/layouts";
 import { ResolvedMiniGamePlacement, getRoomBoundsForSlot, resolveMiniGamePlacement } from "@/game/minigame/layoutPlacement";
 import { createRandomSeed } from "@/game/minigame/seededRandom";
@@ -113,8 +114,15 @@ interface MiniGameRefState {
   layout: MiniGameLayout;
   /** Vyřešené sloty (start/exit/monster spawn/objective) pro tenhle konkrétní run — viz game/minigame/layoutPlacement.ts. Debug HUD z tohohle čte layoutId/seed/vybrané sloty. */
   placement: ResolvedMiniGamePlacement;
-  /** = layout.walls, uložené zvlášť ať tick()/draw()/fireShot() nemusí pokaždé sahat do gameRef.current.layout.walls. */
-  walls: Wall[];
+  /**
+   * = layout.walls, uložené zvlášť ať tick()/draw()/fireShot() nemusí pokaždé
+   * sahat do gameRef.current.layout.walls. Typ MiniGameLayoutWall (ne jen
+   * Wall) záměrně — draw() potřebuje `kind` pro vizuální styl (viz
+   * game/minigame/mapVisuals.ts#getMiniGameWallRenderStyle); strukturální
+   * nadmnožina Wall, takže se dál beze změny předává do
+   * moveWithWallSliding/castVisionCone/isEnemyHit apod.
+   */
+  walls: MiniGameLayoutWall[];
   worldWidth: number;
   worldHeight: number;
   /** Jednotné měřítko pro vykreslení tohohle konkrétního (libovolně velkého) layoutu do CANVAS_WIDTH×CANVAS_HEIGHT — viz computeMiniGameWorldScale. */
@@ -815,16 +823,95 @@ function draw(
 
   ctx.drawImage(gridCanvas, 0, 0);
 
-  // Zdi — tmavá výplň + zelený neonový obrys s glow, ať jasně čnějí z gridu.
+  // Obrysy místností + popisky hlavních zón (viz zadání "vizuální/design
+  // pass" — mapa má na první pohled číst jako půdorys/evakuační plán, ne
+  // jen aréna se zdmi) — VŽDY vidět, ne jen v dev overlayi. Chodby (kind
+  // "corridor"/"service") dostanou jemně odlišný nádech, ať jsou hlavní
+  // trasy vizuálně čitelné; popisek (getMiniGameRoomDisplayLabel) se
+  // zobrazí jen pro "identifikující" druhy místností (viz
+  // shouldShowRoomLabelByDefault v game/minigame/mapVisuals.ts) — layoutId/
+  // seed/slot id zůstávají výhradně v dev overlayi (viz níže), jméno
+  // místnosti na mapě je záměrně považováno za herně/atmosférický obsah,
+  // ne debug údaj.
   ctx.save();
-  ctx.shadowColor = "rgba(63, 224, 138, 0.85)";
-  ctx.shadowBlur = 8;
-  ctx.fillStyle = "rgba(6, 26, 16, 0.9)";
-  ctx.strokeStyle = "#3fe08a";
-  ctx.lineWidth = 2;
+  for (const room of game.layout.rooms) {
+    const { x, y, width, height } = room.bounds;
+    const isCorridor = room.kind === "corridor" || room.kind === "service";
+    ctx.fillStyle = isCorridor ? "rgba(63, 224, 138, 0.035)" : "rgba(63, 224, 138, 0.015)";
+    ctx.fillRect(x, y, width, height);
+    ctx.strokeStyle = "rgba(63, 224, 138, 0.15)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 0.5, y + 0.5, Math.max(0, width - 1), Math.max(0, height - 1));
+
+    if (shouldShowRoomLabelByDefault(room.kind)) {
+      ctx.fillStyle = "rgba(163, 255, 200, 0.4)";
+      ctx.font = "11px monospace";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.fillText(getMiniGameRoomDisplayLabel(room), x + 10, y + 10);
+    }
+  }
+  ctx.restore();
+
+  // Zdi/regály/stroje/překážky — styl podle MiniGameLayoutWall.kind (viz
+  // getMiniGameWallRenderStyle) — "wall"/"door_block" zůstávají klasická
+  // zeď (beze změny oproti dřívějšku), "shelf" dostane vnitřní příčky
+  // (police), "machine" vnitřní panel (rozvaděč), "obstacle" je menší,
+  // tlumenější blok bez glow (bedna/stůl, ne strukturální zeď).
+  ctx.save();
   for (const wall of game.walls) {
-    ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
-    ctx.strokeRect(wall.x, wall.y, wall.width, wall.height);
+    const style = getMiniGameWallRenderStyle(wall);
+
+    if (style === "shelf") {
+      ctx.shadowColor = "rgba(63, 224, 138, 0.85)";
+      ctx.shadowBlur = 6;
+      ctx.fillStyle = "rgba(6, 26, 16, 0.9)";
+      ctx.strokeStyle = "#3fe08a";
+      ctx.lineWidth = 2;
+      ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+      ctx.strokeRect(wall.x, wall.y, wall.width, wall.height);
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = "rgba(63, 224, 138, 0.5)";
+      ctx.lineWidth = 1;
+      const slatCount = Math.max(2, Math.round(wall.width / 40));
+      for (let i = 1; i < slatCount; i++) {
+        const slatX = wall.x + (wall.width / slatCount) * i;
+        ctx.beginPath();
+        ctx.moveTo(slatX, wall.y + 2);
+        ctx.lineTo(slatX, wall.y + wall.height - 2);
+        ctx.stroke();
+      }
+    } else if (style === "machine") {
+      ctx.shadowColor = "rgba(63, 224, 138, 0.85)";
+      ctx.shadowBlur = 8;
+      ctx.fillStyle = "rgba(10, 34, 20, 0.95)";
+      ctx.strokeStyle = "#3fe08a";
+      ctx.lineWidth = 2;
+      ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+      ctx.strokeRect(wall.x, wall.y, wall.width, wall.height);
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = "rgba(93, 255, 160, 0.55)";
+      ctx.lineWidth = 1;
+      const inset = 6;
+      ctx.strokeRect(wall.x + inset, wall.y + inset, Math.max(0, wall.width - inset * 2), Math.max(0, wall.height - inset * 2));
+    } else if (style === "obstacle") {
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = "rgba(20, 40, 12, 0.85)";
+      ctx.strokeStyle = "rgba(163, 255, 130, 0.55)";
+      ctx.lineWidth = 1.5;
+      ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+      ctx.strokeRect(wall.x, wall.y, wall.width, wall.height);
+    } else {
+      // "wall" i "door_block" — klasická zeď, beze změny oproti dřívějšku.
+      ctx.shadowColor = "rgba(63, 224, 138, 0.85)";
+      ctx.shadowBlur = 8;
+      ctx.fillStyle = "rgba(6, 26, 16, 0.9)";
+      ctx.strokeStyle = "#3fe08a";
+      ctx.lineWidth = 2;
+      ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+      ctx.strokeRect(wall.x, wall.y, wall.width, wall.height);
+      ctx.shadowBlur = 0;
+    }
   }
   ctx.restore();
 

@@ -1692,6 +1692,35 @@ pevná start/enemy pozice). Teď je mapa **datově definovaná** (`MiniGameLayou
 - **`EmergencyMiniGameInput`** má dvě nová volitelná pole: `layoutId?: string` (fallback na
   baseline) a `seed?: string` (fallback na nedeterministický `createRandomSeed()`) — debug
   scénáře (`debugScenarios.ts`) je nastavují explicitně, ať jsou reprodukovatelné.
+- **`game/minigame/mapVisuals.ts`** — čisté helpery pro "evakuačně-plánový" vzhled mapy
+  (viz zadání "vizuální/design pass"), použité generčně pro libovolný layout, ne jen
+  `service_floor_evac_plan`: `getMiniGameRoomDisplayLabel(room)` (= `room.name.toUpperCase()`),
+  `shouldShowRoomLabelByDefault(kind)` (jen `storage`/`technical`/`maintenance`/`loading`/
+  `office` — chodby/utility/service popisek v BĚŽNÉM zobrazení nedostanou, ať mapa nepůsobí
+  přeplácaně), `getMiniGameWallRenderStyle(wall)` (= `wall.kind ?? "wall"`, bezpečný fallback).
+  `EmergencyMiniGame.tsx#draw` teď VŽDY (ne jen v dev overlayi) kreslí jemné obrysy/výplň
+  místností (chodby mají odlišný nádech od skladů/technických místností) + popisky
+  identifikujících místností, a rozlišuje styl zdí/překážek podle `kind`
+  (`shelf` = vnitřní příčky/police, `machine` = vnitřní panel/rozvaděč, `obstacle` =
+  menší tlumenější blok bez glow, `wall`/`door_block` = klasická zeď beze změny). Žádné
+  z tohohle nemění collision/gameplay — `MiniGameRefState.walls` je teď typu
+  `MiniGameLayoutWall[]` místo `Wall[]` (strukturální nadmnožina, beze změny chování
+  `moveWithWallSliding`/`castVisionCone`/`isEnemyHit` apod.), jen aby `draw()` měl přístup
+  ke `kind`. Debug layoutId/seed/slot id zůstávají výhradně v dev overlayi (`devOverlay.ts`,
+  skrytý Shift + pravý klik) — room labels na mapě se nepovažují za debug údaj.
+- **`service_floor_evac_plan.ts` — redesign překážek**: Sklad A má 3 rovnoběžné regálové
+  řady se sdílenou centrální uličkou (x 280–320) navazující na horní vchod z
+  `loading_access`, plus volný pruh podél pravé stěny až ke dveřím do `central_corridor` —
+  žádný regál neblokuje žádnou z existujících cest. Sklad B má menší/hustší 2×2 uspořádání
+  kratších regálů s jedním širokým (160px) centrálním křížovým průchodem. Rozvodna dostala
+  2 další strojní bloky (celkem 4) u stěn, dílna 1 další pracovní stůl (celkem 3), nakládací
+  zóna 2 další bedny (celkem 3 — servisní/nakládací dojem, ne prázdná aréna). Jména místností
+  zkrácena na krátké, VELKÝMI PÍSMENY čitelné tvary (`"Rozvodna"`, `"Údržba"`, `"Servisní
+  vstup"`, `"Sklad B"`) — jen `room.name`, žádný nový "display name" field. Jediný slot, který
+  bylo nutné přesunout kvůli nové geometrii, byl `ammo_storage_a_01` (do centrální uličky
+  skladu A, mimo nový regál) — všechny ostatní sloty zůstaly na původních souřadnicích a
+  prošly beze změny stejnou validací (`validateMiniGameLayout`) i testy
+  (`serviceFloorEvacPlan.test.ts`, `layoutPlacement.test.ts`).
 - **Neřešeno/TODO**: dosažitelnost start → objective → exit (pathfinding/flood-fill) se
   neověřuje automaticky — nová mapa byla ručně prověřená (žádný slot uvnitř zdi/mimo bounds,
   viz testy), ale žádný test negarantuje, že cesta MEZI nimi vždy existuje. Přidat jako

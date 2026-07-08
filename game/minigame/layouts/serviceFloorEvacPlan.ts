@@ -34,16 +34,22 @@ export const SERVICE_FLOOR_EVAC_PLAN: MiniGameLayout = {
   description:
     "Nejkomplexnější servisně-skladová mapa: 10 místností ve 3 sloupcích, kombinace úzkých dveří a otevřených vertikálních obchvatů, otevřená nakládací zóna nahoře jako monster spawn.",
   world: { width: 1500, height: 950 },
+  // Jména místností jsou záměrně krátká, VELKÝMI PÍSMENY čitelná na mapě
+  // (viz getMiniGameRoomDisplayLabel v game/minigame/mapVisuals.ts) — jen
+  // "identifikující" druhy místností (storage/technical/maintenance/loading/
+  // office) se v BĚŽNÉM zobrazení vůbec popisují (viz
+  // shouldShowRoomLabelByDefault), chodby/utility ne, ať mapa nepůsobí
+  // přeplácaně popisky.
   rooms: [
-    { id: "loading_access", name: "Nakládací/servisní vstup", kind: "loading", bounds: { x: 0, y: 0, width: 1500, height: 200 } },
+    { id: "loading_access", name: "Servisní vstup", kind: "loading", bounds: { x: 0, y: 0, width: 1500, height: 200 } },
     { id: "storage_a", name: "Sklad A", kind: "storage", bounds: { x: 0, y: 200, width: 600, height: 280 } },
     { id: "central_corridor", name: "Centrální chodba", kind: "corridor", bounds: { x: 600, y: 200, width: 300, height: 480 } },
-    { id: "technical_room", name: "Technická místnost / rozvodna", kind: "technical", bounds: { x: 900, y: 200, width: 600, height: 280 } },
+    { id: "technical_room", name: "Rozvodna", kind: "technical", bounds: { x: 900, y: 200, width: 600, height: 280 } },
     { id: "utility_room", name: "Údržbářská místnost", kind: "utility", bounds: { x: 0, y: 480, width: 600, height: 200 } },
     { id: "service_corridor", name: "Servisní chodba", kind: "service", bounds: { x: 900, y: 480, width: 600, height: 200 } },
-    { id: "storage_b", name: "Sklad B / zásoby", kind: "storage", bounds: { x: 0, y: 680, width: 600, height: 270 } },
+    { id: "storage_b", name: "Sklad B", kind: "storage", bounds: { x: 0, y: 680, width: 600, height: 270 } },
     { id: "lower_corridor", name: "Spodní chodba", kind: "corridor", bounds: { x: 600, y: 680, width: 300, height: 180 } },
-    { id: "maintenance_workshop", name: "Údržba / dílna", kind: "maintenance", bounds: { x: 900, y: 680, width: 600, height: 270 } },
+    { id: "maintenance_workshop", name: "Údržba", kind: "maintenance", bounds: { x: 900, y: 680, width: 600, height: 270 } },
     { id: "office", name: "Kancelář", kind: "office", bounds: { x: 600, y: 860, width: 300, height: 90 } },
   ],
   walls: [
@@ -94,20 +100,55 @@ export const SERVICE_FLOOR_EVAC_PLAN: MiniGameLayout = {
     { id: "wall_o1", x: 600, y: 850, width: 90, height: 20, kind: "wall" },
     { id: "wall_o2", x: 810, y: 850, width: 90, height: 20, kind: "wall" },
 
-    // Regály/stroje/překážky uvnitř místností — lámou line of sight (viz zadání).
-    { id: "shelf_a1", x: 60, y: 240, width: 220, height: 40, kind: "shelf" },
-    { id: "shelf_a2", x: 320, y: 340, width: 220, height: 40, kind: "shelf" },
+    // ── Sklad A — tři rovnoběžné regálové řady, každá se stejnou mezerou
+    // uprostřed (x 280–320) => souvislá průchozí ulička sever-jih přesně pod
+    // horním vchodem z loading_access, plus volný pruh podél pravé stěny
+    // (x 560–590) až ke dveřím do central_corridor. Uličky mezi řadami (~52px)
+    // i volné pásy nahoře/dole (do y=250 / od y=438) — nic neslepé, nic
+    // neprůchozí (viz zadání "regálové uličky, ne náhodné bloky").
+    { id: "shelf_a_row1_l", x: 40, y: 250, width: 240, height: 28, kind: "shelf" },
+    { id: "shelf_a_row1_r", x: 320, y: 250, width: 240, height: 28, kind: "shelf" },
+    { id: "shelf_a_row2_l", x: 40, y: 330, width: 240, height: 28, kind: "shelf" },
+    { id: "shelf_a_row2_r", x: 320, y: 330, width: 240, height: 28, kind: "shelf" },
+    { id: "shelf_a_row3_l", x: 40, y: 410, width: 240, height: 28, kind: "shelf" },
+    { id: "shelf_a_row3_r", x: 320, y: 410, width: 240, height: 28, kind: "shelf" },
+
+    // Centrální chodba — dva sloupy, ne v jedné přímce, ať láme přímý pohled
+    // shora dolů (viz zadání "line of sight").
     { id: "pillar_1", x: 700, y: 280, width: 40, height: 40, kind: "obstacle" },
     { id: "pillar_2", x: 750, y: 500, width: 40, height: 40, kind: "obstacle" },
+
+    // Rozvodna — pravoúhlé bloky (rozvaděče/strojní skříně) u stěn, prostor
+    // uprostřed zůstává volný.
     { id: "machine_tech1", x: 1000, y: 240, width: 180, height: 50, kind: "machine" },
     { id: "machine_tech2", x: 1250, y: 340, width: 180, height: 40, kind: "machine" },
+    { id: "machine_tech3", x: 950, y: 420, width: 100, height: 40, kind: "machine" },
+    { id: "machine_tech4", x: 1350, y: 150, width: 80, height: 40, kind: "machine" },
+
     { id: "machine_util", x: 150, y: 540, width: 200, height: 50, kind: "machine" },
     { id: "obstacle_service", x: 1050, y: 540, width: 180, height: 50, kind: "obstacle" },
-    { id: "shelf_b1", x: 60, y: 720, width: 220, height: 40, kind: "shelf" },
-    { id: "shelf_b2", x: 320, y: 820, width: 220, height: 40, kind: "shelf" },
+
+    // ── Sklad B — menší/hustší varianta skladu A: čtyři kratší regály ve
+    // 2×2 uspořádání s jedním širokým (160px) centrálním křížovým průchodem
+    // místo jednoho dlouhého uličkového vzoru (viz zadání "kratší regály a
+    // jeden širší průchod").
+    { id: "shelf_b_1", x: 40, y: 740, width: 160, height: 28, kind: "shelf" },
+    { id: "shelf_b_2", x: 360, y: 740, width: 160, height: 28, kind: "shelf" },
+    { id: "shelf_b_3", x: 40, y: 860, width: 160, height: 28, kind: "shelf" },
+    { id: "shelf_b_4", x: 360, y: 860, width: 160, height: 28, kind: "shelf" },
+
+    // Dílna — pracovní stoly/stroje, menší jednotlivé překážky, ne jednolitá zeď.
     { id: "worktable_1", x: 1000, y: 720, width: 180, height: 40, kind: "obstacle" },
     { id: "worktable_2", x: 1200, y: 830, width: 180, height: 40, kind: "obstacle" },
+    { id: "worktable_3", x: 1350, y: 700, width: 100, height: 30, kind: "obstacle" },
+
+    // Servisní vstup — pár beden/palet poblíž vchodu, ať zóna vypadá jako
+    // skutečná nakládací/servisní plocha, ne prázdná aréna. Monster spawn
+    // (viz sloty níže) zůstává u vstupu, nikdy poblíž beden natolik, aby
+    // blokovaly výhled/pohyb.
     { id: "crate_loading", x: 700, y: 60, width: 120, height: 40, kind: "obstacle" },
+    { id: "crate_loading_2", x: 150, y: 80, width: 100, height: 40, kind: "obstacle" },
+    { id: "crate_loading_3", x: 1150, y: 70, width: 100, height: 40, kind: "obstacle" },
   ],
   slots: [
     { id: "office_start_01", roomId: "office", x: 750, y: 905, tags: ["player_start"], debugName: "Start (kancelář)" },
@@ -150,7 +191,8 @@ export const SERVICE_FLOOR_EVAC_PLAN: MiniGameLayout = {
 
     { id: "shotgun_maintenance_01", roomId: "maintenance_workshop", x: 1400, y: 780, tags: ["shotgun"], debugName: "Brokovnice — dílna" },
 
-    { id: "ammo_storage_a_01", roomId: "storage_a", x: 150, y: 420, tags: ["ammo"], debugName: "Náboje — sklad A" },
+    // x300 = uprostřed centrální uličky (viz shelf_a_row3_l/r mezera 280–320) — ne v regálu.
+    { id: "ammo_storage_a_01", roomId: "storage_a", x: 300, y: 420, tags: ["ammo"], debugName: "Náboje — sklad A" },
     { id: "ammo_workshop_01", roomId: "maintenance_workshop", x: 1000, y: 900, tags: ["ammo"], debugName: "Náboje — dílna" },
 
     { id: "toolbox_maintenance_01", roomId: "maintenance_workshop", x: 1150, y: 900, tags: ["toolbox"], debugName: "Nářadí — dílna" },
