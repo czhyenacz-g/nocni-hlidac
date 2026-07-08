@@ -49,8 +49,15 @@ export const DEFAULT_NIGHT_FEATURES: NightFeatureFlags = {
   shotgunLootEnabled: false,
 };
 
-/** Od jaké noci se může brokovnice objevit jako loot (viz zadání) — jediné místo, které tohle číslo definuje. */
-export const SHOTGUN_LOOT_MIN_NIGHT = 10;
+/**
+ * Od jaké noci se může brokovnice objevit jako loot — jediné místo, které
+ * tohle číslo definuje.
+ *
+ * DOČASNĚ nastaveno na 1 kvůli ručnímu testování (na žádost) — herní logika
+ * (canSpawnShotgun/canStartShotgunEmergencyRun) se NEMĚNÍ, mění se jen tahle
+ * konstanta. Až testování skončí, vrať zpátky na 10.
+ */
+export const SHOTGUN_LOOT_MIN_NIGHT = 1;
 
 /** Čistá funkce nezávislá na getNightConfig, ať se dá otestovat bez celého ResolvedNightConfig. */
 export function canSpawnShotgun(nightNumber: number): boolean {
