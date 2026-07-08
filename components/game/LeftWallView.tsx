@@ -1,7 +1,8 @@
-import { useState, type PointerEvent } from "react";
+import { useEffect, useState, type PointerEvent } from "react";
 import { COPY } from "@/content/copy";
 import { EMERGENCY_RUN_WINDUP_DURATION_MS } from "@/game/balancing/constants";
 import { computeEmergencyRunWindupProgressRatio } from "@/game/core/emergencyRunWindupProgress";
+import { SHOTGUN_MAX_AMMO } from "@/game/core/shotgunEquipment";
 import ViewSwitchArrow from "./ViewSwitchArrow";
 
 interface LeftWallViewProps {
@@ -31,9 +32,16 @@ interface LeftWallViewProps {
   /** viz GameState.emergencyRunWindup — probíhající držení tlačítka. */
   emergencyRunWindupActive: boolean;
   emergencyRunWindupProgressMs: number;
+  /** Trvalé vlastnictví brokovnice (viz GameState.hasShotgun, game/core/shotgunEquipment.ts) — přepíná zeď z prázdného stojanu na stojan s brokovnicí. */
+  hasShotgun: boolean;
+  /** Aktuální munice (0 nebo SHOTGUN_MAX_AMMO) — zobrazuje se jen když hasShotgun je true. */
+  shotgunAmmo: number;
 }
 
-const LEFT_WALL_IMAGE_SRC = "/object_13/views/empty-shotgun.webp";
+/** Prázdný stojan na zbraň — beze změny oproti dřívějšku, dokud hráč brokovnici nemá (viz hasShotgun). */
+const EMPTY_LEFT_WALL_IMAGE_SRC = "/object_13/views/empty-shotgun.webp";
+/** Stejná scéna, ale s brokovnicí na zdi — hráč ji trvale získal (viz game/core/shotgunEquipment.ts). Zatím jen .webp (žádný .png fallback jako u prázdného stojanu), ale stejný imageFailed guard níže hru neshodí, kdyby soubor chyběl. */
+const SHOTGUN_LEFT_WALL_IMAGE_SRC = "/object_13/views/shotgun.webp";
 
 // Čistě atmosférický pohled bez herní mechaniky (viz gameReducer.ts
 // LOOK_AT_LEFT_WALL) — stejné rámované okno na scénu jako DoorView
@@ -50,8 +58,17 @@ export default function LeftWallView({
   canStartEmergencyRun,
   emergencyRunWindupActive,
   emergencyRunWindupProgressMs,
+  hasShotgun,
+  shotgunAmmo,
 }: LeftWallViewProps) {
   const [imageFailed, setImageFailed] = useState(false);
+  const wallImageSrc = hasShotgun ? SHOTGUN_LEFT_WALL_IMAGE_SRC : EMPTY_LEFT_WALL_IMAGE_SRC;
+  // hasShotgun mění, KTERÝ soubor se má načíst — dřívější selhání jednoho z
+  // nich (imageFailed) nesmí trvale skrýt i ten druhý, jakmile hráč
+  // brokovnici získá (nebo v dev/testu naopak).
+  useEffect(() => {
+    setImageFailed(false);
+  }, [wallImageSrc]);
 
   // Držení tlačítka řídí progres v reduceru (TICK + START/CANCEL_EMERGENCY_RUN_WINDUP),
   // ne lokální React state — pointerUp/Leave/Cancel všechny mapují na stejné
@@ -74,7 +91,7 @@ export default function LeftWallView({
       <div className="door-scene-frame">
         {!imageFailed ? (
           <img
-            src={LEFT_WALL_IMAGE_SRC}
+            src={wallImageSrc}
             alt=""
             aria-hidden="true"
             className="absolute inset-0 h-full w-full object-contain"
@@ -117,6 +134,16 @@ export default function LeftWallView({
         {canStartEmergencyRun && emergencyRunWindupActive && (
           <div className="w-32 h-1 bg-gray-800 border border-gray-700 rounded overflow-hidden">
             <div className="h-full bg-red-500 transition-all duration-150" style={{ width: `${windupPercent}%` }} />
+          </div>
+        )}
+        {/* Nenápadná informace o munici (viz zadání) — jen když má hráč
+            brokovnici vůbec (bez ní nedává tenhle text smysl a jen by
+            prozrazoval mechaniku předem). */}
+        {hasShotgun && (
+          <div className="text-[10px] text-gray-400">
+            {shotgunAmmo > 0
+              ? COPY.game.shotgunAmmoReadyLabel.replace("{ammo}", String(shotgunAmmo)).replace("{max}", String(SHOTGUN_MAX_AMMO))
+              : COPY.game.shotgunAmmoEmptyLabel}
           </div>
         )}
       </div>

@@ -27,6 +27,15 @@ export interface NightFeatureFlags {
   batteryRunEnabled: boolean;
   /** Připraveno pro budoucí výpravu "jít pro žárovky" — v /play zatím žádná bulb run mise neexistuje, proto false, ať se nezobrazuje nic, co by nešlo spustit. */
   bulbRunEnabled: boolean;
+  /**
+   * Jestli se brokovnice tuhle noc může objevit jako loot v emergency
+   * výpravě (viz zadání "první krok k true endingu", canStartShotgunEmergencyRun
+   * v game/core/emergencyMiniGameIntegration.ts) — na rozdíl od ostatních
+   * flagů výše NENÍ ruční hodnota v NIGHT_CONFIGS, ale vždy dopočítaná
+   * (viz getNightConfig níže) z `canSpawnShotgun(nightNumber)`, ať jediné
+   * místo pravdy pro "od jaké noci" zůstane SHOTGUN_LOOT_MIN_NIGHT.
+   */
+  shotgunLootEnabled: boolean;
 }
 
 export const DEFAULT_NIGHT_FEATURES: NightFeatureFlags = {
@@ -37,7 +46,16 @@ export const DEFAULT_NIGHT_FEATURES: NightFeatureFlags = {
   emergencyRunsEnabled: true,
   batteryRunEnabled: true,
   bulbRunEnabled: false,
+  shotgunLootEnabled: false,
 };
+
+/** Od jaké noci se může brokovnice objevit jako loot (viz zadání) — jediné místo, které tohle číslo definuje. */
+export const SHOTGUN_LOOT_MIN_NIGHT = 10;
+
+/** Čistá funkce nezávislá na getNightConfig, ať se dá otestovat bez celého ResolvedNightConfig. */
+export function canSpawnShotgun(nightNumber: number): boolean {
+  return nightNumber >= SHOTGUN_LOOT_MIN_NIGHT;
+}
 
 export interface NightBriefing {
   title: string;
@@ -135,6 +153,9 @@ export function getNightConfig(nightNumber: number): ResolvedNightConfig {
   return {
     nightNumber: safeNightNumber,
     briefing: entry?.briefing ?? { title: `Noc ${safeNightNumber}`, lines: FALLBACK_BRIEFING_LINES },
-    features: { ...DEFAULT_NIGHT_FEATURES, ...entry?.features },
+    // shotgunLootEnabled se VŽDY dopočítá z canSpawnShotgun — na rozdíl od
+    // ostatních flagů to není nastavitelné přes NIGHT_CONFIGS[].features (i
+    // kdyby tam někdo omylem hodnotu napsal, tenhle spread ji přepíše).
+    features: { ...DEFAULT_NIGHT_FEATURES, ...entry?.features, shotgunLootEnabled: canSpawnShotgun(safeNightNumber) },
   };
 }

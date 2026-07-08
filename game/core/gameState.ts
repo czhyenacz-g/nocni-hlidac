@@ -37,6 +37,8 @@ export function createInitialGameState(
   nightFeaturesOverride?: NightFeatureFlags,
   gameModeOverride?: GameMode,
   livesRemainingOverride?: number,
+  hasShotgunOverride?: boolean,
+  shotgunAmmoOverride?: number,
 ): GameState {
   const gameMode = gameModeOverride ?? DEFAULT_GAME_MODE;
 
@@ -104,6 +106,12 @@ export function createInitialGameState(
 
     gameMode,
     livesRemaining: livesRemainingOverride ?? GAME_MODE_CONFIG[gameMode].startingLives,
+
+    // Bez brokovnice defaultně (nový run) — app/play/page.tsx#handleBeginShift
+    // pošle skutečnou hodnotu, jen když ji hráč v aktuálním runu už má (viz
+    // game/core/shotgunEquipment.ts).
+    hasShotgun: hasShotgunOverride ?? false,
+    shotgunAmmo: shotgunAmmoOverride ?? 0,
 
     isRunning: false,
     audioMuted: false,

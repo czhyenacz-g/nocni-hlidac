@@ -474,6 +474,26 @@ export interface GameState {
    */
   livesRemaining: number;
 
+  /**
+   * Trvalé vlastnictví brokovnice pro AKTUÁLNÍ run (viz
+   * game/core/shotgunEquipment.ts, zadání "první krok k true endingu") —
+   * stejná "přenáší se přes restart, resetuje na nový run" konvence jako
+   * `gameMode`/`livesRemaining` výše, NE campaign hodnota jako
+   * `roomBulbs`/`bulbsRemaining` (nový run vždy začíná bez brokovnice).
+   * Sebrání v EmergencyMiniGame samo o sobě tohle pole nemění — nastavuje ho
+   * až `APPLY_SHOTGUN_EFFECTS` po bezpečném návratu do kanceláře (viz
+   * app/play/page.tsx#handleEmergencyMiniGameComplete).
+   */
+  hasShotgun: boolean;
+  /**
+   * Aktuální munice (0 nebo `SHOTGUN_MAX_AMMO`, viz shotgunEquipment.ts) —
+   * vždy 0, dokud `hasShotgun` není `true`. Dobíjí se na `SHOTGUN_MAX_AMMO`
+   * při každém startu nové/opakované noci a při každém bezpečném návratu
+   * z emergency výpravy (viz getRechargedShotgunAmmo) — MVP pravidlo je
+   * "vždy plný zásobník po dobití", žádné postupné doplňování.
+   */
+  shotgunAmmo: number;
+
   isRunning: boolean;
   audioMuted: boolean;
 }

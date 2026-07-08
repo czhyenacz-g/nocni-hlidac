@@ -405,6 +405,8 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             action.nightFeatures,
             action.gameMode,
             action.livesRemaining,
+            action.hasShotgun,
+            action.shotgunAmmo,
           ),
           audioMuted: state.audioMuted,
           screen: "playing",
@@ -420,6 +422,8 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             action.nightFeatures,
             action.gameMode,
             action.livesRemaining,
+            action.hasShotgun,
+            action.shotgunAmmo,
           ),
           audioMuted: state.audioMuted,
           screen: "playing",
@@ -1033,6 +1037,15 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           enemyDoorAttackGraceUntilMs: state.elapsedMs + OFFICE_THREAT_GRACE_DURATION_MS[action.intensity],
         };
       }
+
+      case "APPLY_SHOTGUN_EFFECTS":
+        // Stejný guard jako RECHARGE_POWER — mimo běžící směnu (např. hráč už
+        // zemřel dřív v téhle směně jiným způsobem) se stav zbraně nemá nijak
+        // dopočítávat. Hodnoty jsou už finální (viz
+        // game/core/shotgunEquipment.ts#applyShotgunEmergencyReturn), reducer
+        // je jen zapíše.
+        if (!state.isRunning) return state;
+        return { ...state, hasShotgun: action.hasShotgun, shotgunAmmo: action.shotgunAmmo };
 
       default:
         return state;

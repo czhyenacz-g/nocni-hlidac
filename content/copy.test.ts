@@ -18,6 +18,24 @@ describe("COPY.menu.leaderboardLinkLabel", () => {
   });
 });
 
+// Brokovnice — první krok k true endingu (viz game/core/shotgunEquipment.ts,
+// components/game/LeftWallView.tsx). {ammo}/{max} nahrazují LeftWallView.tsx.
+describe("COPY.game shotgun copy", () => {
+  it("shotgunAcquiredLabel is a non-empty message", () => {
+    expect(COPY.game.shotgunAcquiredLabel.length).toBeGreaterThan(0);
+  });
+
+  it("shotgunAmmoReadyLabel contains both placeholders", () => {
+    expect(COPY.game.shotgunAmmoReadyLabel).toContain("{ammo}");
+    expect(COPY.game.shotgunAmmoReadyLabel).toContain("{max}");
+  });
+
+  it("shotgunAmmoEmptyLabel is a non-empty message distinct from the ready label", () => {
+    expect(COPY.game.shotgunAmmoEmptyLabel.length).toBeGreaterThan(0);
+    expect(COPY.game.shotgunAmmoEmptyLabel).not.toBe(COPY.game.shotgunAmmoReadyLabel);
+  });
+});
+
 describe("COPY.gameMode", () => {
   it("has the exact NORMAL/HARDCORE mode labels", () => {
     expect(COPY.gameMode.normalLabel).toBe("NORMAL");

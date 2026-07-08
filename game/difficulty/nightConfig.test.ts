@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_NIGHT_FEATURES, getNightConfig } from "./nightConfig";
+import { DEFAULT_NIGHT_FEATURES, SHOTGUN_LOOT_MIN_NIGHT, canSpawnShotgun, getNightConfig } from "./nightConfig";
 
 describe("getNightConfig", () => {
   it("night 1: no generator faults, no bulb lifetime, no retreat verification", () => {
@@ -38,16 +38,22 @@ describe("getNightConfig", () => {
     expect(config.briefing.lines).toEqual(["Na kameře nebylo nic vidět.", "Do dveří stejně něco udeřilo."]);
   });
 
-  it.each([5, 6, 7, 8, 9, 10])("night %i: everything on, shared fallback-style briefing", (nightNumber) => {
+  it.each([5, 6, 7, 8, 9])("night %i: everything on (default), shared fallback-style briefing", (nightNumber) => {
     const config = getNightConfig(nightNumber);
     expect(config.features).toEqual(DEFAULT_NIGHT_FEATURES);
     expect(config.briefing.title).toBe(`Noc ${nightNumber}`);
     expect(config.briefing.lines).toEqual(["Služby jsou čím dál horší.", "Tohle místo se rozpadá."]);
   });
 
-  it("undefined night (999) uses the same fallback briefing and all default features", () => {
+  it("night 10: same as default except shotgunLootEnabled turns on", () => {
+    const config = getNightConfig(10);
+    expect(config.features).toEqual({ ...DEFAULT_NIGHT_FEATURES, shotgunLootEnabled: true });
+    expect(config.briefing.title).toBe("Noc 10");
+  });
+
+  it("undefined night (999) uses the same fallback briefing and all default features except shotgunLootEnabled (>= 10)", () => {
     const config = getNightConfig(999);
-    expect(config.features).toEqual(DEFAULT_NIGHT_FEATURES);
+    expect(config.features).toEqual({ ...DEFAULT_NIGHT_FEATURES, shotgunLootEnabled: true });
     expect(config.briefing.title).toBe("Noc 999");
     expect(config.briefing.lines).toEqual(["Služby jsou čím dál horší.", "Tohle místo se rozpadá."]);
   });
@@ -85,6 +91,35 @@ describe("DEFAULT_NIGHT_FEATURES — emergency runs", () => {
 
   it("bulbRunEnabled defaults to false (no bulb run mission exists in /play yet)", () => {
     expect(DEFAULT_NIGHT_FEATURES.bulbRunEnabled).toBe(false);
+  });
+});
+
+describe("canSpawnShotgun", () => {
+  it("is false before night 10", () => {
+    expect(canSpawnShotgun(9)).toBe(false);
+  });
+
+  it("is true from night 10 onward", () => {
+    expect(canSpawnShotgun(10)).toBe(true);
+    expect(canSpawnShotgun(11)).toBe(true);
+  });
+
+  it("SHOTGUN_LOOT_MIN_NIGHT is exactly 10", () => {
+    expect(SHOTGUN_LOOT_MIN_NIGHT).toBe(10);
+  });
+});
+
+describe("getNightConfig — shotgunLootEnabled follows canSpawnShotgun", () => {
+  it("is false for nights 1-9", () => {
+    for (const nightNumber of [1, 2, 3, 4, 5, 9]) {
+      expect(getNightConfig(nightNumber).features.shotgunLootEnabled).toBe(false);
+    }
+  });
+
+  it("is true from night 10 onward", () => {
+    for (const nightNumber of [10, 11, 50]) {
+      expect(getNightConfig(nightNumber).features.shotgunLootEnabled).toBe(true);
+    }
   });
 });
 

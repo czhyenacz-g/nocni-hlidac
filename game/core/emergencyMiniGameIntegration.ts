@@ -1,6 +1,6 @@
 import { MAX_POWER } from "../balancing/constants";
 import { NightFeatureFlags } from "../difficulty/nightConfig";
-import { EmergencyMiniGameInput, EmergencyWorldEffect } from "../minigame/types";
+import { EmergencyMiniGameEquipment, EmergencyMiniGameInput, EmergencyWorldEffect } from "../minigame/types";
 import { SERVICE_FLOOR_EVAC_PLAN } from "../minigame/layouts/serviceFloorEvacPlan";
 
 // První tenké napojení EmergencyMiniGame (game/minigame/*) do hlavní hry
@@ -23,19 +23,42 @@ import { SERVICE_FLOOR_EVAC_PLAN } from "../minigame/layouts/serviceFloorEvacPla
 export const DEFAULT_BATTERY_RUN_LAYOUT_ID = SERVICE_FLOOR_EVAC_PLAN.id;
 
 /**
- * Vstup pro "Jít ven pro baterii" — první integrovaný scénář, záměrně bez
- * brokovnice/nábojů (stealth varianta). Brokovnici a munici napojíme později
- * (viz zadání). `layoutId` je od teď explicitní (viz DEFAULT_BATTERY_RUN_LAYOUT_ID)
- * — chybějící/neplatné id by se v EmergencyMiniGame.tsx bezpečně vrátilo na
- * service_floor_alpha (viz getMiniGameLayout), ale odsud vždy posíláme
- * skutečné `.id` existujícího layoutu, takže tenhle fallback se v praxi
- * nikdy neuplatní.
+ * Vstup pro "Jít ven pro baterii" — první integrovaný scénář. `equipment` je
+ * od teď povinný parametr (dřív natvrdo `{ hasShotgun: false, ammo: 0 }`,
+ * stealth varianta) — volající (app/play/page.tsx) pošle SKUTEČNOU výbavu
+ * hráče (`{ hasShotgun: state.hasShotgun, ammo: state.shotgunAmmo }`, viz
+ * zadání "equipment podle hlavního GameState"), ať hráč, který už brokovnici
+ * má, není v žádné emergency výpravě bezbranný. `layoutId` je od teď
+ * explicitní (viz DEFAULT_BATTERY_RUN_LAYOUT_ID) — chybějící/neplatné id by
+ * se v EmergencyMiniGame.tsx bezpečně vrátilo na service_floor_alpha (viz
+ * getMiniGameLayout), ale odsud vždy posíláme skutečné `.id` existujícího
+ * layoutu, takže tenhle fallback se v praxi nikdy neuplatní.
  */
-export function createBatteryEmergencyInput(): EmergencyMiniGameInput {
+export function createBatteryEmergencyInput(equipment: EmergencyMiniGameEquipment): EmergencyMiniGameInput {
   return {
     objective: "collect_item",
     itemToCollect: "battery",
-    equipment: { hasShotgun: false, ammo: 0 },
+    equipment,
+    difficulty: "medium",
+    startLocation: "office",
+    layoutId: DEFAULT_BATTERY_RUN_LAYOUT_ID,
+  };
+}
+
+/**
+ * Vstup pro "Jít ven pro brokovnici" — nabídne se místo battery runu, jen
+ * když je to podle `canStartShotgunEmergencyRun` (viz níže) skutečně na
+ * pořadu (noc 10+, hráč ji ještě nemá). Stejná mapa jako battery run
+ * (`service_floor_evac_plan` už má slot otagovaný `"shotgun"`, viz
+ * game/minigame/layouts/serviceFloorEvacPlan.ts) — žádná nová mapa zatím
+ * není potřeba. `equipment` stejně jako u battery runu: skutečná aktuální
+ * výbava hráče, ne natvrdo prázdná.
+ */
+export function createShotgunEmergencyInput(equipment: EmergencyMiniGameEquipment): EmergencyMiniGameInput {
+  return {
+    objective: "collect_item",
+    itemToCollect: "shotgun",
+    equipment,
     difficulty: "medium",
     startLocation: "office",
     layoutId: DEFAULT_BATTERY_RUN_LAYOUT_ID,
@@ -46,9 +69,13 @@ export function createBatteryEmergencyInput(): EmergencyMiniGameInput {
  * Aplikuje worldEffects z returned resultu na aktuální energii hlavní hry —
  * čistá funkce, vrací nový (clampnutý na MAX_POWER) power. Zatím podporuje
  * jen "energy_recharged" (sečte všechny výskyty, kdyby jich bylo víc);
- * ostatní typy efektů (generator_repaired, bulbs_serviced, shotgun_acquired,
- * ammo_acquired) jsou zatím bezpečně no-op — hra kvůli nim nesmí spadnout,
- * jen zatím nic nedělají (napojí se v dalších krocích).
+ * `generator_repaired`/`bulbs_serviced` jsou zatím bezpečně no-op — hra kvůli
+ * nim nesmí spadnout, jen zatím nic nedělají (napojí se v dalších krocích).
+ * `shotgun_acquired`/`ammo_acquired` jsou tady taky no-op, ale NE proto, že by
+ * nebyly napojené — brokovnici/náboj řeší samostatná funkce
+ * `applyShotgunEmergencyReturn` (viz game/core/shotgunEquipment.ts), volaná
+ * vedle tyhle funkce v app/play/page.tsx#handleEmergencyMiniGameComplete, ne
+ * uvnitř téhle (jiná část GameState = jiná čistá funkce).
  */
 export function applyEmergencyWorldEffects(power: number, effects: EmergencyWorldEffect[] | undefined): number {
   if (!effects || effects.length === 0) return power;
@@ -70,6 +97,23 @@ export function applyEmergencyWorldEffects(power: number, effects: EmergencyWorl
  */
 export function canStartBatteryEmergencyRun(nightFeatures: Pick<NightFeatureFlags, "emergencyRunsEnabled" | "batteryRunEnabled">): boolean {
   return nightFeatures.emergencyRunsEnabled && nightFeatures.batteryRunEnabled;
+}
+
+/**
+ * Jestli má "Jít ven" TEĎ nabídnout brokovnici místo baterie — vyžaduje
+ * `emergencyRunsEnabled` (zastřešující flag, stejně jako battery run výše),
+ * `shotgunLootEnabled` (noc 10+, viz game/difficulty/nightConfig.ts) A
+ * hráč ji ještě NEMÁ (viz zadání "po získání se další shotgun run/loot
+ * nemá nabízet"). Jediné místo, které tohle rozhoduje — app/play/page.tsx
+ * na něj musí spoléhat při výběru, jaký EmergencyMiniGameInput sestavit,
+ * ať se výběr mise a případné budoucí UI ("dá se najít brokovnice?") nikdy
+ * nerozejdou.
+ */
+export function canStartShotgunEmergencyRun(
+  nightFeatures: Pick<NightFeatureFlags, "emergencyRunsEnabled" | "shotgunLootEnabled">,
+  hasShotgun: boolean,
+): boolean {
+  return nightFeatures.emergencyRunsEnabled && nightFeatures.shotgunLootEnabled && !hasShotgun;
 }
 
 /**

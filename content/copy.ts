@@ -112,6 +112,13 @@ export const COPY = {
     // zobrazovací element (app/play/page.tsx) má whitespace-pre-line, ať se
     // \n skutečně zalomí, ne slibuje okamžitou smrt (ta se tímhle nespustí).
     emergencyRunThreatFollowedLabel: "Zdá se, že se nevracíš sám.\nZavři dveře!",
+    // Krátká zpráva po bezpečném návratu, kdy hráč PRVNÍ krát získá brokovnici
+    // (viz shotgun_acquired worldEffect, game/core/shotgunEquipment.ts) —
+    // stejné místo/styl jako emergencyRunEnergyRechargedLabel výše.
+    shotgunAcquiredLabel: "Brokovnice nalezena. Teď máš aspoň šanci se bránit.",
+    /** {ammo}/{max} u LeftWallView, jen když hasShotgun === true (viz zadání "nenápadná informace o munici"). */
+    shotgunAmmoReadyLabel: "Brokovnice: {ammo}/{max}",
+    shotgunAmmoEmptyLabel: "Náboj: prázdno",
     // Klik na tlačítko se zavřenými dveřmi (viz handleStartEmergencyRunWindup)
     // — hráč nemůže vyběhnout ven zavřenými dveřmi, tlačítko samo o sobě
     // zůstává klikatelné (jen vizuálně ztlumené), tenhle hint vysvětlí proč.

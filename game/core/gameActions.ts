@@ -20,6 +20,9 @@ export type GameAction =
   // pošle skutečnou hodnotu: čerstvou při novém startu (vybranou na
   // MainMenuScreen), nebo zachovanou `state.gameMode`/`state.livesRemaining`
   // při RESTART_SHIFT (viz gameMode.ts, handleBeginShift).
+  // hasShotgun/shotgunAmmo jsou stejná volitelná dvojice navíc (viz
+  // game/core/shotgunEquipment.ts) — chybí-li, createInitialGameState
+  // spadne na `false`/`0` (nový run bez brokovnice).
   | {
       type: "START_SHIFT";
       roomBulbs?: RoomBulbsState;
@@ -27,6 +30,8 @@ export type GameAction =
       nightFeatures?: NightFeatureFlags;
       gameMode?: GameMode;
       livesRemaining?: number;
+      hasShotgun?: boolean;
+      shotgunAmmo?: number;
     }
   | {
       type: "RESTART_SHIFT";
@@ -35,6 +40,8 @@ export type GameAction =
       nightFeatures?: NightFeatureFlags;
       gameMode?: GameMode;
       livesRemaining?: number;
+      hasShotgun?: boolean;
+      shotgunAmmo?: number;
     }
   | { type: "TOGGLE_DOOR" }
   | { type: "TOGGLE_LIGHT" }
@@ -84,4 +91,11 @@ export type GameAction =
   // NIKDY nezpůsobí smrt sama o sobě. `intensity` je prostá string union,
   // záměrně NE `OfficeThreatIntensity` z game/minigame/types.ts — game/core/*
   // nikdy nesmí importovat typy z game/minigame/* (viz types.ts nahoře).
-  | { type: "APPLY_OFFICE_THREAT_ON_RETURN"; intensity: "low" | "medium" | "high" };
+  | { type: "APPLY_OFFICE_THREAT_ON_RETURN"; intensity: "low" | "medium" | "high" }
+  // Bezpečný návrat z emergency výpravy (viz game/core/shotgunEquipment.ts,
+  // app/play/page.tsx#handleEmergencyMiniGameComplete) — volající tam už
+  // spočítal finální hasShotgun/shotgunAmmo (applyShotgunEmergencyReturn),
+  // reducer je jen zapíše. Smrt/nedokončená výprava tuhle akci nikdy
+  // nedispatchne, takže brokovnice/náboj se tímhle nikdy nezíská bez
+  // skutečného návratu do kanceláře.
+  | { type: "APPLY_SHOTGUN_EFFECTS"; hasShotgun: boolean; shotgunAmmo: number };

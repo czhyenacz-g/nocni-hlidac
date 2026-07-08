@@ -42,9 +42,12 @@ import { getNightConfig } from "@/game/difficulty/nightConfig";
 import {
   applyEmergencyWorldEffects,
   canStartBatteryEmergencyRun,
+  canStartShotgunEmergencyRun,
   createBatteryEmergencyInput,
+  createShotgunEmergencyInput,
   shouldLaunchEmergencyMiniGame,
 } from "@/game/core/emergencyMiniGameIntegration";
+import { applyShotgunEmergencyReturn, getRechargedShotgunAmmo } from "@/game/core/shotgunEquipment";
 import EmergencyMiniGame from "@/components/minigame/EmergencyMiniGame";
 import { EmergencyMiniGameInput, EmergencyMiniGameResult } from "@/game/minigame/types";
 import { COPY } from "@/content/copy";
@@ -109,7 +112,9 @@ export default function PlayPage() {
   // připravené pro budoucí další emergency scénáře. Deklarováno tady (ne
   // blíž ostatním sourozeneckým useState) jen proto, aby ho useGameLoop níže
   // mohl použít v `isRunning`.
-  const [activeMiniGame, setActiveMiniGame] = useState<{ id: "battery_run"; input: EmergencyMiniGameInput } | null>(null);
+  const [activeMiniGame, setActiveMiniGame] = useState<{ id: "battery_run" | "shotgun_run"; input: EmergencyMiniGameInput } | null>(
+    null,
+  );
 
   // Jednorázově při mountu zjisti přihlášeného hráče a jeho serverový run
   // stav (viz app/api/auth/me/route.ts) — pokud je hráč přihlášený a hub API
@@ -532,9 +537,20 @@ export default function PlayPage() {
   // směna -> minihra se otevře znovu místo kanceláře).
   useEffect(() => {
     if (shouldLaunchEmergencyMiniGame(prevEmergencyRunReadySeqRef.current, state.emergencyRunReadySeq)) {
-      setActiveMiniGame({ id: "battery_run", input: createBatteryEmergencyInput() });
+      // Od noci 10, dokud hráč brokovnici ještě nemá, nabídne "Jít ven"
+      // přednostně shotgun run místo battery runu (viz zadání "první krok k
+      // true endingu", canStartShotgunEmergencyRun) — equipment vždy podle
+      // aktuálního GameState, ne natvrdo prázdné (viz
+      // game/core/emergencyMiniGameIntegration.ts).
+      const equipment = { hasShotgun: state.hasShotgun, ammo: state.shotgunAmmo };
+      if (canStartShotgunEmergencyRun(state.nightFeatures, state.hasShotgun)) {
+        setActiveMiniGame({ id: "shotgun_run", input: createShotgunEmergencyInput(equipment) });
+      } else {
+        setActiveMiniGame({ id: "battery_run", input: createBatteryEmergencyInput(equipment) });
+      }
     }
     prevEmergencyRunReadySeqRef.current = state.emergencyRunReadySeq;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.emergencyRunReadySeq]);
 
   useEffect(() => {
@@ -630,7 +646,16 @@ export default function PlayPage() {
       // odečetl. Spotřebuje se přesně jednou (další restart už je normální).
       const rawLivesRemaining = restoreNearMissLifeRef.current ? state.livesRemaining + 1 : state.livesRemaining;
       restoreNearMissLifeRef.current = false;
-      const livesRemaining = rawLivesRemaining > 0 ? rawLivesRemaining : GAME_MODE_CONFIG[gameMode].startingLives;
+      // rawLivesRemaining <= 0 znamená skutečný konec runu (Normal došly
+      // životy, nebo Hardcore) — nový run vždy začíná bez brokovnice (viz
+      // game/core/shotgunEquipment.ts, "Persistuje jen v rámci AKTUÁLNÍHO
+      // runu"), stejná signalizace jako u livesRemaining/gameMode.
+      const isFreshRun = rawLivesRemaining <= 0;
+      const livesRemaining = isFreshRun ? GAME_MODE_CONFIG[gameMode].startingLives : rawLivesRemaining;
+      const hasShotgun = isFreshRun ? false : state.hasShotgun;
+      // Dobití náboje na začátku (opakované i nové) noci (viz zadání "Každý
+      // nový den / nová noc dobije 1 náboj") — bez brokovnice zůstává 0.
+      const shotgunAmmo = getRechargedShotgunAmmo(hasShotgun, state.shotgunAmmo);
       dispatch({
         type: "RESTART_SHIFT",
         roomBulbs: getRoomBulbs(),
@@ -638,6 +663,8 @@ export default function PlayPage() {
         nightFeatures,
         gameMode,
         livesRemaining,
+        hasShotgun,
+        shotgunAmmo,
       });
     } else {
       const gameMode = selectedGameModeRef.current;
@@ -648,6 +675,8 @@ export default function PlayPage() {
         nightFeatures,
         gameMode,
         livesRemaining: GAME_MODE_CONFIG[gameMode].startingLives,
+        hasShotgun: false,
+        shotgunAmmo: 0,
       });
     }
   }
@@ -723,7 +752,9 @@ export default function PlayPage() {
   // sem pointerDown dorazí vždy; tady se rozhodne, jestli se opravdu spustí,
   // nebo jen ukáže hint.
   function handleStartEmergencyRunWindup() {
-    if (!canStartBatteryEmergencyRun(state.nightFeatures)) return;
+    if (!canStartBatteryEmergencyRun(state.nightFeatures) && !canStartShotgunEmergencyRun(state.nightFeatures, state.hasShotgun)) {
+      return;
+    }
     if (state.doorClosed) {
       audioManager.play(AUDIO_EVENTS.uiClick);
       setEmergencyRunMessage(COPY.game.emergencyRunNeedsOpenDoorLabel);
@@ -774,6 +805,20 @@ export default function PlayPage() {
       if (result.officeThreatOnReturn?.active) {
         dispatch({ type: "APPLY_OFFICE_THREAT_ON_RETURN", intensity: result.officeThreatOnReturn.intensity });
         messages.push(COPY.game.emergencyRunThreatFollowedLabel);
+      }
+
+      // Brokovnice/náboj (viz zadání "první krok k true endingu",
+      // game/core/shotgunEquipment.ts) — KAŽDÝ bezpečný návrat dobije náboj
+      // na plno, pokud hráč brokovnici má (ať už ji přinesl teď, nebo už ji
+      // měl dřív), bez ohledu na to, co přesně sebral/kolik nábojů cestou
+      // vystřelil. "dead"/"failed" výše tenhle dispatch vůbec nezavolají —
+      // brokovnice/náboj se tedy nikdy nezíská bez skutečného návratu.
+      const shotgunResult = applyShotgunEmergencyReturn(state.hasShotgun, state.shotgunAmmo, result.worldEffects);
+      if (shotgunResult.hasShotgun !== state.hasShotgun || shotgunResult.shotgunAmmo !== state.shotgunAmmo) {
+        dispatch({ type: "APPLY_SHOTGUN_EFFECTS", hasShotgun: shotgunResult.hasShotgun, shotgunAmmo: shotgunResult.shotgunAmmo });
+        if (!state.hasShotgun && shotgunResult.hasShotgun) {
+          messages.push(COPY.game.shotgunAcquiredLabel);
+        }
       }
 
       if (messages.length > 0) setEmergencyRunMessage(messages.join("\n"));

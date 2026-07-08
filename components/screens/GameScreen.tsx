@@ -5,7 +5,7 @@ import { STRESS_DEV_HUD_ENABLED } from "@/game/balancing/constants";
 import { COPY } from "@/content/copy";
 import { computeNearRoomBulbWearRatio } from "@/game/core/roomBulbs";
 import { canReplaceBulb } from "@/game/core/gameReducer";
-import { canStartBatteryEmergencyRun } from "@/game/core/emergencyMiniGameIntegration";
+import { canStartBatteryEmergencyRun, canStartShotgunEmergencyRun } from "@/game/core/emergencyMiniGameIntegration";
 import SceneBackground from "@/components/SceneBackground";
 import DeskView from "../game/DeskView";
 import DoorView from "../game/DoorView";
@@ -95,6 +95,12 @@ export default function GameScreen({
   // v komponentách, které to dopočítá; LeftWallView dostane jen hotový
   // boolean, ne celou nightFeatures strukturu.
   const canStartBatteryRun = canStartBatteryEmergencyRun(state.nightFeatures);
+  // "Jít ven" tlačítko se zobrazí, dokud je dostupná ASPOŇ jedna výprava
+  // (battery run, nebo od noci 10 shotgun run, viz
+  // game/core/emergencyMiniGameIntegration.ts#canStartShotgunEmergencyRun) —
+  // KTEROU z nich app/play/page.tsx skutečně spustí, se rozhoduje samostatně
+  // (stejná priorita) až při skutečném doběhnutí držení, ne tady.
+  const canStartEmergencyRun = canStartBatteryRun || canStartShotgunEmergencyRun(state.nightFeatures, state.hasShotgun);
   // DEV panel je schválně skrytý ve výchozím stavu (ne jen collapsed <details>
   // jako dřív) — objeví se jen po pravém kliku na popisek "Noc {n}" v
   // ShiftTimeru (viz onNightLabelContextMenu níže). Čistě UI viditelnost dev
@@ -200,9 +206,11 @@ export default function GameScreen({
                 onStartEmergencyRunWindup={onStartEmergencyRunWindup}
                 onCancelEmergencyRunWindup={onCancelEmergencyRunWindup}
                 doorClosed={state.doorClosed}
-                canStartEmergencyRun={canStartBatteryRun}
+                canStartEmergencyRun={canStartEmergencyRun}
                 emergencyRunWindupActive={state.emergencyRunWindup.active}
                 emergencyRunWindupProgressMs={state.emergencyRunWindup.progressMs}
+                hasShotgun={state.hasShotgun}
+                shotgunAmmo={state.shotgunAmmo}
               />
             )}
             {state.playerView === "object_map" && <ObjectMapView onLookAtDesk={onLookAtDesk} />}

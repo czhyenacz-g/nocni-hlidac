@@ -3,7 +3,9 @@ import {
   DEFAULT_BATTERY_RUN_LAYOUT_ID,
   applyEmergencyWorldEffects,
   canStartBatteryEmergencyRun,
+  canStartShotgunEmergencyRun,
   createBatteryEmergencyInput,
+  createShotgunEmergencyInput,
   shouldLaunchEmergencyMiniGame,
 } from "./emergencyMiniGameIntegration";
 import { MAX_POWER } from "../balancing/constants";
@@ -11,21 +13,55 @@ import { SERVICE_FLOOR_EVAC_PLAN } from "../minigame/layouts/serviceFloorEvacPla
 
 describe("createBatteryEmergencyInput", () => {
   it("has objective collect_item and itemToCollect battery", () => {
-    const input = createBatteryEmergencyInput();
+    const input = createBatteryEmergencyInput({ hasShotgun: false, ammo: 0 });
     expect(input.objective).toBe("collect_item");
     expect(input.itemToCollect).toBe("battery");
   });
 
-  it("has no shotgun and no ammo (stealth run)", () => {
-    const input = createBatteryEmergencyInput();
-    expect(input.equipment).toEqual({ hasShotgun: false, ammo: 0 });
+  it("passes the equipment argument through unchanged (real player equipment, not hardcoded)", () => {
+    expect(createBatteryEmergencyInput({ hasShotgun: false, ammo: 0 }).equipment).toEqual({ hasShotgun: false, ammo: 0 });
+    expect(createBatteryEmergencyInput({ hasShotgun: true, ammo: 1 }).equipment).toEqual({ hasShotgun: true, ammo: 1 });
   });
 
   it("uses service_floor_evac_plan as the layoutId (the real, larger map, not the alpha baseline)", () => {
-    const input = createBatteryEmergencyInput();
+    const input = createBatteryEmergencyInput({ hasShotgun: false, ammo: 0 });
     expect(input.layoutId).toBe("service_floor_evac_plan");
     expect(input.layoutId).toBe(SERVICE_FLOOR_EVAC_PLAN.id);
     expect(input.layoutId).toBe(DEFAULT_BATTERY_RUN_LAYOUT_ID);
+  });
+});
+
+describe("createShotgunEmergencyInput", () => {
+  it("has objective collect_item and itemToCollect shotgun", () => {
+    const input = createShotgunEmergencyInput({ hasShotgun: false, ammo: 0 });
+    expect(input.objective).toBe("collect_item");
+    expect(input.itemToCollect).toBe("shotgun");
+  });
+
+  it("passes the equipment argument through unchanged", () => {
+    expect(createShotgunEmergencyInput({ hasShotgun: false, ammo: 0 }).equipment).toEqual({ hasShotgun: false, ammo: 0 });
+  });
+
+  it("uses the same layout as the battery run", () => {
+    expect(createShotgunEmergencyInput({ hasShotgun: false, ammo: 0 }).layoutId).toBe(DEFAULT_BATTERY_RUN_LAYOUT_ID);
+  });
+});
+
+describe("canStartShotgunEmergencyRun", () => {
+  it("true when emergency runs + shotgun loot are enabled and the player doesn't have it yet", () => {
+    expect(canStartShotgunEmergencyRun({ emergencyRunsEnabled: true, shotgunLootEnabled: true }, false)).toBe(true);
+  });
+
+  it("false when shotgunLootEnabled is false (before night 10)", () => {
+    expect(canStartShotgunEmergencyRun({ emergencyRunsEnabled: true, shotgunLootEnabled: false }, false)).toBe(false);
+  });
+
+  it("false when emergencyRunsEnabled is false", () => {
+    expect(canStartShotgunEmergencyRun({ emergencyRunsEnabled: false, shotgunLootEnabled: true }, false)).toBe(false);
+  });
+
+  it("false once the player already has the shotgun — never offered again", () => {
+    expect(canStartShotgunEmergencyRun({ emergencyRunsEnabled: true, shotgunLootEnabled: true }, true)).toBe(false);
   });
 });
 
