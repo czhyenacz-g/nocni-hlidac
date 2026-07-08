@@ -189,5 +189,16 @@ export type EmergencyMiniGameResult =
       worldEffects?: EmergencyWorldEffect[];
       /** Chybí/`active: false`, pokud monstrum na návrat nemělo vliv — viz evaluateOfficeThreatOnReturn. */
       officeThreatOnReturn?: OfficeThreatOnReturn;
+      /**
+       * `true`, jen když hráč BĚHEM tyhle výpravy skutečně trefil monstrum
+       * brokovnicí (viz isEnemyHit/applyShot) A bezpečně se vrátil —
+       * nezávislé na `completedObjective`/`worldEffects` (zásah nesouvisí s
+       * tím, co hráč zrovna sbíral). Samotné vystřelení/minutí tohle
+       * nenastaví; smrt venku tenhle result vůbec nevznikne (viz outcome
+       * "dead"), takže nedokončený zásah se sem nikdy nedostane. Hlavní hra
+       * (viz game/core/monsterEnding.ts, app/play/page.tsx) z něj teprve
+       * TADY, po návratu, potvrdí zásah — nikdy dřív.
+       */
+      monsterHit?: boolean;
     }
   | { outcome: "failed"; reason: "objective_failed"; elapsedMs: number; shotsUsed: number };

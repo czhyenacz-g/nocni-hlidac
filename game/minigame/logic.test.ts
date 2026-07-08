@@ -778,6 +778,38 @@ describe("result builders", () => {
     expect(createReturnedResult(5000, 1, undefined, inactiveThreat)).toEqual({ outcome: "returned", elapsedMs: 5000, shotsUsed: 1 });
   });
 
+  it("createReturnedResult omits monsterHit when not passed (miss/no shot fired)", () => {
+    expect(createReturnedResult(5000, 1)).toEqual({ outcome: "returned", elapsedMs: 5000, shotsUsed: 1 });
+  });
+
+  it("createReturnedResult omits monsterHit when explicitly false", () => {
+    expect(createReturnedResult(5000, 1, undefined, undefined, false)).toEqual({
+      outcome: "returned",
+      elapsedMs: 5000,
+      shotsUsed: 1,
+    });
+  });
+
+  it("createReturnedResult includes monsterHit: true when the player hit the monster this run", () => {
+    expect(createReturnedResult(5000, 1, undefined, undefined, true)).toEqual({
+      outcome: "returned",
+      elapsedMs: 5000,
+      shotsUsed: 1,
+      monsterHit: true,
+    });
+  });
+
+  it("createReturnedResult combines monsterHit with a completedObjective/worldEffects independently", () => {
+    expect(createReturnedResult(5000, 1, { type: "collected_item", itemId: "battery" }, undefined, true)).toEqual({
+      outcome: "returned",
+      elapsedMs: 5000,
+      shotsUsed: 1,
+      completedObjective: { type: "collected_item", itemId: "battery" },
+      worldEffects: [{ type: "energy_recharged", amount: 35 }],
+      monsterHit: true,
+    });
+  });
+
   it("createFailedResult", () => {
     expect(createFailedResult(9999, 1)).toEqual({
       outcome: "failed",

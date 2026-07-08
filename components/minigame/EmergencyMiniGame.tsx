@@ -105,6 +105,14 @@ interface EmergencyMiniGameProps {
   onComplete?: (result: EmergencyMiniGameResult) => void;
   /** Zatím jen Escape během hraní — žádná další UI cesta k "cancel" v tomhle MVP. */
   onCancel?: () => void;
+  /**
+   * Zavolá se HNED, jak výstřel skutečně trefí monstrum (viz fireShot,
+   * isEnemyHit) — NENÍ potvrzení zásahu pro hidden true ending
+   * (game/core/monsterEnding.ts), jen signál "právě se to stalo", ať
+   * app/play/page.tsx může nastavit `GameState.pendingMonsterHit`. Potvrzení
+   * přijde až přes `onComplete` s `monsterHit: true` při bezpečném návratu.
+   */
+  onMonsterHit?: () => void;
 }
 
 // Znovupoužitelný "nouzová obchůzka" modul — vlastní requestAnimationFrame
@@ -166,6 +174,14 @@ interface MiniGameRefState {
   moveTarget: Vec2 | null;
   /** elapsedMs v okamžiku nastavení moveTarget — řídí, jak dlouho zůstává vidět marker (viz isMoveTargetMarkerVisible). */
   moveTargetSetAtElapsedMs: number;
+  /**
+   * `true`, jakmile hráč BĚHEM tyhle výpravy aspoň jednou skutečně trefí
+   * monstrum (viz fireShot, isEnemyHit) — nikdy se nevrací zpátky na false.
+   * Posílá se v EmergencyMiniGameResult.monsterHit teprve při skutečném
+   * návratu do kanceláře (viz handleObjectiveKey) — hidden true ending
+   * (game/core/monsterEnding.ts) zásah potvrdí až tam, ne tady.
+   */
+  monsterHitThisRun: boolean;
 }
 
 function createInitialState(input: EmergencyMiniGameInput): MiniGameRefState {
@@ -201,6 +217,7 @@ function createInitialState(input: EmergencyMiniGameInput): MiniGameRefState {
     enemyVisibleToPlayer: false,
     moveTarget: null,
     moveTargetSetAtElapsedMs: 0,
+    monsterHitThisRun: false,
   };
 }
 
@@ -304,7 +321,7 @@ const MOVE_KEYS: Record<string, { dx: number; dy: number }> = {
   arrowright: { dx: 1, dy: 0 },
 };
 
-export default function EmergencyMiniGame({ input, onComplete, onCancel }: EmergencyMiniGameProps) {
+export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonsterHit }: EmergencyMiniGameProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const gameRef = useRef<MiniGameRefState>(createInitialState(input));
   const heldKeysRef = useRef<Set<string>>(new Set());
@@ -469,6 +486,14 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
       // (viz ENEMY_STUN_DURATION_MS), hra dál běží (status zůstává "playing").
       game.enemy.stunRemainingMs = ENEMY_STUN_DURATION_MS;
       game.enemy.mode = "wounded";
+      // Hidden true ending (viz zadání, game/core/monsterEnding.ts) — zásah se
+      // POTVRDÍ až při bezpečném návratu (viz handleObjectiveKey), tady se jen
+      // zapamatuje, že k němu během týhle výpravy došlo. Nikdy se nevrací na
+      // false (i kdyby hráč "wounded" enemy trefil znovu). `onMonsterHit`
+      // informuje app/play/page.tsx HNED (GameState.pendingMonsterHit), ať se
+      // dá zahodit, pokud hráč potom venku zemře.
+      game.monsterHitThisRun = true;
+      onMonsterHit?.();
     }
     // Miss (i miss "za zdí"): náboj je pryč, hra dál běží, enemy nezraněn.
   }
@@ -527,7 +552,13 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
       });
 
       completeGame(
-        createReturnedResult(game.elapsedMs, game.shotsUsed, game.mission.completedObjective, officeThreatOnReturn),
+        createReturnedResult(
+          game.elapsedMs,
+          game.shotsUsed,
+          game.mission.completedObjective,
+          officeThreatOnReturn,
+          game.monsterHitThisRun,
+        ),
         "won",
       );
     }

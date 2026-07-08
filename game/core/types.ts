@@ -45,7 +45,11 @@ export type EnemyMoveDecision =
 // components/screens/BriefingScreen.tsx, game/difficulty/nightConfig.ts) —
 // mezikrok po "loading" (nový start) i po smrti/výhře (retry), nikdy se
 // nezobrazí uprostřed běžící směny.
-export type ScreenId = "menu" | "loading" | "briefing" | "playing" | "death" | "win";
+// "monsterDefeated" — skrytý true ending (viz zadání, game/core/monsterEnding.ts,
+// components/screens/MonsterDefeatedScreen.tsx): 10 potvrzených zásahů
+// monstra brokovnicí za jednu noc. Má přednost před běžným "win" flow — jen
+// gameReducer.ts#CONFIRM_MONSTER_HIT do něj přechází, nikdy TICK/ENEMY_ADVANCE.
+export type ScreenId = "menu" | "loading" | "briefing" | "playing" | "death" | "win" | "monsterDefeated";
 
 /** Kam se hráč v místnosti právě dívá — ovládá to, co je aktuálně klikatelné. */
 export type PlayerView = "desk" | "door" | "generator" | "left_wall" | "object_map";
@@ -517,6 +521,32 @@ export interface GameState {
    * "vždy plný zásobník po dobití", žádné postupné doplňování.
    */
   shotgunAmmo: number;
+
+  /**
+   * Skrytý true ending (viz zadání, game/core/monsterEnding.ts) — na rozdíl
+   * od `hasShotgun`/`shotgunAmmo` (přenáší se přes celý run) je tohle
+   * počítadlo "za JEDNU noc": `createInitialGameState` ho VŽDY nastaví na
+   * čerstvou výchozí hodnotu, i při RESTART_SHIFT (opakování stejné noci po
+   * smrti v Normal režimu) — žádný override parametr, žádná výjimka.
+   */
+  monsterHitsToday: number;
+  /**
+   * `true` od okamžiku, kdy hráč BĚHEM emergency výpravy trefí monstrum
+   * brokovnicí (viz gameActions.ts MARK_PENDING_MONSTER_HIT,
+   * EmergencyMiniGame.tsx#fireShot), dokud výprava neskončí. Bezpečný návrat
+   * ho potvrdí (CONFIRM_MONSTER_HIT, `monsterHitsToday += 1`, tohle se vrátí
+   * na `false`); smrt venku (EMERGENCY_MINIGAME_DIED) ho ZAHODÍ beze změny
+   * `monsterHitsToday` — zásah se tedy nikdy nepočítá bez bezpečného návratu.
+   */
+  pendingMonsterHit: boolean;
+  /**
+   * `true`, jakmile `monsterHitsToday` dosáhne
+   * `MONSTER_TRUE_ENDING_REQUIRED_HITS` (viz CONFIRM_MONSTER_HIT) — trvalý
+   * příznak pro tenhle run, `screen` zároveň přejde na `"monsterDefeated"`
+   * (viz MonsterDefeatedScreen.tsx). Nový run (GO_TO_MENU -> START_SHIFT)
+   * ho vždy vynuluje zpátky na `false`.
+   */
+  monsterDefeated: boolean;
 
   isRunning: boolean;
   audioMuted: boolean;

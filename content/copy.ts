@@ -123,11 +123,15 @@ export const COPY = {
     // GameState.hasShotgun) — stejný "drž tlačítko" vzor jako
     // startEmergencyRunLabel výše, jen delší (THINK_IT_OVER_WINDUP_DURATION_MS)
     // a bez spuštění minihry na konci.
-    startThinkItOverLabel: "Nechat si to projít hlavou",
+    startThinkItOverLabel: 'Nechat si to "projít hlavou"',
     /** Text tlačítka během držení (viz GameState.thinkItOverWindup) — {seconds} se nahradí zbývajícím počtem sekund. */
     thinkItOverHoldingLabel: "Přemýšlím… {seconds} s",
     // Zobrazí se po doběhnutí držení (viz thinkItOverReadySeq) — přesný text ze zadání.
     thinkItOverResultLabel: "Nevzdávej se a bojuj! To monstrum určitě lze nějak zabít. Potřebuješ možná více ran, nebo větší kalibr.",
+    // Skrytý true ending (viz zadání, game/core/monsterEnding.ts) — zobrazí se
+    // po KAŽDÉM potvrzeném zásahu (ne jen prvním), záměrně beze čísla/postupu
+    // ("X/10"), ať mechanismus zůstane skrytý.
+    monsterHitConfirmedLabel: "Něco zařvalo hlouběji ve skladu.",
     // Klik na tlačítko se zavřenými dveřmi (viz handleStartEmergencyRunWindup)
     // — hráč nemůže vyběhnout ven zavřenými dveřmi, tlačítko samo o sobě
     // zůstává klikatelné (jen vizuálně ztlumené), tenhle hint vysvětlí proč.
@@ -215,6 +219,16 @@ export const COPY = {
       few: "Aktuální hlídač vydržel: {count} noci",
       many: "Aktuální hlídač vydržel: {count} nocí",
     },
+  },
+  // Skrytý true ending (viz zadání, game/core/monsterEnding.ts,
+  // components/screens/MonsterDefeatedScreen.tsx) — 10 potvrzených zásahů
+  // monstra brokovnicí za jednu noc. Texty přesně podle zadání.
+  monsterDefeated: {
+    title: "GAME OVER",
+    subtitle: "...ale pro monstrum",
+    /** Vykreslené s whitespace-pre-line — \n\n je záměrně dvojitý (prázdný řádek mezi "Tentokrát opravdu." a "Zasloužil sis..."). */
+    body: "Blahopřeji.\nTentokrát opravdu.\n\nZasloužil sis svoji výplatu :-D",
+    backToMenuButton: "ZPĚT DO MENU",
   },
   loading: {
     title: "OBJEKT 13 — SERVISNÍ TERMINÁL",

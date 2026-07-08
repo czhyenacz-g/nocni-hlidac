@@ -40,7 +40,7 @@ describe("COPY.game shotgun copy", () => {
 // (viz LeftWallView.tsx, game/core/thinkItOverWindup*.ts).
 describe("COPY.game think-it-over copy", () => {
   it("startThinkItOverLabel is the exact required button text", () => {
-    expect(COPY.game.startThinkItOverLabel).toBe("Nechat si to projít hlavou");
+    expect(COPY.game.startThinkItOverLabel).toBe('Nechat si to "projít hlavou"');
   });
 
   it("thinkItOverHoldingLabel contains the {seconds} placeholder", () => {
@@ -51,6 +51,23 @@ describe("COPY.game think-it-over copy", () => {
     expect(COPY.game.thinkItOverResultLabel).toBe(
       "Nevzdávej se a bojuj! To monstrum určitě lze nějak zabít. Potřebuješ možná více ran, nebo větší kalibr.",
     );
+  });
+});
+
+// Hidden true ending (viz game/core/monsterEnding.ts, MonsterDefeatedScreen.tsx).
+describe("COPY.game.monsterHitConfirmedLabel", () => {
+  it("is a non-empty, non-numeric flavor message (stays hidden — no 'X/10')", () => {
+    expect(COPY.game.monsterHitConfirmedLabel.length).toBeGreaterThan(0);
+    expect(COPY.game.monsterHitConfirmedLabel).not.toMatch(/\d+\s*\/\s*\d+/);
+  });
+});
+
+describe("COPY.monsterDefeated", () => {
+  it("contains the exact required texts", () => {
+    expect(COPY.monsterDefeated.title).toBe("GAME OVER");
+    expect(COPY.monsterDefeated.subtitle).toBe("...ale pro monstrum");
+    expect(COPY.monsterDefeated.body).toContain("Blahopřeji.");
+    expect(COPY.monsterDefeated.body).toContain("Zasloužil sis svoji výplatu :-D");
   });
 });
 

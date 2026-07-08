@@ -116,6 +116,13 @@ export function createInitialGameState(
     hasShotgun: hasShotgunOverride ?? false,
     shotgunAmmo: shotgunAmmoOverride ?? 0,
 
+    // Vždy čerstvé, bez override — "za jednu noc" počítadlo (viz zadání,
+    // game/core/monsterEnding.ts), resetuje se i při RESTART_SHIFT (opakování
+    // stejné noci po smrti v Normal), na rozdíl od hasShotgun/shotgunAmmo výše.
+    monsterHitsToday: 0,
+    pendingMonsterHit: false,
+    monsterDefeated: false,
+
     isRunning: false,
     audioMuted: false,
   };

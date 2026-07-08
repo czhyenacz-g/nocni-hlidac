@@ -108,6 +108,14 @@ export default function DebugPanel({
           {isNearRoomLightActive(state) ? "yes" : "no"} (breaks: {state.bulbBreakSeq})
         </div>
         <div>Náhradní žárovky: {state.bulbsRemaining}</div>
+        {/* Hidden true ending (viz zadání, game/core/monsterEnding.ts) — skryté
+            hráčovi, ale dev panel ho může klidně ukázat i s číslem, viz zadání
+            "Debug panel může počet zásahů klidně ukazovat". */}
+        <div>
+          Brokovnice: {state.hasShotgun ? `ano (náboj ${state.shotgunAmmo})` : "ne"} — zásahy dnes: {state.monsterHitsToday}
+          {state.pendingMonsterHit ? " (nepotvrzený zásah probíhá)" : ""}
+          {state.monsterDefeated ? " — TRUE ENDING DOSAŽEN" : ""}
+        </div>
         {state.bulbReplacement.active && (
           <div>
             bulb replacement: {(state.bulbReplacement.progressMs / 1000).toFixed(1)}s /{" "}

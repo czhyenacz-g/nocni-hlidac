@@ -19,6 +19,7 @@ import { isNearRoomLightActive } from "./roomBulbs";
 import { computePowerDrainBreakdown } from "./powerDrain";
 import { canStartBatteryEmergencyRun } from "./emergencyMiniGameIntegration";
 import { resolveLivesRemainingAfterDeath } from "./gameMode";
+import { confirmMonsterHit } from "./monsterEnding";
 import {
   isDoorAttackBlockedByClosedDoor,
   isDoorAttackGraceActive,
@@ -1068,6 +1069,9 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           screen: "death",
           deathReason: "emergency_run",
           livesRemaining: resolveLivesRemainingAfterDeath(state.gameMode, state.livesRemaining),
+          // Smrt venku zahazuje nepotvrzený zásah monstra (viz zadání "hidden
+          // true ending") — monsterHitsToday se NEZVYŠUJE, pending se jen vynuluje.
+          pendingMonsterHit: false,
         };
 
       case "APPLY_OFFICE_THREAT_ON_RETURN": {
@@ -1112,6 +1116,32 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         // je jen zapíše.
         if (!state.isRunning) return state;
         return { ...state, hasShotgun: action.hasShotgun, shotgunAmmo: action.shotgunAmmo };
+
+      // Hráč venku PRÁVĚ TEĎ trefil monstrum brokovnicí (viz
+      // EmergencyMiniGame.tsx#fireShot, app/play/page.tsx#onMonsterHit) —
+      // zásah se ještě NEPOČÍTÁ (viz zadání), jen se poznamená, ať
+      // EMERGENCY_MINIGAME_DIED ví, že má co zahodit.
+      case "MARK_PENDING_MONSTER_HIT":
+        if (!state.isRunning) return state;
+        return { ...state, pendingMonsterHit: true };
+
+      // Bezpečný návrat s potvrzeným zásahem (viz
+      // app/play/page.tsx#handleEmergencyMiniGameComplete, result.monsterHit) —
+      // jediné místo, které skutečně zvyšuje monsterHitsToday. Na 10. zásahu
+      // spustí hidden true ending (screen "monsterDefeated") místo pokračování
+      // běžné hry — má přednost před normálním win/death flow, nečeká se do 6:00.
+      case "CONFIRM_MONSTER_HIT": {
+        if (!state.isRunning) return state;
+        const result = confirmMonsterHit(state.monsterHitsToday);
+        return {
+          ...state,
+          monsterHitsToday: result.monsterHitsToday,
+          pendingMonsterHit: false,
+          monsterDefeated: result.monsterDefeated,
+          isRunning: result.monsterDefeated ? false : state.isRunning,
+          screen: result.monsterDefeated ? "monsterDefeated" : state.screen,
+        };
+      }
 
       default:
         return state;

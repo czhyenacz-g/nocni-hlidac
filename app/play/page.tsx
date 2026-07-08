@@ -7,6 +7,7 @@ import BriefingScreen from "@/components/screens/BriefingScreen";
 import GameScreen from "@/components/screens/GameScreen";
 import DeathScreen from "@/components/screens/DeathScreen";
 import WinScreen from "@/components/screens/WinScreen";
+import MonsterDefeatedScreen from "@/components/screens/MonsterDefeatedScreen";
 import { NIGHT_01 } from "@/game/nights/night01";
 import { createInitialGameState } from "@/game/core/gameState";
 import { canStartThinkItOverWindup, createGameReducer } from "@/game/core/gameReducer";
@@ -849,12 +850,33 @@ export default function PlayPage() {
         }
       }
 
+      // Skrytý true ending (viz zadání, game/core/monsterEnding.ts) — zásah se
+      // potvrdí AŽ TADY, při bezpečném návratu (result.monsterHit); smrt/
+      // nedokončená výprava (outcome "dead"/"failed") tenhle dispatch nikdy
+      // nezavolají. Zpráva je záměrně nekonkrétní (žádné "X/10"), ať zůstane
+      // skrytý — stejný text při každém potvrzeném zásahu, bez odhalování
+      // postupu.
+      if (result.monsterHit) {
+        dispatch({ type: "CONFIRM_MONSTER_HIT" });
+        messages.push(COPY.game.monsterHitConfirmedLabel);
+      }
+
       if (messages.length > 0) setEmergencyRunMessage(messages.join("\n"));
       return;
     }
 
     // outcome === "failed": zatím jen bezpečně zavřít minihru beze změny
     // energie — hráč se vrátí do kanceláře přesně tam, kde hru opustil.
+  }
+
+  // Hráč venku PRÁVĚ TEĎ trefil monstrum brokovnicí (viz
+  // EmergencyMiniGame.tsx#fireShot) — jen se to poznamená
+  // (GameState.pendingMonsterHit), NEPOTVRZUJE se tím žádný zásah pro
+  // hidden true ending. Potvrzení přijde až z handleEmergencyMiniGameComplete
+  // při bezpečném návratu (result.monsterHit); smrt venku
+  // (EMERGENCY_MINIGAME_DIED) ho zase zahodí.
+  function handleMonsterHit() {
+    dispatch({ type: "MARK_PENDING_MONSTER_HIT" });
   }
 
   function handleLookAtMap() {
@@ -973,6 +995,7 @@ export default function PlayPage() {
               key={activeMiniGame.id}
               input={activeMiniGame.input}
               onComplete={handleEmergencyMiniGameComplete}
+              onMonsterHit={handleMonsterHit}
             />
           </div>
         </main>
@@ -1001,6 +1024,10 @@ export default function PlayPage() {
       {state.screen === "win" && (
         <WinScreen survivedNights={survivedNights} onRetry={handleRestart} onGoToMenu={handleGoToMenu} />
       )}
+      {/* Skrytý true ending (viz zadání, game/core/monsterEnding.ts) — má
+          přednost před běžným win/death flow (gameReducer.ts#CONFIRM_MONSTER_HIT
+          nastaví screen "monsterDefeated" přímo, ne přes TICK/ENEMY_ADVANCE). */}
+      {state.screen === "monsterDefeated" && <MonsterDefeatedScreen onGoToMenu={handleGoToMenu} />}
     </div>
     {/* Achievement toast (viz components/game/AchievementToast.tsx) je záměrně
         SOUROZENEC .atmosphere-root, ne jeho potomek — .atmosphere-root má

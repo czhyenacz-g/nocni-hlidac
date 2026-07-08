@@ -104,4 +104,15 @@ export type GameAction =
   // reducer je jen zapíše. Smrt/nedokončená výprava tuhle akci nikdy
   // nedispatchne, takže brokovnice/náboj se tímhle nikdy nezíská bez
   // skutečného návratu do kanceláře.
-  | { type: "APPLY_SHOTGUN_EFFECTS"; hasShotgun: boolean; shotgunAmmo: number };
+  | { type: "APPLY_SHOTGUN_EFFECTS"; hasShotgun: boolean; shotgunAmmo: number }
+  // Skrytý true ending (viz zadání, game/core/monsterEnding.ts) — dva kroky,
+  // stejné rozdělení jako "sebrání věci" vs. "dokončení mise" v minihře:
+  // MARK_PENDING_MONSTER_HIT se dispatchne HNED, jak hráč venku trefí
+  // monstrum (viz EmergencyMiniGame.tsx#fireShot, app/play/page.tsx
+  // onMonsterHit) — zásah se ale ještě NEPOČÍTÁ. CONFIRM_MONSTER_HIT přijde
+  // až po bezpečném návratu (outcome "returned" + result.monsterHit, viz
+  // handleEmergencyMiniGameComplete) a teprve tam se `monsterHitsToday`
+  // zvýší. Smrt venku (EMERGENCY_MINIGAME_DIED) pending zásah jen zahodí,
+  // CONFIRM_MONSTER_HIT se pro ni nikdy nedispatchne.
+  | { type: "MARK_PENDING_MONSTER_HIT" }
+  | { type: "CONFIRM_MONSTER_HIT" };

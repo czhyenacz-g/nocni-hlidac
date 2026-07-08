@@ -55,7 +55,8 @@ export type BackgroundSceneId =
   | "death"
   | "deathDoorAttack"
   | "win"
-  | "about";
+  | "about"
+  | "monsterDefeated";
 
 // menu/play/win mají 2 varianty snímků (*_0.webp, *_1.webp v
 // public/object_13/background/ — stejný obraz, jemně jiná varianta, např.
@@ -133,6 +134,17 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
   },
   about: {
     frames: [{ src: `${OBJECT_13_BACKGROUND_PATH}/about_bg_0.webp` }],
+    holdMs: DEFAULT_HOLD_MS,
+    crossfadeMs: DEFAULT_CROSSFADE_MS,
+    overlay: DEFAULT_OVERLAY,
+  },
+  // Skrytý true ending (viz zadání, game/core/monsterEnding.ts,
+  // components/screens/MonsterDefeatedScreen.tsx) — asset žije v
+  // public/object_13/story/ (stejná "cinematic ilustrace" složka jako
+  // story_1.webp v content/cinematics.ts), ne pod OBJECT_13_BACKGROUND_PATH
+  // jako ostatní scény výše, proto tu jediná plná cesta natvrdo.
+  monsterDefeated: {
+    frames: [{ src: "/object_13/story/dead_monster.webp" }],
     holdMs: DEFAULT_HOLD_MS,
     crossfadeMs: DEFAULT_CROSSFADE_MS,
     overlay: DEFAULT_OVERLAY,

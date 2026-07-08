@@ -843,22 +843,27 @@ export function createWorldEffectsForCompletedObjective(completedObjective: Emer
  * createWorldEffectsForCompletedObjective) — volající si je nevymýšlí ručně.
  * `officeThreatOnReturn` (viz officeThreat.ts#evaluateOfficeThreatOnReturn) se
  * jen předá dál beze změny, pokud je aktivní — volající (EmergencyMiniGame.tsx)
- * si ho spočítá sám z aktuálního stavu enemy/player/exitZone.
+ * si ho spočítá sám z aktuálního stavu enemy/player/exitZone. `monsterHit`
+ * (viz zadání "hidden true ending") je nezávislé na completedObjective — jestli
+ * hráč BĚHEM tyhle výpravy trefil monstrum (viz EmergencyMiniGame.tsx#fireShot,
+ * isEnemyHit), volající pošle `true`, jinak se pole vůbec nevyplní.
  */
 export function createReturnedResult(
   elapsedMs: number,
   shotsUsed: number,
   completedObjective?: EmergencyCompletedObjective,
   officeThreatOnReturn?: OfficeThreatOnReturn,
+  monsterHit?: boolean,
 ): EmergencyMiniGameResult {
   const threat = officeThreatOnReturn?.active ? { officeThreatOnReturn } : {};
+  const hit = monsterHit ? { monsterHit: true as const } : {};
 
-  if (!completedObjective) return { outcome: "returned", elapsedMs, shotsUsed, ...threat };
+  if (!completedObjective) return { outcome: "returned", elapsedMs, shotsUsed, ...threat, ...hit };
 
   const worldEffects = createWorldEffectsForCompletedObjective(completedObjective);
   return worldEffects.length > 0
-    ? { outcome: "returned", elapsedMs, shotsUsed, completedObjective, worldEffects, ...threat }
-    : { outcome: "returned", elapsedMs, shotsUsed, completedObjective, ...threat };
+    ? { outcome: "returned", elapsedMs, shotsUsed, completedObjective, worldEffects, ...threat, ...hit }
+    : { outcome: "returned", elapsedMs, shotsUsed, completedObjective, ...threat, ...hit };
 }
 
 export function createFailedResult(elapsedMs: number, shotsUsed: number): EmergencyMiniGameResult {
