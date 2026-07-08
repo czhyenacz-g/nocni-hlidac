@@ -317,6 +317,15 @@ export interface GameState {
   doorLightRepelMs: number;
   /** Zvyšuje se při každém repelu — UI podle změny spouští monsterRetreatRoar (viz app/play/page.tsx). */
   monsterRetreatRoarSeq: number;
+  /**
+   * Zvyšuje se přesně jednou za každý ENEMY_ADVANCE tik, kdy monstrum u
+   * zavřených dveří útočí, ale útok je zablokovaný (viz
+   * game/core/doorEncounter.ts#isDoorAttackBlockedByClosedDoor) — NIKDY
+   * náhodně, jen jako přímý důsledek stejné větve, která by při otevřených
+   * dveřích znamenala smrt. UI podle změny spouští monsterDoorBang (viz
+   * app/play/page.tsx) — stejný "seq" vzor jako monsterRetreatRoarSeq/bulbBreakSeq.
+   */
+  doorBangSeq: number;
 
   /**
    * Kam monstrum odešlo poté, co se u zavřených dveří "vzdalo" čekání

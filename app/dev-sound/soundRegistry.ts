@@ -125,6 +125,22 @@ export const SOUND_REGISTRY: Record<AudioEventId, SoundRegistryEntry> = {
     guess: "Nízký, krátký řev/zavrčení.",
     usedIn: "app/play/page.tsx — efekt na state.monsterRetreatRoarSeq.",
   },
+  [AUDIO_EVENTS.monsterDoorBang]: {
+    id: AUDIO_EVENTS.monsterDoorBang,
+    label: "Monster door bang",
+    description:
+      "Monstrum u zavřených dveří útočí, ale útok je zablokovaný (viz " +
+      "game/core/doorEncounter.ts#isDoorAttackBlockedByClosedDoor) — jen jako přímý důsledek téhle podmínky, nikdy náhodně.",
+    guess: "Těžká, krátká, fyzická rána do kovových dveří — potvrzení nárazu, ne lekací výkřik.",
+    usedIn: "app/play/page.tsx — efekt na state.doorBangSeq.",
+  },
+  [AUDIO_EVENTS.monsterRetreatSteps]: {
+    id: AUDIO_EVENTS.monsterRetreatSteps,
+    label: "Monster retreat steps",
+    description: "Kroky monstra při ústupu po door-light repelu — hraje krátce po monsterRetreatRoar.",
+    guess: "Tiché, vzdalující se kroky.",
+    usedIn: "app/play/page.tsx — efekt na state.monsterRetreatRoarSeq (stejný trigger jako monsterRetreatRoar).",
+  },
   [AUDIO_EVENTS.blackoutHowl]: {
     id: AUDIO_EVENTS.blackoutHowl,
     label: "Blackout howl",

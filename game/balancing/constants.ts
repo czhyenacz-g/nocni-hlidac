@@ -27,6 +27,11 @@ export const LOADING_SCREEN_HINT_COUNT = 1;
 // GameState.doorDeathRevealUntilMs, gameReducer.ts ENEMY_ADVANCE/TICK.
 export const DOOR_DEATH_REVEAL_DURATION_MS = 700;
 
+// Kroky ústupu (monster_retreat_steps) hrají krátce PO řevu (monster_retreat_roar,
+// stejný trigger — monsterRetreatRoarSeq), ne současně — nejdřív leknutí, pak
+// slyšitelné vzdalování. Viz app/play/page.tsx.
+export const MONSTER_RETREAT_STEPS_DELAY_MS = 400;
+
 // Jak často (ms) se v detailu kamery pomalu prostřídá obrázek bez monstra —
 // viz game/cameras/cameraAssets.object13.ts#getCameraImageSrc. Záměrně
 // pomalé (ne animace) — jen ať obraz kamery nepůsobí jako jedna mrtvá fotka.

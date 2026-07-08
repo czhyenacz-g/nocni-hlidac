@@ -106,6 +106,38 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
       waveform: "sawtooth",
     },
   },
+  // Bušení do dveří — zablokovaný útok monstra na zavřené dveře (viz
+  // game/core/doorEncounter.ts, GameState.doorBangSeq). Má znít jako těžká,
+  // krátká, fyzická rána do kovových dveří — potvrzení nárazu, ne lekací
+  // výkřik (ten zůstává jumpscare, jen pro skutečnou smrt). Žádný reálný
+  // soubor zatím neexistuje, fallback je jeden krátký nízký "úder" tón.
+  [AUDIO_EVENTS.monsterDoorBang]: {
+    src: "/assets/audio/monster_door_bang.mp3",
+    volume: 0.8,
+    loop: false,
+    fallbackSynth: {
+      notes: [{ frequency: 70, durationMs: 130 }],
+      volume: 0.55,
+      waveform: "square",
+    },
+  },
+  // Kroky ústupu po door-light repelu (viz monsterRetreatRoarSeq,
+  // app/play/page.tsx — hraje krátce po monsterRetreatRoar). Žádný reálný
+  // soubor zatím neexistuje, fallback je tichý krátký "krok" tón — záměrně
+  // nenápadný, ať bez skutečného assetu nepůsobí rušivě.
+  [AUDIO_EVENTS.monsterRetreatSteps]: {
+    src: "/assets/audio/monster_retreat_steps.mp3",
+    volume: 0.5,
+    loop: false,
+    fallbackSynth: {
+      notes: [
+        { frequency: 120, durationMs: 60, gapMs: 80 },
+        { frequency: 110, durationMs: 60 },
+      ],
+      volume: 0.3,
+      waveform: "sine",
+    },
+  },
   // Vzdálené zavytí na začátku blackoutu (viz GAME_DESIGN.md "Blackout").
   [AUDIO_EVENTS.blackoutHowl]: {
     src: "/assets/audio/blackout_howl.mp3",

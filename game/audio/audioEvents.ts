@@ -15,6 +15,13 @@ export const AUDIO_EVENTS = {
   uiClick: "ui_click",
   generatorBeep: "generator_beep",
   monsterRetreatRoar: "monster_retreat_roar",
+  // Bušení do dveří, když monstrum u zavřených dveří útočí, ale dveře ho
+  // zablokují (viz game/core/doorEncounter.ts#isDoorAttackBlockedByClosedDoor,
+  // GameState.doorBangSeq) — potvrzení nárazu, ne jumpscare výkřik.
+  monsterDoorBang: "monster_door_bang",
+  // Kroky monstra při ústupu po repelu světlem (viz monsterRetreatRoarSeq) —
+  // hraje krátce po monsterRetreatRoar, ne samostatně spouštěné.
+  monsterRetreatSteps: "monster_retreat_steps",
   blackoutHowl: "blackout_howl",
   bulbBreak: "bulb_break",
   bulbReplaceSuccess: "bulb_replace_success",

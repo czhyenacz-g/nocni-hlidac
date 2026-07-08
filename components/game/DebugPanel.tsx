@@ -2,6 +2,7 @@ import { BULB_REPLACE_DURATION_MS, DEBUG_PANEL_ENABLED } from "@/game/balancing/
 import { GameState, NightDefinition } from "@/game/core/types";
 import { getBlackoutPhaseIndex } from "@/game/visuals/blackoutPhase";
 import { buildEnemyDebugInfo } from "@/game/core/enemyDebugInfo";
+import { resolveDoorMonsterEncounter } from "@/game/core/doorEncounter";
 import { isNearRoomLightActive } from "@/game/core/roomBulbs";
 import { computePowerDrainBreakdown } from "@/game/core/powerDrain";
 import { DEFAULT_DIFFICULTY } from "@/game/difficulty/difficultyConfig";
@@ -41,6 +42,9 @@ export default function DebugPanel({
   // obtížnosti), tenhle řádek bude potřeba nahradit skutečnou hodnotou
   // protaženou jako prop.
   const enemyDebug = buildEnemyDebugInfo(state, night, DEFAULT_DIFFICULTY);
+  // Čistě diagnostický souhrn door encounter helperů (viz game/core/doorEncounter.ts)
+  // — jedno místo ke čtení, žádná vlastní logika.
+  const doorEncounter = resolveDoorMonsterEncounter(state);
 
   // "Power drain breakdown" — přesně tatáž funkce, kterou TICK používá pro
   // skutečný přepočet `power` (game/core/powerDrain.ts), ať tenhle panel
@@ -90,6 +94,11 @@ export default function DebugPanel({
         <div>
           doorLightRepel: {state.doorLightRepelMs.toFixed(0)} / {night.enemy.doorLightRepelRequiredMs} ms
           (roars: {state.monsterRetreatRoarSeq})
+        </div>
+        <div>
+          door encounter: at door {doorEncounter.atDoor ? "yes" : "no"}, blocked attack{" "}
+          {doorEncounter.blockedByClosedDoor ? "yes" : "no"} (bangs: {state.doorBangSeq}), retreating{" "}
+          {doorEncounter.lightForcingRetreat ? "yes" : "no"}
         </div>
         <div>generator: {state.generatorState} (faults: {state.generatorFaultCount})</div>
         <div>

@@ -9,6 +9,7 @@ import { computeStressTimeScale } from "./stressTimeScale";
 import { isNearRoomLightActive } from "./roomBulbs";
 import { computePowerDrainBreakdown } from "./powerDrain";
 import { canStartBatteryEmergencyRun } from "./emergencyMiniGameIntegration";
+import { isDoorAttackBlockedByClosedDoor, isMonsterAtDoor, shouldDoorLightForceRetreat } from "./doorEncounter";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -21,13 +22,6 @@ function isEnemyBeingWatched(state: GameState, night: NightDefinition): boolean 
   if (state.playerView !== "desk" || !state.cameraOpen || !state.activeCameraId) return false;
   const camera = night.cameras.find((c) => c.id === state.activeCameraId);
   return camera?.enemyVisibleAtStage === state.enemyStage;
-}
-
-// "breach" je zatím jen připravená pro budoucí trasy (žádná ji dnes nepoužívá),
-// ale reaguje na ni stejná logika (standoff u dveří i door-light repel) jako
-// na "at_door" — ať funguje beze změny reduceru, až se jednou objeví v trase.
-function isAtDoorStage(state: GameState): boolean {
-  return state.enemyStage === "at_door" || state.enemyStage === "breach";
 }
 
 // Vylosuje (jednou na standoff u zavřených dveří) cíl efektivního čekání, než
@@ -170,7 +164,7 @@ function updateDoorLightRepel(state: GameState, night: NightDefinition, deltaMs:
     enemyDoorHoldProgressMs: state.enemyDoorHoldProgressMs,
   };
 
-  const conditionsMet = isAtDoorStage(state) && state.doorClosed && state.lightOn;
+  const conditionsMet = shouldDoorLightForceRetreat(state);
   if (!conditionsMet) {
     return state.doorLightRepelMs === 0 ? unchanged : { ...unchanged, doorLightRepelMs: 0 };
   }
@@ -788,10 +782,16 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
 
         const route = state.enemyRoute;
         const currentIndex = route.indexOf(state.enemyStage);
-        const atDoorStage = isAtDoorStage(state);
+        const atDoorStage = isMonsterAtDoor(state);
 
         if (atDoorStage) {
-          if (state.doorClosed) {
+          // Útok NASTANE (monstrum je u dveří), ale zavřené dveře ho
+          // zablokují — přesně a jedině tahle podmínka smí spustit bušení do
+          // dveří (viz doorEncounter.ts#isDoorAttackBlockedByClosedDoor,
+          // GameState.doorBangSeq). Počítá se JEDNOU tady, ne opakovaně na
+          // dvou místech, ať zůstane nemožné, aby se bang a "byl by útok
+          // smrtící" rozešly.
+          if (isDoorAttackBlockedByClosedDoor(state)) {
             const since = state.enemyAtDoorSinceMs ?? state.elapsedMs;
             const target = state.enemyDoorHoldTargetMs ?? rollDoorHoldTargetMs(night.enemy);
             // Nezávislé na světle — kombinovaný efekt dveří+světla řeší
@@ -813,6 +813,9 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
                 // "ověřeno" -> dveře jdou otevřít bez dalšího kroku (viz
                 // TOGGLE_DOOR).
                 monsterRetreatVerified: !requireMonsterRetreatVerification,
+                // I tenhle poslední, "vzdávající se" tik byl pořád zablokovaný
+                // útok (dveře ho zachránily naposledy, než se monstrum stáhlo).
+                doorBangSeq: state.doorBangSeq + 1,
               };
             }
             return {
@@ -821,6 +824,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
               enemyAtDoorSinceMs: since,
               enemyDoorHoldTargetMs: target,
               enemyDoorHoldProgressMs: progress,
+              doorBangSeq: state.doorBangSeq + 1,
             };
           }
 

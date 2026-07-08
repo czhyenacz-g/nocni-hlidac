@@ -34,6 +34,15 @@ Definováno v `game/audio/audioEvents.ts` a nakonfigurováno v `game/audio/audio
   (`criticalBeeping`) stejný zvuk 2×/s (viz "Generátor" níže) — žádný samostatný "warning" zvuk
 - `monster_retreat_roar` — jednorázový řev při door-light repelu (viz "Světlo a dveře" v
   `GAME_DESIGN.md`) — hraje přesně jednou za repel, nikdy opakovaně na tik
+- `monster_retreat_steps` — kroky ústupu, hrají `MONSTER_RETREAT_STEPS_DELAY_MS` (400 ms)
+  po `monster_retreat_roar` (stejný trigger — `monsterRetreatRoarSeq`, viz
+  `app/play/page.tsx`), ne současně — nejdřív leknutí, pak slyšitelné vzdalování. Žádný
+  reálný soubor zatím neexistuje, jen tichý syntetizovaný fallback.
+- `monster_door_bang` — bušení do dveří, když nepřítel u zavřených dveří útočí, ale útok
+  je zablokovaný (viz "Dveře" v `GAME_DESIGN.md`, `game/core/doorEncounter.ts`,
+  `GameState.doorBangSeq`) — potvrzení nárazu, ne lekací výkřik. Spouští se výhradně jako
+  přímý důsledek zablokovaného útoku, nikdy náhodně/časem. Žádný reálný soubor zatím
+  neexistuje, fallback je jeden krátký nízký "úder" tón.
 - `blackout_howl` — vzdálené zavytí jednou na začátku blackoutu (viz "Blackout" v
   `GAME_DESIGN.md`); normální pípání generátoru se v blackoutu samo zastaví (jeho `TICK`
   větev se nevolá), žádný speciální "vypni zvuk" krok není potřeba

@@ -125,9 +125,10 @@ Výpočet je celý v `gameReducer.ts` (`applyPowerDelta`), UI jen zobrazuje výs
 Nezávisle na zvolené obtížnosti (easy/medium/hard, viz "Obtížnost" výše) se Objekt 13
 postupně zhoršuje podle toho, kolikátou noc v řadě aktuální hlídač slouží
 (`survivedNights + 1`, viz "Survival streak" v TECH_DESIGN.md): energie ubývá mírně
-rychleji. Noc 1 beze změny, pak +5 % za každou další noc, capnuté na +20 % od 5. noci dál
-(noc 5, 6, 7, ... mají všechny stejný strop, neroste to donekonečna). Škáluje se jen
-spotřeba (drain), dobíjení energie zůstává vždy stejné.
+rychleji. Explicitní křivka (ne lineární step): noc 1 ×1,00, noc 2 ×1,05, noc 3 ×1,10,
+noc 4 ×1,15, noc 5 ×1,25, noc 6 ×1,40, noc 7 ×1,55, noc 8 ×1,70, noc 9 ×1,85, noc 10 a
+dál capnuté na ×2,00 (neroste to donekonečna). Škáluje se jen spotřeba (drain), dobíjení
+energie zůstává vždy stejné.
 
 Tohle je první pravidlo v samostatné "night scaling" vrstvě
 (`game/difficulty/nightScaling.ts`), oddělené od difficulty — časem přibudou další
@@ -138,6 +139,19 @@ tenhle jeden.
 
 Přepínatelné jen v pohledu na dveře (DoorView) — viz "Pohled hráče" výše. Zavřené
 dveře chrání před útokem, ale spotřebovávají energii.
+
+Nepřítel u dveří (`at_door`) útočí **pokaždé**, když tam je — žádný samostatný "chce/
+nechce zaútočit" hod (viz `game/core/doorEncounter.ts`). Výsledek závisí jen na tom,
+jsou-li dveře zavřené:
+
+- **Otevřené dveře → smrt.** Beze změny oproti dosavadnímu chování — stejný
+  death/jumpscare flow, stejný `deathReason` (`door_open_at_attack`, nebo
+  `bulb_replacement_attack` uprostřed ruční výměny žárovky).
+- **Zavřené dveře → útok zablokovaný, bušení do dveří.** Hráč neumírá, ale zahraje se
+  krátký, fyzický zvuk nárazu (`monster_door_bang`) — potvrzení, že ho dveře právě
+  zachránily. Bušení se spouští VÝHRADNĚ jako přímý důsledek zablokovaného útoku (ne
+  časem, ne náhodně) — každý `ENEMY_ADVANCE` tik, kdy je nepřítel u zavřených dveří,
+  je jeden blokovaný útok = jedno bouchnutí.
 
 ## Světlo a dveře
 
@@ -150,11 +164,17 @@ dalšími podmínkami, a to **repel**:
 - nepřítel je u dveří (`at_door`)
 
 Pokud tohle platí nepřetržitě `doorLightRepelRequiredMs` (výchozí 1,5 s), nepřítel
-silně a rychle ustoupí — zahraje se jednorázový řev (`monster_retreat_roar`) a
-nepřítel se resetuje úplně na začátek trasy (`monsterRetreatStage`). Jakmile
-kterákoliv ze tří podmínek přestane platit (otevřeš dveře, zhasneš, nepřítel
-odejde od dveří), časovač se okamžitě vynuluje — žádné "napůl nastřádané" repely
-se nepřenáší do příště.
+silně a rychle ustoupí — zahraje se jednorázový řev (`monster_retreat_roar`), krátce
+po něm kroky ústupu (`monster_retreat_steps`) a nepřítel se resetuje úplně na
+začátek trasy (`monsterRetreatStage`). Jakmile kterákoliv ze tří podmínek přestane
+platit (otevřeš dveře, zhasneš, nepřítel odejde od dveří), časovač se okamžitě
+vynuluje — žádné "napůl nastřádané" repely se nepřenáší do příště.
+
+Světlem odehnaný nepřítel NEVYŽADUJE ověření kamerou (na rozdíl od obecného
+vzdání se níže) — repel je okamžitý a jasně slyšitelný, takže hráč sám ví, že
+zabral. Pokud ale hráč měl z dřívějška rozjeté nepotvrzené vzdání se
+(`monsterRetreatedTo` bez `monsterRetreatVerified`), repel tenhle požadavek
+nijak neruší ani nesplňuje — zůstává, dokud ho hráč skutečně neověří na kameře.
 
 Na rozdíl od obecného vzdání se (výše, 6–8 s, nezávislé na světle), tenhle
 repel je rychlý, jasný a dobře čitelný: *"Zavřel jsem dveře, rozsvítil jsem,

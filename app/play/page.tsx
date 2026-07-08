@@ -23,6 +23,7 @@ import {
   CINEMATIC_PRE_DELAY_MS,
   JUMPSCARE_SILENT_GAP_MS,
   LOADING_SCREEN_DURATION_MS,
+  MONSTER_RETREAT_STEPS_DELAY_MS,
 } from "@/game/balancing/constants";
 import CinematicScreen from "@/components/screens/CinematicScreen";
 import { CinematicSceneId } from "@/content/cinematics";
@@ -139,6 +140,7 @@ export default function PlayPage() {
   const prevPowerRef = useRef(state.power);
   const prevGeneratorBeepSeqRef = useRef(state.generatorBeepSeq);
   const prevMonsterRetreatRoarSeqRef = useRef(state.monsterRetreatRoarSeq);
+  const prevDoorBangSeqRef = useRef(state.doorBangSeq);
   const prevGameStatusRef = useRef(state.gameStatus);
   const prevBlackoutPhaseSeqRef = useRef(state.blackoutPhaseSeq);
   const prevBulbBreakSeqRef = useRef(state.bulbBreakSeq);
@@ -383,11 +385,27 @@ export default function PlayPage() {
   }, [state.enemyStage]);
 
   useEffect(() => {
-    if (prevMonsterRetreatRoarSeqRef.current !== state.monsterRetreatRoarSeq) {
-      audioManager.play(AUDIO_EVENTS.monsterRetreatRoar);
-      prevMonsterRetreatRoarSeqRef.current = state.monsterRetreatRoarSeq;
-    }
+    if (prevMonsterRetreatRoarSeqRef.current === state.monsterRetreatRoarSeq) return;
+    prevMonsterRetreatRoarSeqRef.current = state.monsterRetreatRoarSeq;
+    audioManager.play(AUDIO_EVENTS.monsterRetreatRoar);
+    // Kroky ústupu hrají krátce PO řevu, ne současně (viz
+    // MONSTER_RETREAT_STEPS_DELAY_MS) — stejný trigger (door-light repel,
+    // viz gameReducer.ts#updateDoorLightRepel), jen posunuté v čase, ať to
+    // zní jako "zařvalo, pak odešlo", ne dva zvuky přes sebe.
+    const stepsTimeout = setTimeout(() => audioManager.play(AUDIO_EVENTS.monsterRetreatSteps), MONSTER_RETREAT_STEPS_DELAY_MS);
+    return () => clearTimeout(stepsTimeout);
   }, [state.monsterRetreatRoarSeq]);
+
+  useEffect(() => {
+    // Bušení do dveří — zablokovaný útok (viz game/core/doorEncounter.ts,
+    // GameState.doorBangSeq). Nezávislé na death/jumpscare sekvenci výše
+    // (ta se vůbec nespustí, dveře zůstaly zavřené, hráč neumřel) — hraje
+    // okamžitě, žádné zpoždění/tichý gap.
+    if (prevDoorBangSeqRef.current !== state.doorBangSeq) {
+      audioManager.play(AUDIO_EVENTS.monsterDoorBang);
+      prevDoorBangSeqRef.current = state.doorBangSeq;
+    }
+  }, [state.doorBangSeq]);
 
   useEffect(() => {
     if (prevBulbBreakSeqRef.current !== state.bulbBreakSeq) {

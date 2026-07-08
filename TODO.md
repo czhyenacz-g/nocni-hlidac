@@ -396,8 +396,9 @@
 - Vlastní/kvalitnější audio místo Kenney.nl CC0 placeholderů (zejména `ambience_loop`,
   který teď je jen krátký smyčkovaný efekt, ne skutečná ambientní kompozice); doplnit
   reálné soubory `generator_beep.mp3`, `heartbeat.mp3`,
-  `monster_retreat_roar.mp3`, `blackout_howl.mp3` a `blackout_door_hit.mp3` (zatím jen
-  konfigurace + syntetizovaný fallback, viz `assets/audio/README.md`)
+  `monster_retreat_roar.mp3`, `monster_retreat_steps.mp3`, `monster_door_bang.mp3`,
+  `blackout_howl.mp3` a `blackout_door_hit.mp3` (zatím jen konfigurace + syntetizovaný
+  fallback, viz `assets/audio/README.md`)
 - Druhá směna (`night02.ts`) s jiným nepřítelem/balancem
 - Dynamická vrstvená ambience podle `tensionLevel`
 - Vylepšený jumpscare (delší/výraznější sekvence, ne jen barevný flash)
