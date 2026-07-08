@@ -38,4 +38,13 @@ export type GameAction =
   // zbytek herní logiky/audia.
   | { type: "TICK"; deltaMs: number; stressLevel?: number; currentNight?: number }
   | { type: "ENEMY_ADVANCE" }
-  | { type: "GO_TO_MENU" };
+  | { type: "GO_TO_MENU" }
+  // Efekt z nouzové minihry (viz EmergencyMiniGame, game/minigame/types.ts
+  // EmergencyWorldEffect "energy_recharged") po returned resultu —
+  // app/play/page.tsx#handleEmergencyMiniGameComplete pošle už spočítané
+  // množství, reducer jen přičte a clampne na MAX_POWER. amount <= 0 je no-op.
+  | { type: "RECHARGE_POWER"; amount: number }
+  // Hráč zemřel uvnitř nouzové minihry (outcome "dead", viz
+  // EmergencyMiniGame) — stejný death flow jako ENEMY_ADVANCE/TICK, jen
+  // spuštěný zvenčí (z app/play/page.tsx), ne z herní smyčky.
+  | { type: "EMERGENCY_MINIGAME_DIED" };

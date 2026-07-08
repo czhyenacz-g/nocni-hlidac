@@ -36,6 +36,10 @@ import { getBulbsRemaining, setBulbsRemaining } from "@/game/core/bulbInventory"
 import { applyDailyBulbService, getRoomBulbs, setRoomBulbs } from "@/game/core/roomBulbs";
 import { useHeartbeatStress } from "@/game/audio/useHeartbeatStress";
 import { getNightConfig } from "@/game/difficulty/nightConfig";
+import { applyEmergencyWorldEffects, createBatteryEmergencyInput } from "@/game/core/emergencyMiniGameIntegration";
+import EmergencyMiniGame from "@/components/minigame/EmergencyMiniGame";
+import { EmergencyMiniGameInput, EmergencyMiniGameResult } from "@/game/minigame/types";
+import { COPY } from "@/content/copy";
 import type { AuthenticatedPlayer } from "@/lib/auth/types";
 import type { GuardRunState } from "@/lib/leaderboard/types";
 import type { GuardRunResponse } from "@/lib/leaderboard/guardRunRequestHandlers";
@@ -72,6 +76,16 @@ export default function PlayPage() {
   // dispozici — lokální survivedNights je jen fallback (anonymní hráč, nebo
   // než se server stav stihne načíst).
   const currentNight = serverRunState ? serverRunState.currentRun + 1 : survivedNights + 1;
+  // Aktivní nouzová minihra (viz components/minigame/EmergencyMiniGame.tsx,
+  // handleStartEmergencyRun/handleEmergencyMiniGameComplete níže) — sourozenec
+  // GameState, ne jeho pole (stejný vzor jako cinematicPending níže): dokud je
+  // nastavená, GameScreen se vůbec nerenderuje (viz JSX), místo něj
+  // EmergencyMiniGame, a hlavní herní smyčka (useGameLoop níže) se zastaví.
+  // `id` je zatím vždy "battery_run" (jediný scénář), ale pole je tu
+  // připravené pro budoucí další emergency scénáře. Deklarováno tady (ne
+  // blíž ostatním sourozeneckým useState) jen proto, aby ho useGameLoop níže
+  // mohl použít v `isRunning`.
+  const [activeMiniGame, setActiveMiniGame] = useState<{ id: "battery_run"; input: EmergencyMiniGameInput } | null>(null);
 
   // Jednorázově při mountu zjisti přihlášeného hráče a jeho serverový run
   // stav (viz app/api/auth/me/route.ts) — pokud je hráč přihlášený a hub API
@@ -103,7 +117,10 @@ export default function PlayPage() {
   // renderu (ne efekt) — stejný "latest ref" vzor jako jinde v Reactu.
   const stressLevelRef = useRef(0);
   useGameLoop({
-    isRunning: state.isRunning,
+    // Dokud běží nouzová minihra (activeMiniGame), hlavní herní smyčka
+    // (TICK/ENEMY_ADVANCE) musí stát — jinak by čas/energie/nepřítel běžely
+    // dál na pozadí, zatímco hráč je "mimo kancelář" v EmergencyMiniGame.
+    isRunning: state.isRunning && !activeMiniGame,
     enemyTickMs: night.enemyTickMs,
     dispatch,
     stressLevelRef,
@@ -142,6 +159,17 @@ export default function PlayPage() {
   // Achievement toast (viz components/game/AchievementToast.tsx) — čistě
   // vizuální, nezávislý na screen flow. `null` = žádný toast aktivní.
   const [activeAchievement, setActiveAchievement] = useState<Achievement | null>(null);
+  // Krátká textová zpráva po návratu z nouzové minihry (viz
+  // handleEmergencyMiniGameComplete) — záměrně bez nového toast systému,
+  // jen jednoduchý auto-mizející text (stejný "sourozenec .atmosphere-root"
+  // důvod jako AchievementToast, viz JSX níže).
+  const [emergencyRunMessage, setEmergencyRunMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!emergencyRunMessage) return;
+    const timeout = setTimeout(() => setEmergencyRunMessage(null), 4000);
+    return () => clearTimeout(timeout);
+  }, [emergencyRunMessage]);
 
   // Zpracuje odpověď /api/player/death nebo /api/player/survive-night —
   // na úspěch (ok+stored) aktualizuje serverRunState (viz výše), jinak jen
@@ -482,6 +510,42 @@ export default function PlayPage() {
     dispatch({ type: "LOOK_AT_LEFT_WALL" });
   }
 
+  // Spustí "Jít ven pro baterii" (viz LeftWallView.tsx tlačítko) — první
+  // integrovaný emergency scénář, záměrně bez brokovnice/nábojů (stealth
+  // varianta, viz createBatteryEmergencyInput). Hlavní herní smyčka
+  // (useGameLoop níže) se zastaví, dokud activeMiniGame běží — TICK/
+  // ENEMY_ADVANCE hlavní hry nesmí utíkat na pozadí za minihrou.
+  function handleStartEmergencyRun() {
+    audioManager.play(AUDIO_EVENTS.uiClick);
+    setActiveMiniGame({ id: "battery_run", input: createBatteryEmergencyInput() });
+  }
+
+  // Jediné místo, které zpracuje EmergencyMiniGameResult (viz
+  // EmergencyMiniGame onComplete kontrakt) — vždy zavře minihru, pak podle
+  // outcome buď dobije energii (returned + worldEffects), spustí existující
+  // death flow (dead), nebo jen tiše vrátí hráče zpět bez efektu (failed).
+  function handleEmergencyMiniGameComplete(result: EmergencyMiniGameResult) {
+    setActiveMiniGame(null);
+
+    if (result.outcome === "dead") {
+      dispatch({ type: "EMERGENCY_MINIGAME_DIED" });
+      return;
+    }
+
+    if (result.outcome === "returned") {
+      const newPower = applyEmergencyWorldEffects(state.power, result.worldEffects);
+      const rechargedAmount = newPower - state.power;
+      if (rechargedAmount > 0) {
+        dispatch({ type: "RECHARGE_POWER", amount: rechargedAmount });
+        setEmergencyRunMessage(COPY.game.emergencyRunEnergyRechargedLabel.replace("{amount}", String(rechargedAmount)));
+      }
+      return;
+    }
+
+    // outcome === "failed": zatím jen bezpečně zavřít minihru beze změny
+    // energie — hráč se vrátí do kanceláře přesně tam, kde hru opustil.
+  }
+
   function handleLookAtMap() {
     audioManager.play(AUDIO_EVENTS.uiClick);
     dispatch({ type: "LOOK_AT_MAP" });
@@ -552,7 +616,7 @@ export default function PlayPage() {
       {state.screen === "menu" && <MainMenuScreen onStart={handleStart} />}
       {state.screen === "loading" && <LoadingScreen />}
       {state.screen === "briefing" && <BriefingScreen nightNumber={currentNight} onStartShift={handleBeginShift} />}
-      {state.screen === "playing" && (
+      {state.screen === "playing" && !activeMiniGame && (
         <GameScreen
           state={state}
           night={night}
@@ -577,7 +641,27 @@ export default function PlayPage() {
           onDebugRestartGenerator={handleDebugRestartGenerator}
           onStartBulbReplacement={handleStartBulbReplacement}
           onCancelBulbReplacement={handleCancelBulbReplacement}
+          onStartEmergencyRun={handleStartEmergencyRun}
         />
+      )}
+      {/* Nouzová minihra (viz components/minigame/EmergencyMiniGame.tsx) —
+          nahrazuje GameScreen, dokud activeMiniGame běží (viz
+          handleStartEmergencyRun/handleEmergencyMiniGameComplete výše).
+          `key` na id zajistí čistý remount při případném dalším emergency
+          scénáři v budoucnu, ať si komponenta nikdy neponechá starý interní
+          stav z předchozího běhu. Vlastní <main> obal (stejný tmavý radarový
+          styl jako app/minihra/page.tsx), ať minihra nezávisí na GameScreen
+          layoutu, který se tu vůbec nerenderuje. */}
+      {state.screen === "playing" && activeMiniGame && (
+        <main className="relative min-h-screen p-4 flex flex-col items-center justify-center" style={{ background: "#020a05" }}>
+          <div className="w-full max-w-3xl">
+            <EmergencyMiniGame
+              key={activeMiniGame.id}
+              input={activeMiniGame.input}
+              onComplete={handleEmergencyMiniGameComplete}
+            />
+          </div>
+        </main>
       )}
       {/* Cinematic scéna se spouští jen pro first-night near-miss (viz efekt
           výše — isFirstNightNearMiss) — NIKDY nevede na DeathScreen, po
@@ -604,6 +688,14 @@ export default function PlayPage() {
         jako u LeftWallView.tsx/CinematicScreen.tsx). */}
     {activeAchievement && (
       <AchievementToast achievement={activeAchievement} onDismiss={() => setActiveAchievement(null)} />
+    )}
+    {/* Krátká zpráva po návratu z nouzové minihry (viz handleEmergencyMiniGameComplete)
+        — stejný "sourozenec .atmosphere-root" důvod jako AchievementToast výše,
+        záměrně bez nového toast systému (žádná animace, jen auto-mizející text). */}
+    {emergencyRunMessage && (
+      <div className="fixed top-4 left-4 z-[100] pointer-events-none w-[calc(100%-2rem)] max-w-xs sm:w-80">
+        <div className="pixel-panel p-3 text-xs text-amber-300">{emergencyRunMessage}</div>
+      </div>
     )}
     </>
   );

@@ -37,4 +37,12 @@ export const OBJECT13_JUMPSCARES: Record<DeathReason, JumpscareDefinition> = {
     silenceBeforeMs: 800,
     effectDurationMs: 600,
   },
+  emergency_run: {
+    id: "emergency_run",
+    reason: "emergency_run",
+    title: "Nouzová výprava mimo kancelář se nezdařila.",
+    message: "Nestihl jsi to zpátky.",
+    silenceBeforeMs: 800,
+    effectDurationMs: 600,
+  },
 };

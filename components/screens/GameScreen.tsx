@@ -40,6 +40,8 @@ interface GameScreenProps {
   onLookAtGenerator: () => void;
   onLookAtLeftWall: () => void;
   onLookAtMap: () => void;
+  /** Spustí nouzovou minihru (viz app/play/page.tsx#handleStartEmergencyRun, EmergencyMiniGame) — jen na left_wall pohledu, viz LeftWallView.tsx. */
+  onStartEmergencyRun: () => void;
   onRestartGenerator: () => void;
   onDebugToggleDoor: () => void;
   onDebugRestartGenerator: () => void;
@@ -66,6 +68,7 @@ export default function GameScreen({
   onLookAtGenerator,
   onLookAtLeftWall,
   onLookAtMap,
+  onStartEmergencyRun,
   onRestartGenerator,
   onDebugToggleDoor,
   onDebugRestartGenerator,
@@ -167,7 +170,9 @@ export default function GameScreen({
                 onLookAtDesk={onLookAtDesk}
               />
             )}
-            {state.playerView === "left_wall" && <LeftWallView onLookAtDesk={onLookAtDesk} />}
+            {state.playerView === "left_wall" && (
+              <LeftWallView onLookAtDesk={onLookAtDesk} onStartEmergencyRun={onStartEmergencyRun} />
+            )}
             {state.playerView === "object_map" && <ObjectMapView onLookAtDesk={onLookAtDesk} />}
           </>
         )}

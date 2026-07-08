@@ -184,7 +184,12 @@ export interface GeneratorDefinition {
   restartPenaltyMs: number;
 }
 
-export type DeathReason = "door_open_at_attack" | "blackout_timeout" | "bulb_replacement_attack";
+/**
+ * "emergency_run" = hráč zemřel uvnitř nouzové minihry (viz
+ * EmergencyMiniGame, app/play/page.tsx#handleEmergencyMiniGameComplete) —
+ * stejný death flow jako ostatní důvody, jen jiný text na DeathScreen.
+ */
+export type DeathReason = "door_open_at_attack" | "blackout_timeout" | "bulb_replacement_attack" | "emergency_run";
 
 /**
  * Stav jedné žárovky v místnosti — omezená životnost reálného svícení (viz

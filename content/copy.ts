@@ -68,6 +68,14 @@ export const COPY = {
     // přání zadání, ne sdílený lookAtDeskLabel.
     lookAtLeftWallLabel: "← Podívat se na stěnu vlevo",
     leftWallBackLabel: "Zpět ke stolu",
+    // Spustí EmergencyMiniGame (viz LeftWallView.tsx, app/play/page.tsx
+    // handleStartEmergencyRun) — první tenké napojení nouzové minihry do
+    // hlavní hry, zatím vývojářské tlačítko bez finálního artu.
+    startEmergencyRunLabel: "Jít ven",
+    // Krátká zpráva po úspěšném návratu z nouzové minihry (viz
+    // handleEmergencyMiniGameComplete) — {amount} nahrazuje počet dobité
+    // energie z worldEffects (energy_recharged).
+    emergencyRunEnergyRechargedLabel: "Baterie přinesena. Energie +{amount}.",
     // Statický plánek objektu bez interaktivity (viz ObjectMapView.tsx,
     // gameReducer.ts LOOK_AT_MAP, game/map/objectMap.ts pro data uzlů/hran) —
     // vlastní texty, stejný vzor jako left_wall. Popisky místností samotné
@@ -94,6 +102,7 @@ export const COPY = {
       door_open_at_attack: "Tvou poslední chybou byly otevřené dveře.",
       blackout_timeout: "Nabíjení selhalo. Nouzová baterie vydržela jen pár sekund. Ve tmě povolil zámek.",
       bulb_replacement_attack: "Jít vyměnit tu žárovku nebylo hrdinství, ale poslední chyba v tvém životě.",
+      emergency_run: "Nouzová výprava mimo kancelář byla poslední, kterou jsi kdy podnikl.",
     },
     // Firemně-cynická hláška Objektu 13 po smrti — jedna náhodně vybraná při
     // vstupu na DeathScreen (viz DeathScreen.tsx), stabilní po dobu zobrazení.

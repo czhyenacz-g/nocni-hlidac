@@ -817,6 +817,16 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         };
       }
 
+      case "RECHARGE_POWER":
+        if (action.amount <= 0 || !state.isRunning) return state;
+        return { ...state, power: clamp(state.power + action.amount, 0, MAX_POWER) };
+
+      case "EMERGENCY_MINIGAME_DIED":
+        // Stejný death flow jako ostatní smrti (viz TICK blackout_timeout /
+        // ENEMY_ADVANCE výše) — jen spuštěný zvenčí, ne z herní smyčky.
+        if (!state.isRunning) return state;
+        return { ...state, isRunning: false, screen: "death", deathReason: "emergency_run" };
+
       default:
         return state;
     }
