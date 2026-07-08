@@ -386,6 +386,7 @@ describe("updateEnemyAi", () => {
       stuckCheckPosition: { x: 400, y: 400 },
       stuckCheckElapsedMs: 0,
       stuckTotalMs: 0,
+      enraged: false,
       ...overrides,
     };
   }
@@ -406,6 +407,33 @@ describe("updateEnemyAi", () => {
     expect(result.mode).toBe("investigating");
     expect(result.stunRemainingMs).toBe(0);
     expect(result.investigationTarget).not.toEqual(enemy.investigationTarget);
+  });
+
+  it("wounded: recovering from stun sets enraged to true", () => {
+    const enemy = baseEnemy({ mode: "wounded", stunRemainingMs: 100, enraged: false });
+    const result = updateEnemyAi({ enemy, player: { x: 700, y: 400 }, walls: [], deltaMs: 200, config, rng: () => 0.5 });
+    expect(result.enraged).toBe(true);
+  });
+
+  it("investigating: a non-enraged enemy moves at searchSpeed, not chaseSpeed", () => {
+    const enemy = baseEnemy({ x: 400, y: 400, investigationTarget: { x: 400, y: 200 }, enraged: false });
+    const result = updateEnemyAi({ enemy, player: { x: 10, y: 10 }, walls: [], deltaMs: 16, config });
+    const distanceMoved = 400 - result.y;
+    expect(distanceMoved).toBeCloseTo(config.searchSpeed, 5);
+  });
+
+  it("investigating: an enraged enemy (recovered from a shot) moves at chaseSpeed instead of searchSpeed", () => {
+    const enemy = baseEnemy({ x: 400, y: 400, investigationTarget: { x: 400, y: 200 }, enraged: true });
+    const result = updateEnemyAi({ enemy, player: { x: 10, y: 10 }, walls: [], deltaMs: 16, config });
+    const distanceMoved = 400 - result.y;
+    expect(distanceMoved).toBeCloseTo(config.chaseSpeed, 5);
+  });
+
+  it("enraged stays true across further investigating/waiting transitions (never resets on its own)", () => {
+    const enemy = baseEnemy({ mode: "waiting", waitRemainingMs: 0, enraged: true });
+    const result = updateEnemyAi({ enemy, player: { x: 10, y: 10 }, walls: [], deltaMs: 16, config, rng: () => 0.5 });
+    expect(result.mode).toBe("investigating");
+    expect(result.enraged).toBe(true);
   });
 
   it("investigating: moves toward the investigationTarget, not straight at the player", () => {

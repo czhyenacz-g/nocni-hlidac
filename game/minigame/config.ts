@@ -200,5 +200,6 @@ export function createInitialEnemy(
     stuckCheckPosition: { x, y },
     stuckCheckElapsedMs: 0,
     stuckTotalMs: 0,
+    enraged: false,
   };
 }

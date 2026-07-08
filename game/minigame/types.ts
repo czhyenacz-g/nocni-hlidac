@@ -64,6 +64,15 @@ export interface Enemy {
   stuckCheckElapsedMs: number;
   /** Kumulovaný čas (ms), po který se enemy mezi kontrolami posunul méně než STUCK_MOVE_THRESHOLD_PX — >= STUCK_TIMEOUT_MS znamená "zaseknutý o zeď". */
   stuckTotalMs: number;
+  /**
+   * Trvale `true` od okamžiku, kdy se enemy poprvé zotaví ze zranění
+   * (`stunRemainingMs` doběhne na 0, viz updateEnemyAi) — nikdy se nevrací
+   * zpět na `false` (jen restart minihry / createInitialEnemy ho vynuluje).
+   * Zrychluje "investigating" pohyb na `config.chaseSpeed` místo
+   * `config.searchSpeed` (viz updateEnemyAi) — monstrum je po zásahu
+   * naštvanější, i když zrovna nehoní hráče na dohled.
+   */
+  enraged: boolean;
 }
 
 export type MiniGameStatus = "playing" | "won" | "gameOver";

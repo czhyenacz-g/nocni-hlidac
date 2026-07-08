@@ -555,6 +555,10 @@ export function updateEnemyAi(input: UpdateEnemyAiInput): Enemy {
       stuckCheckPosition: { x: enemy.x, y: enemy.y },
       stuckCheckElapsedMs: 0,
       stuckTotalMs: 0,
+      // Zotavení ze zranění naštve monstrum trvale (viz Enemy.enraged v
+      // types.ts) — "investigating" pohyb od teď poběží na chaseSpeed, i
+      // když zrovna nehoní hráče na dohled.
+      enraged: true,
     };
   }
 
@@ -660,7 +664,10 @@ export function updateEnemyAi(input: UpdateEnemyAiInput): Enemy {
     return { ...enemy, mode: "waiting", waitRemainingMs };
   }
 
-  const step = stepTowards(enemy.x, enemy.y, target.x, target.y, config.searchSpeed);
+  // Po zotavení ze zranění (Enemy.enraged) hledá stejně rychle, jako by
+  // honil hráče na dohled — jinak normální, pomalejší search tempo.
+  const investigationSpeed = enemy.enraged ? config.chaseSpeed : config.searchSpeed;
+  const step = stepTowards(enemy.x, enemy.y, target.x, target.y, investigationSpeed);
   const moved = moveWithWallSliding(enemy.x, enemy.y, step.dx, step.dy, enemy.radius, walls, config.mapWidth, config.mapHeight);
   const visionAngle = angleBetween(enemy.x, enemy.y, target.x, target.y);
 
