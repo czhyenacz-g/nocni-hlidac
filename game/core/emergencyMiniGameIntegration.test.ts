@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyEmergencyWorldEffects, createBatteryEmergencyInput } from "./emergencyMiniGameIntegration";
+import { applyEmergencyWorldEffects, canStartBatteryEmergencyRun, createBatteryEmergencyInput } from "./emergencyMiniGameIntegration";
 import { MAX_POWER } from "../balancing/constants";
 
 describe("createBatteryEmergencyInput", () => {
@@ -48,5 +48,28 @@ describe("applyEmergencyWorldEffects", () => {
     expect(
       applyEmergencyWorldEffects(50, [{ type: "generator_repaired" }, { type: "energy_recharged", amount: 35 }]),
     ).toBe(85);
+  });
+});
+
+// Night feature flag guard (viz NightFeatureFlags.emergencyRunsEnabled/
+// batteryRunEnabled v game/difficulty/nightConfig.ts) — jediné místo, které
+// rozhoduje, jestli "Jít ven pro baterii" jde tuhle noc spustit. Používá ho
+// jak LeftWallView (zobrazení tlačítka), tak
+// app/play/page.tsx#handleStartEmergencyRun (skutečné spuštění).
+describe("canStartBatteryEmergencyRun", () => {
+  it("true when both emergencyRunsEnabled and batteryRunEnabled are true", () => {
+    expect(canStartBatteryEmergencyRun({ emergencyRunsEnabled: true, batteryRunEnabled: true })).toBe(true);
+  });
+
+  it("false when emergencyRunsEnabled is false, even if batteryRunEnabled is true", () => {
+    expect(canStartBatteryEmergencyRun({ emergencyRunsEnabled: false, batteryRunEnabled: true })).toBe(false);
+  });
+
+  it("false when batteryRunEnabled is false, even if emergencyRunsEnabled is true", () => {
+    expect(canStartBatteryEmergencyRun({ emergencyRunsEnabled: true, batteryRunEnabled: false })).toBe(false);
+  });
+
+  it("false when both are false", () => {
+    expect(canStartBatteryEmergencyRun({ emergencyRunsEnabled: false, batteryRunEnabled: false })).toBe(false);
   });
 });

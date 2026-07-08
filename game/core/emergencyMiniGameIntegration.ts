@@ -1,4 +1,5 @@
 import { MAX_POWER } from "../balancing/constants";
+import { NightFeatureFlags } from "../difficulty/nightConfig";
 import { EmergencyMiniGameInput, EmergencyWorldEffect } from "../minigame/types";
 
 // První tenké napojení EmergencyMiniGame (game/minigame/*) do hlavní hry
@@ -38,4 +39,16 @@ export function applyEmergencyWorldEffects(power: number, effects: EmergencyWorl
   }, 0);
 
   return Math.min(MAX_POWER, power + rechargeAmount);
+}
+
+/**
+ * Jestli je "Jít ven pro baterii" tuhle noc vůbec dostupné (viz
+ * NightFeatureFlags.emergencyRunsEnabled/batteryRunEnabled v
+ * game/difficulty/nightConfig.ts) — vyžaduje OBA flagy, ne jen jeden.
+ * Jediné místo, které tohle rozhoduje — LeftWallView (zobrazení tlačítka) i
+ * app/play/page.tsx#handleStartEmergencyRun (skutečné spuštění) na něj musí
+ * spoléhat, ať se UI a logika nemůžou rozejít.
+ */
+export function canStartBatteryEmergencyRun(nightFeatures: Pick<NightFeatureFlags, "emergencyRunsEnabled" | "batteryRunEnabled">): boolean {
+  return nightFeatures.emergencyRunsEnabled && nightFeatures.batteryRunEnabled;
 }

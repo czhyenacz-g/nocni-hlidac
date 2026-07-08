@@ -145,6 +145,8 @@ export default function DebugPanel({
           <div>bulbLifetime: {state.nightFeatures.bulbLifetimeEnabled ? "on" : "off"}</div>
           <div>bulbReplacement: {state.nightFeatures.bulbReplacementEnabled ? "on" : "off"}</div>
           <div>retreatVerification: {state.nightFeatures.monsterRetreatVerificationEnabled ? "on" : "off"}</div>
+          <div>emergencyRuns: {state.nightFeatures.emergencyRunsEnabled ? "on" : "off"}</div>
+          <div>batteryRun: {state.nightFeatures.batteryRunEnabled ? "on" : "off"}</div>
         </div>
 
         {/* Run source (viz app/play/page.tsx serverRunState/survivedNights) —

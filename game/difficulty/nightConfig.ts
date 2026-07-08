@@ -11,6 +11,20 @@ export interface NightFeatureFlags {
   bulbLifetimeEnabled: boolean;
   bulbReplacementEnabled: boolean;
   monsterRetreatVerificationEnabled: boolean;
+  /**
+   * Jestli je "Jít ven" (EmergencyMiniGame z left_wall, viz
+   * app/play/page.tsx#handleStartEmergencyRun) tuhle noc vůbec dostupné —
+   * zastřešující flag nad konkrétními výpravami (batteryRunEnabled níže).
+   * ZATÍM true pro všechny noci (vývoj/ruční testování) — zamýšlený budoucí
+   * stav je noc 1–5 false, noc 6+ true (viz getNightConfig komentář), ale
+   * dokud neexistuje víc než jedna výprava, nemá smysl to už teď takhle
+   * omezovat v produkčním defaultu.
+   */
+  emergencyRunsEnabled: boolean;
+  /** Konkrétní výprava "jít ven pro baterii" — vyžaduje i emergencyRunsEnabled (viz canStartBatteryEmergencyRun v game/core/emergencyMiniGameIntegration.ts). ZATÍM true pro všechny noci, zamýšlený budoucí stav noc 6+. */
+  batteryRunEnabled: boolean;
+  /** Připraveno pro budoucí výpravu "jít pro žárovky" — v /play zatím žádná bulb run mise neexistuje, proto false, ať se nezobrazuje nic, co by nešlo spustit. */
+  bulbRunEnabled: boolean;
 }
 
 export const DEFAULT_NIGHT_FEATURES: NightFeatureFlags = {
@@ -18,6 +32,9 @@ export const DEFAULT_NIGHT_FEATURES: NightFeatureFlags = {
   bulbLifetimeEnabled: true,
   bulbReplacementEnabled: true,
   monsterRetreatVerificationEnabled: true,
+  emergencyRunsEnabled: true,
+  batteryRunEnabled: true,
+  bulbRunEnabled: false,
 };
 
 export interface NightBriefing {
@@ -37,6 +54,15 @@ export interface ResolvedNightConfig {
   briefing: NightBriefing;
   features: NightFeatureFlags;
 }
+
+// Zamýšlené budoucí odemykání "Jít ven" podle noci (NENÍ zatím nastavené —
+// emergencyRunsEnabled/batteryRunEnabled jsou v DEFAULT_NIGHT_FEATURES obě
+// `true` pro všechny noci kvůli vývoji/ručnímu testování):
+//   noc 1–5:  emergencyRunsEnabled: false
+//   noc 6+:   emergencyRunsEnabled: true, batteryRunEnabled: true
+//   noc 7+:   bulbRunEnabled: true (až bude v /play existovat bulb run mise)
+// Až se tohle zapne doopravdy, půjde jednoduše přidat `features: { emergencyRunsEnabled: false }`
+// do NIGHT_CONFIGS záznamů pro noci 1–5 (stejný vzor jako generatorFaultsEnabled výše).
 
 // Briefingy jsou vnitřní monolog hlídače, ne firemní oznámení ani tutorial —
 // žádné "od této noci se zapíná generátor", jen to, co by si sám pro sebe

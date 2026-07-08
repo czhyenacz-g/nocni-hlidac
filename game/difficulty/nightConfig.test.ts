@@ -69,3 +69,35 @@ describe("getNightConfig", () => {
     expect(getNightConfig(0).features.generatorFaultsEnabled).toBe(false);
   });
 });
+
+// "Jít ven" (EmergencyMiniGame z left_wall) je zatím zapnuté pro všechny
+// noci — vývoj/ruční testování, žádná NIGHT_CONFIGS položka je zatím
+// nevypíná. Budoucí záměr (noc 1–5 emergencyRunsEnabled: false, noc 6+
+// true) je zdokumentovaný v nightConfig.ts, ne (ještě) v tomhle chování.
+describe("DEFAULT_NIGHT_FEATURES — emergency runs", () => {
+  it("emergencyRunsEnabled defaults to true", () => {
+    expect(DEFAULT_NIGHT_FEATURES.emergencyRunsEnabled).toBe(true);
+  });
+
+  it("batteryRunEnabled defaults to true", () => {
+    expect(DEFAULT_NIGHT_FEATURES.batteryRunEnabled).toBe(true);
+  });
+
+  it("bulbRunEnabled defaults to false (no bulb run mission exists in /play yet)", () => {
+    expect(DEFAULT_NIGHT_FEATURES.bulbRunEnabled).toBe(false);
+  });
+});
+
+describe("getNightConfig — emergency runs stay on for every night (current dev default)", () => {
+  it("night 1 has emergencyRunsEnabled and batteryRunEnabled true", () => {
+    const config = getNightConfig(1);
+    expect(config.features.emergencyRunsEnabled).toBe(true);
+    expect(config.features.batteryRunEnabled).toBe(true);
+  });
+
+  it.each([2, 3, 4, 5, 6, 7, 20])("night %i keeps the default true (no per-night override yet)", (nightNumber) => {
+    const config = getNightConfig(nightNumber);
+    expect(config.features.emergencyRunsEnabled).toBe(true);
+    expect(config.features.batteryRunEnabled).toBe(true);
+  });
+});

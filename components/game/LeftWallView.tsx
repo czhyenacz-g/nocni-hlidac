@@ -15,6 +15,14 @@ interface LeftWallViewProps {
   onStartEmergencyRun: () => void;
   /** Tlačítko "Jít ven" je vizuálně aktivní jen s otevřenými dveřmi (viz GameScreen.tsx, state.doorClosed) — hráč nemůže vyběhnout ven zavřenými dveřmi. */
   doorClosed: boolean;
+  /**
+   * Jestli tuhle noc vůbec existuje "Jít ven pro baterii" (viz
+   * game/core/emergencyMiniGameIntegration.ts#canStartBatteryEmergencyRun,
+   * NightFeatureFlags.emergencyRunsEnabled/batteryRunEnabled) — `false`
+   * tlačítko vůbec NEZOBRAZÍ (MVP preference ze zadání: rané noci nemají být
+   * matoucí viditelným, ale nefunkčním tlačítkem).
+   */
+  canStartEmergencyRun: boolean;
 }
 
 const LEFT_WALL_IMAGE_SRC = "/object_13/views/empty-shotgun.webp";
@@ -26,7 +34,7 @@ const LEFT_WALL_IMAGE_SRC = "/object_13/views/empty-shotgun.webp";
 // dveřních snímků a bez hotspotu. Tlačítko zpět je pod rámem ve vlastním
 // max-w-md, stejně jako u DoorView — viz GameScreen.tsx, kde je left_wall
 // (spolu s door) mimo běžný HUD/max-w wrapper.
-export default function LeftWallView({ onLookAtDesk, onStartEmergencyRun, doorClosed }: LeftWallViewProps) {
+export default function LeftWallView({ onLookAtDesk, onStartEmergencyRun, doorClosed, canStartEmergencyRun }: LeftWallViewProps) {
   const [imageFailed, setImageFailed] = useState(false);
 
   return (
@@ -54,14 +62,19 @@ export default function LeftWallView({ onLookAtDesk, onStartEmergencyRun, doorCl
             finálního artu, jen aby šla nouzová výprava pro baterii ručně
             spustit a otestovat. Se zavřenými dveřmi je jen vizuálně ztlumené
             (ne HTML disabled) — klik pořád projde, ať handler může ukázat
-            hint "nejdřív otevři dveře" místo tichého nic-se-nestane. */}
-        <button
-          type="button"
-          className={`pixel-button tap-target px-3 py-2 text-xs ${doorClosed ? "opacity-50" : ""}`}
-          onClick={onStartEmergencyRun}
-        >
-          {COPY.game.startEmergencyRunLabel}
-        </button>
+            hint "nejdřív otevři dveře" místo tichého nic-se-nestane. Bez
+            canStartEmergencyRun (night feature flag) se tlačítko vůbec
+            nevykreslí — rané noci nemají mít viditelné, ale nefunkční
+            tlačítko. */}
+        {canStartEmergencyRun && (
+          <button
+            type="button"
+            className={`pixel-button tap-target px-3 py-2 text-xs ${doorClosed ? "opacity-50" : ""}`}
+            onClick={onStartEmergencyRun}
+          >
+            {COPY.game.startEmergencyRunLabel}
+          </button>
+        )}
       </div>
     </div>
   );

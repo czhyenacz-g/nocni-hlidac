@@ -36,7 +36,11 @@ import { getBulbsRemaining, setBulbsRemaining } from "@/game/core/bulbInventory"
 import { applyDailyBulbService, getRoomBulbs, setRoomBulbs } from "@/game/core/roomBulbs";
 import { useHeartbeatStress } from "@/game/audio/useHeartbeatStress";
 import { getNightConfig } from "@/game/difficulty/nightConfig";
-import { applyEmergencyWorldEffects, createBatteryEmergencyInput } from "@/game/core/emergencyMiniGameIntegration";
+import {
+  applyEmergencyWorldEffects,
+  canStartBatteryEmergencyRun,
+  createBatteryEmergencyInput,
+} from "@/game/core/emergencyMiniGameIntegration";
 import EmergencyMiniGame from "@/components/minigame/EmergencyMiniGame";
 import { EmergencyMiniGameInput, EmergencyMiniGameResult } from "@/game/minigame/types";
 import { COPY } from "@/content/copy";
@@ -518,7 +522,13 @@ export default function PlayPage() {
   // zavřenými dveřmi minihru nespustí — tlačítko v LeftWallView zůstává
   // klikatelné (jen vizuálně ztlumené), takže sem klik dorazí vždy; tady se
   // rozhodne, jestli se opravdu spustí, nebo jen ukáže hint.
+  //
+  // canStartBatteryEmergencyRun (night feature flag guard) se kontroluje i
+  // TADY, ne jen skrytím tlačítka v LeftWallView — kdyby se tlačítko někdy
+  // omylem zobrazilo (bug v UI/stará verze night configu apod.), spuštění
+  // se tím i tak bezpečně odmítne.
   function handleStartEmergencyRun() {
+    if (!canStartBatteryEmergencyRun(state.nightFeatures)) return;
     audioManager.play(AUDIO_EVENTS.uiClick);
     if (state.doorClosed) {
       setEmergencyRunMessage(COPY.game.emergencyRunNeedsOpenDoorLabel);

@@ -4,6 +4,7 @@ import { STRESS_DEV_HUD_ENABLED } from "@/game/balancing/constants";
 import { COPY } from "@/content/copy";
 import { computeNearRoomBulbWearRatio } from "@/game/core/roomBulbs";
 import { canReplaceBulb } from "@/game/core/gameReducer";
+import { canStartBatteryEmergencyRun } from "@/game/core/emergencyMiniGameIntegration";
 import SceneBackground from "@/components/SceneBackground";
 import DeskView from "../game/DeskView";
 import DoorView from "../game/DoorView";
@@ -85,6 +86,12 @@ export default function GameScreen({
   // energie) — jen svoje rámované okno na scénu + tlačítko zpět.
   const isWideSceneView = state.playerView === "door" || state.playerView === "left_wall";
   const showPlayBackground = state.gameStatus !== "blackout" && !isWideSceneView;
+  // Jestli je "Jít ven pro baterii" tuhle noc vůbec dostupné (viz
+  // game/core/emergencyMiniGameIntegration.ts#canStartBatteryEmergencyRun,
+  // NightFeatureFlags.emergencyRunsEnabled/batteryRunEnabled) — jediné místo
+  // v komponentách, které to dopočítá; LeftWallView dostane jen hotový
+  // boolean, ne celou nightFeatures strukturu.
+  const canStartBatteryRun = canStartBatteryEmergencyRun(state.nightFeatures);
   // Dev debug text pro PowerMeter — přesný údaj v sekundách, ne finální
   // atmosférický text (viz game/core/roomBulbs.ts, content/copy.ts).
   const nearRoomBulb = state.roomBulbs.nearRoom;
@@ -171,7 +178,12 @@ export default function GameScreen({
               />
             )}
             {state.playerView === "left_wall" && (
-              <LeftWallView onLookAtDesk={onLookAtDesk} onStartEmergencyRun={onStartEmergencyRun} doorClosed={state.doorClosed} />
+              <LeftWallView
+                onLookAtDesk={onLookAtDesk}
+                onStartEmergencyRun={onStartEmergencyRun}
+                doorClosed={state.doorClosed}
+                canStartEmergencyRun={canStartBatteryRun}
+              />
             )}
             {state.playerView === "object_map" && <ObjectMapView onLookAtDesk={onLookAtDesk} />}
           </>
