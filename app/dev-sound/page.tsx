@@ -115,6 +115,43 @@ export default function DevSoundPage() {
         </table>
       </div>
 
+      <h2 className="text-lg font-bold text-green-400 mt-8 mb-1">Kandidáti — siréna nouzového útěku (Freesound)</h2>
+      <p className="text-xs text-gray-500 mb-4">
+        Zatím nikam nezapojený kandidát na smyčku, která by nepřetržitě hrála po celou dobu
+        nouzového útěku ven (viz{" "}
+        <code className="text-gray-400">content/copy.ts</code> —{" "}
+        <code className="text-gray-400">startEmergencyRunLabel</code>). Přehrávač níže je jen
+        dev náhled, ne herní audio systém — žádné zapojení do{" "}
+        <code className="text-gray-400">AUDIO_EVENTS</code>/<code className="text-gray-400">audioConfig.ts</code>{" "}
+        zatím neproběhlo.
+      </p>
+      <div className="overflow-x-auto pixel-panel">
+        <table className="w-full border-collapse text-xs">
+          <thead>
+            <tr className="text-left text-gray-400 border-b border-gray-700">
+              <th className="p-2">Varianta</th>
+              <th className="p-2">Zdroj</th>
+              <th className="p-2">Licence</th>
+              <th className="p-2">Poznámka</th>
+              <th className="p-2">Přehrát</th>
+            </tr>
+          </thead>
+          <tbody>
+            {SIREN_SOUND_CANDIDATES.map((candidate) => (
+              <tr key={candidate.file} className="border-b border-gray-800 align-top">
+                <td className="p-2 text-amber-400 whitespace-nowrap">{candidate.label}</td>
+                <td className="p-2 text-gray-500">{candidate.source}</td>
+                <td className="p-2 text-gray-500 whitespace-nowrap">{candidate.license}</td>
+                <td className="p-2 text-gray-500 max-w-xs">{candidate.note}</td>
+                <td className="p-2">
+                  <audio controls src={`/dev-sound-candidates/${candidate.file}`} className="h-8" />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
       <h2 className="text-lg font-bold text-green-400 mt-8 mb-1">Kandidáti — bušení na dveře / řev monstra / kroky (Freesound)</h2>
       <p className="text-xs text-gray-500 mb-4">
         Zatím nikam nezapojené kandidáti pro budoucí zvukové eventy (bušení na dveře, řev
@@ -177,6 +214,16 @@ const HEARTBEAT_CANDIDATES = [
     file: "heartbeat_single.mp3",
     label: "Single beat",
     source: "opengameart.org/content/heartbeat-single-sound",
+  },
+];
+
+const SIREN_SOUND_CANDIDATES = [
+  {
+    file: "siren/emergency_wail_loop_whelen.mp3",
+    label: "Poplachová siréna — WAIL (11 s smyčka)",
+    source: "freesound.org/people/theblockofsound235/sounds/172353/",
+    license: "CC0",
+    note: "Reálná siréna civilní ochrany (Whelen WPS-3016), WAIL tón (nahoru/dolů, opakovaně) — seamless smyčka, hodí se hrát nepřetržitě po dobu nouzového útěku.",
   },
 ];
 

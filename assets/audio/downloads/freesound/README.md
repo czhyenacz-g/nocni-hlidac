@@ -40,6 +40,14 @@ rozdíl od `footsteps/` výše, které jsou vyhrazené pro budoucí "gigant" typ
 - `336598__inspectorj__footsteps-concrete-a.wav` — [Footsteps, Concrete, A – InspectorJ](https://freesound.org/people/InspectorJ/sounds/336598/), **CC BY 4.0** (vyžaduje atribuci v `CREDITS.md`, pokud se použije), ~39.8 s, tvrdší podpatek na betonu
 - `813622__securesubset__footsteps-stone-rock-concrete-cement.wav` — [Footsteps - Stone, Rock, Concrete, Cement – SecureSubset](https://freesound.org/people/SecureSubset/sounds/813622/), **CC0**, 6.7 s
 
+## siren/
+
+Kandidát na poplachovou sirénu, která by hrála nepřetržitě po celou dobu
+nouzového útěku ven (viz `content/copy.ts` — `startEmergencyRunLabel`). Zatím
+nikam nezapojeno do `AUDIO_EVENTS`/`audioConfig.ts`.
+
+- `172353__theblockofsound235__aurora-colorado-whelen-wps-3016-test-part-one-wail-loop.wav` — [Aurora Colorado Whelen WPS-3016 Test Part One: WAIL Loop – theblockofsound235](https://freesound.org/people/theblockofsound235/sounds/172353/), **CC0**, 11.4 s — reálná siréna civilní ochrany (test WAIL tónu, rise/fall, opakovaně), speciálně upravená autorem jako seamless smyčka.
+
 ## Poznámka
 
 Neúspěšné/přeskočené kandidáty (nestažené):
