@@ -537,7 +537,14 @@ export default function PlayPage() {
       const rechargedAmount = newPower - state.power;
       if (rechargedAmount > 0) {
         dispatch({ type: "RECHARGE_POWER", amount: rechargedAmount });
-        setEmergencyRunMessage(COPY.game.emergencyRunEnergyRechargedLabel.replace("{amount}", String(rechargedAmount)));
+        // Zaokrouhleno na celé číslo — power je plynule odčerpávaný float
+        // (viz applyPowerDelta v gameReducer.ts), takže rechargedAmount by
+        // jinak v textu ukazoval desetinná místa (a při clampu na MAX_POWER
+        // i necelé zbytkové "+12.7"), zatímco HUD (PowerMeter.tsx) energii
+        // vždy zobrazuje zaokrouhlenou (Math.round).
+        setEmergencyRunMessage(
+          COPY.game.emergencyRunEnergyRechargedLabel.replace("{amount}", String(Math.round(rechargedAmount))),
+        );
       }
       return;
     }
