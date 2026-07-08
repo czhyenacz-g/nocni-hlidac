@@ -1,6 +1,6 @@
 "use client";
 
-import { CSSProperties, useEffect, useRef, useState } from "react";
+import { CSSProperties, MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from "react";
 import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
@@ -72,6 +72,7 @@ import { MiniGameLayout } from "@/game/minigame/layoutTypes";
 import { DEFAULT_MINIGAME_LAYOUT_ID, getMiniGameLayout } from "@/game/minigame/layouts";
 import { ResolvedMiniGamePlacement, getRoomBoundsForSlot, resolveMiniGamePlacement } from "@/game/minigame/layoutPlacement";
 import { createRandomSeed } from "@/game/minigame/seededRandom";
+import { getMiniGameSlotDebugLabel, getRoomAtPoint, getSelectedSlotIds, isMiniGameDevToggleHit } from "@/game/minigame/devOverlay";
 
 interface EmergencyMiniGameProps {
   input: EmergencyMiniGameInput;
@@ -279,6 +280,37 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
   // koncem. Debug stránka (app/minihra/page.tsx) ho může zobrazit dál poté,
   // co se tahle komponenta případně odmountuje (drží si vlastní kopii).
   const [result, setResult] = useState<EmergencyMiniGameResult | null>(null);
+
+  // Skrytý developer overlay (viz zadání) — NENÍ security feature, jen dev
+  // pomůcka pro tuhle jednu session (žádný localStorage, viz report). Zapíná/
+  // vypíná se přes isMiniGameDevToggleHit (Shift + pravý klik do pravého
+  // horního rohu canvasu), viz handleCanvasContextMenu níže. Ref zrcadlí
+  // state, ať tick()/draw() (uvnitř efektu s deps `[input]`) vždy čte
+  // AKTUÁLNÍ hodnotu bez nutnosti ten velký efekt kvůli přepnutí remountovat.
+  const [isDevOverlayEnabled, setIsDevOverlayEnabled] = useState(false);
+  const isDevOverlayEnabledRef = useRef(isDevOverlayEnabled);
+  useEffect(() => {
+    isDevOverlayEnabledRef.current = isDevOverlayEnabled;
+  }, [isDevOverlayEnabled]);
+  // Aktuální místnost hráče pro dev lištu (viz getRoomAtPoint) — počítá se
+  // jen v tiku, jen když je overlay zapnutý (běžná hra ho vůbec nepočítá).
+  // setState se stejnou hodnotou je React no-op, takže tohle nepůsobí re-render
+  // 60×/s, stejný bailout vzor jako inExitZone/enemyMode výše.
+  const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
+
+  function handleCanvasContextMenu(event: ReactMouseEvent<HTMLCanvasElement>) {
+    const hit = isMiniGameDevToggleHit({
+      x: event.nativeEvent.offsetX,
+      y: event.nativeEvent.offsetY,
+      button: event.button,
+      shiftKey: event.shiftKey,
+      canvasWidth: event.currentTarget.clientWidth,
+      canvasHeight: event.currentTarget.clientHeight,
+    });
+    if (!hit) return; // běžný pravý klik mimo roh (nebo bez Shiftu) — normální chování prohlížeče, nic dalšího.
+    event.preventDefault();
+    setIsDevOverlayEnabled((enabled) => !enabled);
+  }
 
   function restart() {
     gameRef.current = createInitialState(input);
@@ -488,6 +520,14 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
         // jen při skutečném vstupu/opuštění zóny, ne 60×/s.
         setInExitZone(circleIntersectsWall(game.player.x, game.player.y, game.player.radius, game.exitZone));
 
+        // Aktuální místnost hráče — jen pro dev lištu, počítá se jen když je
+        // overlay zapnutý (běžná hra tenhle výpočet vůbec nedělá). Stejný
+        // setState-bailout vzor jako výše.
+        if (isDevOverlayEnabledRef.current) {
+          const room = getRoomAtPoint(game.layout, { x: game.player.x, y: game.player.y });
+          setCurrentRoomId(room?.id ?? null);
+        }
+
         if (game.enemy.alive) {
           game.enemy = updateEnemyAi({
             enemy: game.enemy,
@@ -514,7 +554,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
         }
       }
 
-      draw(ctx, game, gridCanvas, input);
+      draw(ctx, game, gridCanvas, input, isDevOverlayEnabledRef.current);
       animationFrameRef.current = requestAnimationFrame(tick);
     };
 
@@ -559,27 +599,33 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
         <div style={{ color: "#3f7a58" }}>WASD / šipky: pohyb · mezerník: výstřel · E: akce · R: restart</div>
       </div>
 
-      {/* Debug info o zvoleném layoutu/placementu (viz zadání "Debug UI má
-          ukazovat layoutId, seed, selected sloty") — čte se přímo z
-          gameRef.current (layout/placement se v rámci jednoho běhu neměně,
-          mění se jen při restartu, který stejně vynutí re-render). */}
-      <div
-        className="p-2 text-[10px] flex flex-wrap gap-x-4 gap-y-1"
-        style={{ background: "rgba(3, 15, 8, 0.7)", border: "1px solid #1f6b45", color: "#4c8a6a" }}
-      >
-        <div>
-          LAYOUT: {gameRef.current.layout.id} ({gameRef.current.layout.name})
-        </div>
-        <div>SEED: {gameRef.current.placement.seed}</div>
-        <div>START: {gameRef.current.placement.playerStartSlotId}</div>
-        <div>EXIT: {gameRef.current.placement.playerExitSlotId}</div>
-        <div>MONSTER SPAWN: {gameRef.current.placement.monsterSpawnSlotId}</div>
-        {gameRef.current.placement.objectiveSlotId && (
+      {/* Skrytý developer overlay (viz zadání) — NENÍ v běžném HUDu, jen po
+          zapnutí (Shift + pravý klik do pravého horního rohu canvasu, viz
+          handleCanvasContextMenu). Čte se přímo z gameRef.current (layout/
+          placement se v rámci jednoho běhu neměně, mění se jen při
+          restartu, který stejně vynutí re-render). */}
+      {isDevOverlayEnabled && (
+        <div
+          className="p-2 text-[10px] flex flex-wrap gap-x-4 gap-y-1"
+          style={{ background: "rgba(3, 15, 8, 0.7)", border: "1px solid #1f6b45", color: "#4c8a6a" }}
+        >
+          <div style={{ color: "#6fe3a0" }}>DEV MÓD</div>
           <div>
-            OBJECTIVE: {gameRef.current.placement.objectiveSlotId} ({input.itemToCollect ?? "fuse"})
+            LAYOUT: {gameRef.current.layout.id} ({gameRef.current.layout.name})
           </div>
-        )}
-      </div>
+          <div>SEED: {gameRef.current.placement.seed}</div>
+          <div>
+            OBJECTIVE: {input.objective}
+            {input.itemToCollect ? ` (${input.itemToCollect})` : ""}
+          </div>
+          <div>PHASE: {missionPhase}</div>
+          <div>START: {gameRef.current.placement.playerStartSlotId}</div>
+          <div>EXIT: {gameRef.current.placement.playerExitSlotId}</div>
+          <div>MONSTER SPAWN: {gameRef.current.placement.monsterSpawnSlotId}</div>
+          {gameRef.current.placement.objectiveSlotId && <div>OBJECTIVE SLOT: {gameRef.current.placement.objectiveSlotId}</div>}
+          <div>ROOM: {currentRoomId ?? "?"}</div>
+        </div>
+      )}
 
       {/* Rámeček herní plochy — zelený obrys + rohové radar značky + scanline overlay. */}
       <div
@@ -602,6 +648,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
             height={CANVAS_HEIGHT}
             className="w-full h-auto block"
             style={{ maxWidth: `${CANVAS_WIDTH}px` }}
+            onContextMenu={handleCanvasContextMenu}
           />
 
           {/* Jemný scanline efekt přes canvas — čistě CSS, žádný extra draw call. */}
@@ -720,7 +767,13 @@ function createGridCanvas(worldWidth: number, worldHeight: number): HTMLCanvasEl
   return gridCanvas;
 }
 
-function draw(ctx: CanvasRenderingContext2D, game: MiniGameRefState, gridCanvas: HTMLCanvasElement, input: EmergencyMiniGameInput) {
+function draw(
+  ctx: CanvasRenderingContext2D,
+  game: MiniGameRefState,
+  gridCanvas: HTMLCanvasElement,
+  input: EmergencyMiniGameInput,
+  devOverlayEnabled: boolean,
+) {
   const { player, enemy, status } = game;
 
   ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
@@ -952,6 +1005,57 @@ function draw(ctx: CanvasRenderingContext2D, game: MiniGameRefState, gridCanvas:
   ctx.lineTo(player.x + Math.cos(facing) * (player.radius + 10), player.y + Math.sin(facing) * (player.radius + 10));
   ctx.stroke();
   ctx.restore();
+
+  // Skrytý developer overlay (viz zadání, devOverlay.ts) — kreslí se JAKO
+  // POSLEDNÍ (přes všechno ostatní), ať jsou room obrysy/sloty vždy vidět
+  // navrch. Běžný hráč tohle nikdy neuvidí (devOverlayEnabled je false, dokud
+  // se skrytě nezapne, viz EmergencyMiniGame#handleCanvasContextMenu).
+  if (devOverlayEnabled) {
+    // Obrysy místností + malé id/name — jen orientační, nic víc (viz zadání
+    // "pokud je to jednoduché" — bounds jsou obyčejné obdélníky, snadné).
+    ctx.save();
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 3]);
+    ctx.font = "9px monospace";
+    ctx.fillStyle = "rgba(255, 255, 255, 0.55)";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    for (const room of game.layout.rooms) {
+      const { x, y, width, height } = room.bounds;
+      ctx.strokeRect(x, y, width, height);
+      ctx.fillText(`${room.id}`, x + 4, y + 3);
+    }
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    // Sloty jako písmena (viz getMiniGameSlotDebugLabel) — vybrané sloty pro
+    // TENHLE run (viz getSelectedSlotIds) výrazně odlišené od ostatních.
+    const selectedSlotIds = getSelectedSlotIds(game.placement);
+    ctx.save();
+    ctx.font = "bold 11px monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    for (const slot of game.layout.slots) {
+      const isSelected = selectedSlotIds.has(slot.id);
+      const label = getMiniGameSlotDebugLabel(slot);
+      const radius = isSelected ? 9 : 6;
+
+      ctx.globalAlpha = isSelected ? 0.4 : 0.18;
+      ctx.fillStyle = isSelected ? "#ffe066" : "#ffffff";
+      ctx.beginPath();
+      ctx.arc(slot.x, slot.y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+
+      ctx.shadowColor = isSelected ? "rgba(255, 224, 102, 0.9)" : "transparent";
+      ctx.shadowBlur = isSelected ? 6 : 0;
+      ctx.fillStyle = isSelected ? "#ffe066" : "rgba(255, 255, 255, 0.85)";
+      ctx.fillText(label, slot.x, slot.y);
+      ctx.shadowBlur = 0;
+    }
+    ctx.restore();
+  }
 
   // Konec world→screen měřítka nastaveného výše (ctx.scale(game.scale, ...)).
   ctx.restore();
