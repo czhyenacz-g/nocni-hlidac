@@ -1,6 +1,6 @@
 "use client";
 
-import { CSSProperties, MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from "react";
+import { CSSProperties, PointerEvent as ReactPointerEvent, MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from "react";
 import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
@@ -29,6 +29,8 @@ import {
   MINIGAME_PLAYER_VISION_ANGLE_RAD,
   MINIGAME_PLAYER_VISION_RAY_COUNT,
   MINIGAME_PLAYER_VISION_RAY_STEP_PX,
+  MOVE_TARGET_ARRIVAL_RADIUS_PX,
+  MOVE_TARGET_MARKER_DURATION_MS,
   OFFICE_THREAT_NEAR_OFFICE_RADIUS_PX,
   OFFICE_THREAT_NEAR_PLAYER_RADIUS_PX,
   SHOT_FLASH_DURATION_MS,
@@ -84,6 +86,18 @@ import { createRandomSeed } from "@/game/minigame/seededRandom";
 import { getMiniGameSlotDebugLabel, getRoomAtPoint, getSelectedSlotIds, isMiniGameDevToggleHit } from "@/game/minigame/devOverlay";
 import { evaluateOfficeThreatOnReturn } from "@/game/minigame/officeThreat";
 import { PlayerVisionConfig, getPlayerVisibilityAtPoint } from "@/game/minigame/playerVision";
+import {
+  NO_TEXT_SELECT_STYLE,
+  canShowMobileFireButton,
+  canShowReturnButton,
+  computeMoveTowardsTarget,
+  isMobileFireButtonDisabled,
+  isMoveTargetMarkerVisible,
+  isTouchCapableDevice,
+  resolveMoveTargetFromWorldPoint,
+  shouldAutoCollectItem,
+  shouldHandleMapPointerEvent,
+} from "@/game/minigame/touchControls";
 
 interface EmergencyMiniGameProps {
   input: EmergencyMiniGameInput;
@@ -148,6 +162,10 @@ interface MiniGameRefState {
    * (hlavní hororový efekt fogu, viz zadání).
    */
   enemyVisibleToPlayer: boolean;
+  /** Tap-to-move cíl (viz game/minigame/touchControls.ts) — `null` = žádný aktivní cíl, hráč se řídí jen klávesnicí. Klávesnicový vstup ho v tick() zruší (viz zadání "PC ovládání zůstává funkční"). */
+  moveTarget: Vec2 | null;
+  /** elapsedMs v okamžiku nastavení moveTarget — řídí, jak dlouho zůstává vidět marker (viz isMoveTargetMarkerVisible). */
+  moveTargetSetAtElapsedMs: number;
 }
 
 function createInitialState(input: EmergencyMiniGameInput): MiniGameRefState {
@@ -181,6 +199,8 @@ function createInitialState(input: EmergencyMiniGameInput): MiniGameRefState {
     itemPosition: placement.objectivePosition,
     enemyAiConfig: createEnemyAiConfig(layout.world.width, layout.world.height),
     enemyVisibleToPlayer: false,
+    moveTarget: null,
+    moveTargetSetAtElapsedMs: 0,
   };
 }
 
@@ -312,6 +332,14 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
   // Jestli hráč TEĎ stojí v exit zóně — čistě pro HUD hint ("Nejdřív splň
   // úkol." / "Stiskni E pro návrat..."), počítá se každý tik s bailoutem.
   const [inExitZone, setInExitZone] = useState(false);
+  // Jestli hráč už opustil startovní zónu (viz canReturnToOffice) — potřeba
+  // jako React state (ne jen gameRef.current.hasLeftStartZone), ať se
+  // "VRÁTIT DO KANCELÁŘE" tlačítko spolehlivě zobrazí hned, jakmile to
+  // poprvé platí, stejný bailout vzor jako inExitZone.
+  const [hasLeftStartZone, setHasLeftStartZone] = useState(false);
+  // Mobilní/dotykové ovládání (viz zadání, game/minigame/touchControls.ts) —
+  // zjišťuje se jednou po mountu (viz effect níže), ne přepočítává za běhu.
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
   // Poslední odeslaný výsledek — `null`, dokud hra neskončí smysluplným
   // koncem. Debug stránka (app/minihra/page.tsx) ho může zobrazit dál poté,
   // co se tahle komponenta případně odmountuje (drží si vlastní kopii).
@@ -363,7 +391,41 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
     setEnemyMode(gameRef.current.enemy.mode);
     setMissionPhase(gameRef.current.mission.phase);
     setInExitZone(false);
+    setHasLeftStartZone(false);
     setResult(null);
+  }
+
+  // Zjistí se jednou po mountu (viz zadání "nepotřebuji dokonalou detekci
+  // user-agentu") — pointer:coarse OR touch support, ne user-agent sniffing.
+  // Nezávisí na `input`, proto samostatný effect s prázdnými deps.
+  useEffect(() => {
+    setIsTouchDevice(
+      isTouchCapableDevice({
+        matchesCoarsePointer:
+          typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches,
+        hasTouchSupport: typeof navigator !== "undefined" && navigator.maxTouchPoints > 0,
+      }),
+    );
+  }, []);
+
+  // Tap/click do mapy nastaví tap-to-move cíl (viz game/minigame/touchControls.ts)
+  // — funguje myší i dotykem (PointerEvent sjednocuje oboje), klávesnicový
+  // pohyb ho v tick() přebije/zruší. Canvas nemá potomky, takže
+  // shouldHandleMapPointerEvent je tu spíš explicitní dokumentace záměru než
+  // reálný filtr (UI tlačítka mimo canvas tenhle handler stejně nikdy nezavolají).
+  function handleCanvasPointerDown(event: ReactPointerEvent<HTMLCanvasElement>) {
+    if (!shouldHandleMapPointerEvent(event.target === event.currentTarget)) return;
+    const game = gameRef.current;
+    if (game.status !== "playing") return;
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const canvasX = ((event.clientX - rect.left) / rect.width) * CANVAS_WIDTH;
+    const canvasY = ((event.clientY - rect.top) / rect.height) * CANVAS_HEIGHT;
+    const worldX = canvasX / game.scale;
+    const worldY = canvasY / game.scale;
+
+    game.moveTarget = resolveMoveTargetFromWorldPoint(worldX, worldY, game.worldWidth, game.worldHeight);
+    game.moveTargetSetAtElapsedMs = game.elapsedMs;
   }
 
   // Jediné místo, odkud se volá onComplete — completedRef zajistí, že se to
@@ -563,6 +625,10 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
         }
 
         if (dx !== 0 || dy !== 0) {
+          // Klávesnice má vždy přednost před tap-to-move cílem (viz zadání
+          // "PC ovládání zůstává funkční") — jakýkoliv stisk pohybové
+          // klávesy zruší rozjetý tap-to-move, ať se obě řízení neperou.
+          game.moveTarget = null;
           const length = Math.hypot(dx, dy) || 1;
           const moved = moveWithWallSliding(
             game.player.x,
@@ -577,17 +643,67 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
           game.player.x = moved.x;
           game.player.y = moved.y;
           game.player.direction = directionFromVector(dx, dy, game.player.direction);
+        } else if (game.moveTarget) {
+          // Tap-to-move (viz zadání, game/minigame/touchControls.ts) — stejný
+          // moveWithWallSliding jako klávesnice, kolize se zdmi/překážkami
+          // tedy platí úplně stejně.
+          const step = computeMoveTowardsTarget(
+            game.player.x,
+            game.player.y,
+            game.moveTarget,
+            game.player.speed,
+            MOVE_TARGET_ARRIVAL_RADIUS_PX,
+          );
+          if (step.arrived) {
+            game.moveTarget = null;
+          } else {
+            const moved = moveWithWallSliding(
+              game.player.x,
+              game.player.y,
+              step.dx,
+              step.dy,
+              game.player.radius,
+              game.walls,
+              game.worldWidth,
+              game.worldHeight,
+            );
+            game.player.x = moved.x;
+            game.player.y = moved.y;
+            game.player.direction = directionFromVector(step.dx, step.dy, game.player.direction);
+          }
         }
 
         if (!game.hasLeftStartZone) {
           if (distance(game.player.x, game.player.y, game.startX, game.startY) > START_ZONE_LEAVE_RADIUS_PX) {
             game.hasLeftStartZone = true;
+            setHasLeftStartZone(true);
           }
         }
 
         // Čistě pro HUD hint (viz getMissionHint) — setState bailout, mění se
         // jen při skutečném vstupu/opuštění zóny, ne 60×/s.
         setInExitZone(circleIntersectsWall(game.player.x, game.player.y, game.player.radius, game.exitZone));
+
+        // Automatické sbírání itemu dotykem (viz zadání "sjednotit pro PC i
+        // mobil") — nahrazuje nutnost stisku E jen pro sebrání věci; E dál
+        // funguje i na návrat do kanceláře (viz handleObjectiveKey).
+        if (
+          shouldAutoCollectItem({
+            objective: input.objective,
+            missionPhase: game.mission.phase,
+            playerX: game.player.x,
+            playerY: game.player.y,
+            playerRadius: game.player.radius,
+            itemPosition: game.itemPosition,
+            itemRadius: ITEM_RADIUS,
+          })
+        ) {
+          game.mission = completeObjective(game.mission, {
+            type: "collected_item",
+            itemId: input.itemToCollect ?? "fuse",
+          });
+          setMissionPhase(game.mission.phase);
+        }
 
         // Aktuální místnost hráče — jen pro dev lištu, počítá se jen když je
         // overlay zapnutý (běžná hra tenhle výpočet vůbec nedělá). Stejný
@@ -653,8 +769,21 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input]);
 
+  // Klikací/tapnutelný návrat do kanceláře (viz zadání) — vidět jen když by E
+  // teď skutečně dokončilo misi (viz canReturnToOffice), ať tlačítko nikdy
+  // neslibuje něco, co neudělá; chybějící krok dál ukazuje jen getMissionHint.
+  const canReturnNow = canShowReturnButton(
+    { status, inExitZone, objective: input.objective, mission: { phase: missionPhase }, hasLeftStartZone },
+    canReturnToOffice(input.objective, { phase: missionPhase }, hasLeftStartZone),
+  );
+  const showMobileFireButton = canShowMobileFireButton({ isTouchDevice, hasShotgun: gameRef.current.player.hasShotgun });
+  const isMobileFireDisabled = isMobileFireButtonDisabled(ammoLeft);
+
   return (
-    <div className="flex flex-col gap-3" style={{ fontFamily: "'Courier New', monospace" }}>
+    <div
+      className="flex flex-col gap-3"
+      style={{ fontFamily: "'Courier New', monospace", ...NO_TEXT_SELECT_STYLE }}
+    >
       {/* HUD panel — radarový styl: tmavé pozadí, tenké zelené linky, glow. */}
       <div
         className="p-3 text-xs flex flex-wrap gap-x-6 gap-y-1"
@@ -684,7 +813,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
           </div>
         )}
         <div style={{ color: "#3f7a58" }}>SYSTÉM: AKTIVNÍ · MŘÍŽKA: 1.0m</div>
-        <div style={{ color: "#3f7a58" }}>WASD / šipky: pohyb · mezerník: výstřel · E: akce · R: restart</div>
+        <div style={{ color: "#3f7a58" }}>WASD / šipky / klik do mapy: pohyb · mezerník: výstřel · E: akce · R: restart</div>
       </div>
 
       {/* Skrytý developer overlay (viz zadání) — NENÍ v běžném HUDu, jen po
@@ -740,8 +869,9 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
             width={CANVAS_WIDTH}
             height={CANVAS_HEIGHT}
             className="w-full h-auto block"
-            style={{ maxWidth: `${CANVAS_WIDTH}px` }}
+            style={{ maxWidth: `${CANVAS_WIDTH}px`, touchAction: "none", ...NO_TEXT_SELECT_STYLE }}
             onContextMenu={handleCanvasContextMenu}
+            onPointerDown={handleCanvasPointerDown}
           />
 
           {/* Jemný scanline efekt přes canvas — čistě CSS, žádný extra draw call. */}
@@ -758,6 +888,46 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
               background: "radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(0,0,0,0.45) 100%)",
             }}
           />
+
+          {/* Klikací/tapnutelný návrat do kanceláře (viz zadání) — E funguje
+              dál jako klávesová zkratka, tohle je ekvivalentní akce myší/dotykem. */}
+          {canReturnNow && (
+            <button
+              type="button"
+              className="tap-target absolute left-1/2 bottom-4 -translate-x-1/2 px-4 py-2 text-xs font-bold uppercase"
+              style={{
+                background: "rgba(3, 15, 8, 0.92)",
+                border: "1px solid #3fe08a",
+                color: "#5dffa0",
+                boxShadow: "0 0 12px rgba(63,224,138,0.55)",
+                ...NO_TEXT_SELECT_STYLE,
+              }}
+              onClick={handleObjectiveKey}
+            >
+              Vrátit do kanceláře
+            </button>
+          )}
+
+          {/* Jediné extra mobilní tlačítko (viz zadání) — jen na dotykovém
+              zařízení a jen když má hráč brokovnici; bez nábojů zůstává
+              vidět, ale disabled, ať hráč ví, že mu došly náboje. */}
+          {showMobileFireButton && (
+            <button
+              type="button"
+              disabled={isMobileFireDisabled}
+              className="tap-target absolute right-4 bottom-4 w-20 h-20 rounded-full text-xs font-bold uppercase disabled:opacity-40"
+              style={{
+                background: "rgba(3, 15, 8, 0.92)",
+                border: "2px solid #ef4444",
+                color: "#ff8a8a",
+                boxShadow: "0 0 14px rgba(239,68,68,0.5)",
+                ...NO_TEXT_SELECT_STYLE,
+              }}
+              onClick={fireShot}
+            >
+              {isMobileFireDisabled ? "Bez nábojů" : "Střelit"}
+            </button>
+          )}
 
           {status !== "playing" && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/75">
@@ -786,8 +956,21 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
                     MONSTRUM TĚ DOSTALO.
                   </div>
                 )}
-                <div className="text-xs" style={{ color: "#6fe3a0" }}>
-                  R — restart
+                <button
+                  type="button"
+                  className="tap-target px-4 py-2 text-xs font-bold uppercase"
+                  style={{
+                    background: "rgba(3, 15, 8, 0.92)",
+                    border: `1px solid ${status === "won" ? "#3fe08a" : "#ef4444"}`,
+                    color: status === "won" ? "#5dffa0" : "#ff8a8a",
+                    ...NO_TEXT_SELECT_STYLE,
+                  }}
+                  onClick={restart}
+                >
+                  {status === "won" ? "Pokračovat" : "Zkusit znovu"}
+                </button>
+                <div className="text-[10px] mt-2" style={{ color: "#3f7a58" }}>
+                  Klávesa R funguje také.
                 </div>
               </div>
             </div>
@@ -1209,6 +1392,31 @@ function draw(
   ctx.lineTo(player.x + Math.cos(facing) * (player.radius + 10), player.y + Math.sin(facing) * (player.radius + 10));
   ctx.stroke();
   ctx.restore();
+
+  // Tap-to-move cíl (viz zadání, game/minigame/touchControls.ts) — decentní
+  // CRT/radar křížek, jen krátce po tapnutí/kliknutí (viz
+  // isMoveTargetMarkerVisible), ne po celou dobu cesty k cíli. Kreslí se i
+  // ve fogu (POZOR: nad následujícím fog blokem by ho tma smazala) — hráč
+  // musí vědět, kam míří, i když tam ještě nevidí (viz zadání).
+  if (game.moveTarget && isMoveTargetMarkerVisible(game.elapsedMs - game.moveTargetSetAtElapsedMs, MOVE_TARGET_MARKER_DURATION_MS)) {
+    const { x: tx, y: ty } = game.moveTarget;
+    const armLength = 8;
+    ctx.save();
+    ctx.shadowColor = "rgba(93, 255, 160, 0.9)";
+    ctx.shadowBlur = 6;
+    ctx.strokeStyle = "rgba(163, 255, 200, 0.85)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(tx - armLength, ty);
+    ctx.lineTo(tx + armLength, ty);
+    ctx.moveTo(tx, ty - armLength);
+    ctx.lineTo(tx, ty + armLength);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(tx, ty, armLength * 0.6, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
 
   // Fog of war (viz zadání, game/minigame/playerVision.ts) — hráč vidí jen
   // periferní kruh (MINIGAME_PLAYER_PERIPHERAL_VISION_RANGE_PX, všechny

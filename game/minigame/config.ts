@@ -114,6 +114,13 @@ export const MINIGAME_PLAYER_VISION_RAY_STEP_PX = 8;
 export const OFFICE_THREAT_NEAR_PLAYER_RADIUS_PX = 150;
 export const OFFICE_THREAT_NEAR_OFFICE_RADIUS_PX = 200;
 
+// ── Tap-to-move (mobilní/dotykové ovládání, viz game/minigame/touchControls.ts)
+// — beze změny existující klávesnicové logiky, jen alternativní zdroj pohybu.
+/** Jak blízko tap-to-move cíli se hráč musí dostat, než se pohyb považuje za "dorazil" a zastaví. */
+export const MOVE_TARGET_ARRIVAL_RADIUS_PX = 6;
+/** Jak dlouho (ms) zůstává vidět marker tap-to-move cíle, i když tam hráč ještě nedorazil. */
+export const MOVE_TARGET_MARKER_DURATION_MS = 900;
+
 // Zdi baseline mapy — teď datově v game/minigame/layouts/serviceFloorAlpha.ts,
 // tohle je jen zpětně kompatibilní re-export (stejná geometrie/hodnoty jako
 // dřív). MiniGameLayoutWall je strukturální nadmnožina Wall (x/y/width/height
