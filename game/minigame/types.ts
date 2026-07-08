@@ -24,7 +24,10 @@ export interface Player {
   radius: number;
   direction: Direction;
   speed: number;
-  shotsLeft: number;
+  /** Jestli má hráč vůbec brokovnici — bez ní mezerník nikdy nevystřelí, ať je `ammo` cokoliv (viz resolveEquipmentFromInput/canFireWeapon v logic.ts). */
+  hasShotgun: boolean;
+  /** Zbývající náboje. Bez brokovnice (`hasShotgun === false`) se normalizuje na 0 (viz resolveEquipmentFromInput). */
+  ammo: number;
 }
 
 // Chování nepřítele (viz game/minigame/logic.ts#updateEnemyAi):
@@ -92,11 +95,27 @@ export interface EmergencyMissionState {
   completedObjective?: EmergencyCompletedObjective;
 }
 
+// Skutečná výbava hráče na vstupu do minihry (viz
+// game/minigame/logic.ts#resolveEquipmentFromInput) — má hráč brokovnici
+// vůbec, a kolik do ní má nábojů. Bez brokovnice je minihra čistá skrývačka;
+// s brokovnicí, ale bez nábojů, hráč zbraň nosí, ale nemůže vystřelit.
+export interface EmergencyMiniGameEquipment {
+  hasShotgun: boolean;
+  ammo: number;
+}
+
 export interface EmergencyMiniGameInput {
   objective: MiniGameObjective;
   /** Jen relevantní pro objective "collect_item" — chybí-li, view/logika použije obecné "item". */
   itemToCollect?: MiniGameItemId;
-  /** Počet výstřelů na start — chybí-li, default 1 (viz resolveShotsFromInput). */
+  /** Výbava hráče — chybí-li, default je brokovnice + 1 náboj (viz resolveEquipmentFromInput). */
+  equipment?: EmergencyMiniGameEquipment;
+  /**
+   * @deprecated Nahrazeno `equipment`. Držené jen kvůli zpětné kompatibilitě
+   * starších vstupů — `resolveEquipmentFromInput` ho použije POUZE pokud
+   * `equipment` chybí (`{ hasShotgun: shots > 0, ammo: shots }`). Nové
+   * scénáře/volání už `shots` nepoužívají, viz game/minigame/debugScenarios.ts.
+   */
   shots?: number;
   /** Připraveno pro budoucí škálování obtížnosti (rychlost/vidění nepřítele apod.) — MVP gameplay na tomhle zatím nestaví. */
   difficulty?: MiniGameDifficulty;

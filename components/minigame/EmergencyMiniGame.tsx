@@ -52,6 +52,7 @@ import {
 import {
   DIRECTION_ANGLES,
   EnemyAiConfig,
+  applyShot,
   canReturnToOffice,
   castVisionCone,
   circleIntersectsWall,
@@ -60,11 +61,11 @@ import {
   createDeadResult,
   createInitialMissionState,
   createReturnedResult,
+  createWeaponHudLabel,
   directionFromVector,
   distance,
-  isEnemyHit,
   moveWithWallSliding,
-  resolveShotsFromInput,
+  resolveEquipmentFromInput,
   updateEnemyAi,
   updateMissionPhase,
 } from "@/game/minigame/logic";
@@ -80,7 +81,7 @@ interface EmergencyMiniGameProps {
 // Znovupoužitelný "nouzová obchůzka" modul — vlastní requestAnimationFrame
 // smyčka mimo React render cyklus. Mutable herní stav žije v refu (gameRef),
 // ať se hra neproháněla přes setState 60×/s; do Reactu (useState
-// status/shotsLeft/enemyMode/woundedMsLeft/result) se propisuje jen při
+// status/ammoLeft/enemyMode/woundedMsLeft/result) se propisuje jen při
 // SKUTEČNÉ změně, aby se stavový panel/overlay překreslil. Zatím NENÍ
 // napojený na hlavní hru (/play) — jen připravený kontrakt (input/
 // onComplete/onCancel), viz app/minihra/page.tsx pro samostatné použití.
@@ -104,8 +105,8 @@ interface MiniGameRefState {
 }
 
 function createInitialState(input: EmergencyMiniGameInput): MiniGameRefState {
-  const shots = resolveShotsFromInput(input);
-  const player = createInitialPlayer(shots);
+  const equipment = resolveEquipmentFromInput(input);
+  const player = createInitialPlayer(equipment);
   const enemy = createInitialEnemy(player);
   return {
     player,
@@ -208,7 +209,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
   const completedRef = useRef(false);
 
   const [status, setStatus] = useState<MiniGameStatus>("playing");
-  const [shotsLeft, setShotsLeft] = useState(() => resolveShotsFromInput(input));
+  const [ammoLeft, setAmmoLeft] = useState(() => resolveEquipmentFromInput(input).ammo);
   // Zobrazený odpočet "Zranění: X.X s" — `null` mimo wounded mód. Aktualizuje
   // se každý tik, ale React re-render přeskočí, dokud se zaokrouhlená hodnota
   // skutečně nezmění (setState se stejnou hodnotou = bailout).
@@ -232,7 +233,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
     lastTimestampRef.current = null;
     completedRef.current = false;
     setStatus("playing");
-    setShotsLeft(gameRef.current.player.shotsLeft);
+    setAmmoLeft(gameRef.current.player.ammo);
     setWoundedMsLeft(null);
     setEnemyMode(gameRef.current.enemy.mode);
     setMissionPhase(gameRef.current.mission.phase);
@@ -253,31 +254,36 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
     onComplete?.(gameResult);
   }
 
+  // Mezerník je jen "pokus" — jestli se z něj stane skutečný výstřel (a co se
+  // spotřebuje) rozhoduje čistě applyShot/canFireWeapon (viz logic.ts). Bez
+  // brokovnice nebo bez náboje se NIC nemění: ammo, shotsUsed ani shot flash.
   function fireShot() {
     const game = gameRef.current;
-    if (game.status !== "playing" || game.player.shotsLeft <= 0) return;
-
-    game.player.shotsLeft -= 1;
-    game.shotsUsed += 1;
-    setShotsLeft(game.player.shotsLeft);
-    // Čistě vizuální bliknutí výseče — nezávisí na tom, jestli výstřel trefí.
-    game.shotFlashRemainingMs = SHOT_FLASH_DURATION_MS;
-
-    const hit = isEnemyHit({
-      player: game.player,
+    const result = applyShot({
+      player: { hasShotgun: game.player.hasShotgun, ammo: game.player.ammo },
+      playerPosition: game.player,
       enemy: game.enemy,
       coneAngleRad: CONE_ANGLE_RAD,
       range: CONE_RANGE,
       walls: WALLS,
+      status: game.status,
+      shotFlashDurationMs: SHOT_FLASH_DURATION_MS,
     });
+    if (!result.fired) return;
 
-    if (hit) {
+    game.player.ammo = result.ammo;
+    game.shotsUsed += result.shotsUsedDelta;
+    setAmmoLeft(game.player.ammo);
+    // Čistě vizuální bliknutí výseče — nezávisí na tom, jestli výstřel trefí.
+    game.shotFlashRemainingMs = result.shotFlashRemainingMs;
+
+    if (result.hit) {
       // Zásah NENÍ smrt — monstrum zůstane na místě a dočasně se omráčí
       // (viz ENEMY_STUN_DURATION_MS), hra dál běží (status zůstává "playing").
       game.enemy.stunRemainingMs = ENEMY_STUN_DURATION_MS;
       game.enemy.mode = "wounded";
     }
-    // Miss: náboj je pryč, hra dál běží, enemy nezraněn.
+    // Miss (i miss "za zdí"): náboj je pryč, hra dál běží, enemy nezraněn.
   }
 
   // "E" — dvě věci, které pro MVP dává smysl řešit explicitním stiskem (ne
@@ -480,7 +486,9 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
           STAV:{" "}
           {status === "playing" ? "PROBÍHÁ OBCHŮZKA" : status === "won" ? "SPLNĚNO" : "MONSTRUM TĚ DOSTALO"}
         </div>
-        <div style={{ textShadow: "0 0 4px rgba(111,227,160,0.8)" }}>NÁBOJE: {shotsLeft}</div>
+        <div style={{ textShadow: "0 0 4px rgba(111,227,160,0.8)" }}>
+          {createWeaponHudLabel(gameRef.current.player.hasShotgun, ammoLeft).toUpperCase()}
+        </div>
         <div style={{ color: "#3f7a58" }}>REŽIM: {MODE_LABELS[enemyMode].toUpperCase()}</div>
         {status === "playing" && (
           <div style={{ color: "#5dffa0", textShadow: "0 0 4px rgba(93,255,160,0.6)" }}>
@@ -734,18 +742,24 @@ function draw(ctx: CanvasRenderingContext2D, game: MiniGameRefState, gridCanvas:
   // oblouk na konci dosahu. Stejný výpočet (facing/CONE_ANGLE_RAD/CONE_RANGE)
   // jako dřív, mění se jen kreslení. Krátké bliknutí po výstřelu
   // (shotFlashRemainingMs, viz fireShot) je čistě vizuální — nemění dosah
-  // ani úhel, jen dočasně zesvětlí výplň/glow.
+  // ani úhel, jen dočasně zesvětlí výplň/glow. Bez brokovnice (hasShotgun
+  // false) je to jen "směr pohledu", ne "dostřel" — slabší výplň/obrys, žádná
+  // bojová konotace (shot flash se navíc bez brokovnice nikdy nespustí, viz
+  // fireShot/applyShot).
   const facing = DIRECTION_ANGLES[player.direction];
   const coneStart = facing - CONE_ANGLE_RAD / 2;
   const coneEnd = facing + CONE_ANGLE_RAD / 2;
   const isFlashing = game.shotFlashRemainingMs > 0;
+  const hasShotgun = player.hasShotgun;
 
   ctx.save();
   ctx.fillStyle = status === "gameOver"
     ? "rgba(220, 38, 38, 0.16)"
     : isFlashing
       ? "rgba(232, 255, 238, 0.55)"
-      : "rgba(120, 235, 130, 0.14)";
+      : hasShotgun
+        ? "rgba(120, 235, 130, 0.14)"
+        : "rgba(120, 235, 130, 0.05)";
   ctx.beginPath();
   ctx.moveTo(player.x, player.y);
   ctx.arc(player.x, player.y, CONE_RANGE, coneStart, coneEnd);
@@ -753,9 +767,9 @@ function draw(ctx: CanvasRenderingContext2D, game: MiniGameRefState, gridCanvas:
   ctx.fill();
 
   ctx.shadowColor = isFlashing ? "rgba(255, 255, 255, 0.95)" : "rgba(163, 255, 130, 0.8)";
-  ctx.shadowBlur = isFlashing ? 16 : 6;
-  ctx.strokeStyle = isFlashing ? "rgba(255, 255, 255, 0.9)" : "rgba(163, 255, 130, 0.55)";
-  ctx.lineWidth = isFlashing ? 2.5 : 1.5;
+  ctx.shadowBlur = isFlashing ? 16 : hasShotgun ? 6 : 2;
+  ctx.strokeStyle = isFlashing ? "rgba(255, 255, 255, 0.9)" : hasShotgun ? "rgba(163, 255, 130, 0.55)" : "rgba(163, 255, 130, 0.25)";
+  ctx.lineWidth = isFlashing ? 2.5 : hasShotgun ? 1.5 : 1;
   ctx.beginPath();
   ctx.arc(player.x, player.y, CONE_RANGE, coneStart, coneEnd);
   ctx.stroke();

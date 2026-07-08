@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   angleBetween,
+  applyShot,
   canEnemySeePlayer,
+  canFireWeapon,
   castVisionCone,
   circleIntersectsAnyWall,
   circleIntersectsWall,
@@ -13,6 +15,7 @@ import {
   createInitialMissionState,
   createInvestigationTarget,
   createReturnedResult,
+  createWeaponHudLabel,
   directionFromVector,
   distance,
   hasLineOfSight,
@@ -21,7 +24,7 @@ import {
   isTargetInCone,
   lineIntersectsRect,
   moveWithWallSliding,
-  resolveShotsFromInput,
+  resolveEquipmentFromInput,
   tickEnemyStun,
   updateEnemyAi,
   updateMissionPhase,
@@ -570,25 +573,122 @@ describe("updateEnemyAi", () => {
 
 // ── Kontrakt pro budoucí spuštění z hlavní hry ─────────────────────────────
 
-describe("resolveShotsFromInput", () => {
-  it("defaults to 1 when shots is not provided", () => {
-    expect(resolveShotsFromInput({})).toBe(1);
+// ── Výbava hráče (equipment) — nahrazuje dřívější "shots?: number", viz
+// EmergencyMiniGameEquipment v types.ts. `shots` zůstává v types.ts jen jako
+// @deprecated zpětně-kompatibilní fallback pro resolveEquipmentFromInput.
+describe("resolveEquipmentFromInput", () => {
+  it("defaults to a shotgun with 1 ammo when neither equipment nor shots is provided", () => {
+    expect(resolveEquipmentFromInput({})).toEqual({ hasShotgun: true, ammo: 1 });
   });
 
-  it("uses input.shots when provided", () => {
-    expect(resolveShotsFromInput({ shots: 3 })).toBe(3);
-    expect(resolveShotsFromInput({ shots: 0 })).toBe(0);
+  it("uses input.equipment when provided", () => {
+    expect(resolveEquipmentFromInput({ equipment: { hasShotgun: false, ammo: 0 } })).toEqual({ hasShotgun: false, ammo: 0 });
+    expect(resolveEquipmentFromInput({ equipment: { hasShotgun: true, ammo: 0 } })).toEqual({ hasShotgun: true, ammo: 0 });
+  });
+
+  it("equipment takes priority over the deprecated shots field when both are present", () => {
+    expect(resolveEquipmentFromInput({ equipment: { hasShotgun: true, ammo: 2 }, shots: 0 })).toEqual({ hasShotgun: true, ammo: 2 });
+  });
+
+  it("falls back to the deprecated shots field when equipment is missing", () => {
+    expect(resolveEquipmentFromInput({ shots: 3 })).toEqual({ hasShotgun: true, ammo: 3 });
+    expect(resolveEquipmentFromInput({ shots: 0 })).toEqual({ hasShotgun: false, ammo: 0 });
+  });
+
+  it("normalizes negative ammo to 0", () => {
+    expect(resolveEquipmentFromInput({ equipment: { hasShotgun: true, ammo: -5 } })).toEqual({ hasShotgun: true, ammo: 0 });
+  });
+
+  it("normalizes hasShotgun: false with ammo > 0 so the weapon can't be fired (ammo forced to 0)", () => {
+    expect(resolveEquipmentFromInput({ equipment: { hasShotgun: false, ammo: 3 } })).toEqual({ hasShotgun: false, ammo: 0 });
+  });
+
+  it("floors fractional ammo", () => {
+    expect(resolveEquipmentFromInput({ equipment: { hasShotgun: true, ammo: 2.9 } })).toEqual({ hasShotgun: true, ammo: 2 });
   });
 });
 
-describe("createInitialPlayer(shots)", () => {
-  it("sets shotsLeft to the given shots count", () => {
-    expect(createInitialPlayer(1).shotsLeft).toBe(1);
-    expect(createInitialPlayer(3).shotsLeft).toBe(3);
+describe("createInitialPlayer(equipment)", () => {
+  it("sets hasShotgun/ammo from the given equipment", () => {
+    expect(createInitialPlayer({ hasShotgun: true, ammo: 1 })).toMatchObject({ hasShotgun: true, ammo: 1 });
+    expect(createInitialPlayer({ hasShotgun: true, ammo: 3 })).toMatchObject({ hasShotgun: true, ammo: 3 });
+    expect(createInitialPlayer({ hasShotgun: false, ammo: 0 })).toMatchObject({ hasShotgun: false, ammo: 0 });
   });
 
-  it("defaults to 1 shot when called without an argument", () => {
-    expect(createInitialPlayer().shotsLeft).toBe(1);
+  it("defaults to a shotgun with 1 ammo when called without an argument", () => {
+    expect(createInitialPlayer()).toMatchObject({ hasShotgun: true, ammo: 1 });
+  });
+});
+
+describe("canFireWeapon", () => {
+  it("false without a shotgun, even with ammo", () => {
+    expect(canFireWeapon({ status: "playing", hasShotgun: false, ammo: 5 })).toBe(false);
+  });
+
+  it("false with a shotgun but 0 ammo", () => {
+    expect(canFireWeapon({ status: "playing", hasShotgun: true, ammo: 0 })).toBe(false);
+  });
+
+  it("true with a shotgun and ammo while playing", () => {
+    expect(canFireWeapon({ status: "playing", hasShotgun: true, ammo: 1 })).toBe(true);
+  });
+
+  it("false once the game is no longer playing, even with a loaded shotgun", () => {
+    expect(canFireWeapon({ status: "won", hasShotgun: true, ammo: 1 })).toBe(false);
+    expect(canFireWeapon({ status: "gameOver", hasShotgun: true, ammo: 1 })).toBe(false);
+  });
+});
+
+describe("createWeaponHudLabel", () => {
+  it('"Zbraň: žádná" without a shotgun', () => {
+    expect(createWeaponHudLabel(false, 0)).toBe("Zbraň: žádná");
+  });
+
+  it("shows ammo count with a shotgun, including 0", () => {
+    expect(createWeaponHudLabel(true, 0)).toBe("Zbraň: brokovnice · Náboje: 0");
+    expect(createWeaponHudLabel(true, 1)).toBe("Zbraň: brokovnice · Náboje: 1");
+  });
+});
+
+describe("applyShot", () => {
+  const coneAngleRad = (70 * Math.PI) / 180;
+  const range = 150;
+  const playerPosition = { x: 0, y: 0, direction: "up" as const };
+  const visibleEnemy = { x: 0, y: -100, radius: 14, alive: true };
+  const baseInput = {
+    playerPosition,
+    enemy: visibleEnemy,
+    coneAngleRad,
+    range,
+    walls: [] as Wall[],
+    status: "playing" as const,
+    shotFlashDurationMs: 150,
+  };
+
+  it("without a shotgun: not fired, ammo/shotsUsed/shotFlash untouched, no hit", () => {
+    const result = applyShot({ ...baseInput, player: { hasShotgun: false, ammo: 5 } });
+    expect(result).toEqual({ fired: false, ammo: 5, shotsUsedDelta: 0, shotFlashRemainingMs: 0, hit: false });
+  });
+
+  it("with a shotgun but 0 ammo: not fired, nothing consumed, no hit", () => {
+    const result = applyShot({ ...baseInput, player: { hasShotgun: true, ammo: 0 } });
+    expect(result).toEqual({ fired: false, ammo: 0, shotsUsedDelta: 0, shotFlashRemainingMs: 0, hit: false });
+  });
+
+  it("with a shotgun and 1 ammo, enemy in cone/range/LOS: fires, ammo drops to 0, shotsUsedDelta 1, flash set, hit true", () => {
+    const result = applyShot({ ...baseInput, player: { hasShotgun: true, ammo: 1 } });
+    expect(result).toEqual({ fired: true, ammo: 0, shotsUsedDelta: 1, shotFlashRemainingMs: 150, hit: true });
+  });
+
+  it("through a wall: still fires (ammo/shotsUsed consumed, flash set) but does not hit", () => {
+    const wall: Wall = { x: -20, y: -60, width: 40, height: 10 };
+    const result = applyShot({ ...baseInput, player: { hasShotgun: true, ammo: 1 }, walls: [wall] });
+    expect(result).toEqual({ fired: true, ammo: 0, shotsUsedDelta: 1, shotFlashRemainingMs: 150, hit: false });
+  });
+
+  it("not playing: not fired even with a loaded shotgun", () => {
+    const result = applyShot({ ...baseInput, status: "won", player: { hasShotgun: true, ammo: 1 } });
+    expect(result.fired).toBe(false);
   });
 });
 

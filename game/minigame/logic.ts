@@ -2,12 +2,14 @@ import {
   Direction,
   Enemy,
   EmergencyCompletedObjective,
+  EmergencyMiniGameEquipment,
   EmergencyMiniGameInput,
   EmergencyMiniGameResult,
   EmergencyMissionPhase,
   EmergencyMissionState,
   EnemyMode,
   MiniGameObjective,
+  MiniGameStatus,
   Vec2,
   Wall,
 } from "./types";
@@ -705,9 +707,90 @@ export function updateEnemyAi(input: UpdateEnemyAiInput): Enemy {
 // components/minigame/EmergencyMiniGame.tsx) — čisté, testovatelné funkce
 // pro vstup/výsledek, žádné React/DOM.
 
-/** `input.shots` je volitelné — chybí-li, default je přesně 1 výstřel. */
-export function resolveShotsFromInput(input: Pick<EmergencyMiniGameInput, "shots">): number {
-  return input.shots ?? 1;
+/** Chybí-li equipment i (deprecated) shots, minihra běží se starým výchozím chováním — brokovnice + 1 náboj. */
+export const DEFAULT_EQUIPMENT: EmergencyMiniGameEquipment = { hasShotgun: true, ammo: 1 };
+
+/** ammo nikdy záporné a vždy celé číslo; bez brokovnice se ammo interně chová jako 0 (nejde vystřelit, i kdyby input poslal ammo > 0). */
+function normalizeEquipment(equipment: EmergencyMiniGameEquipment): EmergencyMiniGameEquipment {
+  const ammo = Math.max(0, Math.floor(equipment.ammo));
+  return { hasShotgun: equipment.hasShotgun, ammo: equipment.hasShotgun ? ammo : 0 };
+}
+
+/**
+ * Skutečná výbava hráče na vstupu do minihry (viz EmergencyMiniGameEquipment
+ * v types.ts). `input.equipment` má přednost; chybí-li, spadne na (deprecated)
+ * `input.shots` kvůli zpětné kompatibilitě starších vstupů/testů
+ * (`{ hasShotgun: shots > 0, ammo: shots }`); chybí-li obojí, DEFAULT_EQUIPMENT.
+ * Nové scénáře (viz debugScenarios.ts) už `shots` nepoužívají.
+ */
+export function resolveEquipmentFromInput(input: Pick<EmergencyMiniGameInput, "equipment" | "shots">): EmergencyMiniGameEquipment {
+  if (input.equipment) return normalizeEquipment(input.equipment);
+  if (typeof input.shots === "number") return normalizeEquipment({ hasShotgun: input.shots > 0, ammo: input.shots });
+  return DEFAULT_EQUIPMENT;
+}
+
+/** Jestli teď (mezerníkem) může vystřelit — hra musí běžet, hráč musí mít brokovnici A aspoň 1 náboj. */
+export function canFireWeapon(input: { status: MiniGameStatus; hasShotgun: boolean; ammo: number }): boolean {
+  return input.status === "playing" && input.hasShotgun && input.ammo > 0;
+}
+
+/** HUD popisek stavu zbraně — musí jasně rozlišit "bez zbraně" od "zbraň, ale bez nábojů" (viz zadání). */
+export function createWeaponHudLabel(hasShotgun: boolean, ammo: number): string {
+  return hasShotgun ? `Zbraň: brokovnice · Náboje: ${ammo}` : "Zbraň: žádná";
+}
+
+export interface ApplyShotInput {
+  /** Aktuální výbava hráče (viz canFireWeapon) — NE celý Player, jen relevantní pole. */
+  player: { hasShotgun: boolean; ammo: number };
+  /** Pozice/směr pro hit-detekci (viz isEnemyHit) — samostatně od `player` výše, ať funkce nezávisí na celém Player tvaru. */
+  playerPosition: { x: number; y: number; direction: Direction };
+  enemy: { x: number; y: number; radius: number; alive: boolean };
+  coneAngleRad: number;
+  range: number;
+  walls: Wall[];
+  status: MiniGameStatus;
+  shotFlashDurationMs: number;
+}
+
+export interface ApplyShotResult {
+  /** false = mezerník nic neudělal (chybí zbraň/náboj/hra neběží) — volající nesmí měnit ammo/shotsUsed/shotFlash. */
+  fired: boolean;
+  ammo: number;
+  /** 0 nebo 1 — kolik přičíst k dosavadnímu shotsUsed. */
+  shotsUsedDelta: number;
+  /** 0 pokud fired === false (nezobrazovat shot flash), jinak shotFlashDurationMs. */
+  shotFlashRemainingMs: number;
+  /** Jestli výstřel skutečně zranil nepřítele (v cone + range + line-of-sight, viz isEnemyHit) — false i při "fired: true", pokud je to miss/zeď. */
+  hit: boolean;
+}
+
+/**
+ * Jeden pokus o výstřel mezerníkem — čistá funkce, žádná mutace. Bez
+ * brokovnice nebo bez náboje (viz canFireWeapon) se nic nespotřebuje a
+ * nezasáhne (`fired: false`); jinak se náboj vždy spotřebuje a shot flash
+ * vždy spustí, ať už `hit` vyjde jakkoliv (zeď mezi hráčem a nepřítelem dělá
+ * z "fired" zásahu i tak jen miss, viz isEnemyHit).
+ */
+export function applyShot(input: ApplyShotInput): ApplyShotResult {
+  if (!canFireWeapon({ status: input.status, hasShotgun: input.player.hasShotgun, ammo: input.player.ammo })) {
+    return { fired: false, ammo: input.player.ammo, shotsUsedDelta: 0, shotFlashRemainingMs: 0, hit: false };
+  }
+
+  const hit = isEnemyHit({
+    player: input.playerPosition,
+    enemy: input.enemy,
+    coneAngleRad: input.coneAngleRad,
+    range: input.range,
+    walls: input.walls,
+  });
+
+  return {
+    fired: true,
+    ammo: input.player.ammo - 1,
+    shotsUsedDelta: 1,
+    shotFlashRemainingMs: input.shotFlashDurationMs,
+    hit,
+  };
 }
 
 export function createDeadResult(elapsedMs: number, shotsUsed: number): EmergencyMiniGameResult {

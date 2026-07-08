@@ -47,12 +47,12 @@ describe("MINIGAME_WORLD_SCALE / WORLD_WIDTH / WORLD_HEIGHT", () => {
 
 describe("createInitialPlayer / createInitialEnemy — valid positions in the new world", () => {
   it("the player does not start inside a wall", () => {
-    const player = createInitialPlayer(1);
+    const player = createInitialPlayer({ hasShotgun: true, ammo: 1 });
     expect(circleIntersectsAnyWall(player.x, player.y, player.radius, WALLS)).toBe(false);
   });
 
   it("the player starts within world bounds", () => {
-    const player = createInitialPlayer(1);
+    const player = createInitialPlayer({ hasShotgun: true, ammo: 1 });
     expect(player.x).toBeGreaterThanOrEqual(0);
     expect(player.x).toBeLessThanOrEqual(WORLD_WIDTH);
     expect(player.y).toBeGreaterThanOrEqual(0);
@@ -60,13 +60,13 @@ describe("createInitialPlayer / createInitialEnemy — valid positions in the ne
   });
 
   it("the enemy does not start inside a wall", () => {
-    const player = createInitialPlayer(1);
+    const player = createInitialPlayer({ hasShotgun: true, ammo: 1 });
     const enemy = createInitialEnemy(player);
     expect(circleIntersectsAnyWall(enemy.x, enemy.y, enemy.radius, WALLS)).toBe(false);
   });
 
   it("the enemy starts within world bounds", () => {
-    const player = createInitialPlayer(1);
+    const player = createInitialPlayer({ hasShotgun: true, ammo: 1 });
     const enemy = createInitialEnemy(player);
     expect(enemy.x).toBeGreaterThanOrEqual(0);
     expect(enemy.x).toBeLessThanOrEqual(WORLD_WIDTH);
@@ -119,7 +119,7 @@ describe("ranges stay valid positive numbers after the rescale", () => {
 describe("restart still produces a valid, non-colliding initial state", () => {
   it("repeated createInitialPlayer/createInitialEnemy calls (simulating R restart) never start inside a wall", () => {
     for (let i = 0; i < 5; i++) {
-      const player = createInitialPlayer(1);
+      const player = createInitialPlayer({ hasShotgun: true, ammo: 1 });
       const enemy = createInitialEnemy(player);
       expect(circleIntersectsAnyWall(player.x, player.y, player.radius, WALLS)).toBe(false);
       expect(circleIntersectsAnyWall(enemy.x, enemy.y, enemy.radius, WALLS)).toBe(false);

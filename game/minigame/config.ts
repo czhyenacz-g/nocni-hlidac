@@ -1,5 +1,5 @@
-import { angleBetween, createInvestigationTarget, distance } from "./logic";
-import { EmergencyMiniGameInput, Enemy, Player, Vec2, Wall } from "./types";
+import { DEFAULT_EQUIPMENT, angleBetween, createInvestigationTarget, distance } from "./logic";
+import { EmergencyMiniGameEquipment, EmergencyMiniGameInput, Enemy, Player, Vec2, Wall } from "./types";
 
 // Konfigurace izolovaného prototypu minihry — žádná hodnota odsud neovlivňuje
 // balancing hlavní hry (game/balancing/constants.ts zůstává nedotčené).
@@ -95,18 +95,19 @@ export const WALLS: Wall[] = [
 
 // Hráč startuje dole (u "kontrolní místnosti") — stejná prostorová logika
 // jako v hlavní hře (viz game/map/objectMap.ts), ale úplně nezávislá data.
-// `shots` = počet výstřelů na start (viz EmergencyMiniGameInput.shots,
-// resolveShotsFromInput v logic.ts) — volající (EmergencyMiniGame.tsx) sem
-// pošle už rozřešenou hodnotu, tenhle default (1) je jen pro přímé volání
-// beze vstupu (např. testy).
-export function createInitialPlayer(shots: number = 1): Player {
+// `equipment` = skutečná výbava na start (viz EmergencyMiniGameInput.equipment,
+// resolveEquipmentFromInput v logic.ts) — volající (EmergencyMiniGame.tsx) sem
+// pošle už rozřešenou hodnotu, tenhle default je jen pro přímé volání beze
+// vstupu (např. testy).
+export function createInitialPlayer(equipment: EmergencyMiniGameEquipment = DEFAULT_EQUIPMENT): Player {
   return {
     x: WORLD_WIDTH / 2,
     y: WORLD_HEIGHT - 60 * WORLD_LAYOUT_SCALE,
     radius: PLAYER_RADIUS,
     direction: "up",
     speed: PLAYER_SPEED,
-    shotsLeft: shots,
+    hasShotgun: equipment.hasShotgun,
+    ammo: equipment.ammo,
   };
 }
 
@@ -114,7 +115,7 @@ export function createInitialPlayer(shots: number = 1): Player {
 
 export const DEFAULT_EMERGENCY_MINIGAME_INPUT: EmergencyMiniGameInput = {
   objective: "return_to_office",
-  shots: 1,
+  equipment: { hasShotgun: true, ammo: 1 },
   difficulty: "medium",
 };
 
