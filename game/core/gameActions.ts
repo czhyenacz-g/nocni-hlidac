@@ -47,4 +47,11 @@ export type GameAction =
   // Hráč zemřel uvnitř nouzové minihry (outcome "dead", viz
   // EmergencyMiniGame) — stejný death flow jako ENEMY_ADVANCE/TICK, jen
   // spuštěný zvenčí (z app/play/page.tsx), ne z herní smyčky.
-  | { type: "EMERGENCY_MINIGAME_DIED" };
+  | { type: "EMERGENCY_MINIGAME_DIED" }
+  // Držení tlačítka "Jít ven" (viz EmergencyRunWindupState, LeftWallView.tsx)
+  // — stejný start/cancel pár jako START_BULB_REPLACEMENT/CANCEL_BULB_REPLACEMENT.
+  // Samotné spuštění EmergencyMiniGame nastává až mimo reducer, když
+  // app/play/page.tsx uvidí zvýšené emergencyRunReadySeq po TICKu, který
+  // držení dotáhl do konce.
+  | { type: "START_EMERGENCY_RUN_WINDUP" }
+  | { type: "CANCEL_EMERGENCY_RUN_WINDUP" };

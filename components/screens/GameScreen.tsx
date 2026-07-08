@@ -41,8 +41,9 @@ interface GameScreenProps {
   onLookAtGenerator: () => void;
   onLookAtLeftWall: () => void;
   onLookAtMap: () => void;
-  /** Spustí nouzovou minihru (viz app/play/page.tsx#handleStartEmergencyRun, EmergencyMiniGame) — jen na left_wall pohledu, viz LeftWallView.tsx. */
-  onStartEmergencyRun: () => void;
+  /** Zahájí/zruší držení "Nouzově opustit místnost" (viz app/play/page.tsx#handleStartEmergencyRunWindup/handleCancelEmergencyRunWindup, GameState.emergencyRunWindup) — jen na left_wall pohledu, viz LeftWallView.tsx. */
+  onStartEmergencyRunWindup: () => void;
+  onCancelEmergencyRunWindup: () => void;
   onRestartGenerator: () => void;
   onDebugToggleDoor: () => void;
   onDebugRestartGenerator: () => void;
@@ -69,7 +70,8 @@ export default function GameScreen({
   onLookAtGenerator,
   onLookAtLeftWall,
   onLookAtMap,
-  onStartEmergencyRun,
+  onStartEmergencyRunWindup,
+  onCancelEmergencyRunWindup,
   onRestartGenerator,
   onDebugToggleDoor,
   onDebugRestartGenerator,
@@ -180,9 +182,12 @@ export default function GameScreen({
             {state.playerView === "left_wall" && (
               <LeftWallView
                 onLookAtDesk={onLookAtDesk}
-                onStartEmergencyRun={onStartEmergencyRun}
+                onStartEmergencyRunWindup={onStartEmergencyRunWindup}
+                onCancelEmergencyRunWindup={onCancelEmergencyRunWindup}
                 doorClosed={state.doorClosed}
                 canStartEmergencyRun={canStartBatteryRun}
+                emergencyRunWindupActive={state.emergencyRunWindup.active}
+                emergencyRunWindupProgressMs={state.emergencyRunWindup.progressMs}
               />
             )}
             {state.playerView === "object_map" && <ObjectMapView onLookAtDesk={onLookAtDesk} />}

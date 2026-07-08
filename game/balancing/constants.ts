@@ -96,6 +96,15 @@ export const BULB_REPLACE_DURATION_MS = 10_000;
 // komponentě, ne herní stav (na rozdíl od progresu výměny samotné).
 export const BULB_REPLACE_SUCCESS_MESSAGE_MS = 1800;
 
+// Nouzová výprava "Jít ven" (viz game/core/types.ts EmergencyRunWindupState,
+// gameReducer.ts, LeftWallView.tsx) — stejný "drž tlačítko, ať to má cenu"
+// vzor jako ruční výměna žárovky výše: hráč musí tlačítko držet
+// EMERGENCY_RUN_WINDUP_DURATION_MS, než se EmergencyMiniGame skutečně spustí
+// (viz app/play/page.tsx#handleStartEmergencyRunWindup) — po tu dobu dál běží
+// normální herní smyčka (TICK/ENEMY_ADVANCE), takže hráč je stejně jako u
+// výměny žárovky reálně v ohrožení, ne jen "čeká na loading".
+export const EMERGENCY_RUN_WINDUP_DURATION_MS = 3000;
+
 // Sekvence útoku/smrti (viz app/play/page.tsx, efekt na state.screen ===
 // "death", AUDIO_DESIGN.md "Ticho před lekačkou"): ambience plynule ztlumí
 // přes AMBIENCE_DEATH_FADE_MS, pak JUMPSCARE_SILENT_GAP_MS ticha, teprve

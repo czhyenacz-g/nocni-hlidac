@@ -1,13 +1,14 @@
 import { GameAction } from "./gameActions";
 import { createInitialGameState } from "./gameState";
 import { EnemyDefinition, EnemyStage, GameState, NightDefinition } from "./types";
-import { BULB_REPLACE_DURATION_MS, DOOR_DEATH_REVEAL_DURATION_MS, MAX_POWER } from "../balancing/constants";
+import { BULB_REPLACE_DURATION_MS, DOOR_DEATH_REVEAL_DURATION_MS, EMERGENCY_RUN_WINDUP_DURATION_MS, MAX_POWER } from "../balancing/constants";
 import { getBlackoutPhaseIndex } from "../visuals/blackoutPhase";
 import { DEFAULT_DIFFICULTY, DIFFICULTY_RULES, Difficulty } from "../difficulty/difficultyConfig";
 import { computeNightScaling, NightScaling } from "../difficulty/nightScaling";
 import { computeStressTimeScale } from "./stressTimeScale";
 import { isNearRoomLightActive } from "./roomBulbs";
 import { computePowerDrainBreakdown } from "./powerDrain";
+import { canStartBatteryEmergencyRun } from "./emergencyMiniGameIntegration";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -291,6 +292,50 @@ export function canReplaceBulb(state: GameState): boolean {
   return true;
 }
 
+// Progres držení "Jít ven" roste, jen dokud je `active` — stejná mechanika
+// jako updateBulbReplacement výše. Po dosažení EMERGENCY_RUN_WINDUP_DURATION_MS
+// se `emergencyRunWindup` vrátí na neaktivní a `emergencyRunReadySeq` se
+// jednou zvýší — to je jediný signál ven z reduceru, že se má EmergencyMiniGame
+// skutečně spustit (viz app/play/page.tsx).
+function updateEmergencyRunWindup(
+  state: GameState,
+  deltaMs: number,
+): Pick<GameState, "emergencyRunWindup" | "emergencyRunReadySeq"> {
+  if (!state.emergencyRunWindup.active) {
+    return { emergencyRunWindup: state.emergencyRunWindup, emergencyRunReadySeq: state.emergencyRunReadySeq };
+  }
+
+  const progressMs = state.emergencyRunWindup.progressMs + deltaMs;
+  if (progressMs >= EMERGENCY_RUN_WINDUP_DURATION_MS) {
+    return {
+      emergencyRunWindup: { active: false, startedAtMs: null, progressMs: 0 },
+      emergencyRunReadySeq: state.emergencyRunReadySeq + 1,
+    };
+  }
+
+  return { emergencyRunWindup: { ...state.emergencyRunWindup, progressMs }, emergencyRunReadySeq: state.emergencyRunReadySeq };
+}
+
+const INACTIVE_EMERGENCY_RUN_WINDUP: GameState["emergencyRunWindup"] = { active: false, startedAtMs: null, progressMs: 0 };
+
+/**
+ * Jestli hráč MŮŽE teď začít držet "Jít ven" na left_wall — sdílená podmínka
+ * mezi `START_EMERGENCY_RUN_WINDUP` (reducer) a UI (`LeftWallView.tsx` přes
+ * `app/play/page.tsx`/`GameScreen.tsx`), stejný vzor jako `canReplaceBulb`.
+ * Night feature flag (emergencyRunsEnabled/batteryRunEnabled) se kontroluje
+ * zvlášť přes `canStartBatteryEmergencyRun` (viz
+ * game/core/emergencyMiniGameIntegration.ts) — tahle funkce ho volá, ať
+ * existuje jen jedno místo, které obě podmínky (night feature + herní stav)
+ * skládá dohromady.
+ */
+export function canStartEmergencyRunWindup(state: GameState): boolean {
+  if (!canStartBatteryEmergencyRun(state.nightFeatures)) return false;
+  if (!state.isRunning || state.gameStatus === "blackout" || state.doorDeathRevealUntilMs !== null) return false;
+  if (state.playerView !== "left_wall" || state.doorClosed) return false;
+  if (state.emergencyRunWindup.active) return false;
+  return true;
+}
+
 /**
  * Reducer je čistá funkce (state, action) -> state; herní pravidla dané směny
  * přijímá jako parametr. Obtížnost je zatím jen interní (žádné UI/query
@@ -358,6 +403,23 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
       case "CANCEL_BULB_REPLACEMENT":
         if (!state.bulbReplacement.active) return state;
         return { ...state, bulbReplacement: INACTIVE_BULB_REPLACEMENT };
+
+      case "START_EMERGENCY_RUN_WINDUP": {
+        // Stejný vzor jako START_BULB_REPLACEMENT — riskantní ruční akce,
+        // jde jen z left_wall, jen s otevřenými dveřmi, jen jednou. Nesplněná
+        // podmínka je tichý no-op, ne chyba.
+        if (!canStartEmergencyRunWindup(state)) return state;
+        return {
+          ...state,
+          emergencyRunWindup: { active: true, startedAtMs: state.elapsedMs, progressMs: 0 },
+        };
+      }
+
+      // Puštění tlačítka / pointer leave / cancel před dokončením (viz
+      // LeftWallView.tsx) — no-op, pokud žádné držení zrovna neběží.
+      case "CANCEL_EMERGENCY_RUN_WINDUP":
+        if (!state.emergencyRunWindup.active) return state;
+        return { ...state, emergencyRunWindup: INACTIVE_EMERGENCY_RUN_WINDUP };
 
       case "TOGGLE_DOOR":
         // Dveře jde přepnout jen v pohledu na dveře — hráč se tam musí nejdřív
@@ -449,6 +511,10 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           ...state,
           playerView: "desk",
           bulbReplacement: state.bulbReplacement.active ? INACTIVE_BULB_REPLACEMENT : state.bulbReplacement,
+          // Odchod z left_wall zruší i rozběhnuté držení "Jít ven" (stejný
+          // důvod jako bulbReplacement výše) — riziko musí trvat, dokud hráč
+          // fyzicky drží tlačítko, ne přežít přechod na jiný pohled.
+          emergencyRunWindup: state.emergencyRunWindup.active ? INACTIVE_EMERGENCY_RUN_WINDUP : state.emergencyRunWindup,
         };
 
       case "LOOK_AT_GENERATOR":
@@ -461,6 +527,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           cameraViewMode: "overview",
           cameraFocusUntilMs: null,
           bulbReplacement: state.bulbReplacement.active ? INACTIVE_BULB_REPLACEMENT : state.bulbReplacement,
+          emergencyRunWindup: state.emergencyRunWindup.active ? INACTIVE_EMERGENCY_RUN_WINDUP : state.emergencyRunWindup,
         };
 
       case "LOOK_AT_LEFT_WALL":
@@ -491,6 +558,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           cameraViewMode: "overview",
           cameraFocusUntilMs: null,
           bulbReplacement: state.bulbReplacement.active ? INACTIVE_BULB_REPLACEMENT : state.bulbReplacement,
+          emergencyRunWindup: state.emergencyRunWindup.active ? INACTIVE_EMERGENCY_RUN_WINDUP : state.emergencyRunWindup,
         };
 
       case "RESTART_GENERATOR": {
@@ -648,13 +716,17 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         // nechá prasknout) — dokud běží výměna je žárovka pořád `broken`,
         // takže obě aktualizace roomBulbs se nikdy nepřebíjí protichůdně.
         const bulbReplacementUpdate = updateBulbReplacement(state, action.deltaMs);
+        // Nezávislé na bulbReplacementUpdate — jiná riskantní ruční akce,
+        // jiný pohled (left_wall, ne door), oba mohou nanejvýš být "active"
+        // po jednom, nikdy současně (LOOK_AT_* mezi nimi vždy zruší tu druhou).
+        const emergencyRunWindupUpdate = updateEmergencyRunWindup(state, action.deltaMs);
         const power = applyPowerDelta({ ...state, ...generatorUpdate }, night, action.deltaMs, nightScaling);
 
         if (power <= 0) {
           // Baterie na nule -> blackout, ne okamžitá smrt. Zámek povolí (dveře
           // "otevřené"), systémy jdou vypnout — viz TOGGLE_DOOR/TOGGLE_LIGHT/
           // OPEN_CAMERA/RESTART_GENERATOR guardy výše. Rozběhnutá výměna
-          // žárovky se zruší beze změny životnosti/broken — blackout přeruší
+          // žárovky i držení "Jít ven" se zruší — blackout přeruší
           // i tohle, stejně jako všechno ostatní.
           return {
             ...state,
@@ -673,6 +745,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             cameraViewMode: "overview",
             cameraFocusUntilMs: null,
             bulbReplacement: INACTIVE_BULB_REPLACEMENT,
+            emergencyRunWindup: INACTIVE_EMERGENCY_RUN_WINDUP,
           };
         }
 
@@ -683,6 +756,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             ...doorLightRepelUpdate,
             ...roomBulbsUpdate,
             ...bulbReplacementUpdate,
+            ...emergencyRunWindupUpdate,
             elapsedMs,
             remainingMs: 0,
             power,
@@ -697,6 +771,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           ...doorLightRepelUpdate,
           ...roomBulbsUpdate,
           ...bulbReplacementUpdate,
+          ...emergencyRunWindupUpdate,
           elapsedMs,
           remainingMs,
           power,

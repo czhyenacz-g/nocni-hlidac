@@ -87,6 +87,10 @@ export function createInitialGameState(
     bulbsRemaining: bulbsRemainingOverride ?? BULBS_CONFIG.startingCount,
     bulbReplaceSuccessSeq: 0,
 
+    // Nikdy nepřežívá restart/další noc — stejná konvence jako bulbReplacement výše.
+    emergencyRunWindup: { active: false, startedAtMs: null, progressMs: 0 },
+    emergencyRunReadySeq: 0,
+
     nightFeatures: nightFeaturesOverride ?? DEFAULT_NIGHT_FEATURES,
 
     isRunning: false,

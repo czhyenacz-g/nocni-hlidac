@@ -69,15 +69,26 @@ export const COPY = {
     lookAtLeftWallLabel: "← Podívat se na stěnu vlevo",
     leftWallBackLabel: "Zpět ke stolu",
     // Spustí EmergencyMiniGame (viz LeftWallView.tsx, app/play/page.tsx
-    // handleStartEmergencyRun) — první tenké napojení nouzové minihry do
-    // hlavní hry, zatím vývojářské tlačítko bez finálního artu.
-    startEmergencyRunLabel: "Jít ven",
+    // handleStartEmergencyRunWindup) — první tenké napojení nouzové minihry
+    // do hlavní hry, zatím vývojářské tlačítko bez finálního artu. Text
+    // záměrně ne "Jít ven" — má znít jako riskantní, nevratné rozhodnutí, ne
+    // ležérní odchod.
+    startEmergencyRunLabel: "Nouzově opustit místnost",
+    // Varování zobrazené hned při zahájení držení tlačítka (viz
+    // handleStartEmergencyRunWindup, EMERGENCY_RUN_WINDUP_DURATION_MS) —
+    // hráč musí tlačítko držet, ne jen kliknout, a tohle mu jasně řekne, že
+    // jde o krajní řešení, ne běžnou akci.
+    emergencyRunDangerWarningLabel:
+      "Chceš opustit kancelář, co máš chránit? TO NENÍ DOBRÝ NÁPAD. Nedělej to, pokud nemáš absolutně jinou možnost.",
+    // Text tlačítka během držení (viz GameState.emergencyRunWindup) —
+    // {seconds} se nahradí zbývajícím počtem sekund do spuštění minihry.
+    emergencyRunHoldingLabel: "Vydrž… {seconds} s",
     // Krátká zpráva po úspěšném návratu z nouzové minihry (viz
     // handleEmergencyMiniGameComplete) — {amount} nahrazuje počet dobité
     // energie z worldEffects (energy_recharged).
     emergencyRunEnergyRechargedLabel: "Baterie přinesena. Energie +{amount}.",
-    // Klik na "Jít ven" se zavřenými dveřmi (viz handleStartEmergencyRun) —
-    // hráč nemůže vyběhnout ven zavřenými dveřmi, tlačítko samo o sobě
+    // Klik na tlačítko se zavřenými dveřmi (viz handleStartEmergencyRunWindup)
+    // — hráč nemůže vyběhnout ven zavřenými dveřmi, tlačítko samo o sobě
     // zůstává klikatelné (jen vizuálně ztlumené), tenhle hint vysvětlí proč.
     emergencyRunNeedsOpenDoorLabel: "Nejdřív musíš otevřít dveře.",
     // Statický plánek objektu bez interaktivity (viz ObjectMapView.tsx,

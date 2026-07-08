@@ -227,6 +227,22 @@ export interface BulbReplacementState {
   progressMs: number;
 }
 
+/**
+ * Držení tlačítka "Jít ven" (viz gameReducer.ts
+ * START_EMERGENCY_RUN_WINDUP/CANCEL_EMERGENCY_RUN_WINDUP/TICK,
+ * LeftWallView.tsx) — stejný "drž a riskuj" vzor jako BulbReplacementState.
+ * `progressMs` roste v TICKu, dokud `active`; po dosažení
+ * EMERGENCY_RUN_WINDUP_DURATION_MS se `active` spadne zpět na `false` a
+ * `GameState.emergencyRunReadySeq` se zvýší (viz tam) — teprve to je signál
+ * pro app/play/page.tsx, ať skutečně spustí EmergencyMiniGame. Zrušeno
+ * (bez efektu) při puštění tlačítka nebo odchodu z left_wall pohledu.
+ */
+export interface EmergencyRunWindupState {
+  active: boolean;
+  startedAtMs: number | null;
+  progressMs: number;
+}
+
 export type GameStatus = "normal" | "blackout";
 
 export interface GameState {
@@ -360,6 +376,17 @@ export interface GameState {
    * app/play/page.tsx) a krátkou textovou hlášku (viz DoorView.tsx).
    */
   bulbReplaceSuccessSeq: number;
+
+  /** Držení tlačítka "Jít ven" (viz EmergencyRunWindupState) — vždy resetováno na novou směnu, nikdy se nepřenáší mezi nocemi, stejně jako bulbReplacement. */
+  emergencyRunWindup: EmergencyRunWindupState;
+  /**
+   * Zvyšuje se přesně jednou při ÚSPĚŠNÉM dokončení držení "Jít ven" (ne při
+   * startu, cancelu, ani smrti během držení) — stejný "seq" vzor jako
+   * `bulbReplaceSuccessSeq`. app/play/page.tsx podle změny skutečně spustí
+   * EmergencyMiniGame (viz handleStartEmergencyRunWindup) — samotný reducer
+   * o EmergencyMiniGame nic neví, jen odpočítává držení.
+   */
+  emergencyRunReadySeq: number;
 
   /**
    * Které mechaniky jsou tuhle noc zapnuté (viz game/difficulty/nightConfig.ts)

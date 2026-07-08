@@ -143,6 +143,7 @@ export default function PlayPage() {
   const prevBlackoutPhaseSeqRef = useRef(state.blackoutPhaseSeq);
   const prevBulbBreakSeqRef = useRef(state.bulbBreakSeq);
   const prevBulbReplaceSuccessSeqRef = useRef(state.bulbReplaceSuccessSeq);
+  const prevEmergencyRunReadySeqRef = useRef(state.emergencyRunReadySeq);
   // Zvuk překvapení na nejbližší kameře smí zaznít jen jednou za "návštěvu" —
   // dokud tam nepřítel je, další kliknutí na kameru (ani na jinou a zpátky) ho
   // znovu nespustí. Resetuje se, až nepřítel z téhle stage odejde (uteče/postoupí).
@@ -402,6 +403,17 @@ export default function PlayPage() {
     }
   }, [state.bulbReplaceSuccessSeq]);
 
+  // Držení "Nouzově opustit místnost" doběhlo celé (viz gameReducer.ts
+  // START_EMERGENCY_RUN_WINDUP/TICK) — emergencyRunReadySeq je jediný signál
+  // z reduceru, že se má EmergencyMiniGame skutečně spustit. Stejný seq-diff
+  // vzor jako bulbReplaceSuccessSeq výše, jen místo zvuku spouští minihru.
+  useEffect(() => {
+    if (prevEmergencyRunReadySeqRef.current !== state.emergencyRunReadySeq) {
+      prevEmergencyRunReadySeqRef.current = state.emergencyRunReadySeq;
+      setActiveMiniGame({ id: "battery_run", input: createBatteryEmergencyInput() });
+    }
+  }, [state.emergencyRunReadySeq]);
+
   useEffect(() => {
     if (prevGameStatusRef.current !== "blackout" && state.gameStatus === "blackout") {
       audioManager.play(AUDIO_EVENTS.blackoutHowl);
@@ -514,27 +526,38 @@ export default function PlayPage() {
     dispatch({ type: "LOOK_AT_LEFT_WALL" });
   }
 
-  // Spustí "Jít ven pro baterii" (viz LeftWallView.tsx tlačítko) — první
-  // integrovaný emergency scénář, záměrně bez brokovnice/nábojů (stealth
-  // varianta, viz createBatteryEmergencyInput). Hlavní herní smyčka
-  // (useGameLoop níže) se zastaví, dokud activeMiniGame běží — TICK/
-  // ENEMY_ADVANCE hlavní hry nesmí utíkat na pozadí za minihrou. Se
-  // zavřenými dveřmi minihru nespustí — tlačítko v LeftWallView zůstává
-  // klikatelné (jen vizuálně ztlumené), takže sem klik dorazí vždy; tady se
-  // rozhodne, jestli se opravdu spustí, nebo jen ukáže hint.
+  // Zahájí DRŽENÍ "Nouzově opustit místnost" (viz LeftWallView.tsx tlačítko,
+  // pointerDown) — nesmí jít vyběhnout hned, hráč musí tlačítko držet
+  // EMERGENCY_RUN_WINDUP_DURATION_MS (stejný "drž a riskuj" vzor jako ruční
+  // výměna žárovky). Po tu dobu dál běží normální herní smyčka (isRunning
+  // se kvůli activeMiniGame vypíná až PO skutečném spuštění minihry, viz
+  // useGameLoop níže) — hráč je reálně v ohrožení, ne jen čeká na loading.
+  // Skutečné spuštění EmergencyMiniGame přijde až přes emergencyRunReadySeq
+  // efekt výše, jakmile reducer dotáhne držení do konce.
   //
   // canStartBatteryEmergencyRun (night feature flag guard) se kontroluje i
   // TADY, ne jen skrytím tlačítka v LeftWallView — kdyby se tlačítko někdy
   // omylem zobrazilo (bug v UI/stará verze night configu apod.), spuštění
-  // se tím i tak bezpečně odmítne.
-  function handleStartEmergencyRun() {
+  // se tím i tak bezpečně odmítne. Zavřené dveře držení vůbec nezačnou —
+  // tlačítko v LeftWallView zůstává klikatelné (jen vizuálně ztlumené), takže
+  // sem pointerDown dorazí vždy; tady se rozhodne, jestli se opravdu spustí,
+  // nebo jen ukáže hint.
+  function handleStartEmergencyRunWindup() {
     if (!canStartBatteryEmergencyRun(state.nightFeatures)) return;
-    audioManager.play(AUDIO_EVENTS.uiClick);
     if (state.doorClosed) {
+      audioManager.play(AUDIO_EVENTS.uiClick);
       setEmergencyRunMessage(COPY.game.emergencyRunNeedsOpenDoorLabel);
       return;
     }
-    setActiveMiniGame({ id: "battery_run", input: createBatteryEmergencyInput() });
+    audioManager.play(AUDIO_EVENTS.uiClick);
+    // Varování se ukáže hned při zahájení držení, ne až po dokončení — hráč
+    // ho má vidět v okamžiku rozhodnutí, ne jako zpětné potvrzení.
+    setEmergencyRunMessage(COPY.game.emergencyRunDangerWarningLabel);
+    dispatch({ type: "START_EMERGENCY_RUN_WINDUP" });
+  }
+
+  function handleCancelEmergencyRunWindup() {
+    dispatch({ type: "CANCEL_EMERGENCY_RUN_WINDUP" });
   }
 
   // Jediné místo, které zpracuje EmergencyMiniGameResult (viz
@@ -665,7 +688,8 @@ export default function PlayPage() {
           onDebugRestartGenerator={handleDebugRestartGenerator}
           onStartBulbReplacement={handleStartBulbReplacement}
           onCancelBulbReplacement={handleCancelBulbReplacement}
-          onStartEmergencyRun={handleStartEmergencyRun}
+          onStartEmergencyRunWindup={handleStartEmergencyRunWindup}
+          onCancelEmergencyRunWindup={handleCancelEmergencyRunWindup}
         />
       )}
       {/* Nouzová minihra (viz components/minigame/EmergencyMiniGame.tsx) —
