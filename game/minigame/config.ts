@@ -47,8 +47,11 @@ export const CONE_ANGLE_RAD = (CONE_ANGLE_DEG * Math.PI) / 180;
 // Nepřítel nemá přesnou pozici hráče — "investigating" jde na přibližný
 // podezřelý bod, "chasing" nastává jen po skutečném splnění vision cone +
 // line-of-sight (canEnemySeePlayer), ne podle vzdálenosti.
-export const ENEMY_SEARCH_SPEED = 1.4;
-export const ENEMY_CHASE_SPEED = 1.6;
+// O 10 % rychlejší na žádost (1.4 -> 1.54, 1.6 -> 1.76) — poměr mezi search/
+// chase i ENEMY_AGGRO_SPEED_MULTIPLIER níže zůstává stejný, jen se škáluje
+// základ.
+export const ENEMY_SEARCH_SPEED = 1.54;
+export const ENEMY_CHASE_SPEED = 1.76;
 /** V tomhle dosahu (stejný jako dosah brokovnice) "chasing" zrychlí o 50 %. */
 export const ENEMY_AGGRO_RANGE = SHOTGUN_RANGE;
 export const ENEMY_AGGRO_SPEED_MULTIPLIER = 1.5;
