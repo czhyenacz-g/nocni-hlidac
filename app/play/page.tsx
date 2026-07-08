@@ -43,6 +43,7 @@ import {
   applyEmergencyWorldEffects,
   canStartBatteryEmergencyRun,
   createBatteryEmergencyInput,
+  shouldLaunchEmergencyMiniGame,
 } from "@/game/core/emergencyMiniGameIntegration";
 import EmergencyMiniGame from "@/components/minigame/EmergencyMiniGame";
 import { EmergencyMiniGameInput, EmergencyMiniGameResult } from "@/game/minigame/types";
@@ -461,13 +462,20 @@ export default function PlayPage() {
 
   // Držení "Nouzově opustit místnost" doběhlo celé (viz gameReducer.ts
   // START_EMERGENCY_RUN_WINDUP/TICK) — emergencyRunReadySeq je jediný signál
-  // z reduceru, že se má EmergencyMiniGame skutečně spustit. Stejný seq-diff
-  // vzor jako bulbReplaceSuccessSeq výše, jen místo zvuku spouští minihru.
+  // z reduceru, že se má EmergencyMiniGame skutečně spustit. NA ROZDÍL od
+  // ostatních seq-diff efektů (bulbReplaceSuccessSeq apod.) tenhle musí
+  // reagovat jen na SKUTEČNÝ nárůst (>), ne na jakoukoliv změnu — nová
+  // směna (START_SHIFT/RESTART_SHIFT) resetuje `emergencyRunReadySeq` zpět
+  // na 0 (viz createInitialGameState), což je taky "změna" oproti dřívější
+  // nenulové hodnotě z předchozí směny. Prostý `!==` diff by tenhle reset
+  // omylem vyhodnotil jako "windup zrovna doběhl" a znovu otevřel
+  // EmergencyMiniGame hned po nové hře (viz bug: smrt v minihře -> nová
+  // směna -> minihra se otevře znovu místo kanceláře).
   useEffect(() => {
-    if (prevEmergencyRunReadySeqRef.current !== state.emergencyRunReadySeq) {
-      prevEmergencyRunReadySeqRef.current = state.emergencyRunReadySeq;
+    if (shouldLaunchEmergencyMiniGame(prevEmergencyRunReadySeqRef.current, state.emergencyRunReadySeq)) {
       setActiveMiniGame({ id: "battery_run", input: createBatteryEmergencyInput() });
     }
+    prevEmergencyRunReadySeqRef.current = state.emergencyRunReadySeq;
   }, [state.emergencyRunReadySeq]);
 
   useEffect(() => {
@@ -533,6 +541,12 @@ export default function PlayPage() {
   // pro aktuální noc (getNightConfig(currentNight).features).
   function handleBeginShift() {
     audioManager.play(AUDIO_EVENTS.uiClick);
+    // Druhá pojistka proti bugu popsanému výše (viz emergencyRunReadySeq
+    // efekt) — i kdyby se activeMiniGame z nějakého jiného důvodu nevynulovalo
+    // (např. hráč zavře/odejde z minihry jinak než přes onComplete), nová
+    // směna ho vždy explicitně vyčistí, ať /minihra nikdy nepřežije do
+    // dalšího života hlídače.
+    setActiveMiniGame(null);
     const nightFeatures = getNightConfig(currentNight).features;
     if (pendingShiftKindRef.current === "restart") {
       dispatch({ type: "RESTART_SHIFT", roomBulbs: getRoomBulbs(), bulbsRemaining: getBulbsRemaining(), nightFeatures });

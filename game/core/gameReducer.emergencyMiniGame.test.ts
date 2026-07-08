@@ -63,3 +63,38 @@ describe("EMERGENCY_MINIGAME_DIED", () => {
     expect(reducer(state, { type: "EMERGENCY_MINIGAME_DIED" })).toBe(state);
   });
 });
+
+// Regrese pro bug: smrt v minihře -> nová směna -> minihra se otevřela znovu
+// (viz app/play/page.tsx#shouldLaunchEmergencyMiniGame). Kořen problému byl v
+// tom, že RESTART_SHIFT/START_SHIFT vždy resetují emergencyRunReadySeq zpět
+// na 0 (createInitialGameState) — i když předchozí směna skončila s nenulovou
+// hodnotou (hráč úspěšně dokončil držení "Jít ven" a pak zemřel v minihře).
+describe("RESTART_SHIFT / START_SHIFT reset emergencyRunReadySeq back to 0", () => {
+  it("RESTART_SHIFT resets a nonzero emergencyRunReadySeq (from a previous life) back to 0", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = { ...createInitialGameState(NIGHT_01), emergencyRunReadySeq: 1 };
+
+    const result = reducer(state, {
+      type: "RESTART_SHIFT",
+      roomBulbs: state.roomBulbs,
+      bulbsRemaining: state.bulbsRemaining,
+      nightFeatures: state.nightFeatures,
+    });
+
+    expect(result.emergencyRunReadySeq).toBe(0);
+  });
+
+  it("START_SHIFT resets a nonzero emergencyRunReadySeq back to 0", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = { ...createInitialGameState(NIGHT_01), emergencyRunReadySeq: 2 };
+
+    const result = reducer(state, {
+      type: "START_SHIFT",
+      roomBulbs: state.roomBulbs,
+      bulbsRemaining: state.bulbsRemaining,
+      nightFeatures: state.nightFeatures,
+    });
+
+    expect(result.emergencyRunReadySeq).toBe(0);
+  });
+});

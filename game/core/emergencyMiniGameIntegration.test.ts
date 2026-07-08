@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { applyEmergencyWorldEffects, canStartBatteryEmergencyRun, createBatteryEmergencyInput } from "./emergencyMiniGameIntegration";
+import {
+  applyEmergencyWorldEffects,
+  canStartBatteryEmergencyRun,
+  createBatteryEmergencyInput,
+  shouldLaunchEmergencyMiniGame,
+} from "./emergencyMiniGameIntegration";
 import { MAX_POWER } from "../balancing/constants";
 
 describe("createBatteryEmergencyInput", () => {
@@ -71,5 +76,30 @@ describe("canStartBatteryEmergencyRun", () => {
 
   it("false when both are false", () => {
     expect(canStartBatteryEmergencyRun({ emergencyRunsEnabled: false, batteryRunEnabled: false })).toBe(false);
+  });
+});
+
+// Regrese pro bug: smrt v minihře -> nová směna -> minihra se otevřela znovu
+// místo kanceláře (viz app/play/page.tsx#emergencyRunReadySeq efekt). Kořen:
+// emergencyRunReadySeq se při nové směně resetuje na 0 (createInitialGameState),
+// což je taky "změna" oproti nenulové hodnotě z předchozí směny — prostý
+// `!==` diff by to mylně vyhodnotil jako "windup právě doběhl".
+describe("shouldLaunchEmergencyMiniGame", () => {
+  it("true on a real increase (windup just completed)", () => {
+    expect(shouldLaunchEmergencyMiniGame(0, 1)).toBe(true);
+    expect(shouldLaunchEmergencyMiniGame(3, 4)).toBe(true);
+  });
+
+  it("false when the value is unchanged", () => {
+    expect(shouldLaunchEmergencyMiniGame(2, 2)).toBe(false);
+  });
+
+  it("false when the value resets DOWN to 0 (new shift after a previous nonzero seq) — the actual bug", () => {
+    expect(shouldLaunchEmergencyMiniGame(1, 0)).toBe(false);
+    expect(shouldLaunchEmergencyMiniGame(5, 0)).toBe(false);
+  });
+
+  it("false for any decrease, not just resets to 0", () => {
+    expect(shouldLaunchEmergencyMiniGame(5, 3)).toBe(false);
   });
 });

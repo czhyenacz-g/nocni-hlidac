@@ -52,3 +52,20 @@ export function applyEmergencyWorldEffects(power: number, effects: EmergencyWorl
 export function canStartBatteryEmergencyRun(nightFeatures: Pick<NightFeatureFlags, "emergencyRunsEnabled" | "batteryRunEnabled">): boolean {
   return nightFeatures.emergencyRunsEnabled && nightFeatures.batteryRunEnabled;
 }
+
+/**
+ * Jestli má app/play/page.tsx TEĎ (na tenhle konkrétní přechod
+ * `emergencyRunReadySeq`) skutečně otevřít EmergencyMiniGame — jen při
+ * SKUTEČNÉM nárůstu (`nextSeq > prevSeq`), ne při jakékoliv změně.
+ *
+ * Důvod: `emergencyRunReadySeq` se vrací na 0 při každé nové směně
+ * (START_SHIFT/RESTART_SHIFT, viz createInitialGameState) — pokud hráč v
+ * předchozí směně úspěšně dokončil držení "Jít ven" (seq > 0) a pak zemřel
+ * uvnitř minihry, prostý `prevSeq !== nextSeq` diff by reset na 0 mylně
+ * vyhodnotil jako "windup zrovna doběhl znovu" a EmergencyMiniGame by se
+ * po nové hře otevřela hned zase, místo aby se hráč vrátil do kanceláře
+ * (viz bug: smrt v minihře -> nová směna -> minihra se otevře znovu).
+ */
+export function shouldLaunchEmergencyMiniGame(prevSeq: number, nextSeq: number): boolean {
+  return nextSeq > prevSeq;
+}
