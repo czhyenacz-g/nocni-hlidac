@@ -16,6 +16,7 @@ import {
   createInvestigationTarget,
   createReturnedResult,
   createWeaponHudLabel,
+  createWorldEffectsForCompletedObjective,
   directionFromVector,
   distance,
   hasLineOfSight,
@@ -701,12 +702,32 @@ describe("result builders", () => {
     expect(createReturnedResult(5000, 1)).toEqual({ outcome: "returned", elapsedMs: 5000, shotsUsed: 1 });
   });
 
-  it("createReturnedResult with a completedObjective (collect_item)", () => {
+  it("createReturnedResult with a completedObjective (collect_item) also derives worldEffects", () => {
     expect(createReturnedResult(5000, 1, { type: "collected_item", itemId: "fuse" })).toEqual({
       outcome: "returned",
       elapsedMs: 5000,
       shotsUsed: 1,
       completedObjective: { type: "collected_item", itemId: "fuse" },
+      worldEffects: [{ type: "generator_repaired" }],
+    });
+  });
+
+  it("createReturnedResult with a completedObjective that has no world effect (key) omits worldEffects", () => {
+    expect(createReturnedResult(5000, 1, { type: "collected_item", itemId: "key" })).toEqual({
+      outcome: "returned",
+      elapsedMs: 5000,
+      shotsUsed: 1,
+      completedObjective: { type: "collected_item", itemId: "key" },
+    });
+  });
+
+  it("createReturnedResult for battery includes completedObjective and worldEffects (energy_recharged, amount 35)", () => {
+    expect(createReturnedResult(42150, 1, { type: "collected_item", itemId: "battery" })).toEqual({
+      outcome: "returned",
+      elapsedMs: 42150,
+      shotsUsed: 1,
+      completedObjective: { type: "collected_item", itemId: "battery" },
+      worldEffects: [{ type: "energy_recharged", amount: 35 }],
     });
   });
 
@@ -717,6 +738,49 @@ describe("result builders", () => {
       elapsedMs: 9999,
       shotsUsed: 1,
     });
+  });
+});
+
+// ── Efekty pro hlavní hru (viz EmergencyWorldEffect v types.ts) — minihra je
+// jen připravuje v resultu, žádné napojení na game/core zatím neexistuje.
+describe("createWorldEffectsForCompletedObjective", () => {
+  it("battery → energy_recharged with amount 35", () => {
+    expect(createWorldEffectsForCompletedObjective({ type: "collected_item", itemId: "battery" })).toEqual([
+      { type: "energy_recharged", amount: 35 },
+    ]);
+  });
+
+  it("fuse → generator_repaired", () => {
+    expect(createWorldEffectsForCompletedObjective({ type: "collected_item", itemId: "fuse" })).toEqual([
+      { type: "generator_repaired" },
+    ]);
+  });
+
+  it("bulb → bulbs_serviced", () => {
+    expect(createWorldEffectsForCompletedObjective({ type: "collected_item", itemId: "bulb" })).toEqual([
+      { type: "bulbs_serviced" },
+    ]);
+  });
+
+  it("shotgun → shotgun_acquired", () => {
+    expect(createWorldEffectsForCompletedObjective({ type: "collected_item", itemId: "shotgun" })).toEqual([
+      { type: "shotgun_acquired" },
+    ]);
+  });
+
+  it("ammo → ammo_acquired with amount 1", () => {
+    expect(createWorldEffectsForCompletedObjective({ type: "collected_item", itemId: "ammo" })).toEqual([
+      { type: "ammo_acquired", amount: 1 },
+    ]);
+  });
+
+  it("key/toolbox → no effect yet ([])", () => {
+    expect(createWorldEffectsForCompletedObjective({ type: "collected_item", itemId: "key" })).toEqual([]);
+    expect(createWorldEffectsForCompletedObjective({ type: "collected_item", itemId: "toolbox" })).toEqual([]);
+  });
+
+  it("reached_location → no effect yet ([])", () => {
+    expect(createWorldEffectsForCompletedObjective({ type: "reached_location", locationId: "office" })).toEqual([]);
   });
 });
 

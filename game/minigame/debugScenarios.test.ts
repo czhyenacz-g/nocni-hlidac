@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_MINIGAME_DEBUG_SCENARIO_ID, MINIGAME_DEBUG_SCENARIOS, getMiniGameDebugScenario } from "./debugScenarios";
 
 describe("MINIGAME_DEBUG_SCENARIOS", () => {
-  it("contains at least the 9 required scenarios", () => {
-    expect(MINIGAME_DEBUG_SCENARIOS.length).toBeGreaterThanOrEqual(9);
+  it("contains at least the 11 required scenarios", () => {
+    expect(MINIGAME_DEBUG_SCENARIOS.length).toBeGreaterThanOrEqual(11);
   });
 
   it("every scenario has a valid EmergencyMiniGameInput (objective + equipment)", () => {
@@ -58,6 +58,20 @@ describe("MINIGAME_DEBUG_SCENARIOS", () => {
 
   it("'collect toolbox' scenario uses itemToCollect toolbox", () => {
     expect(getMiniGameDebugScenario("collect_toolbox").input.itemToCollect).toBe("toolbox");
+  });
+
+  it("'collect_battery' scenario uses objective collect_item, itemToCollect battery, no shotgun", () => {
+    const scenario = getMiniGameDebugScenario("collect_battery");
+    expect(scenario.input.objective).toBe("collect_item");
+    expect(scenario.input.itemToCollect).toBe("battery");
+    expect(scenario.input.equipment).toEqual({ hasShotgun: false, ammo: 0 });
+  });
+
+  it("'collect_battery_with_shotgun' scenario uses itemToCollect battery with a shotgun and 1 ammo", () => {
+    const scenario = getMiniGameDebugScenario("collect_battery_with_shotgun");
+    expect(scenario.input.objective).toBe("collect_item");
+    expect(scenario.input.itemToCollect).toBe("battery");
+    expect(scenario.input.equipment).toEqual({ hasShotgun: true, ammo: 1 });
   });
 
   it("'survive' scenario uses objective survive", () => {

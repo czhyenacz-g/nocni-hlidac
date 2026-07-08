@@ -74,7 +74,7 @@ export type MiniGameStatus = "playing" | "won" | "gameOver";
 // rozhraní (vstup/výstup), žádná skutečná integrace.
 
 export type MiniGameObjective = "return_to_office" | "collect_item" | "survive";
-export type MiniGameItemId = "fuse" | "bulb" | "key" | "toolbox";
+export type MiniGameItemId = "fuse" | "bulb" | "key" | "toolbox" | "battery" | "shotgun" | "ammo";
 export type MiniGameDifficulty = "easy" | "medium" | "hard";
 export type MiniGameStartLocation = "office" | "hall" | "generator";
 
@@ -123,10 +123,30 @@ export interface EmergencyMiniGameInput {
   startLocation?: MiniGameStartLocation;
 }
 
+// ── Efekty pro hlavní hru (viz
+// game/minigame/logic.ts#createWorldEffectsForCompletedObjective) — minihra
+// (/play zatím nespouští) je jen PŘIPRAVUJE v resultu, žádné napojení na
+// game/core zatím neexistuje. Hlavní hra si je z `returned.worldEffects`
+// jednou v budoucnu sama přečte a aplikuje (dobití energie, oprava
+// generátoru, ...) — tenhle soubor/typ o tom nic neví a nesmí.
+export type EmergencyWorldEffect =
+  | { type: "energy_recharged"; amount: number }
+  | { type: "generator_repaired" }
+  | { type: "bulbs_serviced" }
+  | { type: "shotgun_acquired" }
+  | { type: "ammo_acquired"; amount: number };
+
 // "collected_item" už NENÍ finální outcome — sebrání věci je jen mezistav
 // mise (viz EmergencyMissionPhase výše). Jediný způsob, jak minihra vrátí
-// splněný dílčí úkol volajícímu, je "returned" s vyplněným completedObjective.
+// splněný dílčí úkol volajícímu, je "returned" s vyplněným completedObjective
+// (+ odpovídající worldEffects, viz createWorldEffectsForCompletedObjective).
 export type EmergencyMiniGameResult =
   | { outcome: "dead"; reason: "monster"; elapsedMs: number; shotsUsed: number }
-  | { outcome: "returned"; elapsedMs: number; shotsUsed: number; completedObjective?: EmergencyCompletedObjective }
+  | {
+      outcome: "returned";
+      elapsedMs: number;
+      shotsUsed: number;
+      completedObjective?: EmergencyCompletedObjective;
+      worldEffects?: EmergencyWorldEffect[];
+    }
   | { outcome: "failed"; reason: "objective_failed"; elapsedMs: number; shotsUsed: number };

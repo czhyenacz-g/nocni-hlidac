@@ -64,6 +64,18 @@ export const MINIGAME_DEBUG_SCENARIOS: MiniGameDebugScenario[] = [
     input: { objective: "collect_item", itemToCollect: "toolbox", equipment: { hasShotgun: true, ammo: 1 }, difficulty: "medium" },
   },
   {
+    id: "collect_battery",
+    label: "Sebrat baterii a vrátit se",
+    description: "Dojdi pro baterii, seber ji pomocí E a vrať se do kanceláře. Výsledek dobije energii hlavní hry.",
+    input: { objective: "collect_item", itemToCollect: "battery", equipment: { hasShotgun: false, ammo: 0 }, difficulty: "medium" },
+  },
+  {
+    id: "collect_battery_with_shotgun",
+    label: "Sebrat baterii — brokovnice + 1 náboj",
+    description: "Dojdi pro baterii, seber ji pomocí E a vrať se do kanceláře. Máš brokovnici a 1 náboj. Výsledek dobije energii hlavní hry.",
+    input: { objective: "collect_item", itemToCollect: "battery", equipment: { hasShotgun: true, ammo: 1 }, difficulty: "medium" },
+  },
+  {
     id: "survive",
     label: "Přežít",
     description: "Volný test přežití proti monstru — exit zóna misi v tomhle scénáři nekončí.",

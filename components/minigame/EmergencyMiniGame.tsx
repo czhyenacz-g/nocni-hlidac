@@ -127,6 +127,20 @@ const ITEM_LABELS_ACCUSATIVE: Record<MiniGameItemId, string> = {
   bulb: "žárovku",
   key: "klíč",
   toolbox: "nářadí",
+  battery: "baterii",
+  shotgun: "brokovnici",
+  ammo: "náboj",
+};
+
+/** Nominativ pro item marker na mapě ("BATERIE (E)") a "Sebráno: ..." text — viz draw()/won overlay. */
+const ITEM_LABELS_NOMINATIVE: Record<MiniGameItemId, string> = {
+  fuse: "Pojistka",
+  bulb: "Žárovka",
+  key: "Klíč",
+  toolbox: "Nářadí",
+  battery: "Baterie",
+  shotgun: "Brokovnice",
+  ammo: "Náboj",
 };
 
 /** HUD hint pod REŽIM řádkem — vysvětluje hráči, co má aktuálně udělat (viz mission phase / EmergencyMissionPhase). */
@@ -560,7 +574,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
                     <div className="text-xs mb-3" style={{ color: "#6fe3a0" }}>
                       {result?.outcome === "returned" &&
                         (result.completedObjective?.type === "collected_item"
-                          ? `Sebráno: ${result.completedObjective.itemId}. Vrátil ses do kanceláře.`
+                          ? `Sebráno: ${ITEM_LABELS_NOMINATIVE[result.completedObjective.itemId]}. Vrátil ses do kanceláře.`
                           : "Vrátil ses do kanceláře.")}
                     </div>
                   </>
@@ -700,7 +714,7 @@ function draw(ctx: CanvasRenderingContext2D, game: MiniGameRefState, gridCanvas:
     ctx.fillStyle = "rgba(250, 204, 21, 0.9)";
     ctx.font = "10px monospace";
     ctx.textAlign = "center";
-    ctx.fillText(`${input.itemToCollect ?? "item"} (E)`, ITEM_SPAWN_POSITION.x, ITEM_SPAWN_POSITION.y - 16);
+    ctx.fillText(`${ITEM_LABELS_NOMINATIVE[input.itemToCollect ?? "fuse"].toUpperCase()} (E)`, ITEM_SPAWN_POSITION.x, ITEM_SPAWN_POSITION.y - 16);
     ctx.restore();
   }
 

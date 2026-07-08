@@ -7,6 +7,7 @@ import {
   EmergencyMiniGameResult,
   EmergencyMissionPhase,
   EmergencyMissionState,
+  EmergencyWorldEffect,
   EnemyMode,
   MiniGameObjective,
   MiniGameStatus,
@@ -797,18 +798,53 @@ export function createDeadResult(elapsedMs: number, shotsUsed: number): Emergenc
   return { outcome: "dead", reason: "monster", elapsedMs, shotsUsed };
 }
 
+/** Battery item pro objective "collect_item" — viz createWorldEffectsForCompletedObjective. Zatím jediná "amount" hodnota v MVP mapování, proto konfigurovatelná konstanta místo natvrdo napsaného čísla. */
+export const DEFAULT_BATTERY_ENERGY_RECHARGE = 35;
+
+/**
+ * Efekty pro hlavní hru odvozené ze splněného dílčího úkolu — ČISTÁ příprava
+ * dat pro `returned.worldEffects` (viz types.ts), samo o sobě nic nemění a
+ * nic z game/core nezná/nevolá. MVP mapování: battery/fuse/bulb/shotgun/ammo
+ * mají po jednom efektu; key/toolbox a "reached_location" zatím žádný ([]) —
+ * připraveno pro budoucí scénáře, ne aktivně použité teď.
+ */
+export function createWorldEffectsForCompletedObjective(completedObjective: EmergencyCompletedObjective): EmergencyWorldEffect[] {
+  if (completedObjective.type !== "collected_item") return [];
+
+  switch (completedObjective.itemId) {
+    case "battery":
+      return [{ type: "energy_recharged", amount: DEFAULT_BATTERY_ENERGY_RECHARGE }];
+    case "fuse":
+      return [{ type: "generator_repaired" }];
+    case "bulb":
+      return [{ type: "bulbs_serviced" }];
+    case "shotgun":
+      return [{ type: "shotgun_acquired" }];
+    case "ammo":
+      return [{ type: "ammo_acquired", amount: 1 }];
+    case "key":
+    case "toolbox":
+      return [];
+  }
+}
+
 /**
  * `completedObjective` je volitelné — return_to_office se vrátí bez něj,
  * collect_item ho vyplní (viz completeObjective/canReturnToOffice níže).
+ * Když je vyplněný, `worldEffects` se odvodí automaticky (viz
+ * createWorldEffectsForCompletedObjective) — volající si je nevymýšlí ručně.
  */
 export function createReturnedResult(
   elapsedMs: number,
   shotsUsed: number,
   completedObjective?: EmergencyCompletedObjective,
 ): EmergencyMiniGameResult {
-  return completedObjective
-    ? { outcome: "returned", elapsedMs, shotsUsed, completedObjective }
-    : { outcome: "returned", elapsedMs, shotsUsed };
+  if (!completedObjective) return { outcome: "returned", elapsedMs, shotsUsed };
+
+  const worldEffects = createWorldEffectsForCompletedObjective(completedObjective);
+  return worldEffects.length > 0
+    ? { outcome: "returned", elapsedMs, shotsUsed, completedObjective, worldEffects }
+    : { outcome: "returned", elapsedMs, shotsUsed, completedObjective };
 }
 
 export function createFailedResult(elapsedMs: number, shotsUsed: number): EmergencyMiniGameResult {
