@@ -79,14 +79,6 @@ export const GENERATOR_RESTART_STRESS_BONUS = 40;
 export const STRESS_TIME_SLOWDOWN_ENABLED = true;
 export const MAX_STRESS_TIME_SLOWDOWN = 0.5;
 
-// Progresivní ztěžování podle počtu přežitých nocí aktuálního hlídače (ne
-// podle difficulty easy/medium/hard — to je nezávislá vrstva, viz
-// game/difficulty/nightScaling.ts). "Pressure" (noc - 1) je capnutá na tuhle
-// hodnotu, ať žádný modifikátor neroste donekonečna.
-export const NIGHT_SCALING_MAX_PRESSURE = 4;
-// Kolik % navíc energy drain za každý bod "pressure" (noc 2 = +5 %, noc 3 = +10 %, ...).
-export const NIGHT_SCALING_ENERGY_DRAIN_STEP = 0.05;
-
 // Ruční výměna prasklé žárovky (viz game/core/types.ts BulbReplacementState,
 // gameReducer.ts, DoorView.tsx) — jak dlouho (ms) trvá, než se žárovka opraví.
 export const BULB_REPLACE_DURATION_MS = 10_000;

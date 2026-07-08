@@ -16,12 +16,14 @@ export interface NightFeatureFlags {
    * app/play/page.tsx#handleStartEmergencyRun) tuhle noc vůbec dostupné —
    * zastřešující flag nad konkrétními výpravami (batteryRunEnabled níže).
    * ZATÍM true pro všechny noci (vývoj/ruční testování) — zamýšlený budoucí
-   * stav je noc 1–5 false, noc 6+ true (viz getNightConfig komentář), ale
-   * dokud neexistuje víc než jedna výprava, nemá smysl to už teď takhle
-   * omezovat v produkčním defaultu.
+   * stav je noc 1–4 false, noc 5+ true (viz getNightConfig komentář — noc 5
+   * je i práh, kde energyDrainMultiplier v nightScaling.ts poprvé udělá
+   * skok, ×1.15 → ×1.25, ne jen 1–4 free-hodinu), ale dokud neexistuje víc
+   * než jedna výprava, nemá smysl to už teď takhle omezovat v produkčním
+   * defaultu.
    */
   emergencyRunsEnabled: boolean;
-  /** Konkrétní výprava "jít ven pro baterii" — vyžaduje i emergencyRunsEnabled (viz canStartBatteryEmergencyRun v game/core/emergencyMiniGameIntegration.ts). ZATÍM true pro všechny noci, zamýšlený budoucí stav noc 6+. */
+  /** Konkrétní výprava "jít ven pro baterii" — vyžaduje i emergencyRunsEnabled (viz canStartBatteryEmergencyRun v game/core/emergencyMiniGameIntegration.ts). ZATÍM true pro všechny noci, zamýšlený budoucí stav noc 5+. */
   batteryRunEnabled: boolean;
   /** Připraveno pro budoucí výpravu "jít pro žárovky" — v /play zatím žádná bulb run mise neexistuje, proto false, ať se nezobrazuje nic, co by nešlo spustit. */
   bulbRunEnabled: boolean;
@@ -58,11 +60,15 @@ export interface ResolvedNightConfig {
 // Zamýšlené budoucí odemykání "Jít ven" podle noci (NENÍ zatím nastavené —
 // emergencyRunsEnabled/batteryRunEnabled jsou v DEFAULT_NIGHT_FEATURES obě
 // `true` pro všechny noci kvůli vývoji/ručnímu testování):
-//   noc 1–5:  emergencyRunsEnabled: false
-//   noc 6+:   emergencyRunsEnabled: true, batteryRunEnabled: true
+//   noc 1–4:  emergencyRunsEnabled: false, batteryRunEnabled: false
+//   noc 5+:   emergencyRunsEnabled: true, batteryRunEnabled: true
 //   noc 7+:   bulbRunEnabled: true (až bude v /play existovat bulb run mise)
-// Až se tohle zapne doopravdy, půjde jednoduše přidat `features: { emergencyRunsEnabled: false }`
-// do NIGHT_CONFIGS záznamů pro noci 1–5 (stejný vzor jako generatorFaultsEnabled výše).
+// Noc 5 není náhoda — od tamtud energyDrainMultiplier (game/difficulty/nightScaling.ts)
+// poprvé skáče víc než o 5 % (×1.15 → ×1.25), takže nouzová obchůzka/baterie
+// začne dávat smysl přesně tam, kde spotřeba energie přestane být mírná.
+// Až se tohle zapne doopravdy, půjde jednoduše přidat
+// `features: { emergencyRunsEnabled: false, batteryRunEnabled: false }` do
+// NIGHT_CONFIGS záznamů pro noci 1–4 (stejný vzor jako generatorFaultsEnabled výše).
 
 // Briefingy jsou vnitřní monolog hlídače, ne firemní oznámení ani tutorial —
 // žádné "od této noci se zapíná generátor", jen to, co by si sám pro sebe

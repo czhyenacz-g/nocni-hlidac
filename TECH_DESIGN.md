@@ -383,11 +383,12 @@ neovlivňuje.
 
 - **`computeNightScaling(currentNight): NightScaling`** — čistá funkce.
   `NightScaling = { currentNight: number; energyDrainMultiplier: number }`. Neplatný vstup
-  (`< 1`, `NaN`, necelé číslo se zaokrouhlí dolů) se bezpečně bere jako noc 1. `pressure =
-  clamp(safeNight - 1, 0, NIGHT_SCALING_MAX_PRESSURE)` (4), `energyDrainMultiplier = 1 +
-  pressure * NIGHT_SCALING_ENERGY_DRAIN_STEP` (0.05) — noc 1 → 1.00, noc 2 → 1.05, ..., noc 5
-  a dál → capnuté na 1.20. Obě konstanty v `game/balancing/constants.ts`, ne natvrdo ve
-  funkci.
+  (`< 1`, `NaN`, necelé číslo se zaokrouhlí dolů) se bezpečně bere jako noc 1.
+  `energyDrainMultiplier` je explicitní tabulka (`NIGHT_ENERGY_DRAIN_MULTIPLIERS` v
+  `nightScaling.ts`, ne lineární step/cap výpočet): noc 1 → 1.00, noc 2 → 1.05, noc 3 → 1.10,
+  noc 4 → 1.15, noc 5 → 1.25, noc 6 → 1.40, noc 7 → 1.55, noc 8 → 1.70, noc 9 → 1.85, noc 10 a
+  dál → capnuté na 2.00. Noc 5 je záměrně první větší skok (ne jen +5 %) — od tamtud má začít
+  dávat smysl nouzová obchůzka/baterie (viz "Night config" níže).
 - **Rozšiřitelnost**: `NightScaling` je připravené na další pole (`monsterActivityMultiplier`,
   `generatorFaultTimingMultiplier`, `cameraNoiseMultiplier`, ...), ale žádné z nich zatím
   neexistuje — přidají se, až budou mít skutečné využití, ne jako předem připravené nepoužité
@@ -1478,9 +1479,9 @@ Dvě neslučitelné větve, přesně jedna platí každý tik:
   aplikovaná v OBOU větvích výše, jen když `generatorState` je `"criticalBeeping"` nebo
   `"restarting"` — bez ohledu na to, jestli jsou dveře/světlo skutečně zavřené/zapnuté.
   `"silentFault"` (prvních 10 s po poruše, `silentGraceMs`) žádnou extra spotřebu nemá.
-- **Night scaling multiplikátor** (`computeNightScaling`, cap 1.2× od noci 5) — násobí
-  součet drainu přesně JEDNOU, nikdy recharge, nikdy dvakrát (ověřeno testem "applies...
-  exactly once, never compounded").
+- **Night scaling multiplikátor** (`computeNightScaling`, explicitní tabulka, cap 2.0× od
+  noci 10) — násobí součet drainu přesně JEDNOU, nikdy recharge, nikdy dvakrát (ověřeno testem
+  "applies... exactly once, never compounded").
 
 Sčítají se ANO — door + light + generátor extra se sečtou, pokud platí víc podmínek
 najednou (např. zavřené dveře SOUČASNĚ se zapnutým světlem během door-light repelu proti

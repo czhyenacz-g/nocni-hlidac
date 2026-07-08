@@ -130,7 +130,7 @@ describe("computePowerDrainBreakdown — generator critical drain", () => {
 
 describe("computePowerDrainBreakdown — night scaling applies exactly once", () => {
   it("multiplies the summed drain by nightScalingMultiplier exactly once, never compounded", () => {
-    const scaling = computeNightScaling(5); // capped multiplier, > 1
+    const scaling = computeNightScaling(5); // multiplier > 1, not the (night 10+) cap
     const state = stateAtDesk({ doorClosed: true, lightOn: true });
     const breakdown = computePowerDrainBreakdown(state, NIGHT_01, scaling);
 

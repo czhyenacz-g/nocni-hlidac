@@ -14,7 +14,7 @@ describe("TICK power drain with currentNight", () => {
     expect(withoutNight.power).toBeCloseTo(withNight1.power, 5);
   });
 
-  it("drains power faster on a later night (currentNight 5, +20%)", () => {
+  it("drains power faster on a later night (currentNight 5, +25%)", () => {
     const reducer = createGameReducer(NIGHT_01);
     const state = { ...createInitialGameState(NIGHT_01), isRunning: true, doorClosed: true };
 
