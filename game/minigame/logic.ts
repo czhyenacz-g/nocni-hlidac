@@ -1,4 +1,16 @@
-import { Direction, Enemy, EmergencyMiniGameInput, EmergencyMiniGameResult, EnemyMode, Vec2, Wall } from "./types";
+import {
+  Direction,
+  Enemy,
+  EmergencyCompletedObjective,
+  EmergencyMiniGameInput,
+  EmergencyMiniGameResult,
+  EmergencyMissionPhase,
+  EmergencyMissionState,
+  EnemyMode,
+  MiniGameObjective,
+  Vec2,
+  Wall,
+} from "./types";
 
 // Čistá herní logika prototypu minihry — žádné canvas/DOM/React tady,
 // snadno testovatelné (viz logic.test.ts). components/minigame/EmergencyMiniGame.tsx
@@ -136,12 +148,21 @@ export interface FireShotInput {
   enemy: { x: number; y: number; radius: number; alive: boolean };
   coneAngleRad: number;
   range: number;
+  walls: Wall[];
 }
 
-/** Jestli by výstřel TEĎ zasáhl nepřítele — mrtvý nepřítel se nikdy netrefí (žádný "double kill"). */
+/**
+ * Jestli by výstřel TEĎ zasáhl nepřítele — mrtvý nepřítel se nikdy netrefí
+ * (žádný "double kill"). Kromě výseče/dosahu musí platit i line-of-sight
+ * (sdílený `hasLineOfSight` helper, stejný jako `canEnemySeePlayer` níže) —
+ * zeď mezi hráčem a nepřítelem výstřel blokuje stejně, jako blokuje
+ * nepřítelovo vidění hráče. Náboj/shot flash se spotřebuje vždy (o tom
+ * rozhoduje volající, viz EmergencyMiniGame.tsx#fireShot) — tahle funkce jen
+ * říká, jestli se zásah PROJEVÍ (enemy se zraní), ne jestli se vystřelilo.
+ */
 export function isEnemyHit(input: FireShotInput): boolean {
   if (!input.enemy.alive) return false;
-  return isTargetInCone({
+  const inCone = isTargetInCone({
     originX: input.player.x,
     originY: input.player.y,
     direction: input.player.direction,
@@ -151,6 +172,8 @@ export function isEnemyHit(input: FireShotInput): boolean {
     targetY: input.enemy.y,
     targetRadius: input.enemy.radius,
   });
+  if (!inCone) return false;
+  return hasLineOfSight(input.player.x, input.player.y, input.enemy.x, input.enemy.y, input.walls);
 }
 
 export interface MoveResult {
@@ -691,14 +714,60 @@ export function createDeadResult(elapsedMs: number, shotsUsed: number): Emergenc
   return { outcome: "dead", reason: "monster", elapsedMs, shotsUsed };
 }
 
-export function createReturnedResult(elapsedMs: number, shotsUsed: number): EmergencyMiniGameResult {
-  return { outcome: "returned", elapsedMs, shotsUsed };
-}
-
-export function createCollectedItemResult(itemId: string, elapsedMs: number, shotsUsed: number): EmergencyMiniGameResult {
-  return { outcome: "collected_item", itemId, elapsedMs, shotsUsed };
+/**
+ * `completedObjective` je volitelné — return_to_office se vrátí bez něj,
+ * collect_item ho vyplní (viz completeObjective/canReturnToOffice níže).
+ */
+export function createReturnedResult(
+  elapsedMs: number,
+  shotsUsed: number,
+  completedObjective?: EmergencyCompletedObjective,
+): EmergencyMiniGameResult {
+  return completedObjective
+    ? { outcome: "returned", elapsedMs, shotsUsed, completedObjective }
+    : { outcome: "returned", elapsedMs, shotsUsed };
 }
 
 export function createFailedResult(elapsedMs: number, shotsUsed: number): EmergencyMiniGameResult {
   return { outcome: "failed", reason: "objective_failed", elapsedMs, shotsUsed };
+}
+
+// ── Mise: základní smyčka "kancelář → jdu ven → splním úkol → vracím se do
+// kanceláře → onComplete" (viz EmergencyMissionPhase/EmergencyMissionState v
+// types.ts). Čisté, testovatelné funkce — EmergencyMiniGame.tsx je jen volá.
+
+export function createInitialMissionState(): EmergencyMissionState {
+  return { phase: "outbound" };
+}
+
+export function updateMissionPhase(mission: EmergencyMissionState, phase: EmergencyMissionPhase): EmergencyMissionState {
+  return { ...mission, phase };
+}
+
+/**
+ * Splní dílčí úkol (např. sebrání věci) a přepne misi do "returning" — hráč
+ * se teď musí vrátit do kanceláře, samotné splnění úkolu minihru NEKONČÍ.
+ * Idempotentní: pokud mise už není "outbound" (úkol už byl splněný dřív,
+ * nebo je mise už "completed"), vrátí ji beze změny — věc nejde sebrat
+ * podruhé a nejde tím "vrátit" už dokončenou misi zpátky do "returning".
+ */
+export function completeObjective(mission: EmergencyMissionState, completedObjective: EmergencyCompletedObjective): EmergencyMissionState {
+  if (mission.phase !== "outbound") return mission;
+  return updateMissionPhase({ ...mission, completedObjective }, "returning");
+}
+
+/**
+ * Jestli teď (v exit zóně, E stisknuté) může mise skončit jako "returned".
+ * Vždy vyžaduje, aby hráč už opustil startovní zónu (viz
+ * START_ZONE_LEAVE_RADIUS_PX/hasLeftStartZone) — beze změny oproti
+ * dosavadnímu chování return_to_office. Pro "collect_item" navíc vyžaduje
+ * dokončený dílčí úkol (mission.phase === "returning"); dokud úkol není
+ * splněný, návrat do kanceláře misi neukončí (jen HUD hint "Nejdřív splň
+ * úkol."). Pro "survive" v MVP exit zóna misi nekončí vůbec.
+ */
+export function canReturnToOffice(objective: MiniGameObjective, mission: EmergencyMissionState, hasLeftStartZone: boolean): boolean {
+  if (!hasLeftStartZone) return false;
+  if (objective === "return_to_office") return true;
+  if (objective === "collect_item") return mission.phase === "returning";
+  return false;
 }

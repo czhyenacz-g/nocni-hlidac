@@ -23,26 +23,26 @@ export const MINIGAME_DEBUG_SCENARIOS: MiniGameDebugScenario[] = [
   },
   {
     id: "collect_fuse",
-    label: "Sebrat pojistku",
-    description: "Najdi a seber pojistku pomocí E.",
+    label: "Sebrat pojistku a vrátit se",
+    description: "Sebrat věc nestačí. Najdi a seber pojistku (E), pak se vrať do kanceláře a znovu stiskni E.",
     input: { objective: "collect_item", itemToCollect: "fuse", shots: 1, difficulty: "medium" },
   },
   {
     id: "collect_bulb",
-    label: "Sebrat žárovku",
-    description: "Najdi a seber žárovku pomocí E.",
+    label: "Sebrat žárovku a vrátit se",
+    description: "Sebrat věc nestačí. Najdi a seber žárovku (E), pak se vrať do kanceláře a znovu stiskni E.",
     input: { objective: "collect_item", itemToCollect: "bulb", shots: 1, difficulty: "medium" },
   },
   {
     id: "collect_toolbox",
-    label: "Sebrat nářadí",
-    description: "Najdi a seber nářadí pomocí E.",
+    label: "Sebrat nářadí a vrátit se",
+    description: "Sebrat věc nestačí. Najdi a seber nářadí (E), pak se vrať do kanceláře a znovu stiskni E.",
     input: { objective: "collect_item", itemToCollect: "toolbox", shots: 1, difficulty: "medium" },
   },
   {
     id: "survive",
     label: "Přežít",
-    description: "Volný test přežití proti monstru.",
+    description: "Volný test přežití proti monstru — exit zóna misi v tomhle scénáři nekončí.",
     input: { objective: "survive", shots: 1, difficulty: "medium" },
   },
   {
@@ -53,8 +53,8 @@ export const MINIGAME_DEBUG_SCENARIOS: MiniGameDebugScenario[] = [
   },
   {
     id: "collect_fuse_no_shot",
-    label: "Bez náboje — pojistka",
-    description: "Sebrání pojistky bez možnosti vystřelit.",
+    label: "Bez náboje — pojistka a návrat",
+    description: "Sebrat věc nestačí. Sebrání pojistky (E) a návrat do kanceláře (E) bez možnosti vystřelit.",
     input: { objective: "collect_item", itemToCollect: "fuse", shots: 0, difficulty: "medium" },
   },
 ];

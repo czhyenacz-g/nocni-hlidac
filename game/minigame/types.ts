@@ -75,6 +75,23 @@ export type MiniGameItemId = "fuse" | "bulb" | "key" | "toolbox";
 export type MiniGameDifficulty = "easy" | "medium" | "hard";
 export type MiniGameStartLocation = "office" | "hall" | "generator";
 
+// ── Mise (viz game/minigame/logic.ts#completeObjective/canReturnToOffice) ──
+// Základní smyčka: kancelář → jdu ven → splním úkol → vracím se do kanceláře
+// → teprve TEĎ se zavolá onComplete. Sebrání věci samo o sobě minihru
+// NEKONČÍ — jen přepne misi do "returning", hráč se pak musí fyzicky vrátit
+// do EXIT_ZONE a stisknout E (viz EmergencyMiniGame.tsx#handleObjectiveKey).
+export type EmergencyMissionPhase = "outbound" | "returning" | "completed";
+
+export type EmergencyCompletedObjective =
+  | { type: "collected_item"; itemId: MiniGameItemId }
+  | { type: "reached_location"; locationId: string };
+
+export interface EmergencyMissionState {
+  phase: EmergencyMissionPhase;
+  /** Vyplní se, jakmile hráč splní dílčí úkol (např. sebere věc) — chybí, dokud mise běží "outbound", i pro objective bez dílčího úkolu (return_to_office). */
+  completedObjective?: EmergencyCompletedObjective;
+}
+
 export interface EmergencyMiniGameInput {
   objective: MiniGameObjective;
   /** Jen relevantní pro objective "collect_item" — chybí-li, view/logika použije obecné "item". */
@@ -87,8 +104,10 @@ export interface EmergencyMiniGameInput {
   startLocation?: MiniGameStartLocation;
 }
 
+// "collected_item" už NENÍ finální outcome — sebrání věci je jen mezistav
+// mise (viz EmergencyMissionPhase výše). Jediný způsob, jak minihra vrátí
+// splněný dílčí úkol volajícímu, je "returned" s vyplněným completedObjective.
 export type EmergencyMiniGameResult =
   | { outcome: "dead"; reason: "monster"; elapsedMs: number; shotsUsed: number }
-  | { outcome: "returned"; elapsedMs: number; shotsUsed: number }
-  | { outcome: "collected_item"; itemId: string; elapsedMs: number; shotsUsed: number }
+  | { outcome: "returned"; elapsedMs: number; shotsUsed: number; completedObjective?: EmergencyCompletedObjective }
   | { outcome: "failed"; reason: "objective_failed"; elapsedMs: number; shotsUsed: number };

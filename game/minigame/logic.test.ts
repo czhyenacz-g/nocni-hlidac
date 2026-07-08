@@ -6,9 +6,11 @@ import {
   circleIntersectsAnyWall,
   circleIntersectsWall,
   circlesTouch,
-  createCollectedItemResult,
+  canReturnToOffice,
+  completeObjective,
   createDeadResult,
   createFailedResult,
+  createInitialMissionState,
   createInvestigationTarget,
   createReturnedResult,
   directionFromVector,
@@ -22,6 +24,7 @@ import {
   resolveShotsFromInput,
   tickEnemyStun,
   updateEnemyAi,
+  updateMissionPhase,
   EnemyAiConfig,
 } from "./logic";
 import { createInitialPlayer } from "./config";
@@ -107,22 +110,42 @@ describe("isEnemyHit", () => {
 
   it("hits an alive enemy in range and in the cone", () => {
     const enemy = { x: 0, y: -100, radius: 14, alive: true };
-    expect(isEnemyHit({ player, enemy, coneAngleRad, range })).toBe(true);
+    expect(isEnemyHit({ player, enemy, coneAngleRad, range, walls: [] })).toBe(true);
   });
 
   it("misses an enemy outside the cone", () => {
     const enemy = { x: 120, y: -20, radius: 14, alive: true };
-    expect(isEnemyHit({ player, enemy, coneAngleRad, range })).toBe(false);
+    expect(isEnemyHit({ player, enemy, coneAngleRad, range, walls: [] })).toBe(false);
   });
 
   it("misses an enemy outside range even if directly ahead", () => {
     const enemy = { x: 0, y: -300, radius: 14, alive: true };
-    expect(isEnemyHit({ player, enemy, coneAngleRad, range })).toBe(false);
+    expect(isEnemyHit({ player, enemy, coneAngleRad, range, walls: [] })).toBe(false);
   });
 
   it("never hits an already-dead enemy, even if geometrically in the cone", () => {
     const enemy = { x: 0, y: -100, radius: 14, alive: false };
-    expect(isEnemyHit({ player, enemy, coneAngleRad, range })).toBe(false);
+    expect(isEnemyHit({ player, enemy, coneAngleRad, range, walls: [] })).toBe(false);
+  });
+
+  // Zdi musí blokovat hráčovu brokovnici stejně jako blokují nepřítelovo
+  // vidění (canEnemySeePlayer) — sdílený hasLineOfSight helper, viz logic.ts.
+  it("hits an enemy in cone and range with a clear line of sight", () => {
+    const enemy = { x: 0, y: -100, radius: 14, alive: true };
+    expect(isEnemyHit({ player, enemy, coneAngleRad, range, walls: [] })).toBe(true);
+  });
+
+  it("does NOT hit an enemy in cone and range but hidden behind a wall", () => {
+    const enemy = { x: 0, y: -100, radius: 14, alive: true };
+    const wall: Wall = { x: -20, y: -60, width: 40, height: 10 };
+    expect(isEnemyHit({ player, enemy, coneAngleRad, range, walls: [wall] })).toBe(false);
+  });
+
+  it("uses hasLineOfSight for the wall check (consistent with canEnemySeePlayer)", () => {
+    const enemy = { x: 0, y: -100, radius: 14, alive: true };
+    const wall: Wall = { x: -20, y: -60, width: 40, height: 10 };
+    expect(hasLineOfSight(player.x, player.y, enemy.x, enemy.y, [wall])).toBe(false);
+    expect(isEnemyHit({ player, enemy, coneAngleRad, range, walls: [wall] })).toBe(false);
   });
 });
 
@@ -574,16 +597,16 @@ describe("result builders", () => {
     expect(createDeadResult(1234, 2)).toEqual({ outcome: "dead", reason: "monster", elapsedMs: 1234, shotsUsed: 2 });
   });
 
-  it("createReturnedResult", () => {
+  it("createReturnedResult without a completedObjective (return_to_office)", () => {
     expect(createReturnedResult(5000, 1)).toEqual({ outcome: "returned", elapsedMs: 5000, shotsUsed: 1 });
   });
 
-  it("createCollectedItemResult", () => {
-    expect(createCollectedItemResult("fuse", 800, 0)).toEqual({
-      outcome: "collected_item",
-      itemId: "fuse",
-      elapsedMs: 800,
-      shotsUsed: 0,
+  it("createReturnedResult with a completedObjective (collect_item)", () => {
+    expect(createReturnedResult(5000, 1, { type: "collected_item", itemId: "fuse" })).toEqual({
+      outcome: "returned",
+      elapsedMs: 5000,
+      shotsUsed: 1,
+      completedObjective: { type: "collected_item", itemId: "fuse" },
     });
   });
 
@@ -594,5 +617,70 @@ describe("result builders", () => {
       elapsedMs: 9999,
       shotsUsed: 1,
     });
+  });
+});
+
+// ── Mise: "kancelář → jdu ven → splním úkol → vracím se do kanceláře" —
+// sebrání věci je jen mezistav ("returning"), ne finální výsledek (viz
+// EmergencyMiniGame.tsx#handleObjectiveKey).
+describe("mission — completeObjective / canReturnToOffice / updateMissionPhase", () => {
+  it("createInitialMissionState starts as outbound with no completedObjective", () => {
+    expect(createInitialMissionState()).toEqual({ phase: "outbound" });
+  });
+
+  it("completeObjective moves an outbound mission to returning and records the objective", () => {
+    const mission = completeObjective(createInitialMissionState(), { type: "collected_item", itemId: "fuse" });
+    expect(mission.phase).toBe("returning");
+    expect(mission.completedObjective).toEqual({ type: "collected_item", itemId: "fuse" });
+  });
+
+  it("completeObjective does not call the final result — it's a pure state transition, not onComplete", () => {
+    // (No onComplete/EmergencyMiniGameResult involved here at all — the mission
+    // stays in-progress. This is really just documenting the contract: see
+    // EmergencyMiniGame.tsx#handleObjectiveKey, which never calls completeGame
+    // from the item-pickup branch.)
+    const mission = completeObjective(createInitialMissionState(), { type: "collected_item", itemId: "bulb" });
+    expect(mission.phase).not.toBe("completed");
+  });
+
+  it("completeObjective is idempotent — collecting again (already returning) does not change the mission", () => {
+    const returning = completeObjective(createInitialMissionState(), { type: "collected_item", itemId: "fuse" });
+    const again = completeObjective(returning, { type: "collected_item", itemId: "bulb" });
+    expect(again).toEqual(returning); // second "collection" attempt has no effect (item can't be picked up twice)
+  });
+
+  it("completeObjective on an already-completed mission is a no-op", () => {
+    const completed = updateMissionPhase(createInitialMissionState(), "completed");
+    const attempted = completeObjective(completed, { type: "collected_item", itemId: "fuse" });
+    expect(attempted).toEqual(completed);
+  });
+
+  it("updateMissionPhase sets the phase and preserves completedObjective", () => {
+    const mission = completeObjective(createInitialMissionState(), { type: "collected_item", itemId: "key" });
+    const completed = updateMissionPhase(mission, "completed");
+    expect(completed).toEqual({ phase: "completed", completedObjective: { type: "collected_item", itemId: "key" } });
+  });
+
+  it("canReturnToOffice: return_to_office requires only hasLeftStartZone", () => {
+    const mission = createInitialMissionState();
+    expect(canReturnToOffice("return_to_office", mission, false)).toBe(false);
+    expect(canReturnToOffice("return_to_office", mission, true)).toBe(true);
+  });
+
+  it("canReturnToOffice: collect_item is blocked until the objective is completed", () => {
+    const outbound = createInitialMissionState();
+    expect(canReturnToOffice("collect_item", outbound, true)).toBe(false);
+
+    const returning = completeObjective(outbound, { type: "collected_item", itemId: "toolbox" });
+    expect(canReturnToOffice("collect_item", returning, true)).toBe(true);
+  });
+
+  it("canReturnToOffice: collect_item still requires hasLeftStartZone even once the objective is done", () => {
+    const returning = completeObjective(createInitialMissionState(), { type: "collected_item", itemId: "toolbox" });
+    expect(canReturnToOffice("collect_item", returning, false)).toBe(false);
+  });
+
+  it("canReturnToOffice: survive never completes via the exit zone in the MVP", () => {
+    expect(canReturnToOffice("survive", createInitialMissionState(), true)).toBe(false);
   });
 });

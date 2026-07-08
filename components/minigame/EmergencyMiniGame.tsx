@@ -37,15 +37,28 @@ import {
   createInitialEnemy,
   createInitialPlayer,
 } from "@/game/minigame/config";
-import { Direction, EmergencyMiniGameInput, EmergencyMiniGameResult, Enemy, EnemyMode, MiniGameStatus, Player } from "@/game/minigame/types";
+import {
+  Direction,
+  EmergencyMiniGameInput,
+  EmergencyMiniGameResult,
+  EmergencyMissionPhase,
+  EmergencyMissionState,
+  Enemy,
+  EnemyMode,
+  MiniGameItemId,
+  MiniGameStatus,
+  Player,
+} from "@/game/minigame/types";
 import {
   DIRECTION_ANGLES,
   EnemyAiConfig,
+  canReturnToOffice,
   castVisionCone,
   circleIntersectsWall,
   circlesTouch,
-  createCollectedItemResult,
+  completeObjective,
   createDeadResult,
+  createInitialMissionState,
   createReturnedResult,
   directionFromVector,
   distance,
@@ -53,11 +66,12 @@ import {
   moveWithWallSliding,
   resolveShotsFromInput,
   updateEnemyAi,
+  updateMissionPhase,
 } from "@/game/minigame/logic";
 
 interface EmergencyMiniGameProps {
   input: EmergencyMiniGameInput;
-  /** Zavolá se PŘESNĚ jednou za smysluplný konec (dead/returned/collected_item) — viz completedRef guard níže. */
+  /** Zavolá se PŘESNĚ jednou za smysluplný konec mise (dead/returned) — viz completedRef guard níže. Sebrání věci samo o sobě onComplete NEVOLÁ, viz completeObjective/canReturnToOffice v game/minigame/logic.ts. */
   onComplete?: (result: EmergencyMiniGameResult) => void;
   /** Zatím jen Escape během hraní — žádná další UI cesta k "cancel" v tomhle MVP. */
   onCancel?: () => void;
@@ -82,8 +96,8 @@ interface MiniGameRefState {
   shotsUsed: number;
   /** Objective "return_to_office": true, jakmile hráč aspoň jednou opustí okolí startu — EXIT_ZONE se počítá až pak (viz zadání "ne hned na startu"). */
   hasLeftStartZone: boolean;
-  /** Objective "collect_item": true po sebrání — brání opakovanému dokončení. */
-  itemCollected: boolean;
+  /** Základní smyčka mise (viz game/minigame/logic.ts#completeObjective/canReturnToOffice) — nahrazuje dřívější jednoduché `itemCollected: boolean`: sebrání věci je jen mezistav ("returning"), ne konec minihry. */
+  mission: EmergencyMissionState;
   /** Hráčova startovní pozice (viz hasLeftStartZone) — uložená při vytvoření, ne přepočítávaná z CANVAS/WORLD konstant, ať vždy odpovídá skutečnému createInitialPlayer(). */
   startX: number;
   startY: number;
@@ -103,8 +117,40 @@ function createInitialState(input: EmergencyMiniGameInput): MiniGameRefState {
     elapsedMs: 0,
     shotsUsed: 0,
     hasLeftStartZone: false,
-    itemCollected: false,
+    mission: createInitialMissionState(),
   };
+}
+
+const ITEM_LABELS_ACCUSATIVE: Record<MiniGameItemId, string> = {
+  fuse: "pojistku",
+  bulb: "žárovku",
+  key: "klíč",
+  toolbox: "nářadí",
+};
+
+/** HUD hint pod REŽIM řádkem — vysvětluje hráči, co má aktuálně udělat (viz mission phase / EmergencyMissionPhase). */
+function getMissionHint(
+  objective: EmergencyMiniGameInput["objective"],
+  itemToCollect: MiniGameItemId | undefined,
+  missionPhase: EmergencyMissionPhase,
+  inExitZone: boolean,
+): string {
+  if (objective === "survive") return "Cíl: Přežij hlídku.";
+
+  if (objective === "return_to_office") {
+    if (missionPhase === "completed") return "Splněno.";
+    return inExitZone ? "Stiskni E pro návrat do kanceláře." : "Cíl: Vrať se do kanceláře.";
+  }
+
+  // objective === "collect_item"
+  const itemLabel = ITEM_LABELS_ACCUSATIVE[itemToCollect ?? "fuse"];
+  if (missionPhase === "outbound") {
+    return inExitZone ? "Nejdřív splň úkol." : `Cíl: Najdi a seber ${itemLabel}. [E]`;
+  }
+  if (missionPhase === "returning") {
+    return inExitZone ? "Stiskni E pro návrat do kanceláře." : "Věc získána. Vrať se do kanceláře.";
+  }
+  return "Splněno.";
 }
 
 // Statická konfigurace AI (viz game/minigame/logic.ts#updateEnemyAi) — složená
@@ -170,6 +216,12 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
   // Nenápadný HUD status ("Režim: Pátrání/Čeká/Lov/Zraněno") — stejný bailout
   // vzor jako woundedMsLeft, mění se jen při skutečném přechodu módu.
   const [enemyMode, setEnemyMode] = useState<EnemyMode>("investigating");
+  // Fáze mise (viz EmergencyMissionPhase) — mění se jen při skutečném
+  // přechodu (sebrání věci, návrat), stejný bailout vzor jako enemyMode.
+  const [missionPhase, setMissionPhase] = useState<EmergencyMissionPhase>("outbound");
+  // Jestli hráč TEĎ stojí v exit zóně — čistě pro HUD hint ("Nejdřív splň
+  // úkol." / "Stiskni E pro návrat..."), počítá se každý tik s bailoutem.
+  const [inExitZone, setInExitZone] = useState(false);
   // Poslední odeslaný výsledek — `null`, dokud hra neskončí smysluplným
   // koncem. Debug stránka (app/minihra/page.tsx) ho může zobrazit dál poté,
   // co se tahle komponenta případně odmountuje (drží si vlastní kopii).
@@ -183,6 +235,8 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
     setShotsLeft(gameRef.current.player.shotsLeft);
     setWoundedMsLeft(null);
     setEnemyMode(gameRef.current.enemy.mode);
+    setMissionPhase(gameRef.current.mission.phase);
+    setInExitZone(false);
     setResult(null);
   }
 
@@ -214,6 +268,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
       enemy: game.enemy,
       coneAngleRad: CONE_ANGLE_RAD,
       range: CONE_RANGE,
+      walls: WALLS,
     });
 
     if (hit) {
@@ -225,23 +280,21 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
     // Miss: náboj je pryč, hra dál běží, enemy nezraněn.
   }
 
-  // "E" dokončí objective, kde to pro MVP dává smysl — return_to_office
-  // (uvnitř EXIT_ZONE, ale jen POTÉ, co hráč opustil start) a collect_item
-  // (dotyk s itemem). Explicitní stisk, ne pouhý vstup do zóny/dotyk — ať
-  // se výsledek nespustí "omylem" jen průchodem.
+  // "E" — dvě věci, které pro MVP dává smysl řešit explicitním stiskem (ne
+  // pouhým vstupem do zóny/dotykem, ať se nic nespustí "omylem" průchodem):
+  //
+  // 1. Sebrání věci (collect_item, dotyk s itemem, mise ještě "outbound") —
+  //    NEKONČÍ minihru, jen přepne misi do "returning" (viz
+  //    completeObjective) — hráč se musí ještě vrátit do kanceláře.
+  // 2. Návrat do kanceláře (EXIT_ZONE, hráč opustil start, viz
+  //    canReturnToOffice) — tohle JE jediné místo, které volá onComplete.
+  //    Pro collect_item vyžaduje dokončený dílčí úkol (mission.phase ===
+  //    "returning"); dokud není, E v kanceláři misi neukončí.
   function handleObjectiveKey() {
     const game = gameRef.current;
     if (game.status !== "playing") return;
 
-    if (input.objective === "return_to_office") {
-      const inExitZone = circleIntersectsWall(game.player.x, game.player.y, game.player.radius, EXIT_ZONE);
-      if (game.hasLeftStartZone && inExitZone) {
-        completeGame(createReturnedResult(game.elapsedMs, game.shotsUsed), "won");
-      }
-      return;
-    }
-
-    if (input.objective === "collect_item" && !game.itemCollected) {
+    if (input.objective === "collect_item" && game.mission.phase === "outbound") {
       const touchingItem = circlesTouch(
         game.player.x,
         game.player.y,
@@ -251,9 +304,20 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
         ITEM_RADIUS,
       );
       if (touchingItem) {
-        game.itemCollected = true;
-        completeGame(createCollectedItemResult(input.itemToCollect ?? "item", game.elapsedMs, game.shotsUsed), "won");
+        game.mission = completeObjective(game.mission, {
+          type: "collected_item",
+          itemId: input.itemToCollect ?? "fuse",
+        });
+        setMissionPhase(game.mission.phase);
+        return;
       }
+    }
+
+    const inExitZoneNow = circleIntersectsWall(game.player.x, game.player.y, game.player.radius, EXIT_ZONE);
+    if (inExitZoneNow && canReturnToOffice(input.objective, game.mission, game.hasLeftStartZone)) {
+      game.mission = updateMissionPhase(game.mission, "completed");
+      setMissionPhase(game.mission.phase);
+      completeGame(createReturnedResult(game.elapsedMs, game.shotsUsed, game.mission.completedObjective), "won");
     }
   }
 
@@ -359,6 +423,10 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
           }
         }
 
+        // Čistě pro HUD hint (viz getMissionHint) — setState bailout, mění se
+        // jen při skutečném vstupu/opuštění zóny, ne 60×/s.
+        setInExitZone(circleIntersectsWall(game.player.x, game.player.y, game.player.radius, EXIT_ZONE));
+
         if (game.enemy.alive) {
           game.enemy = updateEnemyAi({
             enemy: game.enemy,
@@ -414,6 +482,11 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
         </div>
         <div style={{ textShadow: "0 0 4px rgba(111,227,160,0.8)" }}>NÁBOJE: {shotsLeft}</div>
         <div style={{ color: "#3f7a58" }}>REŽIM: {MODE_LABELS[enemyMode].toUpperCase()}</div>
+        {status === "playing" && (
+          <div style={{ color: "#5dffa0", textShadow: "0 0 4px rgba(93,255,160,0.6)" }}>
+            {getMissionHint(input.objective, input.itemToCollect, missionPhase, inExitZone)}
+          </div>
+        )}
         {woundedMsLeft !== null && (
           <div style={{ color: "#ff5c5c", textShadow: "0 0 4px rgba(255,92,92,0.8)" }}>
             ZRANĚNÍ: {(woundedMsLeft / 1000).toFixed(1)} s
@@ -477,8 +550,10 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel }: Emerg
                       OBJECTIVE SPLNĚNO.
                     </div>
                     <div className="text-xs mb-3" style={{ color: "#6fe3a0" }}>
-                      {result?.outcome === "returned" && "Vrátil ses do kanceláře."}
-                      {result?.outcome === "collected_item" && `Sebráno: ${result.itemId}.`}
+                      {result?.outcome === "returned" &&
+                        (result.completedObjective?.type === "collected_item"
+                          ? `Sebráno: ${result.completedObjective.itemId}. Vrátil ses do kanceláře.`
+                          : "Vrátil ses do kanceláře.")}
                     </div>
                   </>
                 ) : (
@@ -605,7 +680,7 @@ function draw(ctx: CanvasRenderingContext2D, game: MiniGameRefState, gridCanvas:
     ctx.textAlign = "center";
     ctx.fillText("KANCELÁŘ (E)", EXIT_ZONE.x + EXIT_ZONE.width / 2, EXIT_ZONE.y - 6);
     ctx.restore();
-  } else if (input.objective === "collect_item" && !game.itemCollected) {
+  } else if (input.objective === "collect_item" && game.mission.phase === "outbound") {
     ctx.save();
     ctx.shadowColor = "rgba(250, 204, 21, 0.9)";
     ctx.shadowBlur = 10;
