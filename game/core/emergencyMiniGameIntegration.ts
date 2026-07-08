@@ -1,6 +1,7 @@
 import { MAX_POWER } from "../balancing/constants";
 import { NightFeatureFlags } from "../difficulty/nightConfig";
 import { EmergencyMiniGameInput, EmergencyWorldEffect } from "../minigame/types";
+import { SERVICE_FLOOR_EVAC_PLAN } from "../minigame/layouts/serviceFloorEvacPlan";
 
 // První tenké napojení EmergencyMiniGame (game/minigame/*) do hlavní hry
 // (/play) — viz app/play/page.tsx#handleStartEmergencyRun/
@@ -9,9 +10,26 @@ import { EmergencyMiniGameInput, EmergencyWorldEffect } from "../minigame/types"
 // snadno testovat bez reduceru.
 
 /**
+ * Mapa pro skutečný "Jít ven pro baterii" běh z hlavní hry — čte se z
+ * layout registru (`SERVICE_FLOOR_EVAC_PLAN.id`), NIKDY jako magic string
+ * napsaný přímo tady, ať typo v id nikdy neproklouzne beze změny za
+ * kompilace. `service_floor_alpha`/`service_floor_storage` zůstávají
+ * nezměněné a dál dostupné jako baseline/debug layouty na `/minihra` (viz
+ * game/minigame/debugScenarios.ts) — tahle konstanta mění jen výchozí mapu
+ * pro TENHLE jeden konkrétní scénář (battery run), ne layout registr samotný.
+ * Až bude potřeba měnit mapu podle noci/obtížnosti/typu mise, je tohle
+ * jediné místo, které se bude muset upravit.
+ */
+export const DEFAULT_BATTERY_RUN_LAYOUT_ID = SERVICE_FLOOR_EVAC_PLAN.id;
+
+/**
  * Vstup pro "Jít ven pro baterii" — první integrovaný scénář, záměrně bez
  * brokovnice/nábojů (stealth varianta). Brokovnici a munici napojíme později
- * (viz zadání).
+ * (viz zadání). `layoutId` je od teď explicitní (viz DEFAULT_BATTERY_RUN_LAYOUT_ID)
+ * — chybějící/neplatné id by se v EmergencyMiniGame.tsx bezpečně vrátilo na
+ * service_floor_alpha (viz getMiniGameLayout), ale odsud vždy posíláme
+ * skutečné `.id` existujícího layoutu, takže tenhle fallback se v praxi
+ * nikdy neuplatní.
  */
 export function createBatteryEmergencyInput(): EmergencyMiniGameInput {
   return {
@@ -20,6 +38,7 @@ export function createBatteryEmergencyInput(): EmergencyMiniGameInput {
     equipment: { hasShotgun: false, ammo: 0 },
     difficulty: "medium",
     startLocation: "office",
+    layoutId: DEFAULT_BATTERY_RUN_LAYOUT_ID,
   };
 }
 

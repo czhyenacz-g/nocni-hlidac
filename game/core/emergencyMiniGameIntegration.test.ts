@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_BATTERY_RUN_LAYOUT_ID,
   applyEmergencyWorldEffects,
   canStartBatteryEmergencyRun,
   createBatteryEmergencyInput,
   shouldLaunchEmergencyMiniGame,
 } from "./emergencyMiniGameIntegration";
 import { MAX_POWER } from "../balancing/constants";
+import { SERVICE_FLOOR_EVAC_PLAN } from "../minigame/layouts/serviceFloorEvacPlan";
 
 describe("createBatteryEmergencyInput", () => {
   it("has objective collect_item and itemToCollect battery", () => {
@@ -17,6 +19,19 @@ describe("createBatteryEmergencyInput", () => {
   it("has no shotgun and no ammo (stealth run)", () => {
     const input = createBatteryEmergencyInput();
     expect(input.equipment).toEqual({ hasShotgun: false, ammo: 0 });
+  });
+
+  it("uses service_floor_evac_plan as the layoutId (the real, larger map, not the alpha baseline)", () => {
+    const input = createBatteryEmergencyInput();
+    expect(input.layoutId).toBe("service_floor_evac_plan");
+    expect(input.layoutId).toBe(SERVICE_FLOOR_EVAC_PLAN.id);
+    expect(input.layoutId).toBe(DEFAULT_BATTERY_RUN_LAYOUT_ID);
+  });
+});
+
+describe("DEFAULT_BATTERY_RUN_LAYOUT_ID", () => {
+  it("is exactly SERVICE_FLOOR_EVAC_PLAN.id, not a duplicated magic string", () => {
+    expect(DEFAULT_BATTERY_RUN_LAYOUT_ID).toBe(SERVICE_FLOOR_EVAC_PLAN.id);
   });
 });
 
