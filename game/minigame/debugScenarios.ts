@@ -1,5 +1,6 @@
 import { DEFAULT_EMERGENCY_MINIGAME_INPUT } from "./config";
 import { SERVICE_FLOOR_STORAGE } from "./layouts/serviceFloorStorage";
+import { SERVICE_FLOOR_EVAC_PLAN } from "./layouts/serviceFloorEvacPlan";
 import { EmergencyMiniGameInput } from "./types";
 
 // Vývojářské scénáře pro debug stránku /minihra (viz app/minihra/page.tsx)
@@ -175,6 +176,80 @@ export const MINIGAME_DEBUG_SCENARIOS: MiniGameDebugScenario[] = [
       equipment: { hasShotgun: false, ammo: 0 },
       layoutId: SERVICE_FLOOR_STORAGE.id,
       seed: "no_weapon_storage_layout",
+    },
+  },
+
+  // ── service_floor_evac_plan — nejkomplexnější mapa (10 místností, 1500×950,
+  // kombinace úzkých dveří a otevřených vertikálních obchvatů) ─────────────
+  {
+    id: "battery_evac_plan_seed_1",
+    label: "Baterie — evakuační plán (seed 1)",
+    description: "Baterie mise na nejkomplexnějším layoutu (service_floor_evac_plan).",
+    input: {
+      objective: "collect_item",
+      itemToCollect: "battery",
+      equipment: { hasShotgun: false, ammo: 0 },
+      layoutId: SERVICE_FLOOR_EVAC_PLAN.id,
+      seed: "battery_evac_plan_seed_1",
+    },
+  },
+  {
+    id: "battery_evac_plan_seed_2",
+    label: "Baterie — evakuační plán (seed 2)",
+    description: "Stejná mise/mapa jako battery_evac_plan_seed_1, jiný seed — ověř jiný objective/monster spawn slot.",
+    input: {
+      objective: "collect_item",
+      itemToCollect: "battery",
+      equipment: { hasShotgun: false, ammo: 0 },
+      layoutId: SERVICE_FLOOR_EVAC_PLAN.id,
+      seed: "battery_evac_plan_seed_2",
+    },
+  },
+  {
+    id: "bulb_evac_plan",
+    label: "Žárovka — evakuační plán",
+    description: "Žárovka mise na evakuačním layoutu — vybírá jen ze slotů s tagem bulb.",
+    input: {
+      objective: "collect_item",
+      itemToCollect: "bulb",
+      equipment: { hasShotgun: true, ammo: 1 },
+      layoutId: SERVICE_FLOOR_EVAC_PLAN.id,
+      seed: "bulb_evac_plan",
+    },
+  },
+  {
+    id: "fuse_evac_plan",
+    label: "Pojistka — evakuační plán",
+    description: "Pojistka mise na evakuačním layoutu — vybírá jen ze slotů s tagem fuse.",
+    input: {
+      objective: "collect_item",
+      itemToCollect: "fuse",
+      equipment: { hasShotgun: true, ammo: 1 },
+      layoutId: SERVICE_FLOOR_EVAC_PLAN.id,
+      seed: "fuse_evac_plan",
+    },
+  },
+  {
+    id: "shotgun_evac_plan",
+    label: "Brokovnice — evakuační plán",
+    description: "Sebrání brokovnice na evakuačním layoutu — vybírá jen ze slotů s tagem shotgun. Hráč začíná bez zbraně.",
+    input: {
+      objective: "collect_item",
+      itemToCollect: "shotgun",
+      equipment: { hasShotgun: false, ammo: 0 },
+      layoutId: SERVICE_FLOOR_EVAC_PLAN.id,
+      seed: "shotgun_evac_plan",
+    },
+  },
+  {
+    id: "no_weapon_evac_plan",
+    label: "Návrat bez zbraně — evakuační plán",
+    description: "Čistá skrývačka (bez brokovnice) na nejkomplexnějším layoutu — 3 monster spawny, víc alternativních tras.",
+    input: {
+      objective: "return_to_office",
+      equipment: { hasShotgun: false, ammo: 0 },
+      layoutId: SERVICE_FLOOR_EVAC_PLAN.id,
+      seed: "no_weapon_evac_plan",
     },
   },
 ];
