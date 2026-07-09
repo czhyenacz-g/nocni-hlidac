@@ -9,6 +9,20 @@ import ViewSwitchArrow from "./ViewSwitchArrow";
 interface LeftWallViewProps {
   onLookAtDesk: () => void;
   /**
+   * Přepne na DoorView (viz zadání "hráč nemá ztrácet čas navigací přes
+   * control-room obrazovku po monster_reached_office") — obyčejná
+   * navigace, funguje vždy, ne jen v krizi (viz officeBreachActive níže,
+   * které mění jen text/zvýraznění, ne dostupnost).
+   */
+  onLookAtDoor: () => void;
+  /**
+   * `true`, dokud běží "monster_reached_office" krize (viz
+   * game/core/officeBreachAftermath.ts#resolveOfficeBreachPhase !== null,
+   * GameScreen.tsx) — přepne text tlačítka "Otočit se ke dveřím" na
+   * výraznější "RYCHLE KE DVEŘÍM!" a přidá pulzující zvýraznění.
+   */
+  officeBreachActive: boolean;
+  /**
    * Zahájí držení "Nouzově opustit místnost" (viz
    * app/play/page.tsx#handleStartEmergencyRunWindup, GameState.emergencyRunWindup)
    * — stejný "drž a riskuj" vzor jako ruční výměna žárovky v DoorView.tsx.
@@ -72,6 +86,8 @@ const SHOTGUN_LEFT_WALL_IMAGE_SRC = "/object_13/views/shotgun.webp";
 // (spolu s door) mimo běžný HUD/max-w wrapper.
 export default function LeftWallView({
   onLookAtDesk,
+  onLookAtDoor,
+  officeBreachActive,
   onStartEmergencyRunWindup,
   onCancelEmergencyRunWindup,
   doorClosed,
@@ -187,6 +203,25 @@ export default function LeftWallView({
             <div className="h-full bg-red-500 transition-all duration-150" style={{ width: `${windupPercent}%` }} />
           </div>
         )}
+
+        {/* "Otočit se ke dveřím" (viz zadání) — obyčejná navigační zkratka na
+            DoorView, funguje vždy (nezávislá na canStartEmergencyRun/dveřích),
+            ať hráč nemusí přes ViewSwitchArrow zpátky na DeskView a odtud
+            znovu na dveře. V krizi (officeBreachActive, viz
+            game/core/officeBreachAftermath.ts) dostane výraznější text a
+            stejné pulzující zvýraznění jako emergency-run tlačítko výše. */}
+        <button
+          type="button"
+          className="pixel-button tap-target px-3 py-2 text-xs touch-none select-none w-full"
+          style={
+            officeBreachActive
+              ? { animation: "pixel-blink 0.6s steps(2) infinite", backgroundColor: "#ef4444", color: "#fff" }
+              : undefined
+          }
+          onClick={onLookAtDoor}
+        >
+          {officeBreachActive ? COPY.game.turnToDoorUrgentLabel : COPY.game.turnToDoorLabel}
+        </button>
         {/* Nenápadná informace o munici (viz zadání) — jen když má hráč
             brokovnici vůbec (bez ní nedává tenhle text smysl a jen by
             prozrazoval mechaniku předem). */}

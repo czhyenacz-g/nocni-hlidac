@@ -874,14 +874,17 @@ export default function PlayPage() {
         messages.push(COPY.game.emergencyRunThreatFollowedLabel);
       }
 
-      // Zamčené dveře kanceláře (viz zadání) — hráč zůstal venku moc dlouho
-      // po jejich automatickém otevření, monstrum zamířilo na kancelář/
-      // generátor (viz EmergencyWorldEffect "monster_reached_office"). Stejná
-      // existující reakce jako officeThreatOnReturn výše (jen vždy "high" —
-      // monstrum už fakticky DORAZILO, ne jen "bylo poblíž"), nezávislá na
-      // ní — obě se mohou v jedné výpravě uplatnit zároveň.
+      // Zamčené dveře kanceláře (viz zadání) — hráč zůstal venku moc dlouho,
+      // monstrum FYZICKY doběhlo do kanceláře v minihře (viz
+      // EmergencyWorldEffect "monster_reached_office"). Vlastní krizový
+      // aftermath (viz gameReducer.ts APPLY_MONSTER_REACHED_OFFICE_AFTERMATH,
+      // game/core/officeBreachAftermath.ts) — NE stejná reakce jako
+      // officeThreatOnReturn výše (ta jen posune enemyStage). Tenhle scénář
+      // navíc rozbije žárovku a spustí poruchu generátoru, s vlastní delší
+      // reakční dobou. Nezávislé na officeThreatOnReturn výše — obě se mohou
+      // v jedné výpravě uplatnit zároveň.
       if (resolveOfficeThreatTriggeredFromWorldEffects(result.worldEffects)) {
-        dispatch({ type: "APPLY_OFFICE_THREAT_ON_RETURN", intensity: "high" });
+        dispatch({ type: "APPLY_MONSTER_REACHED_OFFICE_AFTERMATH" });
         messages.push(COPY.game.emergencyRunMonsterReachedOfficeLabel);
       }
 

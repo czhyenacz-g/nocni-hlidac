@@ -98,6 +98,16 @@ export type GameAction =
   // záměrně NE `OfficeThreatIntensity` z game/minigame/types.ts — game/core/*
   // nikdy nesmí importovat typy z game/minigame/* (viz types.ts nahoře).
   | { type: "APPLY_OFFICE_THREAT_ON_RETURN"; intensity: "low" | "medium" | "high" }
+  // Monstrum FYZICKY doběhlo do kanceláře v EmergencyMiniGame, PAK se hráč
+  // bezpečně vrátil (viz EmergencyWorldEffect "monster_reached_office" v
+  // game/minigame/types.ts, app/play/page.tsx#handleEmergencyMiniGameComplete
+  // přes resolveOfficeThreatTriggeredFromWorldEffects) — na rozdíl od
+  // APPLY_OFFICE_THREAT_ON_RETURN výše (monstrum jen "bylo poblíž") tenhle
+  // scénář navíc rozbije dveřní žárovku a spustí poruchu generátoru (viz
+  // gameReducer.ts, game/core/officeBreachAftermath.ts) — reálná krize s
+  // delší reakční dobou (OFFICE_BREACH_REACTION_WINDOW_MS), ne jen posunutý
+  // enemyStage. Žádný payload — vždy stejná, pevná reakce.
+  | { type: "APPLY_MONSTER_REACHED_OFFICE_AFTERMATH" }
   // Bezpečný návrat z emergency výpravy (viz game/core/shotgunEquipment.ts,
   // app/play/page.tsx#handleEmergencyMiniGameComplete) — volající tam už
   // spočítal finální hasShotgun/shotgunAmmo (applyShotgunEmergencyReturn),

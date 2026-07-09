@@ -39,7 +39,14 @@ export type EnemyMoveDecision =
   // návratu z minihry (enemyDoorAttackGraceUntilMs) ho zadržela — viz
   // doorEncounter.ts#isDoorAttackGraceActive. Žádná smrt, žádný door bang
   // (ten je jen pro zavřené dveře) — monstrum jen dál čeká u dveří.
-  | "office_threat_grace";
+  | "office_threat_grace"
+  // Monstrum FYZICKY doběhlo do kanceláře v EmergencyMiniGame (viz
+  // EmergencyWorldEffect "monster_reached_office", gameReducer.ts
+  // APPLY_MONSTER_REACHED_OFFICE_AFTERMATH) — posune enemyStage k
+  // dveřím/hale stejně jako "office_threat_on_return", ale s vlastní delší
+  // grace (OFFICE_BREACH_REACTION_WINDOW_MS) a spustí i rozbitou žárovku +
+  // poruchu generátoru (viz game/core/officeBreachAftermath.ts).
+  | "monster_reached_office_aftermath";
 
 // "briefing" = krátký panel před START_SHIFT/RESTART_SHIFT (viz
 // components/screens/BriefingScreen.tsx, game/difficulty/nightConfig.ts) —
@@ -385,6 +392,20 @@ export interface GameState {
    * návrat se nikdy nenastavuje, takže běžný door encounter je beze změny.
    */
   enemyDoorAttackGraceUntilMs: number | null;
+
+  /**
+   * `true` od bezpečného návratu s worldEffect "monster_reached_office" (viz
+   * gameReducer.ts APPLY_MONSTER_REACHED_OFFICE_AFTERMATH,
+   * game/core/officeBreachAftermath.ts#resolveOfficeBreachPhase), dokud hráč
+   * nevyřeší všechny tři kroky (zavřít dveře, restartovat generátor, vyměnit
+   * žárovku) — TICK ho pak sám vypne zpátky na `false`
+   * (isOfficeBreachResolved). Jediné nové pole pro celou tuhle krizi — fáze
+   * samotná se vždy dopočítává čistě z existujících polí
+   * (doorClosed/generatorState/roomBulbs), nikdy neukládaná duplicitně.
+   * Vždy `false` na nový/opakovaný run (createInitialGameState), nikdy
+   * nepřežívá restart/další noc.
+   */
+  officeBreachAftermathActive: boolean;
 
   /**
    * Kam monstrum odešlo poté, co se u zavřených dveří "vzdalo" čekání

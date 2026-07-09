@@ -10,6 +10,33 @@ describe("COPY.game.emergencyRunThreatFollowedLabel", () => {
   });
 });
 
+// "monster_reached_office" krize (viz zadání, game/core/officeBreachAftermath.ts)
+// — krátké texty, hráč musí hned pochopit pořadí: dveře -> generátor -> žárovka.
+describe("COPY.game office breach aftermath copy", () => {
+  it("emergencyRunMonsterReachedOfficeLabel is the exact required two-line warning", () => {
+    expect(COPY.game.emergencyRunMonsterReachedOfficeLabel).toBe("Monstrum se dostalo ke kanceláři.\nRYCHLE ZAVŘI DVEŘE!");
+  });
+
+  it("each phase has both a headline and a hint, all non-empty and distinct", () => {
+    const strings = [
+      COPY.game.officeBreachCloseDoorLabel,
+      COPY.game.officeBreachCloseDoorHintLabel,
+      COPY.game.officeBreachRestartGeneratorLabel,
+      COPY.game.officeBreachRestartGeneratorHintLabel,
+      COPY.game.officeBreachReplaceBulbLabel,
+      COPY.game.officeBreachReplaceBulbHintLabel,
+    ];
+    for (const text of strings) expect(text.length).toBeGreaterThan(0);
+    expect(new Set(strings).size).toBe(strings.length);
+  });
+
+  it("turnToDoorLabel and turnToDoorUrgentLabel are non-empty and distinct", () => {
+    expect(COPY.game.turnToDoorLabel.length).toBeGreaterThan(0);
+    expect(COPY.game.turnToDoorUrgentLabel.length).toBeGreaterThan(0);
+    expect(COPY.game.turnToDoorUrgentLabel).not.toBe(COPY.game.turnToDoorLabel);
+  });
+});
+
 // Přejmenování odkazu na žebříček v hlavním menu (viz components/screens/MainMenuScreen.tsx) —
 // route/link zůstává /leaderboard, mění se jen viditelný text.
 describe("COPY.menu.leaderboardLinkLabel", () => {

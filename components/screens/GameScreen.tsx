@@ -6,6 +6,7 @@ import { COPY } from "@/content/copy";
 import { computeNearRoomBulbWearRatio } from "@/game/core/roomBulbs";
 import { canReplaceBulb } from "@/game/core/gameReducer";
 import { canStartBatteryEmergencyRun, canStartShotgunEmergencyRun } from "@/game/core/emergencyMiniGameIntegration";
+import { resolveOfficeBreachPhase } from "@/game/core/officeBreachAftermath";
 import SceneBackground from "@/components/SceneBackground";
 import DeskView from "../game/DeskView";
 import DoorView from "../game/DoorView";
@@ -17,6 +18,7 @@ import PowerMeter from "../game/PowerMeter";
 import ShiftTimer from "../game/ShiftTimer";
 import AudioToggle from "../game/AudioToggle";
 import DebugPanel from "../game/DebugPanel";
+import OfficeBreachBanner from "../game/OfficeBreachBanner";
 
 interface GameScreenProps {
   state: GameState;
@@ -106,6 +108,11 @@ export default function GameScreen({
   // KTEROU z nich app/play/page.tsx skutečně spustí, se rozhoduje samostatně
   // (stejná priorita) až při skutečném doběhnutí držení, ne tady.
   const canStartEmergencyRun = canStartBatteryRun || canStartShotgunEmergencyRun(state.nightFeatures, state.hasShotgun);
+  // "monster_reached_office" krize (viz zadání, game/core/officeBreachAftermath.ts)
+  // — `null` mimo krizi/po jejím vyřešení, jinak která ze tří fází (dveře ->
+  // generátor -> žárovka) je zrovna aktuální. Jediné místo, které tohle
+  // počítá — OfficeBreachBanner i LeftWallView dostanou jen hotovou hodnotu.
+  const officeBreachPhase = resolveOfficeBreachPhase(state);
   // DEV panel je schválně skrytý ve výchozím stavu (ne jen collapsed <details>
   // jako dřív) — objeví se jen po pravém kliku na popisek "Noc {n}" v
   // ShiftTimeru (viz onNightLabelContextMenu níže). Čistě UI viditelnost dev
@@ -140,6 +147,13 @@ export default function GameScreen({
           (28rem -> 33.6rem) — hlavně kvůli kamerovému detailu (CameraView),
           který díky tomu může být po "ladění signálu" větší. */}
       <div className={`flex flex-col gap-4 ${isWideSceneView ? "" : "max-w-[33.6rem] mx-auto"}`}>
+        {/* Krizový panel (viz zadání, "monster_reached_office") — na rozdíl
+            od ShiftTimer/PowerMeter níže se renderuje NA VŠECH pohledech
+            (i door/left_wall), ať hráč instrukci nepropásne bez ohledu na
+            to, kam se zrovna dívá. Mimo blackout (ten celou obrazovku
+            nahrazuje vlastní atmosférou, viz BlackoutView níže). */}
+        {state.gameStatus !== "blackout" && <OfficeBreachBanner phase={officeBreachPhase} />}
+
         {/* V DoorView/LeftWallView schválně nerenderujeme čas/zvuk/energii
             vůbec (ne jen skryté přes CSS) — hráč se má soustředit na scénu,
             ne na obecné HUD. Desk/generator zůstávají beze změny. */}
@@ -208,6 +222,8 @@ export default function GameScreen({
             {state.playerView === "left_wall" && (
               <LeftWallView
                 onLookAtDesk={onLookAtDesk}
+                onLookAtDoor={onLookAtDoor}
+                officeBreachActive={officeBreachPhase !== null}
                 onStartEmergencyRunWindup={onStartEmergencyRunWindup}
                 onCancelEmergencyRunWindup={onCancelEmergencyRunWindup}
                 doorClosed={state.doorClosed}

@@ -45,6 +45,15 @@ export const OFFICE_THREAT_GRACE_LOW_MS = 1000;
 export const OFFICE_THREAT_GRACE_MEDIUM_MS = 1800;
 export const OFFICE_THREAT_GRACE_HIGH_MS = 1500;
 
+// Reakční okno po "monster_reached_office" (viz zadání, EmergencyWorldEffect
+// v game/minigame/types.ts, gameReducer.ts APPLY_MONSTER_REACHED_OFFICE_AFTERMATH)
+// — monstrum tentokrát FYZICKY doběhlo až ke kanceláři (ne jen "bylo poblíž"
+// jako u officeThreatOnReturn výše), hráč proto potřebuje reálně delší čas
+// doběhnout ke dveřím než OFFICE_THREAT_GRACE_HIGH_MS. Stejný mechanismus
+// (GameState.enemyDoorAttackGraceUntilMs, doorEncounter.ts#isDoorAttackGraceActive),
+// jen delší, vlastní konstanta — nemění balancing existující officeThreatOnReturn cesty.
+export const OFFICE_BREACH_REACTION_WINDOW_MS = 5_000;
+
 // Bušení do dveří (monster_door_bang, viz GameState.doorBangSeq,
 // game/audio/doorBangPlayback.ts#chooseDoorBangPlaybackPlan) — doorBangSeq se
 // může zvyšovat opakovaně (monstrum tlačí na zavřené dveře tik za tikem), ale

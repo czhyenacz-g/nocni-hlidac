@@ -122,7 +122,26 @@ export const COPY = {
     // hráč zůstal venku moc dlouho po otevření dveří (viz zadání "zamčené
     // dveře", EmergencyWorldEffect "monster_reached_office") — nezávislé na
     // emergencyRunThreatFollowedLabel výše (jiný spouštěč), stejný styl/tón.
-    emergencyRunMonsterReachedOfficeLabel: "Zatímco jsi byl venku, něco se dostalo blíž ke kanceláři.\nZavři dveře!",
+    emergencyRunMonsterReachedOfficeLabel: "Monstrum se dostalo ke kanceláři.\nRYCHLE ZAVŘI DVEŘE!",
+    // Trvalý krizový panel po monster_reached_office (viz
+    // game/core/officeBreachAftermath.ts#resolveOfficeBreachPhase,
+    // components/game/OfficeBreachBanner.tsx) — tři fáze v pevném pořadí
+    // (dveře -> generátor -> žárovka), každá "hlavička" (výrazný pokyn) +
+    // "hint" (krátké vysvětlení proč). Texty drženy krátké, ať hráč hned
+    // pochopí pořadí kroků.
+    officeBreachCloseDoorLabel: "RYCHLE ZAVŘI DVEŘE!",
+    officeBreachCloseDoorHintLabel: "Něco je hned za dveřmi.",
+    officeBreachRestartGeneratorLabel: "RESTARTUJ GENERÁTOR.",
+    officeBreachRestartGeneratorHintLabel: "Dveře drží. Teď generátor.",
+    officeBreachReplaceBulbLabel: "Žárovku vyměň, až bude chodba čistá.",
+    officeBreachReplaceBulbHintLabel: "Generátor běží. Zbývá vyměnit žárovku.",
+    // Tlačítko na LeftWallView (viz zadání "hráč nemá ztrácet čas navigací
+    // přes control-room obrazovku") — přepne rovnou na DoorView. Klidový
+    // text mimo krizi, výraznější varianta při aktivní krizi (viz
+    // resolveOfficeBreachPhase !== null) — LeftWallView.tsx zvolí, který
+    // z nich použije.
+    turnToDoorLabel: "Otočit se ke dveřím",
+    turnToDoorUrgentLabel: "RYCHLE KE DVEŘÍM!",
     // Krátká zpráva po bezpečném návratu, kdy hráč PRVNÍ krát získá brokovnici
     // (viz shotgun_acquired worldEffect, game/core/shotgunEquipment.ts) —
     // stejné místo/styl jako emergencyRunEnergyRechargedLabel výše.

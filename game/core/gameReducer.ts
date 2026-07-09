@@ -6,6 +6,7 @@ import {
   DOOR_DEATH_REVEAL_DURATION_MS,
   EMERGENCY_RUN_WINDUP_DURATION_MS,
   MAX_POWER,
+  OFFICE_BREACH_REACTION_WINDOW_MS,
   OFFICE_THREAT_GRACE_HIGH_MS,
   OFFICE_THREAT_GRACE_LOW_MS,
   OFFICE_THREAT_GRACE_MEDIUM_MS,
@@ -16,6 +17,7 @@ import { DEFAULT_DIFFICULTY, DIFFICULTY_RULES, Difficulty } from "../difficulty/
 import { computeNightScaling, NightScaling } from "../difficulty/nightScaling";
 import { computeStressTimeScale } from "./stressTimeScale";
 import { isNearRoomLightActive } from "./roomBulbs";
+import { isOfficeBreachResolved } from "./officeBreachAftermath";
 import { computePowerDrainBreakdown } from "./powerDrain";
 import { canStartBatteryEmergencyRun } from "./emergencyMiniGameIntegration";
 import { resolveLivesRemainingAfterDeath } from "./gameMode";
@@ -908,6 +910,22 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           };
         }
 
+        // "monster_reached_office" krize (viz officeBreachAftermath.ts) se
+        // sama vypne, jakmile hráč vyřeší všechny tři kroky — jinak by
+        // libovolná POZDĚJŠÍ, nesouvisející porucha generátoru/přirozeně
+        // prasklá žárovka omylem znovu ukázala krizové texty (viz
+        // resolveOfficeBreachPhase, který čte stejná pole). Merguje stejné
+        // hodnoty, jaké skutečně skončí v returnovaném stavu (roomBulbs z
+        // bulbReplacementUpdate MÁ přednost před roomBulbsUpdate, přesně
+        // jako spread pořadí níže).
+        const officeBreachAftermathActive =
+          state.officeBreachAftermathActive &&
+          !isOfficeBreachResolved({
+            doorClosed: state.doorClosed,
+            generatorState: generatorUpdate.generatorState,
+            bulbBroken: (bulbReplacementUpdate.roomBulbs ?? roomBulbsUpdate.roomBulbs).nearRoom.broken,
+          });
+
         return {
           ...state,
           ...generatorUpdate,
@@ -919,6 +937,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           elapsedMs,
           remainingMs,
           power,
+          officeBreachAftermathActive,
         };
       }
 
@@ -1105,6 +1124,55 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           // doorEncounter.ts#isDoorAttackGraceActive) — jen pro OTEVŘENÉ dveře;
           // zavřené dveře blokují útok/spustí door bang bez ohledu na tohle.
           enemyDoorAttackGraceUntilMs: state.elapsedMs + OFFICE_THREAT_GRACE_DURATION_MS[action.intensity],
+        };
+      }
+
+      case "APPLY_MONSTER_REACHED_OFFICE_AFTERMATH": {
+        // Stejné guardy jako APPLY_OFFICE_THREAT_ON_RETURN výše.
+        if (!state.isRunning || state.gameStatus === "blackout" || state.doorDeathRevealUntilMs !== null)
+          return state;
+
+        // Stejný "high" kandidátní seznam/reuse jako APPLY_OFFICE_THREAT_ON_RETURN
+        // (viz OFFICE_THREAT_STAGE_CANDIDATES výše) — monstrum už fyzicky
+        // doběhlo do kanceláře v minihře, "high" (u dveří/hala) je jediná
+        // smysluplná intenzita, žádná volba navíc.
+        const nextStage = pickOfficeThreatStage(state.enemyRoute, "high");
+        if (nextStage === null) return state;
+
+        const nextIsAtDoor = nextStage === "at_door" || nextStage === "breach";
+
+        return {
+          ...state,
+          enemyStage: nextStage,
+          lastEnemyDecision: "monster_reached_office_aftermath",
+          enemyAtDoorSinceMs: nextIsAtDoor ? state.elapsedMs : null,
+          enemyDoorHoldTargetMs: null,
+          enemyDoorHoldProgressMs: 0,
+          monsterRetreatedTo: null,
+          monsterRetreatVerified: false,
+          // Delší reakční okno než officeThreatOnReturn (viz
+          // OFFICE_BREACH_REACTION_WINDOW_MS v balancing/constants.ts) —
+          // monstrum tentokrát FYZICKY dorazilo, hráč potřebuje reálný čas
+          // doběhnout ke dveřím, ne jen 1–1.8s.
+          enemyDoorAttackGraceUntilMs: state.elapsedMs + OFFICE_BREACH_REACTION_WINDOW_MS,
+          // Dveřní/kancelářská žárovka praskne přes existující roomBulbs
+          // systém (viz game/core/roomBulbs.ts) — stejné pole/tvar jako
+          // přirozené prasknutí v TICKu, jen vynucené okamžitě. Bez zbytečné
+          // druhé bulb_break audio reakce, pokud už byla prasklá.
+          roomBulbs: {
+            ...state.roomBulbs,
+            nearRoom: { ...state.roomBulbs.nearRoom, remainingMs: 0, broken: true },
+          },
+          bulbBreakSeq: state.roomBulbs.nearRoom.broken ? state.bulbBreakSeq : state.bulbBreakSeq + 1,
+          // Generátor vypadne přes existující generatorState mechanismus
+          // (viz updateGenerator výše) — rovnou "criticalBeeping" (hlasité,
+          // urgentní), ne tichý "silentFault": hráč se právě vrátil ze
+          // stresové situace, tichou poruchu by si nemusel včas všimnout.
+          generatorState: "criticalBeeping",
+          generatorSilentSinceMs: null,
+          generatorNextBeepAtMs: state.elapsedMs,
+          generatorFaultCount: state.generatorFaultCount + 1,
+          officeBreachAftermathActive: true,
         };
       }
 

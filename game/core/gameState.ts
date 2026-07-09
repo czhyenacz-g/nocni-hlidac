@@ -83,6 +83,7 @@ export function createInitialGameState(
     monsterRetreatRoarSeq: 0,
     doorBangSeq: 0,
     enemyDoorAttackGraceUntilMs: null,
+    officeBreachAftermathActive: false,
     monsterRetreatedTo: null,
     monsterRetreatVerified: false,
 
