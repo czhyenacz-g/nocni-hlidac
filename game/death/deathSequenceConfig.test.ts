@@ -1,0 +1,102 @@
+import { describe, expect, it } from "vitest";
+import { DEATH_SEQUENCE_DEFAULT_CONFIG, DeathSequenceConfig, clampDeathSequenceConfig } from "./deathSequenceConfig";
+
+describe("DEATH_SEQUENCE_DEFAULT_CONFIG", () => {
+  it("is a valid config: all opacity/volume fields are within 0..1", () => {
+    const unitFields: (keyof DeathSequenceConfig)[] = [
+      "whiteFlashOpacity",
+      "redFlashOpacity",
+      "darknessOpacity",
+      "noiseOpacity",
+      "deathVolume",
+      "impactVolume",
+      "roarVolume",
+      "glitchVolume",
+    ];
+    for (const field of unitFields) {
+      const value = DEATH_SEQUENCE_DEFAULT_CONFIG[field] as number;
+      expect(value).toBeGreaterThanOrEqual(0);
+      expect(value).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it("is a valid config: all *Ms timing fields are non-negative", () => {
+    const msFields: (keyof DeathSequenceConfig)[] = [
+      "preDeathDelayMs",
+      "silenceMs",
+      "whiteFlashAtMs",
+      "whiteFlashDurationMs",
+      "redFlashAtMs",
+      "redFlashDurationMs",
+      "shakeAtMs",
+      "shakeDurationMs",
+      "deathFrameAtMs",
+      "gameOverAtMs",
+    ];
+    for (const field of msFields) {
+      expect(DEATH_SEQUENCE_DEFAULT_CONFIG[field] as number).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it("is unchanged (not mutated) by clampDeathSequenceConfig — it's already valid", () => {
+    expect(clampDeathSequenceConfig(DEATH_SEQUENCE_DEFAULT_CONFIG)).toEqual(DEATH_SEQUENCE_DEFAULT_CONFIG);
+  });
+});
+
+describe("clampDeathSequenceConfig", () => {
+  it("clamps opacity/volume fields to [0, 1]", () => {
+    const config: DeathSequenceConfig = {
+      ...DEATH_SEQUENCE_DEFAULT_CONFIG,
+      whiteFlashOpacity: 1.5,
+      redFlashOpacity: -0.2,
+      darknessOpacity: 2,
+      noiseOpacity: -1,
+      deathVolume: 1.2,
+      impactVolume: -0.5,
+      roarVolume: 3,
+      glitchVolume: -3,
+    };
+    const clamped = clampDeathSequenceConfig(config);
+    expect(clamped.whiteFlashOpacity).toBe(1);
+    expect(clamped.redFlashOpacity).toBe(0);
+    expect(clamped.darknessOpacity).toBe(1);
+    expect(clamped.noiseOpacity).toBe(0);
+    expect(clamped.deathVolume).toBe(1);
+    expect(clamped.impactVolume).toBe(0);
+    expect(clamped.roarVolume).toBe(1);
+    expect(clamped.glitchVolume).toBe(0);
+  });
+
+  it("clamps negative ms fields to 0", () => {
+    const config: DeathSequenceConfig = {
+      ...DEATH_SEQUENCE_DEFAULT_CONFIG,
+      preDeathDelayMs: -100,
+      silenceMs: -1,
+      whiteFlashAtMs: -50,
+      gameOverAtMs: -1,
+    };
+    const clamped = clampDeathSequenceConfig(config);
+    expect(clamped.preDeathDelayMs).toBe(0);
+    expect(clamped.silenceMs).toBe(0);
+    expect(clamped.whiteFlashAtMs).toBe(0);
+    expect(clamped.gameOverAtMs).toBe(0);
+  });
+
+  it("clamps negative shakeIntensity to 0 but does not cap it at any upper bound", () => {
+    expect(clampDeathSequenceConfig({ ...DEATH_SEQUENCE_DEFAULT_CONFIG, shakeIntensity: -5 }).shakeIntensity).toBe(0);
+    expect(clampDeathSequenceConfig({ ...DEATH_SEQUENCE_DEFAULT_CONFIG, shakeIntensity: 500 }).shakeIntensity).toBe(500);
+  });
+
+  it("leaves boolean switches untouched", () => {
+    const config: DeathSequenceConfig = {
+      ...DEATH_SEQUENCE_DEFAULT_CONFIG,
+      whiteFlashEnabled: false,
+      reducedFlashes: true,
+      showPhaseDebug: true,
+    };
+    const clamped = clampDeathSequenceConfig(config);
+    expect(clamped.whiteFlashEnabled).toBe(false);
+    expect(clamped.reducedFlashes).toBe(true);
+    expect(clamped.showPhaseDebug).toBe(true);
+  });
+});
