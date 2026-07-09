@@ -865,6 +865,14 @@ export function createReturnedResult(
   officeThreatOnReturn?: OfficeThreatOnReturn,
   monsterHit?: boolean,
   extraCollectedItemIds?: MiniGameItemId[],
+  /**
+   * `true`, jen když monstrum BĚHEM tyhle výpravy skutečně zamířilo na
+   * kancelář/generátor (viz EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS,
+   * EmergencyMiniGame.tsx#tick) — nezávislé na `extraCollectedItemIds`,
+   * přidá se do `worldEffects` navíc (ne misto) jich, viz
+   * EmergencyWorldEffect "monster_reached_office".
+   */
+  officeThreatTriggered?: boolean,
 ): EmergencyMiniGameResult {
   const threat = officeThreatOnReturn?.active ? { officeThreatOnReturn } : {};
   const hit = monsterHit ? { monsterHit: true as const } : {};
@@ -872,7 +880,10 @@ export function createReturnedResult(
 
   const primaryItemIds: MiniGameItemId[] = completedObjective?.type === "collected_item" ? [completedObjective.itemId] : [];
   const collectedItems = [...primaryItemIds, ...(extraCollectedItemIds ?? [])];
-  const worldEffects = collectedItems.flatMap(worldEffectsForItem);
+  const worldEffects = [
+    ...collectedItems.flatMap(worldEffectsForItem),
+    ...(officeThreatTriggered ? [{ type: "monster_reached_office" as const }] : []),
+  ];
 
   return {
     outcome: "returned",
@@ -914,29 +925,58 @@ export function completeObjective(mission: EmergencyMissionState, completedObjec
   return updateMissionPhase({ ...mission, completedObjective }, "returning");
 }
 
+// ── Zamčené dveře kanceláře (viz zadání "diegetická herní mechanika",
+// EMERGENCY_OFFICE_DOOR_LOCK_MS/EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS v
+// config.ts) — čisté funkce jen z `elapsedMs`, žádný vlastní stav. Dveře
+// se zamykají HNED od startu výpravy a otevírají se samy po
+// EMERGENCY_OFFICE_DOOR_LOCK_MS, bez ohledu na to, co hráč mezitím dělá.
+
+/** `true`, dokud jsou dveře kanceláře automaticky zamčené (viz EMERGENCY_OFFICE_DOOR_LOCK_MS). */
+export function isOfficeDoorLocked(elapsedMs: number, doorLockMs: number): boolean {
+  return elapsedMs < doorLockMs;
+}
+
+/** Kolik ms zbývá do automatického otevření dveří — 0, jakmile jsou už otevřené (nikdy záporné, viz HUD countdown). */
+export function msUntilOfficeDoorOpens(elapsedMs: number, doorLockMs: number): number {
+  return Math.max(0, doorLockMs - elapsedMs);
+}
+
+/** Kolik ms uplynulo OD automatického otevření dveří — 0, dokud jsou pořád zamčené. */
+export function msSinceOfficeDoorOpened(elapsedMs: number, doorLockMs: number): number {
+  return Math.max(0, elapsedMs - doorLockMs);
+}
+
+/**
+ * `true`, jakmile monstrum "netrpělivě" zamíří na kancelář/generátor — hráč
+ * zůstal venku déle než EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS PO
+ * otevření dveří (viz zadání). Monotónní v `elapsedMs` (jednou true, zůstává
+ * true) — volající (EmergencyMiniGame.tsx#tick) si samo hlídá, že na tenhle
+ * přechod zareaguje jen jednou (viz MiniGameRefState.officeThreatTriggered).
+ */
+export function isMonsterOfficeThreatArmed(elapsedMs: number, doorLockMs: number, monsterTargetDelayMs: number): boolean {
+  return msSinceOfficeDoorOpened(elapsedMs, doorLockMs) >= monsterTargetDelayMs;
+}
+
 /**
  * Jestli teď (v exit zóně, E stisknuté) může mise skončit jako "returned".
  * Vždy vyžaduje, aby hráč už opustil startovní zónu (viz
- * START_ZONE_LEAVE_RADIUS_PX/hasLeftStartZone) — beze změny oproti
- * dosavadnímu chování return_to_office. Pro "collect_item" stačí JEDNA ze
- * dvou podmínek: dokončený dílčí úkol (mission.phase === "returning"), NEBO
- * uplynulý `returnUnlockedByTime` (viz EMERGENCY_RETURN_UNLOCK_DELAY_MS
- * v config.ts) — hidden true ending loot smyčka (viz zadání) potřebuje jít
- * ven, střelit monstrum a vrátit se pro další náboj, i když loot objective
- * (baterie/žárovka/brokovnice) vůbec nesplní. Dokud ani jedna podmínka
- * neplatí, návrat do kanceláře misi neukončí (jen HUD hint "Nejdřív splň
- * úkol."/"Počkej chvíli."). Pro "survive" v MVP exit zóna misi nekončí vůbec.
+ * START_ZONE_LEAVE_RADIUS_PX/hasLeftStartZone) A že jsou dveře kanceláře už
+ * automaticky otevřené (viz `officeDoorUnlocked`,
+ * EMERGENCY_OFFICE_DOOR_LOCK_MS v config.ts) — HARD gate pro VŠECHNY
+ * objectives, i return_to_office. Jakmile jsou dveře otevřené, "collect_item"
+ * se vrátí i bez dokončeného dílčího úkolu (mission.phase je tu záměrně
+ * ignorované) — dveře, ne splnění úkolu, jsou teď jediná podmínka napětí
+ * (viz zadání "cílem je, aby zamčené dveře opravdu vytvářely napětí").
+ * Pro "survive" v MVP exit zóna misi nekončí vůbec.
  */
 export function canReturnToOffice(
   objective: MiniGameObjective,
-  mission: EmergencyMissionState,
   hasLeftStartZone: boolean,
-  returnUnlockedByTime: boolean,
+  officeDoorUnlocked: boolean,
 ): boolean {
   if (!hasLeftStartZone) return false;
-  if (objective === "return_to_office") return true;
-  if (objective === "collect_item") return mission.phase === "returning" || returnUnlockedByTime;
-  return false;
+  if (!officeDoorUnlocked) return false;
+  return objective === "return_to_office" || objective === "collect_item";
 }
 
 // ── Kancelářský marker (viz EmergencyMiniGame.tsx#draw) — čistě orientační/
@@ -946,35 +986,44 @@ export function canReturnToOffice(
 
 /**
  * Jestli je "vracím se" už aktivní krok mise PRÁVĚ TEĎ (bez ohledu na
- * hráčovu aktuální pozici) — pro "collect_item" je to přesně
- * `mission.phase === "returning"` (item už je sebraný). Pro
- * "return_to_office" mise do "returning" nikdy nepřejde (žádný dílčí úkol k
- * dokončení, viz completeObjective) — ten případ řeší getOfficeMarkerLabel
- * zvlášť přes hasLeftStartZone/inExitZone. Pro "survive" žádný return krok
- * neexistuje.
+ * hráčovu aktuální pozici) — pro "collect_item" je to `mission.phase ===
+ * "returning"` (item už je sebraný) A dveře kanceláře už jsou otevřené (viz
+ * `officeDoorUnlocked`) — dokud jsou dveře zamčené, marker nesmí slibovat
+ * "E pro návrat", i kdyby item byl dávno sebraný (viz canReturnToOffice).
+ * Pro "return_to_office" mise do "returning" nikdy nepřejde (žádný dílčí
+ * úkol k dokončení, viz completeObjective) — ten případ řeší
+ * getOfficeMarkerLabel zvlášť přes hasLeftStartZone/inExitZone. Pro
+ * "survive" žádný return krok neexistuje.
  */
-export function shouldHighlightOfficeMarker(mission: EmergencyMissionState, objective: MiniGameObjective): boolean {
-  return objective === "collect_item" && mission.phase === "returning";
+export function shouldHighlightOfficeMarker(
+  mission: EmergencyMissionState,
+  objective: MiniGameObjective,
+  officeDoorUnlocked: boolean,
+): boolean {
+  return officeDoorUnlocked && objective === "collect_item" && mission.phase === "returning";
 }
 
 /**
  * Text markeru kanceláře na mapě — "KANCELÁŘ" jako tlumený orientační bod,
- * "KANCELÁŘ — E pro návrat" jakmile má stisk E v exit zóně reálně smysl
- * (collect_item po sebrání věci NEBO po uplynutém returnUnlockedByTime, nebo
- * return_to_office po opuštění startu A skutečném vstupu do exit zóny).
- * Nikdy nerozhoduje, jestli E skutečně dokončí misi — o tom rozhoduje
- * výhradně canReturnToOffice; tahle funkce jen drží marker text v souladu
- * s ním, ať UI nikdy neslibuje "KANCELÁŘ" bez akce, když E fakticky funguje.
+ * dokud jsou dveře zamčené NEBO hráč není v pozici, odkud by E fungovalo;
+ * "KANCELÁŘ — E pro návrat" jakmile stisk E v exit zóně reálně dokončí misi
+ * (viz canReturnToOffice — jednou otevřené dveře platí pro oba objectives
+ * stejně, mission.phase se dál řeší jen přes shouldHighlightOfficeMarker
+ * pro "zvýraznění na dálku"). Nikdy sama nerozhoduje, jestli E skutečně
+ * dokončí misi — o tom rozhoduje výhradně canReturnToOffice; tahle funkce
+ * jen drží marker text v souladu s ním.
  */
 export function getOfficeMarkerLabel(
   mission: EmergencyMissionState,
   objective: MiniGameObjective,
   inExitZone: boolean,
   hasLeftStartZone: boolean,
-  returnUnlockedByTime: boolean,
+  officeDoorUnlocked: boolean,
 ): string {
-  if (shouldHighlightOfficeMarker(mission, objective)) return "KANCELÁŘ — E pro návrat";
-  if (objective === "return_to_office" && hasLeftStartZone && inExitZone) return "KANCELÁŘ — E pro návrat";
-  if (objective === "collect_item" && hasLeftStartZone && inExitZone && returnUnlockedByTime) return "KANCELÁŘ — E pro návrat";
+  if (shouldHighlightOfficeMarker(mission, objective, officeDoorUnlocked)) return "KANCELÁŘ — E pro návrat";
+  if (!officeDoorUnlocked) return "KANCELÁŘ";
+  if ((objective === "return_to_office" || objective === "collect_item") && hasLeftStartZone && inExitZone) {
+    return "KANCELÁŘ — E pro návrat";
+  }
   return "KANCELÁŘ";
 }

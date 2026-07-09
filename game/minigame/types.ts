@@ -166,7 +166,17 @@ export type EmergencyWorldEffect =
   | { type: "generator_repaired" }
   | { type: "bulbs_serviced" }
   | { type: "shotgun_acquired" }
-  | { type: "ammo_acquired"; amount: number };
+  | { type: "ammo_acquired"; amount: number }
+  /**
+   * Monstrum si po EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS venku
+   * netrpělivě počkalo a zamířilo na kancelář/generátor (viz zadání
+   * "zamčené dveře", EmergencyMiniGame.tsx#tick) — NENÍ vázané na žádný
+   * sebraný item, `createReturnedResult` ho přidá nezávisle na
+   * `collectedItems`. Hlavní hra (app/play/page.tsx) na tohle reaguje
+   * stejně jako na `officeThreatOnReturn` — posune enemyStage blíž ke
+   * dveřím, nikdy nezpůsobí smrt přímo.
+   */
+  | { type: "monster_reached_office" };
 
 // ── Hrozba přenesená zpět do hlavní hry (viz
 // game/minigame/officeThreat.ts#evaluateOfficeThreatOnReturn) — vyhodnotí se

@@ -118,6 +118,11 @@ export const COPY = {
     // zobrazovací element (app/play/page.tsx) má whitespace-pre-line, ať se
     // \n skutečně zalomí, ne slibuje okamžitou smrt (ta se tímhle nespustí).
     emergencyRunThreatFollowedLabel: "Zdá se, že se nevracíš sám.\nZavři dveře!",
+    // Zpráva po návratu, kdy monstrum zamířilo na kancelář/generátor, protože
+    // hráč zůstal venku moc dlouho po otevření dveří (viz zadání "zamčené
+    // dveře", EmergencyWorldEffect "monster_reached_office") — nezávislé na
+    // emergencyRunThreatFollowedLabel výše (jiný spouštěč), stejný styl/tón.
+    emergencyRunMonsterReachedOfficeLabel: "Zatímco jsi byl venku, něco se dostalo blíž ke kanceláři.\nZavři dveře!",
     // Krátká zpráva po bezpečném návratu, kdy hráč PRVNÍ krát získá brokovnici
     // (viz shotgun_acquired worldEffect, game/core/shotgunEquipment.ts) —
     // stejné místo/styl jako emergencyRunEnergyRechargedLabel výše.

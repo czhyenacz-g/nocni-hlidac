@@ -22,10 +22,14 @@ import {
   getOfficeMarkerLabel,
   hasLineOfSight,
   isEnemyHit,
+  isMonsterOfficeThreatArmed,
+  isOfficeDoorLocked,
   isPointInCone,
   isTargetInCone,
   lineIntersectsRect,
   moveWithWallSliding,
+  msSinceOfficeDoorOpened,
+  msUntilOfficeDoorOpens,
   resolveEquipmentFromInput,
   shouldHighlightOfficeMarker,
   tickEnemyStun,
@@ -874,6 +878,39 @@ describe("result builders", () => {
     });
   });
 
+  // Zamčené dveře kanceláře (viz zadání) — monstrum zamířilo na kancelář/
+  // generátor (7. parametr) přidá "monster_reached_office" do worldEffects,
+  // nezávisle na (a navíc k) collectedItems/worldEffectsForItem.
+  describe("createReturnedResult with officeThreatTriggered (monster reached the office)", () => {
+    it("adds monster_reached_office to worldEffects even without any loot", () => {
+      expect(createReturnedResult(25000, 0, undefined, undefined, undefined, undefined, true)).toEqual({
+        outcome: "returned",
+        elapsedMs: 25000,
+        shotsUsed: 0,
+        worldEffects: [{ type: "monster_reached_office" }],
+      });
+    });
+
+    it("combines monster_reached_office with loot worldEffects (order: loot first, then the threat effect)", () => {
+      expect(createReturnedResult(25000, 0, undefined, undefined, undefined, ["battery"], true)).toEqual({
+        outcome: "returned",
+        elapsedMs: 25000,
+        shotsUsed: 0,
+        collectedItems: ["battery"],
+        worldEffects: [{ type: "energy_recharged", amount: 35 }, { type: "monster_reached_office" }],
+      });
+    });
+
+    it("omits monster_reached_office when explicitly false or not passed", () => {
+      expect(createReturnedResult(5000, 0, undefined, undefined, undefined, undefined, false)).toEqual({
+        outcome: "returned",
+        elapsedMs: 5000,
+        shotsUsed: 0,
+      });
+      expect(createReturnedResult(5000, 0)).toEqual({ outcome: "returned", elapsedMs: 5000, shotsUsed: 0 });
+    });
+  });
+
   it("createFailedResult", () => {
     expect(createFailedResult(9999, 1)).toEqual({
       outcome: "failed",
@@ -968,114 +1005,138 @@ describe("mission — completeObjective / canReturnToOffice / updateMissionPhase
     expect(completed).toEqual({ phase: "completed", completedObjective: { type: "collected_item", itemId: "key" } });
   });
 
-  it("canReturnToOffice: return_to_office requires only hasLeftStartZone", () => {
-    const mission = createInitialMissionState();
-    expect(canReturnToOffice("return_to_office", mission, false, false)).toBe(false);
-    expect(canReturnToOffice("return_to_office", mission, true, false)).toBe(true);
+  // Zamčené dveře kanceláře (viz zadání "diegetická herní mechanika",
+  // EMERGENCY_OFFICE_DOOR_LOCK_MS) — `officeDoorUnlocked` je teď HARD gate
+  // pro VŠECHNY objectives, mission.phase už canReturnToOffice vůbec nebere
+  // jako parametr (nahrazeno níže).
+  it("canReturnToOffice: return_to_office requires hasLeftStartZone AND officeDoorUnlocked", () => {
+    expect(canReturnToOffice("return_to_office", false, false)).toBe(false);
+    expect(canReturnToOffice("return_to_office", true, false)).toBe(false);
+    expect(canReturnToOffice("return_to_office", false, true)).toBe(false);
+    expect(canReturnToOffice("return_to_office", true, true)).toBe(true);
   });
 
-  it("canReturnToOffice: collect_item is blocked until the objective is completed (returnUnlockedByTime false)", () => {
-    const outbound = createInitialMissionState();
-    expect(canReturnToOffice("collect_item", outbound, true, false)).toBe(false);
-
-    const returning = completeObjective(outbound, { type: "collected_item", itemId: "toolbox" });
-    expect(canReturnToOffice("collect_item", returning, true, false)).toBe(true);
+  it("canReturnToOffice: collect_item is blocked until officeDoorUnlocked, regardless of the objective", () => {
+    expect(canReturnToOffice("collect_item", true, false)).toBe(false);
+    expect(canReturnToOffice("collect_item", true, true)).toBe(true);
   });
 
-  it("canReturnToOffice: collect_item still requires hasLeftStartZone even once the objective is done", () => {
-    const returning = completeObjective(createInitialMissionState(), { type: "collected_item", itemId: "toolbox" });
-    expect(canReturnToOffice("collect_item", returning, false, false)).toBe(false);
+  it("canReturnToOffice: collect_item still requires hasLeftStartZone even once the door is unlocked", () => {
+    expect(canReturnToOffice("collect_item", false, true)).toBe(false);
   });
 
-  it("canReturnToOffice: survive never completes via the exit zone in the MVP", () => {
-    expect(canReturnToOffice("survive", createInitialMissionState(), true, false)).toBe(false);
+  it("canReturnToOffice: survive never completes via the exit zone in the MVP, even with the door unlocked", () => {
+    expect(canReturnToOffice("survive", true, false)).toBe(false);
+    expect(canReturnToOffice("survive", true, true)).toBe(false);
+  });
+});
+
+// ── Zamčené dveře kanceláře (viz zadání, config.ts
+// EMERGENCY_OFFICE_DOOR_LOCK_MS/EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS) —
+// čisté funkce jen z elapsedMs, žádný vlastní stav.
+describe("office door lock — isOfficeDoorLocked / msUntilOfficeDoorOpens / msSinceOfficeDoorOpened / isMonsterOfficeThreatArmed", () => {
+  const DOOR_LOCK_MS = 20_000;
+  const THREAT_DELAY_MS = 5_000;
+
+  it("isOfficeDoorLocked: true before the lock duration, false at/after it", () => {
+    expect(isOfficeDoorLocked(0, DOOR_LOCK_MS)).toBe(true);
+    expect(isOfficeDoorLocked(19_999, DOOR_LOCK_MS)).toBe(true);
+    expect(isOfficeDoorLocked(20_000, DOOR_LOCK_MS)).toBe(false);
+    expect(isOfficeDoorLocked(30_000, DOOR_LOCK_MS)).toBe(false);
   });
 
-  // EMERGENCY_RETURN_UNLOCK_DELAY_MS (viz zadání "hidden true ending" loot
-  // smyčka) — collect_item smí dokončit i bez splněného objective, jakmile
-  // uplyne dost času, ať jde ven, střelí monstrum a vrátí se pro další náboj.
-  describe("canReturnToOffice: returnUnlockedByTime lets collect_item finish without the objective", () => {
-    it("still blocked before hasLeftStartZone, even with returnUnlockedByTime true", () => {
-      expect(canReturnToOffice("collect_item", createInitialMissionState(), false, true)).toBe(false);
-    });
+  it("msUntilOfficeDoorOpens: counts down to 0, never negative", () => {
+    expect(msUntilOfficeDoorOpens(0, DOOR_LOCK_MS)).toBe(20_000);
+    expect(msUntilOfficeDoorOpens(12_000, DOOR_LOCK_MS)).toBe(8_000);
+    expect(msUntilOfficeDoorOpens(20_000, DOOR_LOCK_MS)).toBe(0);
+    expect(msUntilOfficeDoorOpens(45_000, DOOR_LOCK_MS)).toBe(0);
+  });
 
-    it("allowed once returnUnlockedByTime is true, objective still not completed", () => {
-      expect(canReturnToOffice("collect_item", createInitialMissionState(), true, true)).toBe(true);
-    });
+  it("msSinceOfficeDoorOpened: 0 while still locked, counts up after unlocking", () => {
+    expect(msSinceOfficeDoorOpened(0, DOOR_LOCK_MS)).toBe(0);
+    expect(msSinceOfficeDoorOpened(19_999, DOOR_LOCK_MS)).toBe(0);
+    expect(msSinceOfficeDoorOpened(20_000, DOOR_LOCK_MS)).toBe(0);
+    expect(msSinceOfficeDoorOpened(25_000, DOOR_LOCK_MS)).toBe(5_000);
+  });
 
-    it("does not affect return_to_office (already true regardless)", () => {
-      expect(canReturnToOffice("return_to_office", createInitialMissionState(), true, false)).toBe(true);
-      expect(canReturnToOffice("return_to_office", createInitialMissionState(), true, true)).toBe(true);
-    });
-
-    it("does not affect survive (still never completes via the exit zone)", () => {
-      expect(canReturnToOffice("survive", createInitialMissionState(), true, true)).toBe(false);
-    });
+  it("isMonsterOfficeThreatArmed: false while locked, false right after unlocking, true once the target delay elapses", () => {
+    expect(isMonsterOfficeThreatArmed(10_000, DOOR_LOCK_MS, THREAT_DELAY_MS)).toBe(false);
+    expect(isMonsterOfficeThreatArmed(20_000, DOOR_LOCK_MS, THREAT_DELAY_MS)).toBe(false);
+    expect(isMonsterOfficeThreatArmed(24_999, DOOR_LOCK_MS, THREAT_DELAY_MS)).toBe(false);
+    expect(isMonsterOfficeThreatArmed(25_000, DOOR_LOCK_MS, THREAT_DELAY_MS)).toBe(true);
+    expect(isMonsterOfficeThreatArmed(60_000, DOOR_LOCK_MS, THREAT_DELAY_MS)).toBe(true);
   });
 });
 
 // ── Kancelářský marker (viz EmergencyMiniGame.tsx#draw) — čistě orientační/
 // vizuální, nesmí ovlivnit canReturnToOffice/mission loop pravidla.
 describe("office marker — getOfficeMarkerLabel / shouldHighlightOfficeMarker", () => {
-  it("outbound phase (collect_item): plain 'KANCELÁŘ' label, not highlighted", () => {
+  it("outbound phase (collect_item): plain 'KANCELÁŘ' label, not highlighted, even with the door unlocked", () => {
     const mission = createInitialMissionState();
-    expect(shouldHighlightOfficeMarker(mission, "collect_item")).toBe(false);
-    expect(getOfficeMarkerLabel(mission, "collect_item", false, true, false)).toBe("KANCELÁŘ");
+    expect(shouldHighlightOfficeMarker(mission, "collect_item", true)).toBe(false);
+    expect(getOfficeMarkerLabel(mission, "collect_item", false, true, true)).toBe("KANCELÁŘ");
   });
 
-  it("returning phase (collect_item): highlighted 'KANCELÁŘ — E pro návrat', regardless of player position", () => {
+  it("returning phase (collect_item) with the door LOCKED: never highlighted/promises 'E pro návrat', door lock wins", () => {
     const returning = completeObjective(createInitialMissionState(), { type: "collected_item", itemId: "fuse" });
-    expect(shouldHighlightOfficeMarker(returning, "collect_item")).toBe(true);
-    expect(getOfficeMarkerLabel(returning, "collect_item", false, true, false)).toBe("KANCELÁŘ — E pro návrat");
-    expect(getOfficeMarkerLabel(returning, "collect_item", true, true, false)).toBe("KANCELÁŘ — E pro návrat");
+    expect(shouldHighlightOfficeMarker(returning, "collect_item", false)).toBe(false);
+    expect(getOfficeMarkerLabel(returning, "collect_item", false, true, false)).toBe("KANCELÁŘ");
+    expect(getOfficeMarkerLabel(returning, "collect_item", true, true, false)).toBe("KANCELÁŘ");
   });
 
-  it("collect_item before the objective is done: marker stays visible with the plain label, even standing in the exit zone", () => {
-    const outbound = createInitialMissionState();
-    expect(getOfficeMarkerLabel(outbound, "collect_item", true, true, false)).toBe("KANCELÁŘ");
+  it("returning phase (collect_item) with the door UNLOCKED: highlighted 'KANCELÁŘ — E pro návrat', regardless of player position", () => {
+    const returning = completeObjective(createInitialMissionState(), { type: "collected_item", itemId: "fuse" });
+    expect(shouldHighlightOfficeMarker(returning, "collect_item", true)).toBe(true);
+    expect(getOfficeMarkerLabel(returning, "collect_item", false, true, true)).toBe("KANCELÁŘ — E pro návrat");
+    expect(getOfficeMarkerLabel(returning, "collect_item", true, true, true)).toBe("KANCELÁŘ — E pro návrat");
   });
 
-  it("collect_item before the objective is done, but returnUnlockedByTime true and standing in the exit zone: highlighted label", () => {
+  it("collect_item with the door unlocked and standing in the exit zone: highlighted label even without a completed objective", () => {
     const outbound = createInitialMissionState();
     expect(getOfficeMarkerLabel(outbound, "collect_item", true, true, true)).toBe("KANCELÁŘ — E pro návrat");
   });
 
-  it("collect_item with returnUnlockedByTime true but NOT standing in the exit zone: still plain label", () => {
+  it("collect_item with the door unlocked but NOT standing in the exit zone: still plain label", () => {
     const outbound = createInitialMissionState();
     expect(getOfficeMarkerLabel(outbound, "collect_item", false, true, true)).toBe("KANCELÁŘ");
   });
 
-  it("return_to_office: plain label before leaving the start zone", () => {
+  it("return_to_office: plain label before leaving the start zone, even with the door unlocked", () => {
     const mission = createInitialMissionState();
-    expect(getOfficeMarkerLabel(mission, "return_to_office", false, false, false)).toBe("KANCELÁŘ");
+    expect(getOfficeMarkerLabel(mission, "return_to_office", false, false, true)).toBe("KANCELÁŘ");
   });
 
   it("return_to_office: plain label after leaving start but before actually standing in the exit zone", () => {
     const mission = createInitialMissionState();
-    expect(getOfficeMarkerLabel(mission, "return_to_office", false, true, false)).toBe("KANCELÁŘ");
+    expect(getOfficeMarkerLabel(mission, "return_to_office", false, true, true)).toBe("KANCELÁŘ");
   });
 
-  it("return_to_office: highlighted label once the player has left start AND is standing in the exit zone", () => {
+  it("return_to_office: highlighted label once the player has left start AND is standing in the exit zone AND the door is unlocked", () => {
     const mission = createInitialMissionState();
-    expect(getOfficeMarkerLabel(mission, "return_to_office", true, true, false)).toBe("KANCELÁŘ — E pro návrat");
+    expect(getOfficeMarkerLabel(mission, "return_to_office", true, true, true)).toBe("KANCELÁŘ — E pro návrat");
+  });
+
+  it("return_to_office with the door still LOCKED: plain label even standing in the exit zone (door lock wins over position)", () => {
+    const mission = createInitialMissionState();
+    expect(getOfficeMarkerLabel(mission, "return_to_office", true, true, false)).toBe("KANCELÁŘ");
   });
 
   it("return_to_office never sets shouldHighlightOfficeMarker (handled separately via hasLeftStartZone/inExitZone)", () => {
-    expect(shouldHighlightOfficeMarker(createInitialMissionState(), "return_to_office")).toBe(false);
+    expect(shouldHighlightOfficeMarker(createInitialMissionState(), "return_to_office", true)).toBe(false);
   });
 
-  it("survive: always the plain label, never highlighted, even with returnUnlockedByTime true", () => {
+  it("survive: always the plain label, never highlighted, even with the door unlocked", () => {
     const mission = createInitialMissionState();
-    expect(shouldHighlightOfficeMarker(mission, "survive")).toBe(false);
+    expect(shouldHighlightOfficeMarker(mission, "survive", true)).toBe(false);
     expect(getOfficeMarkerLabel(mission, "survive", true, true, true)).toBe("KANCELÁŘ");
   });
 
   it("does not change canReturnToOffice's decision either way", () => {
-    const outbound = createInitialMissionState();
-    // collect_item still can't complete before the objective is done, no
+    // collect_item still can't complete before the door is unlocked, no
     // matter what the marker helpers say about label/highlight.
-    expect(canReturnToOffice("collect_item", outbound, true, false)).toBe(false);
-    // return_to_office still completes normally once hasLeftStartZone is true.
-    expect(canReturnToOffice("return_to_office", outbound, true, false)).toBe(true);
+    expect(canReturnToOffice("collect_item", true, false)).toBe(false);
+    // return_to_office still requires the door to be unlocked too.
+    expect(canReturnToOffice("return_to_office", true, false)).toBe(false);
+    expect(canReturnToOffice("return_to_office", true, true)).toBe(true);
   });
 });

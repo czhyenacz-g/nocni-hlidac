@@ -174,14 +174,29 @@ export const EXIT_ZONE: Wall = getRoomBoundsForSlot(SERVICE_FLOOR_ALPHA, ALPHA_D
 export const START_ZONE_LEAVE_RADIUS_PX = 87.5;
 
 /**
- * Jak dlouho (ms) po startu emergency výpravy zůstává vchod do kanceláře
- * zablokovaný, i kdyby hráč nesplnil loot objective (collect_item) — po
- * uplynutí se návrat povolí i bez sebrané věci (viz
- * game/minigame/logic.ts#canReturnToOffice). Řeší hidden true ending loot
- * smyčku (viz zadání): jít ven, střelit monstrum, vrátit se pro další náboj,
- * bez nutnosti sebrat i baterii/žárovku/brokovnici cestou.
+ * Jak dlouho (ms) po startu emergency výpravy zůstávají dveře do kanceláře
+ * automaticky zamčené — diegetická herní mechanika (viz zadání "zamčené
+ * dveře"), NE technický cooldown. Platí jako HARD gate pro VŠECHNY objectives
+ * (i return_to_office), bez ohledu na to, jestli je loot objective
+ * (collect_item) splněný (viz game/minigame/logic.ts#canReturnToOffice) —
+ * nahrazuje dřívější EMERGENCY_RETURN_UNLOCK_DELAY_MS, které dovolovalo
+ * dřívější návrat hned po sebrání věci. Po uplynutí se dveře automaticky
+ * otevřou a návrat je možný i bez sebrané věci — pořád řeší stejnou hidden
+ * true ending loot smyčku (jít ven, střelit monstrum, vrátit se pro další
+ * náboj), jen teď jako univerzální napěťovou mechaniku, ne výjimku.
  */
-export const EMERGENCY_RETURN_UNLOCK_DELAY_MS = 5_000;
+export const EMERGENCY_OFFICE_DOOR_LOCK_MS = 20_000;
+
+/**
+ * Kolik ms PO automatickém otevření dveří (EMERGENCY_OFFICE_DOOR_LOCK_MS)
+ * smí hráč zůstat venku, než monstrum změní cíl na kancelář/generátor (viz
+ * zadání, game/minigame/logic.ts#isMonsterOfficeThreatArmed) — jakmile
+ * uplyne, EmergencyMiniGame.tsx#tick nechá monstrum "zmizet" z mapy
+ * (enemy.alive = false) a výsledek při návratu ponese
+ * `EmergencyWorldEffect` "monster_reached_office" (viz
+ * game/minigame/logic.ts#createReturnedResult).
+ */
+export const EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS = 5_000;
 
 // "Sebrání věci" — service_floor_alpha má jeden univerzální item slot
 // (item_generic_01, nese VŠECHNY item tagy), stejně jako dřív jeden pevný

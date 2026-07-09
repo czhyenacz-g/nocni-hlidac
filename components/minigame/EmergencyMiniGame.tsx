@@ -6,7 +6,8 @@ import {
   CANVAS_WIDTH,
   CONE_ANGLE_RAD,
   CONE_RANGE,
-  EMERGENCY_RETURN_UNLOCK_DELAY_MS,
+  EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS,
+  EMERGENCY_OFFICE_DOOR_LOCK_MS,
   ENEMY_AGGRO_RANGE,
   ENEMY_AGGRO_SPEED_MULTIPLIER,
   ENEMY_CHASE_SPEED,
@@ -73,7 +74,10 @@ import {
   directionFromVector,
   distance,
   getOfficeMarkerLabel,
+  isMonsterOfficeThreatArmed,
+  isOfficeDoorLocked,
   moveWithWallSliding,
+  msUntilOfficeDoorOpens,
   resolveEquipmentFromInput,
   shouldHighlightOfficeMarker,
   updateEnemyAi,
@@ -201,6 +205,14 @@ interface MiniGameRefState {
    * (game/core/monsterEnding.ts) zásah potvrdí až tam, ne tady.
    */
   monsterHitThisRun: boolean;
+  /**
+   * `true` od okamžiku, kdy monstrum zamířilo na kancelář/generátor (viz
+   * EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS, isMonsterOfficeThreatArmed) —
+   * latch, ať se `game.enemy.alive = false` (a tím pádem výsledný
+   * "monster_reached_office" worldEffect) nastaví přesně jednou za výpravu,
+   * nikdy se nevrací zpátky na false.
+   */
+  officeThreatTriggered: boolean;
 }
 
 function createInitialState(input: EmergencyMiniGameInput): MiniGameRefState {
@@ -238,6 +250,7 @@ function createInitialState(input: EmergencyMiniGameInput): MiniGameRefState {
     moveTarget: null,
     moveTargetSetAtElapsedMs: 0,
     monsterHitThisRun: false,
+    officeThreatTriggered: false,
   };
 }
 
@@ -262,33 +275,39 @@ const ITEM_LABELS_NOMINATIVE: Record<MiniGameItemId, string> = {
   ammo: "Náboj",
 };
 
-/** HUD hint pod REŽIM řádkem — vysvětluje hráči, co má aktuálně udělat (viz mission phase / EmergencyMissionPhase). */
+/**
+ * HUD hint pod REŽIM řádkem — vysvětluje hráči, co má aktuálně udělat (viz
+ * mission phase / EmergencyMissionPhase). Zamčené dveře (viz
+ * `officeDoorUnlocked`, EMERGENCY_OFFICE_DOOR_LOCK_MS) jsou teď jediná
+ * podmínka návratu (viz canReturnToOffice) — dokud jsou zamčené, hint v exit
+ * zóně NIKDY nemá slibovat "E pro návrat" ani strašit "Nejdřív splň úkol."
+ * (ten text zmizel úplně — dveře, ne úkol, rozhodují), samotný stav dveří
+ * ukazuje samostatný panel nad rámečkem hry (viz JSX níže).
+ */
 function getMissionHint(
   objective: EmergencyMiniGameInput["objective"],
   itemToCollect: MiniGameItemId | undefined,
   missionPhase: EmergencyMissionPhase,
   inExitZone: boolean,
-  returnUnlockedByTime: boolean,
+  officeDoorUnlocked: boolean,
 ): string {
   if (objective === "survive") return "Cíl: Přežij hlídku.";
 
   if (objective === "return_to_office") {
     if (missionPhase === "completed") return "Splněno.";
-    return inExitZone ? "Stiskni E pro návrat do kanceláře." : "Cíl: Vrať se do kanceláře.";
+    if (inExitZone) return officeDoorUnlocked ? "Stiskni E pro návrat do kanceláře." : "Dveře kanceláře jsou zamčené.";
+    return "Cíl: Vrať se do kanceláře.";
   }
 
   // objective === "collect_item"
   const itemLabel = ITEM_LABELS_ACCUSATIVE[itemToCollect ?? "fuse"];
   if (missionPhase === "outbound") {
-    // returnUnlockedByTime (viz EMERGENCY_RETURN_UNLOCK_DELAY_MS,
-    // canReturnToOffice) — po pár vteřinách jde do kanceláře i bez splněného
-    // loot objective (hidden true ending loot smyčka, viz zadání), hint musí
-    // přestat lhát "Nejdřív splň úkol.", jakmile E fakticky funguje.
-    if (inExitZone) return returnUnlockedByTime ? "Stiskni E pro návrat do kanceláře." : "Nejdřív splň úkol.";
+    if (inExitZone) return officeDoorUnlocked ? "Stiskni E pro návrat do kanceláře." : "Dveře kanceláře jsou zamčené.";
     return `Cíl: Najdi a seber ${itemLabel}. [E]`;
   }
   if (missionPhase === "returning") {
-    return inExitZone ? "Stiskni E pro návrat do kanceláře." : "Věc získána. Vrať se do kanceláře.";
+    if (inExitZone) return officeDoorUnlocked ? "Stiskni E pro návrat do kanceláře." : "Dveře kanceláře jsou zamčené.";
+    return "Věc získána. Vrať se do kanceláře.";
   }
   return "Splněno.";
 }
@@ -380,11 +399,19 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
   // "VRÁTIT DO KANCELÁŘE" tlačítko spolehlivě zobrazí hned, jakmile to
   // poprvé platí, stejný bailout vzor jako inExitZone.
   const [hasLeftStartZone, setHasLeftStartZone] = useState(false);
-  // Jestli už uplynul EMERGENCY_RETURN_UNLOCK_DELAY_MS od startu výpravy (viz
-  // zadání, canReturnToOffice) — po týhle době jde do kanceláře i bez
-  // splněného loot objective. Stejný bailout vzor jako hasLeftStartZone
-  // výše — React re-render nastane jen na skutečném přechodu false -> true.
-  const [returnUnlockedByTime, setReturnUnlockedByTime] = useState(false);
+  // Zamčené dveře kanceláře (viz zadání, EMERGENCY_OFFICE_DOOR_LOCK_MS,
+  // canReturnToOffice) — `officeDoorUnlocked` řídí, jestli E/tlačítko v exit
+  // zóně teď vůbec něco udělá (stejný bailout vzor jako hasLeftStartZone
+  // výše). `doorCountdownMs` je živý odpočet pro panel nad rámečkem hry
+  // (viz JSX níže) — zaokrouhlený na desetiny sekundy stejně jako
+  // woundedMsLeft, ať nezpůsobuje re-render 60×/s. `monsterOfficeThreatArmed`
+  // řídí text "Monstrum větří prázdnou kancelář..." (viz
+  // EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS) — nezávislé na tom, jestli
+  // monstrum už fakticky zmizelo z mapy (to řeší gameRef.officeThreatTriggered
+  // přímo, bez potřeby React state).
+  const [officeDoorUnlocked, setOfficeDoorUnlocked] = useState(false);
+  const [doorCountdownMs, setDoorCountdownMs] = useState(EMERGENCY_OFFICE_DOOR_LOCK_MS);
+  const [monsterOfficeThreatArmed, setMonsterOfficeThreatArmed] = useState(false);
   // Mobilní/dotykové ovládání (viz zadání, game/minigame/touchControls.ts) —
   // zjišťuje se jednou po mountu (viz effect níže), ne přepočítává za běhu.
   const [isTouchDevice, setIsTouchDevice] = useState(false);
@@ -449,6 +476,9 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
     setMissionPhase(gameRef.current.mission.phase);
     setInExitZone(false);
     setHasLeftStartZone(false);
+    setOfficeDoorUnlocked(false);
+    setDoorCountdownMs(EMERGENCY_OFFICE_DOOR_LOCK_MS);
+    setMonsterOfficeThreatArmed(false);
     setResult(null);
   }
 
@@ -592,7 +622,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
     const inExitZoneNow = circleIntersectsWall(game.player.x, game.player.y, game.player.radius, game.exitZone);
     if (
       inExitZoneNow &&
-      canReturnToOffice(input.objective, game.mission, game.hasLeftStartZone, game.elapsedMs >= EMERGENCY_RETURN_UNLOCK_DELAY_MS)
+      canReturnToOffice(input.objective, game.hasLeftStartZone, !isOfficeDoorLocked(game.elapsedMs, EMERGENCY_OFFICE_DOOR_LOCK_MS))
     ) {
       game.mission = updateMissionPhase(game.mission, "completed");
       setMissionPhase(game.mission.phase);
@@ -625,6 +655,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
           officeThreatOnReturn,
           game.monsterHitThisRun,
           collectedExtraLootItemIds,
+          game.officeThreatTriggered,
         ),
         "won",
       );
@@ -778,12 +809,34 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
           }
         }
 
-        // Odemčení návratu časem (viz EMERGENCY_RETURN_UNLOCK_DELAY_MS,
+        // Zamčené dveře kanceláře (viz zadání, EMERGENCY_OFFICE_DOOR_LOCK_MS,
         // canReturnToOffice) — stejný "volej pokaždé, setState bailout na
-        // stejné hodnotě" vzor jako setInExitZone níže (NE ref-based
-        // jednorázový přechod jako hasLeftStartZone výše, protože tenhle
-        // stav nikdy zpátky neklesá, prostý opakovaný zápis je nejjednodušší).
-        setReturnUnlockedByTime(game.elapsedMs >= EMERGENCY_RETURN_UNLOCK_DELAY_MS);
+        // stejné hodnotě" vzor jako setInExitZone níže (tenhle stav nikdy
+        // zpátky neklesá, prostý opakovaný zápis je nejjednodušší).
+        const officeDoorUnlockedNow = !isOfficeDoorLocked(game.elapsedMs, EMERGENCY_OFFICE_DOOR_LOCK_MS);
+        setOfficeDoorUnlocked(officeDoorUnlockedNow);
+        // Zaokrouhleno na desetiny sekundy — stejný vzor jako woundedMsLeft,
+        // ať panel "Automatické otevření za: X.X s" nezpůsobuje re-render 60×/s.
+        setDoorCountdownMs(Math.ceil(msUntilOfficeDoorOpens(game.elapsedMs, EMERGENCY_OFFICE_DOOR_LOCK_MS) / 100) * 100);
+
+        // Monstrum zamíří na kancelář/generátor, jakmile hráč zůstane venku
+        // moc dlouho PO otevření dveří (viz EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS,
+        // isMonsterOfficeThreatArmed) — spustí se přesně jednou (viz
+        // game.officeThreatTriggered latch), monstrum "zmizí" z mapy
+        // (enemy.alive = false, viz applyShot/draw — stejný háček, jaký typ
+        // Enemy.alive už měl připravený, jen dosud nevyužitý) a tenhle
+        // moment se přenese do EmergencyMiniGameResult teprve při skutečném
+        // návratu (viz handleObjectiveKey#createReturnedResult).
+        const threatArmedNow = isMonsterOfficeThreatArmed(
+          game.elapsedMs,
+          EMERGENCY_OFFICE_DOOR_LOCK_MS,
+          EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS,
+        );
+        setMonsterOfficeThreatArmed(threatArmedNow);
+        if (threatArmedNow && !game.officeThreatTriggered) {
+          game.officeThreatTriggered = true;
+          game.enemy.alive = false;
+        }
 
         // Čistě pro HUD hint (viz getMissionHint) — setState bailout, mění se
         // jen při skutečném vstupu/opuštění zóny, ne 60×/s.
@@ -894,7 +947,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
   // neslibuje něco, co neudělá; chybějící krok dál ukazuje jen getMissionHint.
   const canReturnNow = canShowReturnButton(
     { status, inExitZone, objective: input.objective, mission: { phase: missionPhase }, hasLeftStartZone },
-    canReturnToOffice(input.objective, { phase: missionPhase }, hasLeftStartZone, returnUnlockedByTime),
+    canReturnToOffice(input.objective, hasLeftStartZone, officeDoorUnlocked),
   );
   const showMobileFireButton = canShowMobileFireButton({ isTouchDevice, hasShotgun: gameRef.current.player.hasShotgun });
   const isMobileFireDisabled = isMobileFireButtonDisabled(ammoLeft);
@@ -924,7 +977,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
         <div style={{ color: "#3f7a58" }}>REŽIM: {MODE_LABELS[enemyMode].toUpperCase()}</div>
         {status === "playing" && (
           <div style={{ color: "#5dffa0", textShadow: "0 0 4px rgba(93,255,160,0.6)" }}>
-            {getMissionHint(input.objective, input.itemToCollect, missionPhase, inExitZone, returnUnlockedByTime)}
+            {getMissionHint(input.objective, input.itemToCollect, missionPhase, inExitZone, officeDoorUnlocked)}
           </div>
         )}
         {woundedMsLeft !== null && (
@@ -969,6 +1022,32 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
             {MINIGAME_PLAYER_DIRECTIONAL_VISION_RANGE_PX}px
           </div>
           <div>MONSTER VISIBLE: {isMonsterVisibleToPlayer ? "YES" : "NO"}</div>
+        </div>
+      )}
+
+      {/* Stav dveří kanceláře (viz zadání "diegetická herní informace, ne
+          technický cooldown") — nad rámečkem hry, ne skrytý v HUD hintu.
+          Tři stavy: zamčeno + živý odpočet, otevřeno, otevřeno + monstrum
+          zamířilo na kancelář (viz monsterOfficeThreatArmed). Jen během
+          "playing" — po výhře/prohře už dveře nejsou relevantní info. */}
+      {status === "playing" && (
+        <div
+          className="p-2 text-xs"
+          style={{
+            background: "rgba(3, 15, 8, 0.9)",
+            border: `1px solid ${monsterOfficeThreatArmed ? "#7a1f1f" : "#1f6b45"}`,
+            color: monsterOfficeThreatArmed ? "#ff8a8a" : officeDoorUnlocked ? "#5dffa0" : "#ff8a8a",
+            textShadow: "0 0 4px rgba(0,0,0,0.6)",
+          }}
+        >
+          {!officeDoorUnlocked && (
+            <>
+              <div>Dveře kanceláře zamčené.</div>
+              <div>Automatické otevření za: {(doorCountdownMs / 1000).toFixed(1)} s</div>
+            </>
+          )}
+          {officeDoorUnlocked && !monsterOfficeThreatArmed && <div>Dveře kanceláře jsou otevřené.</div>}
+          {officeDoorUnlocked && monsterOfficeThreatArmed && <div>Monstrum větří prázdnou kancelář...</div>}
         </div>
       )}
 
@@ -1188,12 +1267,17 @@ function draw(
         game.walls,
         PLAYER_VISION_CONFIG,
       ).visible);
+  // Zamčené dveře kanceláře (viz zadání, EMERGENCY_OFFICE_DOOR_LOCK_MS) —
+  // draw() čte přímo z gameRef (ne z React state), stejný vzor jako ostatní
+  // odvozené hodnoty tady v draw().
+  const officeDoorUnlockedNow = !isOfficeDoorLocked(game.elapsedMs, EMERGENCY_OFFICE_DOOR_LOCK_MS);
   // Jestli je kancelářský marker "zvýrazněný" (úkol splněný / return_to_office
   // po opuštění startu, viz shouldHighlightOfficeMarker) — spočítané tady
   // nahoře, ať ho může použít i marker samotný (níže) i "maják přes fog"
   // blok po vykreslení fogu (viz zadání "má blikat i ve tmě").
   const officeHighlighted =
-    shouldHighlightOfficeMarker(game.mission, input.objective) || (input.objective === "return_to_office" && game.hasLeftStartZone);
+    shouldHighlightOfficeMarker(game.mission, input.objective, officeDoorUnlockedNow) ||
+    (input.objective === "return_to_office" && game.hasLeftStartZone && officeDoorUnlockedNow);
   // Jedna sdílená pulzující hodnota (0..1) pro "lehké blikání" zvýrazněného
   // markeru — stejný sinusový pulz vzor jako jinde (enemy waiting/wounded).
   const officePulse = 0.5 + 0.5 * Math.sin(performance.now() / 260);
@@ -1320,7 +1404,7 @@ function draw(
       input.objective,
       inExitZoneNow,
       game.hasLeftStartZone,
-      game.elapsedMs >= EMERGENCY_RETURN_UNLOCK_DELAY_MS,
+      officeDoorUnlockedNow,
     );
     // Lehké blikání (officePulse, viz nahoře) — jen když je marker zvýrazněný
     // (úkol splněný, vracíš se), ne v klidovém stavu (ten zůstává statický,
@@ -1496,7 +1580,11 @@ function draw(
   // Celý blok (bod i prstenec) je mimo viditelnost hráče (fog) skrytý úplně
   // — to je hlavní hororový efekt fogu (viz zadání "monster mimo viditelnost
   // nesmí být normálně vidět"), dev overlay ho vždycky ukáže (enemyVisible výše).
-  if (enemyVisible) {
+  // `officeThreatTriggered` navíc úplně potlačí vykreslení — monstrum
+  // "zmizelo" (zamířilo na kancelář, viz zadání "z mapy/minihry zmizí"), ne
+  // jen "je mrtvé na místě" (enemy.alive=false samo o sobě by tu jinak
+  // kreslilo šedý "mrtvý" bod na poslední známé pozici, viz kód níže).
+  if (enemyVisible && !game.officeThreatTriggered) {
     ctx.save();
     ctx.shadowColor = enemy.mode === "wounded" ? "rgba(255, 255, 255, 0.9)" : "rgba(220, 38, 38, 0.9)";
     if (!enemy.alive) {

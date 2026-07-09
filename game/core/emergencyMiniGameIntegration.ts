@@ -175,3 +175,16 @@ export function shouldLaunchEmergencyMiniGame(prevSeq: number, nextSeq: number):
 export function resolveBulbsGainedFromWorldEffects(effects: EmergencyWorldEffect[] | undefined): number {
   return (effects ?? []).filter((effect) => effect.type === "bulbs_serviced").length;
 }
+
+/**
+ * Jestli monstrum během tyhle výpravy zamířilo na kancelář/generátor (viz
+ * zadání "zamčené dveře", EmergencyWorldEffect "monster_reached_office",
+ * EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS v game/minigame/config.ts).
+ * app/play/page.tsx na `true` reaguje stejně jako na existující
+ * `officeThreatOnReturn` — dispatchne APPLY_OFFICE_THREAT_ON_RETURN (vysoká
+ * intenzita, posune enemyStage blízko dveří/camera roomu), nikdy nezpůsobí
+ * smrt přímo tady.
+ */
+export function resolveOfficeThreatTriggeredFromWorldEffects(effects: EmergencyWorldEffect[] | undefined): boolean {
+  return (effects ?? []).some((effect) => effect.type === "monster_reached_office");
+}

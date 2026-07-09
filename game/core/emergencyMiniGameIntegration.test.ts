@@ -8,6 +8,7 @@ import {
   createShotgunEmergencyInput,
   resolveBulbsGainedFromWorldEffects,
   resolveExtraLootItems,
+  resolveOfficeThreatTriggeredFromWorldEffects,
   shouldLaunchEmergencyMiniGame,
 } from "./emergencyMiniGameIntegration";
 import { MAX_POWER } from "../balancing/constants";
@@ -138,6 +139,30 @@ describe("resolveBulbsGainedFromWorldEffects", () => {
   it("returns 0 for undefined/empty effects", () => {
     expect(resolveBulbsGainedFromWorldEffects(undefined)).toBe(0);
     expect(resolveBulbsGainedFromWorldEffects([])).toBe(0);
+  });
+});
+
+// Zamčené dveře kanceláře (viz zadání) — app/play/page.tsx z tohohle
+// dispatchne APPLY_OFFICE_THREAT_ON_RETURN (intensity "high"), stejně jako
+// pro existující officeThreatOnReturn, jen z jiného spouštěče.
+describe("resolveOfficeThreatTriggeredFromWorldEffects", () => {
+  it("true when monster_reached_office is present", () => {
+    expect(resolveOfficeThreatTriggeredFromWorldEffects([{ type: "monster_reached_office" }])).toBe(true);
+  });
+
+  it("true even alongside other effects", () => {
+    expect(
+      resolveOfficeThreatTriggeredFromWorldEffects([{ type: "energy_recharged", amount: 35 }, { type: "monster_reached_office" }]),
+    ).toBe(true);
+  });
+
+  it("false when absent", () => {
+    expect(resolveOfficeThreatTriggeredFromWorldEffects([{ type: "energy_recharged", amount: 35 }])).toBe(false);
+  });
+
+  it("false for undefined/empty effects", () => {
+    expect(resolveOfficeThreatTriggeredFromWorldEffects(undefined)).toBe(false);
+    expect(resolveOfficeThreatTriggeredFromWorldEffects([])).toBe(false);
   });
 });
 

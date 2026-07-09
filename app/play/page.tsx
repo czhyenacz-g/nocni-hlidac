@@ -48,6 +48,7 @@ import {
   createShotgunEmergencyInput,
   resolveBulbsGainedFromWorldEffects,
   resolveExtraLootItems,
+  resolveOfficeThreatTriggeredFromWorldEffects,
   shouldLaunchEmergencyMiniGame,
 } from "@/game/core/emergencyMiniGameIntegration";
 import { applyShotgunEmergencyReturn, getRechargedShotgunAmmo } from "@/game/core/shotgunEquipment";
@@ -849,6 +850,17 @@ export default function PlayPage() {
       if (result.officeThreatOnReturn?.active) {
         dispatch({ type: "APPLY_OFFICE_THREAT_ON_RETURN", intensity: result.officeThreatOnReturn.intensity });
         messages.push(COPY.game.emergencyRunThreatFollowedLabel);
+      }
+
+      // Zamčené dveře kanceláře (viz zadání) — hráč zůstal venku moc dlouho
+      // po jejich automatickém otevření, monstrum zamířilo na kancelář/
+      // generátor (viz EmergencyWorldEffect "monster_reached_office"). Stejná
+      // existující reakce jako officeThreatOnReturn výše (jen vždy "high" —
+      // monstrum už fakticky DORAZILO, ne jen "bylo poblíž"), nezávislá na
+      // ní — obě se mohou v jedné výpravě uplatnit zároveň.
+      if (resolveOfficeThreatTriggeredFromWorldEffects(result.worldEffects)) {
+        dispatch({ type: "APPLY_OFFICE_THREAT_ON_RETURN", intensity: "high" });
+        messages.push(COPY.game.emergencyRunMonsterReachedOfficeLabel);
       }
 
       // Brokovnice/náboj (viz zadání "první krok k true endingu",
