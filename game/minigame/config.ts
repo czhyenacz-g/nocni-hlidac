@@ -185,7 +185,7 @@ export const START_ZONE_LEAVE_RADIUS_PX = 87.5;
  * true ending loot smyčku (jít ven, střelit monstrum, vrátit se pro další
  * náboj), jen teď jako univerzální napěťovou mechaniku, ne výjimku.
  */
-export const EMERGENCY_OFFICE_DOOR_LOCK_MS = 20_000;
+export const EMERGENCY_OFFICE_DOOR_LOCK_MS = 30_000;
 
 /**
  * Kolik ms PO automatickém otevření dveří (EMERGENCY_OFFICE_DOOR_LOCK_MS)
