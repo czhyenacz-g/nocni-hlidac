@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createGameReducer } from "./gameReducer";
+import { createGameReducer, willGeneratorRestartSucceed } from "./gameReducer";
 import { createInitialGameState } from "./gameState";
 import { NIGHT_01 } from "../nights/night01";
 import { GameState } from "./types";
@@ -71,5 +71,41 @@ describe("RESTART_GENERATOR — generatorAccidentalRestartSeq", () => {
 
     state = reducer(state, { type: "RESTART_GENERATOR" });
     expect(state.generatorAccidentalRestartSeq).toBe(2);
+  });
+});
+
+// Sdílená podmínka pro app/play/page.tsx#handleRestartGenerator (viz
+// game/core/playerProfileStats.ts#recordGeneratorRestarted) — musí přesně
+// zrcadlit RESTART_GENERATOR "úspěšnou" větev výše, ať se statistika nikdy
+// nerozejde od skutečného herního výsledku.
+describe("willGeneratorRestartSucceed", () => {
+  it("true during a real fault (silentFault)", () => {
+    expect(willGeneratorRestartSucceed(baseState({ generatorState: "silentFault" }))).toBe(true);
+  });
+
+  it("true during a real fault (criticalBeeping)", () => {
+    expect(willGeneratorRestartSucceed(baseState({ generatorState: "criticalBeeping" }))).toBe(true);
+  });
+
+  it("false for a functioning generator (would be the accidental-restart penalty, not a real fix)", () => {
+    expect(willGeneratorRestartSucceed(baseState({ generatorState: "normal" }))).toBe(false);
+  });
+
+  it("false while already restarting (second click is a no-op)", () => {
+    expect(willGeneratorRestartSucceed(baseState({ generatorState: "restarting" }))).toBe(false);
+  });
+
+  it("false during blackout, even with a real fault", () => {
+    expect(willGeneratorRestartSucceed(baseState({ gameStatus: "blackout", generatorState: "silentFault" }))).toBe(false);
+  });
+
+  it("false while the game isn't running", () => {
+    expect(willGeneratorRestartSucceed(baseState({ isRunning: false, generatorState: "silentFault" }))).toBe(false);
+  });
+
+  it("false during the door-death reveal window", () => {
+    expect(willGeneratorRestartSucceed(baseState({ doorDeathRevealUntilMs: 5000, generatorState: "silentFault" }))).toBe(
+      false,
+    );
   });
 });

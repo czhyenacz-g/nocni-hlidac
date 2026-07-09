@@ -13,6 +13,10 @@ export const COPY = {
     // Přejmenováno ze "Žebříček hlídačů" na žádost — route/link (/leaderboard)
     // zůstává beze změny, mění se jen viditelný text.
     leaderboardLinkLabel: "Síň slávy hlídačů",
+    // Odkaz na app/profile/page.tsx (viz zadání "profil hlídače") — stejné
+    // umístění/styl jako termsLinkLabel/leaderboardLinkLabel výše, malý
+    // nenápadný odkaz, žádný redesign menu.
+    profileLinkLabel: "Profil hlídače",
     authorEmail: "hynek@darbujan.com",
   },
   // Status karta po prvním true endingu (viz zadání, game/core/monsterDefeatReward.ts,
@@ -24,6 +28,50 @@ export const COPY = {
     rewardLabel: "Odměna:",
     rewardValue: "Dvouhlavňová brokovnice odemčena",
     note: "Bestie byla poražena. Objekt 13 ale pořád stojí.",
+  },
+  // Profil hlídače (viz zadání, app/profile/page.tsx) — první verze budoucího
+  // účtu/profilu, čistě lokální localStorage data (game/core/playerProfileStats.ts,
+  // game/core/monsterDefeatReward.ts). Texty přesně podle zadání.
+  profile: {
+    seoTitle: "Profil hlídače | Noční hlídač",
+    seoDescription: "Profil hlídače Objektu 13 — status, statistiky a achievementy uložené lokálně v prohlížeči.",
+    heading: "Profil hlídače",
+    backToMenuLabel: "← Zpět do menu",
+    // Sekce 1: Služební karta.
+    serviceCardHeading: "Služební karta",
+    statusLabel: "Status",
+    statusGolden: "ZLATÝ HLÍDAČ",
+    statusRookie: "NOČNÍ HLÍDAČ",
+    rewardLabel: "Odměna",
+    rewardUnlocked: "Dvouhlavňová brokovnice odemčena",
+    rewardLocked: "Žádná odměna zatím není odemčena",
+    monsterDefeatsLabel: "Porážky bestie",
+    noteGolden: "Tenhle hlídač už bestii skolil. Objekt 13 ale pořád stojí.",
+    noteRookie: "Zatím jen další jméno na služební kartě.",
+    // Sekce 2: Statistiky.
+    statsHeading: "Statistiky",
+    statTotalDeaths: "Celkem smrtí",
+    statTotalRunsStarted: "Nastoupené směny",
+    statTotalNightsSurvived: "Přežité noci",
+    statHardcoreBestNight: "Nejvyšší Hardcore noc",
+    statBulbsReplaced: "Vyměněné žárovky",
+    statGeneratorsRestarted: "Restartované generátory",
+    statExpeditionsStarted: "Výpravy ven",
+    statExpeditionsReturned: "Bezpečné návraty",
+    statMonsterHitsConfirmed: "Potvrzené zásahy",
+    statMonsterKills: "Zabité bestie",
+    // Sekce 3: Achievementy.
+    achievementsHeading: "Achievementy",
+    achievementUnlockedMark: "✓",
+    achievementLockedMark: "?",
+    // Sekce 4: Výbava.
+    loadoutHeading: "Výbava",
+    loadoutDoubleBarrelName: "Dvouhlavňová brokovnice",
+    loadoutDoubleBarrelNote: "Odměna za první porážku bestie.",
+    loadoutEmpty: "Výbava bude doplněna po zásluhách.",
+    // Debug/reset.
+    resetButtonLabel: "Resetovat lokální profil",
+    resetConfirmLabel: "Opravdu smazat lokální profil?",
   },
   // Výběr herního režimu na úvodní obrazovce (viz MainMenuScreen.tsx,
   // game/core/gameMode.ts) — Normal/Hardcore životy a death/leaderboard

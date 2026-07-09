@@ -457,6 +457,21 @@ export function canStartThinkItOverWindup(state: GameState): boolean {
 }
 
 /**
+ * Jestli by RESTART_GENERATOR PRÁVĚ TEĎ skutečně opravil vadný generátor —
+ * sdílená podmínka mezi reducerem (RESTART_GENERATOR "úspěšná" větev, viz
+ * níže) a UI (app/play/page.tsx#handleRestartGenerator, pro
+ * game/core/playerProfileStats.ts#recordGeneratorRestarted — statistika se
+ * má počítat jen za SKUTEČNOU opravu, ne za zbytečný klik na funkční
+ * generátor, viz generatorAccidentalRestartSeq). Stejný vzor jako
+ * canReplaceBulb/canStartEmergencyRunWindup výše — čte se PŘED dispatchem,
+ * ze stejného stavu, jaký reducer sám uvidí.
+ */
+export function willGeneratorRestartSucceed(state: GameState): boolean {
+  if (!state.isRunning || state.gameStatus === "blackout" || state.doorDeathRevealUntilMs !== null) return false;
+  return state.generatorState !== "normal" && state.generatorState !== "restarting";
+}
+
+/**
  * Jestli hráč MŮŽE teď začít držet "Jít ven" na left_wall — sdílená podmínka
  * mezi `START_EMERGENCY_RUN_WINDUP` (reducer) a UI (`LeftWallView.tsx` přes
  * `app/play/page.tsx`/`GameScreen.tsx`), stejný vzor jako `canReplaceBulb`.

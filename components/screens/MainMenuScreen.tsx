@@ -185,6 +185,10 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
               {COPY.menu.leaderboardLinkLabel}
             </Link>
 
+            <Link href="/profile" className="block mt-1.5 text-center text-[11px] text-gray-400 hover:text-gray-200">
+              {COPY.menu.profileLinkLabel}
+            </Link>
+
             <AuthStatus />
           </div>
         </div>

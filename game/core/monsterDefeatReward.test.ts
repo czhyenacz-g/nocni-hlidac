@@ -82,6 +82,18 @@ describe("monsterDefeatReward", () => {
       monsterDefeatsCount: 0,
     });
   });
+
+  it("resetMonsterDefeatReward restores defaults and persists them", async () => {
+    const { recordMonsterDefeat, resetMonsterDefeatReward, getMonsterDefeatReward } = await import(
+      "./monsterDefeatReward"
+    );
+    recordMonsterDefeat();
+    recordMonsterDefeat();
+
+    const reset = resetMonsterDefeatReward();
+    expect(reset).toEqual({ hasDefeatedMonster: false, doubleBarrelUnlocked: false, monsterDefeatsCount: 0 });
+    expect(getMonsterDefeatReward()).toEqual({ hasDefeatedMonster: false, doubleBarrelUnlocked: false, monsterDefeatsCount: 0 });
+  });
 });
 
 describe("monsterDefeatReward outside the browser (SSR-safe)", () => {

@@ -10,7 +10,7 @@ import WinScreen from "@/components/screens/WinScreen";
 import MonsterDefeatedScreen from "@/components/screens/MonsterDefeatedScreen";
 import { NIGHT_01 } from "@/game/nights/night01";
 import { createInitialGameState } from "@/game/core/gameState";
-import { canStartThinkItOverWindup, createGameReducer } from "@/game/core/gameReducer";
+import { canStartThinkItOverWindup, createGameReducer, willGeneratorRestartSucceed } from "@/game/core/gameReducer";
 import { useGameLoop } from "@/game/core/gameLoop";
 import { CameraId } from "@/game/core/types";
 import { audioManager } from "@/game/audio/audioManager";
@@ -36,6 +36,17 @@ import { Achievement, getAchievement } from "@/content/achievements";
 import { unlockAchievement } from "@/game/core/achievementStorage";
 import { getDeathCount, incrementDeathCount } from "@/game/core/deathCount";
 import { getMonsterDefeatReward, recordMonsterDefeat } from "@/game/core/monsterDefeatReward";
+import {
+  recordBulbReplaced,
+  recordDeath,
+  recordExpeditionReturned,
+  recordExpeditionStarted,
+  recordGeneratorRestarted,
+  recordMonsterHitsConfirmed,
+  recordMonsterKill,
+  recordNightSurvived,
+  recordRunStarted,
+} from "@/game/core/playerProfileStats";
 import { hasUsedFirstNightTechnicianWarning, markFirstNightTechnicianWarningUsed } from "@/game/core/firstNightWarning";
 import { getSurvivedNights, incrementSurvivedNights, resetSurvivedNights } from "@/game/core/survivedNights";
 import { getBulbsRemaining, setBulbsRemaining } from "@/game/core/bulbInventory";
@@ -317,6 +328,12 @@ export default function PlayPage() {
         // Tenhle efekt už díky prevScreenRef diffingu (viz podmínka nahoře)
         // firuje jen jednou za skutečný přechod, ne při každém rerenderu.
         setDeathCount(incrementDeathCount());
+        // Profil hlídače (viz zadání, game/core/playerProfileStats.ts) — stejné
+        // místo/podmínka jako deathCount výše (skutečná smrt, ne near-miss).
+        // V Normal s více životy se počítá KAŽDÁ smrt, ne jen konec runu —
+        // tahle větev je přesně "jedna skutečná smrt", žádný extra guard
+        // navíc potřeba.
+        recordDeath();
         // Žárovka je vlastnost OBJEKTU, ne hlídače — smrt ji jen uloží tak, jak
         // byla (žádný denní servis, ten běží jen po přežité směně, viz "win"
         // níže), ať další hlídač pokračuje přesně odtud, kde předchozí skončil.
@@ -397,6 +414,12 @@ export default function PlayPage() {
       // Stejný "zvyš přesně jednou při přechodu" vzor jako deathCount výše —
       // ne při kliknutí na tlačítko, ne opakovaně při rerenderu.
       setSurvivedNights(incrementSurvivedNights());
+      // Profil hlídače (viz zadání, game/core/playerProfileStats.ts) —
+      // currentNight je noc, kterou hráč PRÁVĚ přežil (stejná hodnota jako
+      // nightThatEnded v "death" větvi výše), ne noc PO přechodu. hardcoreBestNight
+      // se aktualizuje jen pro gameMode "hardcore", jen směrem nahoru (viz
+      // recordNightSurvived).
+      recordNightSurvived(state.gameMode, currentNight);
       // Denní servis: jen SKUTEČNĚ prasklé žárovky se vymění za náhradní kus
       // ze skladu (viz game/core/roomBulbs.ts#applyDailyBulbService) — slabá,
       // ale neprasklá žárovka se nedotkne. Běží jen tady (přežitá směna),
@@ -569,6 +592,11 @@ export default function PlayPage() {
     if (prevBulbReplaceSuccessSeqRef.current !== state.bulbReplaceSuccessSeq) {
       audioManager.play(AUDIO_EVENTS.bulbReplaceSuccess);
       prevBulbReplaceSuccessSeqRef.current = state.bulbReplaceSuccessSeq;
+      // Profil hlídače (viz zadání, game/core/playerProfileStats.ts) — stejný
+      // seq-diff signál jako zvuk výše, jen SKUTEČNĚ dokončená výměna
+      // (bulbReplaceSuccessSeq se zvyšuje jen po BULB_REPLACE_DURATION_MS
+      // úspěšně doběhlé výměně, ne po pokusu bez žárovky na skladě).
+      recordBulbReplaced();
     }
   }, [state.bulbReplaceSuccessSeq]);
 
@@ -585,6 +613,10 @@ export default function PlayPage() {
   // směna -> minihra se otevře znovu místo kanceláře).
   useEffect(() => {
     if (shouldLaunchEmergencyMiniGame(prevEmergencyRunReadySeqRef.current, state.emergencyRunReadySeq)) {
+      // Profil hlídače (viz zadání, game/core/playerProfileStats.ts) —
+      // skutečné spuštění EmergencyMiniGame, bez ohledu na to, jestli je to
+      // battery nebo shotgun run.
+      recordExpeditionStarted();
       // Od noci 10, dokud hráč brokovnici ještě nemá, nabídne "Jít ven"
       // přednostně shotgun run místo battery runu (viz zadání "první krok k
       // true endingu", canStartShotgunEmergencyRun) — equipment vždy podle
@@ -764,6 +796,10 @@ export default function PlayPage() {
     } else {
       const gameMode = selectedGameModeRef.current;
       const shotgunEquipment = createFreshRunShotgunEquipment(getMonsterDefeatReward().doubleBarrelUnlocked);
+      // Profil hlídače (viz zadání, game/core/playerProfileStats.ts) — jen
+      // SKUTEČNĚ nový run (START_SHIFT z menu), ne RESTART_SHIFT pokračování
+      // stejné směny po smrti s životy navíc.
+      recordRunStarted();
       dispatch({
         type: "START_SHIFT",
         roomBulbs: getRoomBulbs(),
@@ -810,6 +846,12 @@ export default function PlayPage() {
   // monsterDefeatReward.ts) — server persistence není potřeba pro tenhle krok.
   function handleMonsterDefeatedCinematicComplete() {
     recordMonsterDefeat();
+    // Profil hlídače (viz zadání, game/core/playerProfileStats.ts) — stejné
+    // volací místo (a tím stejná "jen jednou" záruka) jako recordMonsterDefeat
+    // výše, ať monsterKills nikdy nedrifne od reward.monsterDefeatsCount.
+    // MonsterDefeatedScreen.tsx sám hlídá, že onCinematicComplete nevystřelí
+    // dvakrát za jedno mountnutí (viz jeho doneRef guard).
+    recordMonsterKill();
   }
 
   function handleToggleDoor() {
@@ -907,6 +949,9 @@ export default function PlayPage() {
     }
 
     if (result.outcome === "returned") {
+      // Profil hlídače (viz zadání, game/core/playerProfileStats.ts) — jen
+      // "returned", nikdy "dead"/"failed" (ty se dřív vrátí/nedojdou sem).
+      recordExpeditionReturned();
       const newPower = applyEmergencyWorldEffects(state.power, result.worldEffects);
       const rechargedAmount = newPower - state.power;
       const messages: string[] = [];
@@ -985,6 +1030,11 @@ export default function PlayPage() {
       // skrytý — stejný text při každém potvrzeném zásahu, bez odhalování
       // postupu.
       if (result.monsterHit) {
+        // Profil hlídače (viz zadání, game/core/playerProfileStats.ts) —
+        // state.pendingMonsterHits je tady pořád PŘED-dispatchová hodnota
+        // (stejná, kterou CONFIRM_MONSTER_HIT níže právě potvrdí) — přesně
+        // "skutečný počet potvrzených zásahů", ne pevná +1.
+        recordMonsterHitsConfirmed(state.pendingMonsterHits);
         dispatch({ type: "CONFIRM_MONSTER_HIT" });
         messages.push(COPY.game.monsterHitConfirmedLabel);
       }
@@ -1014,6 +1064,14 @@ export default function PlayPage() {
 
   function handleRestartGenerator() {
     audioManager.play(AUDIO_EVENTS.uiClick);
+    // Profil hlídače (viz zadání, game/core/playerProfileStats.ts) — čte se
+    // PŘED dispatchem, přes sdílenou willGeneratorRestartSucceed (stejná
+    // podmínka jako gameReducer.ts RESTART_GENERATOR "úspěšná" větev).
+    // Zbytečný klik na FUNKČNÍ generátor (generatorAccidentalRestartSeq)
+    // se NEPOČÍTÁ jako úspěšný restart.
+    if (willGeneratorRestartSucceed(state)) {
+      recordGeneratorRestarted();
+    }
     dispatch({ type: "RESTART_GENERATOR" });
   }
 

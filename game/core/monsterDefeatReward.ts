@@ -70,3 +70,15 @@ export function recordMonsterDefeat(): MonsterDefeatReward {
     return current;
   }
 }
+
+/** Vrátí odměnu zpátky na výchozí (nic odemčené) stav — viz app/profile/page.tsx "Resetovat lokální profil". Dev/debug nástroj, ne herní mechanika. */
+export function resetMonsterDefeatReward(): MonsterDefeatReward {
+  const defaults = createDefaultMonsterDefeatReward();
+  if (typeof window === "undefined") return defaults;
+  try {
+    window.localStorage.setItem(MONSTER_DEFEAT_REWARD_STORAGE_KEY, JSON.stringify(defaults));
+  } catch {
+    // Ignoruj — i kdyby se nepovedlo zapsat, hra nesmí spadnout.
+  }
+  return defaults;
+}
