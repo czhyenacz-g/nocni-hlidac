@@ -266,3 +266,88 @@
   animation-iteration-count: infinite;
 }
 
+/* ── Kamerový "monitor rack" na desktopu (viz CameraMonitorGrid.tsx,
+ * CameraMonitorRackTile.tsx) — čistě vizuální, žádný dopad na mobilní
+ * .camera-monitor-tile (CameraMonitorTile.tsx zůstává beze změny). Cíl:
+ * fyzický cluster starých CCTV monitorů — kovový rám kolem celé sekce +
+ * jednotlivý bezel/šrouby/LED/CRT nádech kolem každého monitoru, ne plochý
+ * grid stejných obdélníků. */
+.camera-rack {
+  background: linear-gradient(180deg, rgba(32, 35, 40, 0.92), rgba(11, 13, 16, 0.96));
+  border: 1px solid #3f4550;
+  border-radius: 6px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 -3px 8px rgba(0, 0, 0, 0.65),
+    0 4px 14px rgba(0, 0, 0, 0.5);
+  padding: 16px 14px 10px;
+}
+
+.camera-monitor-bezel {
+  border: 3px solid #2b2f36;
+  border-radius: 4px;
+  background: #111417;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 2px 6px rgba(0, 0, 0, 0.75),
+    0 3px 8px rgba(0, 0, 0, 0.55);
+}
+
+/* Horní (menší, pomocné) monitory — tenčí, lehce zaoblenější rám, ať
+ * vizuálně čtou jako jiný, levnější typ přístroje než hlavní CCTV níže. */
+.camera-monitor-bezel--upper {
+  border-color: #363b43;
+  border-radius: 6px;
+}
+
+/* Spodní (hlavní CCTV) monitory — silnější, hranatější, tmavší rám s
+ * výraznějším stínem, ať působí jako robustnější/starší hlavní přístroj. */
+.camera-monitor-bezel--lower {
+  border-width: 4px;
+  border-color: #23262b;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    inset 0 3px 10px rgba(0, 0, 0, 0.8),
+    0 6px 16px rgba(0, 0, 0, 0.6);
+}
+
+.camera-monitor-bezel:hover,
+.camera-monitor-bezel:focus-visible {
+  outline: 2px solid #f59e0b;
+  outline-offset: 1px;
+}
+
+/* Drobné "šrouby" v rozích bezelu — čistě dekorativní kolečka, žádný obrázek. */
+.camera-monitor-screw {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #6b7280, #1f2327 70%);
+  box-shadow: 0 0 1px rgba(0, 0, 0, 0.8);
+}
+
+/* Malá "stavová" LED kontrolka v rohu monitoru — pomalu blikající (odlišné
+ * tempo od pixel-blink na urgentních tlačítkách, ať nepůsobí jako varování). */
+.camera-monitor-led {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 4px 1px rgba(34, 197, 94, 0.8);
+  animation: pixel-blink 2.4s steps(2) infinite;
+}
+
+.camera-monitor-tag {
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  font-size: 8px;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  text-transform: uppercase;
+}
+
