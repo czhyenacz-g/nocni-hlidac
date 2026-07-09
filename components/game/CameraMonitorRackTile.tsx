@@ -24,7 +24,7 @@ export default function CameraMonitorRackTile({ camera, onClick, camIndex, size,
   return (
     <button
       type="button"
-      className={`pixel-screen-static camera-monitor-bezel ${bezelVariant} camera-monitor-tile tap-target ${sizeClasses} ${tiltClassName ?? ""} relative flex flex-col items-center justify-center gap-1 px-2 text-center`}
+      className={`pixel-screen-static camera-monitor-bezel ${bezelVariant} camera-monitor-tile tap-target group ${sizeClasses} ${tiltClassName ?? ""} relative flex flex-col items-center justify-center gap-1 px-2 text-center`}
       onClick={onClick}
       aria-label={`${camera.label} — zvětšit`}
     >
@@ -38,6 +38,14 @@ export default function CameraMonitorRackTile({ camera, onClick, camIndex, size,
       <span className="camera-monitor-screw" style={{ top: 3, right: 3 }} aria-hidden="true" />
       <span className="camera-monitor-screw" style={{ bottom: 3, left: 3 }} aria-hidden="true" />
       <span className="camera-monitor-screw" style={{ bottom: 3, right: 3 }} aria-hidden="true" />
+      {/* Popis kamery (viz CameraDefinition.description) — stejný hover
+          reveal jako v mobilní CameraMonitorTile.tsx a v detailu
+          (CameraView.tsx), jen jako plovoucí tooltip pod bezelem. */}
+      {camera.description && (
+        <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-1.5 w-40 -translate-x-1/2 rounded border border-gray-700 bg-black/90 px-2 py-1 text-[9px] leading-tight text-gray-400 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+          {camera.description}
+        </span>
+      )}
     </button>
   );
 }
