@@ -45,16 +45,31 @@ export default function LoadingScreen() {
     <main className="relative min-h-screen flex items-center justify-center p-4">
       <SceneBackground scene={BACKGROUND_SCENES.loading} />
 
-      <div className="w-full max-w-md pixel-panel pixel-screen-static p-6">
-        <h1 className="text-sm font-bold text-green-400 mb-1">{COPY.loading.title}</h1>
-        <p className="text-[10px] text-gray-500 mb-4">{COPY.loading.subtitle}</p>
+      {/* Stejný "terminál" obal jako MainMenuScreen.tsx (viz zadání "podobným
+          způsobem uprav") — kovový rám + 4 šrouby + zapuštěná obrazovka.
+          Tenhle screen už měl vlastní servisní titulek ("OBJEKT 13 —
+          SERVISNÍ TERMINÁL"), takže dostane jen malou LED vedle něj, ne
+          duplicitní hlavičkový proužek jako Briefing/MainMenu. */}
+      <div className="w-full max-w-md menu-terminal-frame">
+        <span className="camera-monitor-screw" style={{ top: 5, left: 5 }} aria-hidden="true" />
+        <span className="camera-monitor-screw" style={{ top: 5, right: 5 }} aria-hidden="true" />
+        <span className="camera-monitor-screw" style={{ bottom: 5, left: 5 }} aria-hidden="true" />
+        <span className="camera-monitor-screw" style={{ bottom: 5, right: 5 }} aria-hidden="true" />
 
-        <div className="flex flex-col gap-1.5 text-xs text-gray-400 min-h-32">
-          <p>
-            <span className="text-green-500">{"> "}</span>
-            {sentences.slice(0, visibleCount).join(" ")}
-            {visibleCount < sentences.length && <span className="text-green-500 animate-pulse"> _</span>}
-          </p>
+        <div className="menu-terminal-screen pixel-screen-static p-6">
+          <div className="flex items-center justify-between mb-1">
+            <h1 className="text-sm font-bold text-green-400">{COPY.loading.title}</h1>
+            <span className="menu-terminal-led" aria-hidden="true" />
+          </div>
+          <p className="text-[10px] text-gray-500 mb-4">{COPY.loading.subtitle}</p>
+
+          <div className="flex flex-col gap-1.5 text-xs text-gray-400 min-h-32">
+            <p>
+              <span className="text-green-500">{"> "}</span>
+              {sentences.slice(0, visibleCount).join(" ")}
+              {visibleCount < sentences.length && <span className="text-green-500 animate-pulse"> _</span>}
+            </p>
+          </div>
         </div>
       </div>
     </main>

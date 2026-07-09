@@ -20,16 +20,33 @@ export default function BriefingScreen({ nightNumber, onStartShift }: BriefingSc
     <main className="relative min-h-screen flex items-center justify-center p-4">
       <SceneBackground scene={BACKGROUND_SCENES.loading} />
 
-      <div className="w-full max-w-md text-center pixel-panel p-8 relative z-10">
-        <h1 className="text-2xl font-bold mb-4 text-red-500">{briefing.title}</h1>
-        <div className="text-sm text-gray-300 mb-8 space-y-2">
-          {briefing.lines.map((line) => (
-            <p key={line}>{line}</p>
-          ))}
+      {/* Stejný "terminál" obal jako MainMenuScreen.tsx (viz zadání "podobným
+          způsobem uprav") — kovový rám + 4 šrouby + zapuštěná obrazovka s
+          hlavičkovým proužkem (LED + label), místo ploché pixel-panel karty. */}
+      <div className="w-full max-w-md menu-terminal-frame relative z-10">
+        <span className="camera-monitor-screw" style={{ top: 5, left: 5 }} aria-hidden="true" />
+        <span className="camera-monitor-screw" style={{ top: 5, right: 5 }} aria-hidden="true" />
+        <span className="camera-monitor-screw" style={{ bottom: 5, left: 5 }} aria-hidden="true" />
+        <span className="camera-monitor-screw" style={{ bottom: 5, right: 5 }} aria-hidden="true" />
+
+        <div className="menu-terminal-screen pixel-screen-static">
+          <div className="menu-terminal-header">
+            <span>Objekt 13 · Terminál směny</span>
+            <span className="menu-terminal-led" aria-hidden="true" />
+          </div>
+
+          <div className="text-center p-8">
+            <h1 className="text-2xl font-bold mb-4 text-red-500">{briefing.title}</h1>
+            <div className="text-sm text-gray-300 mb-8 space-y-2">
+              {briefing.lines.map((line) => (
+                <p key={line}>{line}</p>
+              ))}
+            </div>
+            <button className="pixel-button tap-target px-6 py-3 text-sm w-full" onClick={onStartShift}>
+              {COPY.menu.startButton}
+            </button>
+          </div>
         </div>
-        <button className="pixel-button tap-target px-6 py-3 text-sm w-full" onClick={onStartShift}>
-          {COPY.menu.startButton}
-        </button>
       </div>
     </main>
   );

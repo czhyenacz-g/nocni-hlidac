@@ -351,3 +351,56 @@
   text-transform: uppercase;
 }
 
+/* ── Hlavní menu jako "terminál" (viz MainMenuScreen.tsx) — stejná
+ * materiálovost/vrstvení jako kamerový desktop redesign (.camera-rack,
+ * .camera-monitor-bezel výše), jen ve větším měřítku pro celý panel menu.
+ * Cíl: bezpečnostní konzole/monitor, ne ilustrovaný plakát uprostřed
+ * stránky. Funguje stejně na mobilu i desktopu (žádný lg: gate) — jen
+ * "device chrome" navíc kolem existujícího obsahu, žádná změna obsahu/textu. */
+.menu-terminal-frame {
+  position: relative;
+  background: linear-gradient(180deg, rgba(37, 40, 46, 0.95), rgba(10, 12, 15, 0.97));
+  border: 1px solid #454b56;
+  border-radius: 8px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -4px 10px rgba(0, 0, 0, 0.7),
+    0 10px 30px rgba(0, 0, 0, 0.6);
+  padding: 14px;
+}
+
+/* Zapuštěná "obrazovka" uvnitř kovového rámu — tmavší, vlastní vnitřní
+ * bevel, jemný zelenavý CRT nádech (stejná barva jako camera-monitor-led). */
+.menu-terminal-screen {
+  position: relative;
+  background: rgba(8, 10, 13, 0.92);
+  border: 2px solid #1c1f24;
+  border-radius: 4px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    inset 0 3px 16px rgba(0, 0, 0, 0.85),
+    inset 0 0 46px rgba(34, 197, 94, 0.035);
+}
+
+.menu-terminal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #2a2d33;
+  padding: 7px 14px;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #5b6472;
+}
+
+.menu-terminal-led {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 5px 1px rgba(34, 197, 94, 0.85);
+  animation: pixel-blink 2.4s steps(2) infinite;
+  flex: none;
+}
+
