@@ -31,6 +31,7 @@ import {
   MINIGAME_PLAYER_VISION_ANGLE_RAD,
   MINIGAME_PLAYER_VISION_RAY_COUNT,
   MINIGAME_PLAYER_VISION_RAY_STEP_PX,
+  MONSTER_FINAL_DEATH_SCREEN_DELAY_MS,
   MOVE_TARGET_ARRIVAL_RADIUS_PX,
   MOVE_TARGET_MARKER_DURATION_MS,
   OFFICE_THREAT_NEAR_OFFICE_RADIUS_PX,
@@ -74,6 +75,7 @@ import {
   directionFromVector,
   distance,
   getOfficeMarkerLabel,
+  hasFinalHitDelayElapsed,
   isMonsterOfficeThreatArmed,
   isOfficeDoorLocked,
   MINIGAME_HEARTBEAT_VOLUME_BASE,
@@ -83,6 +85,7 @@ import {
   resolveMiniGameHeartbeatVolume,
   shouldHighlightOfficeMarker,
   shouldShowOfficeBoundCrisisMarker,
+  shouldTriggerFinalMonsterHit,
   updateEnemyAi,
   updateMissionPhase,
 } from "@/game/minigame/logic";
@@ -120,7 +123,7 @@ interface EmergencyMiniGameProps {
    * Zavolá se HNED, jak výstřel skutečně trefí monstrum (viz fireShot,
    * isEnemyHit) — NENÍ potvrzení zásahu pro hidden true ending
    * (game/core/monsterEnding.ts), jen signál "právě se to stalo", ať
-   * app/play/page.tsx může nastavit `GameState.pendingMonsterHit`. Potvrzení
+   * app/play/page.tsx může nastavit `GameState.pendingMonsterHits`. Potvrzení
    * přijde až přes `onComplete` s `monsterHit: true` při bezpečném návratu.
    */
   onMonsterHit?: () => void;
@@ -206,6 +209,19 @@ interface MiniGameRefState {
    * Posílá se v EmergencyMiniGameResult.monsterHit teprve při skutečném
    * návratu do kanceláře (viz handleObjectiveKey) — hidden true ending
    * (game/core/monsterEnding.ts) zásah potvrdí až tam, ne tady.
+   *
+   * TODO (dvouhlavňovka, viz zadání "true ending odměna" část F): tenhle
+   * latch záměrně počítá NEJVÝŠ JEDEN zásah za výpravu, i s dvouhlavňovkou
+   * (2 náboje) — druhý výstřel může minout/omráčit znovu, ale nezvyšuje
+   * potvrzený počet. `GameState.pendingMonsterHits` už JE číselný typ
+   * (připravený na >1), takže plné "2 potvrzené zásahy za jednu výpravu s
+   * dvouhlavňovkou" by šlo doplnit později bez další migrace GameState —
+   * jen by bylo potřeba: (1) tohle pole změnit na counter, (2) povolit
+   * druhý hit jen když se enemy.mode mezitím vrátil z "wounded" (aby
+   * dvojitý zásah do OMRÁČENÉHO monstra nešel počítat jako dva), (3)
+   * přepočítávat "je tenhle konkrétní zásah finální" kumulativně (aktuální
+   * monsterHitsToday + counter téhle výpravy), ne jen jednou předem
+   * spočítaný `isFinalMonsterHit` boolean.
    */
   monsterHitThisRun: boolean;
   /**
@@ -219,6 +235,25 @@ interface MiniGameRefState {
    * za výpravu, nikdy se nevrací zpátky na false.
    */
   officeThreatTriggered: boolean;
+  /**
+   * `true` od okamžiku, kdy zásah trefí monstrum a `input.isFinalMonsterHit`
+   * je nastavené (viz app/play/page.tsx#handleStartEmergencyRun — počítá
+   * "tenhle zásah by byl 10." předem, PŘED spuštěním výpravy, protože se za
+   * jednu výpravu počítá jen jeden zásah). Latch, nikdy zpátky na false.
+   * `game.enemy.alive` se ve stejném okamžiku nastaví na `false` (stejný
+   * mechanismus jako `officeThreatTriggered` výše) — enemy tak přestane
+   * jednat jako běžný nepřítel (žádný pohyb/AI, žádná kolizní smrt hráče,
+   * viz `tick()` `if (game.enemy.alive)` guardy). tick() navíc přestane
+   * vyhodnocovat pohyb/AI/sběr CELÉ herní smyčky (ne jen enemy část), ať
+   * hráč zůstane "zamrzlý" na dramatickou pauzu (viz
+   * MONSTER_FINAL_DEATH_SCREEN_DELAY_MS), po které se výprava automaticky
+   * dokončí jako bezpečný návrat s `monsterHit: true`.
+   */
+  finalHitTriggered: boolean;
+  /** elapsedMs v okamžiku finálního zásahu — `null` mimo finalHitTriggered. Řídí odpočet do automatického dokončení (viz tick()). */
+  finalHitAtMs: number | null;
+  /** Pozice monstra v okamžiku finálního zásahu — "dead marker" (křížek) se kreslí tady, i když enemy.alive je teď false (viz draw()). `null` mimo finalHitTriggered. */
+  finalHitMarkerPosition: Vec2 | null;
 }
 
 function createInitialState(input: EmergencyMiniGameInput): MiniGameRefState {
@@ -257,6 +292,9 @@ function createInitialState(input: EmergencyMiniGameInput): MiniGameRefState {
     moveTargetSetAtElapsedMs: 0,
     monsterHitThisRun: false,
     officeThreatTriggered: false,
+    finalHitTriggered: false,
+    finalHitAtMs: null,
+    finalHitMarkerPosition: null,
   };
 }
 
@@ -400,6 +438,10 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
   const completedRef = useRef(false);
 
   const [status, setStatus] = useState<MiniGameStatus>("playing");
+  // Finální (10.) zásah proběhl — viz fireShot/tick(). Řídí jen UI overlay
+  // (caption + countdown), skutečné zamrznutí herní smyčky se čte přímo z
+  // gameRef.current.finalHitTriggered (viz komentář u MiniGameRefState).
+  const [finalHitTriggered, setFinalHitTriggered] = useState(false);
   const [ammoLeft, setAmmoLeft] = useState(() => resolveEquipmentFromInput(input).ammo);
   // Zobrazený odpočet "Zranění: X.X s" — `null` mimo wounded mód. Aktualizuje
   // se každý tik, ale React re-render přeskočí, dokud se zaokrouhlená hodnota
@@ -577,6 +619,9 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
   // brokovnice nebo bez náboje se NIC nemění: ammo, shotsUsed ani shot flash.
   function fireShot() {
     const game = gameRef.current;
+    // Zamrzlý po finálním zásahu (viz níže) — žádný další výstřel, dvouhlavňovka
+    // ani opakovaný "zásah" na už mrtvé monstrum nemá co dělat.
+    if (game.finalHitTriggered) return;
     const result = applyShot({
       player: { hasShotgun: game.player.hasShotgun, ammo: game.player.ammo },
       playerPosition: game.player,
@@ -595,7 +640,27 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
     // Čistě vizuální bliknutí výseče — nezávisí na tom, jestli výstřel trefí.
     game.shotFlashRemainingMs = result.shotFlashRemainingMs;
 
-    if (result.hit) {
+    if (shouldTriggerFinalMonsterHit(result.hit, input.isFinalMonsterHit, game.monsterHitThisRun)) {
+      // 10. (finální) zásah — hidden true ending (viz
+      // game/core/monsterEnding.ts, MONSTER_FINAL_DEATH_SCREEN_DELAY_MS).
+      // NENÍ jen další "wounded" — monstrum od teď definitivně přestává
+      // jednat jako běžný nepřítel (stejný `alive = false` mechanismus jako
+      // officeThreatTriggered výše: žádný další pohyb/AI, žádná kolizní
+      // smrt hráče, viz tick()). Marker zůstává na místě zásahu, ať hráč má
+      // vizuální potvrzení i po zbytek zamrzlé scény. tick() rozpozná
+      // `finalHitTriggered` a po MONSTER_FINAL_DEATH_SCREEN_DELAY_MS
+      // výpravu samo dokončí jako bezpečný návrat — hráč už nemusí fyzicky
+      // doběhnout zpátky do kanceláře.
+      game.enemy.alive = false;
+      game.enemy.mode = "wounded";
+      game.finalHitTriggered = true;
+      game.finalHitAtMs = game.elapsedMs;
+      game.finalHitMarkerPosition = { x: game.enemy.x, y: game.enemy.y };
+      game.monsterHitThisRun = true;
+      audioManager.play(AUDIO_EVENTS.monsterFinalDeathRoar);
+      setFinalHitTriggered(true);
+      onMonsterHit?.();
+    } else if (result.hit) {
       // Zásah NENÍ smrt — monstrum zůstane na místě a dočasně se omráčí
       // (viz ENEMY_STUN_DURATION_MS), hra dál běží (status zůstává "playing").
       game.enemy.stunRemainingMs = ENEMY_STUN_DURATION_MS;
@@ -605,7 +670,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
       // POTVRDÍ až při bezpečném návratu (viz handleObjectiveKey), tady se jen
       // zapamatuje, že k němu během týhle výpravy došlo. Nikdy se nevrací na
       // false (i kdyby hráč "wounded" enemy trefil znovu). `onMonsterHit`
-      // informuje app/play/page.tsx HNED (GameState.pendingMonsterHit), ať se
+      // informuje app/play/page.tsx HNED (GameState.pendingMonsterHits), ať se
       // dá zahodit, pokud hráč potom venku zemře.
       game.monsterHitThisRun = true;
       onMonsterHit?.();
@@ -625,7 +690,9 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
   //    "returning"); dokud není, E v kanceláři misi neukončí.
   function handleObjectiveKey() {
     const game = gameRef.current;
-    if (game.status !== "playing") return;
+    // Zamrzlý po finálním zásahu — výprava se dokončí automaticky (viz
+    // tick()), ruční návrat přes E by ji dokončil předčasně/duplicitně.
+    if (game.status !== "playing" || game.finalHitTriggered) return;
 
     if (input.objective === "collect_item" && game.mission.phase === "outbound" && game.itemPosition) {
       const touchingItem = circlesTouch(
@@ -767,57 +834,54 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
       if (game.status === "playing") {
         game.elapsedMs += deltaMs;
 
-        if (game.shotFlashRemainingMs > 0) {
-          game.shotFlashRemainingMs = Math.max(0, game.shotFlashRemainingMs - deltaMs);
-        }
+        // Finální (10.) zásah (viz fireShot, MONSTER_FINAL_DEATH_SCREEN_DELAY_MS)
+        // — cinematic freeze: běžná herní smyčka (pohyb/AI/sběr/kolize) se dál
+        // nevyhodnocuje, jen odpočet do automatického dokončení výpravy. Canvas
+        // dál kreslí (draw() běží vždy, viz níže), ale protože se pozice hráče/
+        // nepřítele dál nemění, snímek vizuálně "zamrzne".
+        if (game.finalHitTriggered) {
+          if (hasFinalHitDelayElapsed(game.finalHitAtMs, game.elapsedMs, MONSTER_FINAL_DEATH_SCREEN_DELAY_MS)) {
+            const collectedExtraLootItemIds = game.extraLoot
+              .filter((loot) => loot.collected)
+              .map((loot) => loot.itemId);
+            completeGame(
+              createReturnedResult(
+                game.elapsedMs,
+                game.shotsUsed,
+                game.mission.completedObjective,
+                undefined,
+                true,
+                collectedExtraLootItemIds,
+                false,
+              ),
+              "won",
+            );
+          }
+        } else {
+          if (game.shotFlashRemainingMs > 0) {
+            game.shotFlashRemainingMs = Math.max(0, game.shotFlashRemainingMs - deltaMs);
+          }
 
-        let dx = 0;
-        let dy = 0;
-        for (const key of heldKeysRef.current) {
-          const move = MOVE_KEYS[key];
-          if (!move) continue;
-          dx += move.dx;
-          dy += move.dy;
-        }
+          let dx = 0;
+          let dy = 0;
+          for (const key of heldKeysRef.current) {
+            const move = MOVE_KEYS[key];
+            if (!move) continue;
+            dx += move.dx;
+            dy += move.dy;
+          }
 
-        if (dx !== 0 || dy !== 0) {
-          // Klávesnice má vždy přednost před tap-to-move cílem (viz zadání
-          // "PC ovládání zůstává funkční") — jakýkoliv stisk pohybové
-          // klávesy zruší rozjetý tap-to-move, ať se obě řízení neperou.
-          game.moveTarget = null;
-          const length = Math.hypot(dx, dy) || 1;
-          const moved = moveWithWallSliding(
-            game.player.x,
-            game.player.y,
-            (dx / length) * game.player.speed,
-            (dy / length) * game.player.speed,
-            game.player.radius,
-            game.walls,
-            game.worldWidth,
-            game.worldHeight,
-          );
-          game.player.x = moved.x;
-          game.player.y = moved.y;
-          game.player.direction = directionFromVector(dx, dy, game.player.direction);
-        } else if (game.moveTarget) {
-          // Tap-to-move (viz zadání, game/minigame/touchControls.ts) — stejný
-          // moveWithWallSliding jako klávesnice, kolize se zdmi/překážkami
-          // tedy platí úplně stejně.
-          const step = computeMoveTowardsTarget(
-            game.player.x,
-            game.player.y,
-            game.moveTarget,
-            game.player.speed,
-            MOVE_TARGET_ARRIVAL_RADIUS_PX,
-          );
-          if (step.arrived) {
+          if (dx !== 0 || dy !== 0) {
+            // Klávesnice má vždy přednost před tap-to-move cílem (viz zadání
+            // "PC ovládání zůstává funkční") — jakýkoliv stisk pohybové
+            // klávesy zruší rozjetý tap-to-move, ať se obě řízení neperou.
             game.moveTarget = null;
-          } else {
+            const length = Math.hypot(dx, dy) || 1;
             const moved = moveWithWallSliding(
               game.player.x,
               game.player.y,
-              step.dx,
-              step.dy,
+              (dx / length) * game.player.speed,
+              (dy / length) * game.player.speed,
               game.player.radius,
               game.walls,
               game.worldWidth,
@@ -825,179 +889,207 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
             );
             game.player.x = moved.x;
             game.player.y = moved.y;
-            game.player.direction = directionFromVector(step.dx, step.dy, game.player.direction);
+            game.player.direction = directionFromVector(dx, dy, game.player.direction);
+          } else if (game.moveTarget) {
+            // Tap-to-move (viz zadání, game/minigame/touchControls.ts) — stejný
+            // moveWithWallSliding jako klávesnice, kolize se zdmi/překážkami
+            // tedy platí úplně stejně.
+            const step = computeMoveTowardsTarget(
+              game.player.x,
+              game.player.y,
+              game.moveTarget,
+              game.player.speed,
+              MOVE_TARGET_ARRIVAL_RADIUS_PX,
+            );
+            if (step.arrived) {
+              game.moveTarget = null;
+            } else {
+              const moved = moveWithWallSliding(
+                game.player.x,
+                game.player.y,
+                step.dx,
+                step.dy,
+                game.player.radius,
+                game.walls,
+                game.worldWidth,
+                game.worldHeight,
+              );
+              game.player.x = moved.x;
+              game.player.y = moved.y;
+              game.player.direction = directionFromVector(step.dx, step.dy, game.player.direction);
+            }
           }
-        }
 
-        if (!game.hasLeftStartZone) {
-          if (distance(game.player.x, game.player.y, game.startX, game.startY) > START_ZONE_LEAVE_RADIUS_PX) {
-            game.hasLeftStartZone = true;
-            setHasLeftStartZone(true);
+          if (!game.hasLeftStartZone) {
+            if (distance(game.player.x, game.player.y, game.startX, game.startY) > START_ZONE_LEAVE_RADIUS_PX) {
+              game.hasLeftStartZone = true;
+              setHasLeftStartZone(true);
+            }
           }
-        }
 
-        // Zamčené dveře kanceláře (viz zadání, EMERGENCY_OFFICE_DOOR_LOCK_MS,
-        // canReturnToOffice) — stejný "volej pokaždé, setState bailout na
-        // stejné hodnotě" vzor jako setInExitZone níže (tenhle stav nikdy
-        // zpátky neklesá, prostý opakovaný zápis je nejjednodušší).
-        const officeDoorUnlockedNow = !isOfficeDoorLocked(game.elapsedMs, EMERGENCY_OFFICE_DOOR_LOCK_MS);
-        setOfficeDoorUnlocked(officeDoorUnlockedNow);
-        // Zaokrouhleno na desetiny sekundy — stejný vzor jako woundedMsLeft,
-        // ať panel "Automatické otevření za: X.X s" nezpůsobuje re-render 60×/s.
-        setDoorCountdownMs(Math.ceil(msUntilOfficeDoorOpens(game.elapsedMs, EMERGENCY_OFFICE_DOOR_LOCK_MS) / 100) * 100);
+          // Zamčené dveře kanceláře (viz zadání, EMERGENCY_OFFICE_DOOR_LOCK_MS,
+          // canReturnToOffice) — stejný "volej pokaždé, setState bailout na
+          // stejné hodnotě" vzor jako setInExitZone níže (tenhle stav nikdy
+          // zpátky neklesá, prostý opakovaný zápis je nejjednodušší).
+          const officeDoorUnlockedNow = !isOfficeDoorLocked(game.elapsedMs, EMERGENCY_OFFICE_DOOR_LOCK_MS);
+          setOfficeDoorUnlocked(officeDoorUnlockedNow);
+          // Zaokrouhleno na desetiny sekundy — stejný vzor jako woundedMsLeft,
+          // ať panel "Automatické otevření za: X.X s" nezpůsobuje re-render 60×/s.
+          setDoorCountdownMs(Math.ceil(msUntilOfficeDoorOpens(game.elapsedMs, EMERGENCY_OFFICE_DOOR_LOCK_MS) / 100) * 100);
 
-        // Monstrum zamíří na kancelář, jakmile hráč zůstane venku moc dlouho
-        // PO otevření dveří (viz EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS,
-        // isMonsterOfficeThreatArmed) — NASTAVÍ jen commitnutý cíl
-        // (Enemy.officeTarget = game.placement.playerExit, existující
-        // "dveře kanceláře" bod, viz resolveMiniGamePlacement), monstrum od
-        // teď běží tam stejným pohybovým mechanismem jako investigating/
-        // chasing (mode "office_bound", viz updateEnemyAi v logic.ts).
-        // Samotné zmizení z mapy + worldEffect "monster_reached_office" se
-        // řeší až níže, PO skutečném doražení do kanceláře — armed samo o
-        // sobě NIKDY neznamená "dorazilo" (viz zadání).
-        const threatArmedNow = isMonsterOfficeThreatArmed(
-          game.elapsedMs,
-          EMERGENCY_OFFICE_DOOR_LOCK_MS,
-          EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS,
-        );
-        setMonsterOfficeThreatArmed(threatArmedNow);
-        if (threatArmedNow && !game.enemy.officeTarget) {
-          game.enemy.officeTarget = game.placement.playerExit;
-        }
-
-        // Čistě pro HUD hint (viz getMissionHint) — setState bailout, mění se
-        // jen při skutečném vstupu/opuštění zóny, ne 60×/s.
-        setInExitZone(circleIntersectsWall(game.player.x, game.player.y, game.player.radius, game.exitZone));
-
-        // Automatické sbírání itemu dotykem (viz zadání "sjednotit pro PC i
-        // mobil") — nahrazuje nutnost stisku E jen pro sebrání věci; E dál
-        // funguje i na návrat do kanceláře (viz handleObjectiveKey).
-        if (
-          shouldAutoCollectItem({
-            objective: input.objective,
-            missionPhase: game.mission.phase,
-            playerX: game.player.x,
-            playerY: game.player.y,
-            playerRadius: game.player.radius,
-            itemPosition: game.itemPosition,
-            itemRadius: ITEM_RADIUS,
-          })
-        ) {
-          const collectedItemId = input.itemToCollect ?? "fuse";
-          game.mission = completeObjective(game.mission, {
-            type: "collected_item",
-            itemId: collectedItemId,
-          });
-          setMissionPhase(game.mission.phase);
-          // Chybělo tu úplně (na rozdíl od doplňkového lootu níže) — hlavní
-          // objective (typicky baterie/brokovnice) po sebrání dřív neukázal
-          // žádnou hlášku, viz zadání "u brokovnice se nezobrazila žádná
-          // hláška, u žárovky ano".
-          setPickupMessage(COPY.game.itemCollectedLabel.replace("{item}", ITEM_LABELS_NOMINATIVE[collectedItemId]));
-          audioManager.play(pickupSoundForItem(collectedItemId));
-        }
-
-        // Doplňkový loot (viz zadání "sandbox výprava") — sbírá se dotykem
-        // stejně jako hlavní item výše, ale NEZÁVISLE na mission.phase/
-        // objective (battery/bulb/shotgun jdou sebrat v libovolném pořadí,
-        // kdykoliv, i souběžně s hlavním objective). `collected` je čistě v
-        // gameRef (ne v mission), takže se nedotýká canReturnToOffice.
-        for (const loot of game.extraLoot) {
-          if (loot.collected) continue;
-          if (circlesTouch(game.player.x, game.player.y, game.player.radius, loot.position.x, loot.position.y, ITEM_RADIUS)) {
-            loot.collected = true;
-            setPickupMessage(COPY.game.itemCollectedLabel.replace("{item}", ITEM_LABELS_NOMINATIVE[loot.itemId]));
-            audioManager.play(pickupSoundForItem(loot.itemId));
+          // Monstrum zamíří na kancelář, jakmile hráč zůstane venku moc dlouho
+          // PO otevření dveří (viz EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS,
+          // isMonsterOfficeThreatArmed) — NASTAVÍ jen commitnutý cíl
+          // (Enemy.officeTarget = game.placement.playerExit, existující
+          // "dveře kanceláře" bod, viz resolveMiniGamePlacement), monstrum od
+          // teď běží tam stejným pohybovým mechanismem jako investigating/
+          // chasing (mode "office_bound", viz updateEnemyAi v logic.ts).
+          // Samotné zmizení z mapy + worldEffect "monster_reached_office" se
+          // řeší až níže, PO skutečném doražení do kanceláře — armed samo o
+          // sobě NIKDY neznamená "dorazilo" (viz zadání).
+          const threatArmedNow = isMonsterOfficeThreatArmed(
+            game.elapsedMs,
+            EMERGENCY_OFFICE_DOOR_LOCK_MS,
+            EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS,
+          );
+          setMonsterOfficeThreatArmed(threatArmedNow);
+          if (threatArmedNow && !game.enemy.officeTarget) {
+            game.enemy.officeTarget = game.placement.playerExit;
           }
-        }
 
-        // Aktuální místnost hráče — jen pro dev lištu, počítá se jen když je
-        // overlay zapnutý (běžná hra tenhle výpočet vůbec nedělá). Stejný
-        // setState-bailout vzor jako výše.
-        if (isDevOverlayEnabledRef.current) {
-          const room = getRoomAtPoint(game.layout, { x: game.player.x, y: game.player.y });
-          setCurrentRoomId(room?.id ?? null);
-        }
+          // Čistě pro HUD hint (viz getMissionHint) — setState bailout, mění se
+          // jen při skutečném vstupu/opuštění zóny, ne 60×/s.
+          setInExitZone(circleIntersectsWall(game.player.x, game.player.y, game.player.radius, game.exitZone));
 
-        if (game.enemy.alive) {
-          game.enemy = updateEnemyAi({
-            enemy: game.enemy,
-            player: { x: game.player.x, y: game.player.y },
-            walls: game.walls,
-            deltaMs,
-            config: game.enemyAiConfig,
-          });
-
-          // Dorazilo monstrum do office cíle? (viz zadání "zamčené dveře") —
-          // kontrola PO pohybu tohohle tiku, čistě podle skutečné pozice
-          // vůči kanceláři (stejná room-bounds zóna jako pro hráčův návrat,
-          // game.exitZone), ne podle vzdálenosti k bodu — "dorazilo" =
-          // monstrum je fyzicky v místnosti kanceláře. Latch přes
-          // `!game.officeThreatTriggered`, ať se nespustí opakovaně.
+          // Automatické sbírání itemu dotykem (viz zadání "sjednotit pro PC i
+          // mobil") — nahrazuje nutnost stisku E jen pro sebrání věci; E dál
+          // funguje i na návrat do kanceláře (viz handleObjectiveKey).
           if (
-            game.enemy.mode === "office_bound" &&
-            !game.officeThreatTriggered &&
-            circleIntersectsWall(game.enemy.x, game.enemy.y, game.enemy.radius, game.exitZone)
-          ) {
-            game.officeThreatTriggered = true;
-            game.enemy.alive = false;
-            setOfficeThreatTriggered(true);
-          }
-
-          // Game over jen když enemy NENÍ wounded, JE naživu (monstrum, co
-          // právě tenhle tik doražením do kanceláře zmizelo výše, nesmí
-          // stejným dotykem ještě jednou "zabít" jako gameOver) a fyzicky
-          // se dotkne hráče — wounded se dotykem game over nikdy
-          // nezpůsobí (viz zadání).
-          if (
-            game.enemy.alive &&
-            game.enemy.mode !== "wounded" &&
-            circlesTouch(game.player.x, game.player.y, game.player.radius, game.enemy.x, game.enemy.y, game.enemy.radius)
-          ) {
-            completeGame(createDeadResult(game.elapsedMs, game.shotsUsed), "gameOver");
-          }
-
-          // Omezená viditelnost hráče (fog of war, viz
-          // game/minigame/playerVision.ts) — počítá se jednou tady, ne
-          // znovu v draw(); draw() i dev lišta (React state níže) čtou
-          // stejnou hodnotu z gameRef.
-          game.enemyVisibleToPlayer = getPlayerVisibilityAtPoint(
-            {
+            shouldAutoCollectItem({
+              objective: input.objective,
+              missionPhase: game.mission.phase,
               playerX: game.player.x,
               playerY: game.player.y,
-              facingAngle: DIRECTION_ANGLES[game.player.direction],
-              pointX: game.enemy.x,
-              pointY: game.enemy.y,
-            },
-            game.walls,
-            PLAYER_VISION_CONFIG,
-          ).visible;
-          if (isDevOverlayEnabledRef.current) {
-            setIsMonsterVisibleToPlayer(game.enemyVisibleToPlayer);
+              playerRadius: game.player.radius,
+              itemPosition: game.itemPosition,
+              itemRadius: ITEM_RADIUS,
+            })
+          ) {
+            const collectedItemId = input.itemToCollect ?? "fuse";
+            game.mission = completeObjective(game.mission, {
+              type: "collected_item",
+              itemId: collectedItemId,
+            });
+            setMissionPhase(game.mission.phase);
+            // Chybělo tu úplně (na rozdíl od doplňkového lootu níže) — hlavní
+            // objective (typicky baterie/brokovnice) po sebrání dřív neukázal
+            // žádnou hlášku, viz zadání "u brokovnice se nezobrazila žádná
+            // hláška, u žárovky ano".
+            setPickupMessage(COPY.game.itemCollectedLabel.replace("{item}", ITEM_LABELS_NOMINATIVE[collectedItemId]));
+            audioManager.play(pickupSoundForItem(collectedItemId));
           }
 
-          setEnemyMode(game.enemy.mode);
-          // Zaokrouhleno na desetiny sekundy — React re-render přeskočí,
-          // dokud se zobrazená hodnota skutečně nezmění (setState se stejnou
-          // hodnotou je no-op), takže tohle nezpůsobuje re-render 60×/s.
-          setWoundedMsLeft(game.enemy.mode === "wounded" ? Math.ceil(game.enemy.stunRemainingMs / 100) * 100 : null);
-        }
+          // Doplňkový loot (viz zadání "sandbox výprava") — sbírá se dotykem
+          // stejně jako hlavní item výše, ale NEZÁVISLE na mission.phase/
+          // objective (battery/bulb/shotgun jdou sebrat v libovolném pořadí,
+          // kdykoliv, i souběžně s hlavním objective). `collected` je čistě v
+          // gameRef (ne v mission), takže se nedotýká canReturnToOffice.
+          for (const loot of game.extraLoot) {
+            if (loot.collected) continue;
+            if (circlesTouch(game.player.x, game.player.y, game.player.radius, loot.position.x, loot.position.y, ITEM_RADIUS)) {
+              loot.collected = true;
+              setPickupMessage(COPY.game.itemCollectedLabel.replace("{item}", ITEM_LABELS_NOMINATIVE[loot.itemId]));
+              audioManager.play(pickupSoundForItem(loot.itemId));
+            }
+          }
 
-        // Hlasitost ambientního tepu podle situace (viz zadání "1) vidím
-        // monstrum 2) ono vidí mě a jde po mě 3) rage mode namax") —
-        // audioManager.setVolume je levné volat každý tik (jen nastaví
-        // audio.volume), žádný extra bailout stav navíc potřeba.
-        audioManager.setVolume(
-          AUDIO_EVENTS.heartbeatStressFast,
-          resolveMiniGameHeartbeatVolume({
-            enemyAlive: game.enemy.alive,
-            enemyVisible: game.enemyVisibleToPlayer,
-            enemyMode: game.enemy.mode,
-            distanceToPlayer: distance(game.player.x, game.player.y, game.enemy.x, game.enemy.y),
-            aggroRange: ENEMY_AGGRO_RANGE,
-          }),
-        );
+          // Aktuální místnost hráče — jen pro dev lištu, počítá se jen když je
+          // overlay zapnutý (běžná hra tenhle výpočet vůbec nedělá). Stejný
+          // setState-bailout vzor jako výše.
+          if (isDevOverlayEnabledRef.current) {
+            const room = getRoomAtPoint(game.layout, { x: game.player.x, y: game.player.y });
+            setCurrentRoomId(room?.id ?? null);
+          }
+
+          if (game.enemy.alive) {
+            game.enemy = updateEnemyAi({
+              enemy: game.enemy,
+              player: { x: game.player.x, y: game.player.y },
+              walls: game.walls,
+              deltaMs,
+              config: game.enemyAiConfig,
+            });
+
+            // Dorazilo monstrum do office cíle? (viz zadání "zamčené dveře") —
+            // kontrola PO pohybu tohohle tiku, čistě podle skutečné pozice
+            // vůči kanceláři (stejná room-bounds zóna jako pro hráčův návrat,
+            // game.exitZone), ne podle vzdálenosti k bodu — "dorazilo" =
+            // monstrum je fyzicky v místnosti kanceláře. Latch přes
+            // `!game.officeThreatTriggered`, ať se nespustí opakovaně.
+            if (
+              game.enemy.mode === "office_bound" &&
+              !game.officeThreatTriggered &&
+              circleIntersectsWall(game.enemy.x, game.enemy.y, game.enemy.radius, game.exitZone)
+            ) {
+              game.officeThreatTriggered = true;
+              game.enemy.alive = false;
+              setOfficeThreatTriggered(true);
+            }
+
+            // Game over jen když enemy NENÍ wounded, JE naživu (monstrum, co
+            // právě tenhle tik doražením do kanceláře zmizelo výše, nesmí
+            // stejným dotykem ještě jednou "zabít" jako gameOver) a fyzicky
+            // se dotkne hráče — wounded se dotykem game over nikdy
+            // nezpůsobí (viz zadání).
+            if (
+              game.enemy.alive &&
+              game.enemy.mode !== "wounded" &&
+              circlesTouch(game.player.x, game.player.y, game.player.radius, game.enemy.x, game.enemy.y, game.enemy.radius)
+            ) {
+              completeGame(createDeadResult(game.elapsedMs, game.shotsUsed), "gameOver");
+            }
+
+            // Omezená viditelnost hráče (fog of war, viz
+            // game/minigame/playerVision.ts) — počítá se jednou tady, ne
+            // znovu v draw(); draw() i dev lišta (React state níže) čtou
+            // stejnou hodnotu z gameRef.
+            game.enemyVisibleToPlayer = getPlayerVisibilityAtPoint(
+              {
+                playerX: game.player.x,
+                playerY: game.player.y,
+                facingAngle: DIRECTION_ANGLES[game.player.direction],
+                pointX: game.enemy.x,
+                pointY: game.enemy.y,
+              },
+              game.walls,
+              PLAYER_VISION_CONFIG,
+            ).visible;
+            if (isDevOverlayEnabledRef.current) {
+              setIsMonsterVisibleToPlayer(game.enemyVisibleToPlayer);
+            }
+
+            setEnemyMode(game.enemy.mode);
+            // Zaokrouhleno na desetiny sekundy — React re-render přeskočí,
+            // dokud se zobrazená hodnota skutečně nezmění (setState se stejnou
+            // hodnotou je no-op), takže tohle nezpůsobuje re-render 60×/s.
+            setWoundedMsLeft(game.enemy.mode === "wounded" ? Math.ceil(game.enemy.stunRemainingMs / 100) * 100 : null);
+          }
+
+          // Hlasitost ambientního tepu podle situace (viz zadání "1) vidím
+          // monstrum 2) ono vidí mě a jde po mě 3) rage mode namax") —
+          // audioManager.setVolume je levné volat každý tik (jen nastaví
+          // audio.volume), žádný extra bailout stav navíc potřeba.
+          audioManager.setVolume(
+            AUDIO_EVENTS.heartbeatStressFast,
+            resolveMiniGameHeartbeatVolume({
+              enemyAlive: game.enemy.alive,
+              enemyVisible: game.enemyVisibleToPlayer,
+              enemyMode: game.enemy.mode,
+              distanceToPlayer: distance(game.player.x, game.player.y, game.enemy.x, game.enemy.y),
+              aggroRange: ENEMY_AGGRO_RANGE,
+            }),
+          );
+        }
       }
 
       draw(ctx, game, gridCanvas, fogCanvas, input, isDevOverlayEnabledRef.current);
@@ -1215,7 +1307,29 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
             </button>
           )}
 
-          {status !== "playing" && (
+          {/* Dramatická pauza po finálním (10.) zásahu (viz fireShot,
+              MONSTER_FINAL_DEATH_SCREEN_DELAY_MS) — status zůstává "playing"
+              po celou dobu (tick() sám dokončí výpravu po uplynutí delay),
+              takže tenhle overlay má přednost před status !== "playing" panelem
+              níže, ať se nepřekrývají/neproblikávají. */}
+          {finalHitTriggered && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/80">
+              <div
+                className="p-6 text-center max-w-xs"
+                style={{
+                  background: "rgba(3, 15, 8, 0.92)",
+                  border: "1px solid #7a1f1f",
+                  boxShadow: "0 0 18px rgba(220,38,38,0.55)",
+                }}
+              >
+                <div className="text-sm font-bold" style={{ color: "#ff8a8a", textShadow: "0 0 8px rgba(220,38,38,0.7)" }}>
+                  {COPY.game.finalMonsterHitLabel}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {status !== "playing" && !finalHitTriggered && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/75">
               <div
                 className="p-6 text-center"
@@ -1733,6 +1847,28 @@ function draw(
     ctx.beginPath();
     ctx.arc(enemy.x, enemy.y, 5, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
+  }
+
+  // Finální (10.) zásah — trvalý "dead marker" (křížek) na místě zásahu.
+  // NEZÁVISLÝ na enemyVisible/fogu (stejný důvod jako office_bound marker
+  // výše, viz zadání "drž ho viditelný i ve tmě jako potvrzení") —
+  // nepřidává nový artwork, jen dvě čáry. Enemy se dál nehýbe
+  // (`alive = false`, viz fireShot), takže marker zůstává přesně tam, kde padl.
+  if (game.finalHitTriggered && game.finalHitMarkerPosition) {
+    const { x, y } = game.finalHitMarkerPosition;
+    const markerSize = 10;
+    ctx.save();
+    ctx.shadowColor = "rgba(255, 255, 255, 0.9)";
+    ctx.shadowBlur = 10;
+    ctx.strokeStyle = "#f8fafc";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x - markerSize, y - markerSize);
+    ctx.lineTo(x + markerSize, y + markerSize);
+    ctx.moveTo(x + markerSize, y - markerSize);
+    ctx.lineTo(x - markerSize, y + markerSize);
+    ctx.stroke();
     ctx.restore();
   }
 

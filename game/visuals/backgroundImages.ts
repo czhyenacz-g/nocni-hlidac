@@ -49,6 +49,7 @@ const OBJECT_13_BACKGROUND_PATH = "/object_13/background";
 
 export type BackgroundSceneId =
   | "menu"
+  | "menuFirstWin"
   | "loading"
   | "play"
   | "door"
@@ -72,6 +73,23 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
     frames: [
       { src: `${OBJECT_13_BACKGROUND_PATH}/menu_bg_0.webp` },
       { src: `${OBJECT_13_BACKGROUND_PATH}/menu_bg_1.webp` },
+    ],
+    holdMs: DEFAULT_HOLD_MS,
+    crossfadeMs: DEFAULT_CROSSFADE_MS,
+    overlay: DEFAULT_OVERLAY,
+  },
+  // Menu po prvním true endingu (viz zadání, game/core/monsterDefeatReward.ts,
+  // MainMenuScreen.tsx) — stejný crossfade mechanismus jako "menu" výše, jen
+  // jiná dvojice snímků. Soubory byly dodané jako .png
+  // (menu_backgroud_first_win_0/1.png — "backgroud" je zdrojový překlep,
+  // NEPŘEJMENOVÁVAT, viz zadání) a zkonvertované na .webp (cwebp, beze změny
+  // rozměru) kvůli konzistenci s ostatními scénami zde. Frames pole je
+  // navržené tak, aby šlo kdykoliv rozšířit o další variantu beze změny
+  // SceneBackground.tsx — jen přidat další { src } záznam.
+  menuFirstWin: {
+    frames: [
+      { src: `${OBJECT_13_BACKGROUND_PATH}/menu_backgroud_first_win_0.webp` },
+      { src: `${OBJECT_13_BACKGROUND_PATH}/menu_backgroud_first_win_1.webp` },
     ],
     holdMs: DEFAULT_HOLD_MS,
     crossfadeMs: DEFAULT_CROSSFADE_MS,

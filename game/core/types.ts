@@ -53,7 +53,13 @@ export type EnemyMoveDecision =
   // dveřím/hale stejně jako "office_threat_on_return", ale s vlastní delší
   // grace (OFFICE_BREACH_REACTION_WINDOW_MS) a spustí i rozbitou žárovku +
   // poruchu generátoru (viz game/core/officeBreachAftermath.ts).
-  | "monster_reached_office_aftermath";
+  | "monster_reached_office_aftermath"
+  // Potvrzený zásah brokovnicí po bezpečném návratu (viz
+  // gameReducer.ts#CONFIRM_MONSTER_HIT, game/core/monsterEnding.ts) —
+  // monstrum se stáhne zpátky na night.enemy.monsterRetreatStage, ať hráče
+  // hned po návratu nezabije stejné monstrum, které právě trefil. Nikdy na
+  // 10. (posledním) zásahu — ten místo toho spustí "monsterDefeated".
+  | "monster_hit_confirmed";
 
 // "briefing" = krátký panel před START_SHIFT/RESTART_SHIFT (viz
 // components/screens/BriefingScreen.tsx, game/difficulty/nightConfig.ts) —
@@ -575,11 +581,22 @@ export interface GameState {
    */
   hasShotgun: boolean;
   /**
-   * Aktuální munice (0 nebo `SHOTGUN_MAX_AMMO`, viz shotgunEquipment.ts) —
-   * vždy 0, dokud `hasShotgun` není `true`. Dobíjí se na `SHOTGUN_MAX_AMMO`
-   * při každém startu nové/opakované noci a při každém bezpečném návratu
-   * z emergency výpravy (viz getRechargedShotgunAmmo) — MVP pravidlo je
-   * "vždy plný zásobník po dobití", žádné postupné doplňování.
+   * `true` jen pro dvouhlavňovku (viz shotgunEquipment.ts#isDoubleBarrelShotgun,
+   * game/core/monsterDefeatReward.ts#doubleBarrelUnlocked) — nikdy `true`,
+   * pokud `hasShotgun` je `false` (viz createFreshRunShotgunEquipment).
+   * Jediná cesta, jak tohle pole nastavit na `true`, je začátek nového runu
+   * s odemčenou trvalou odměnou (true ending) — worldEffect
+   * "shotgun_acquired" v minihře vždy znamená BĚŽNOU brokovnici, nikdy
+   * tohle pole nezmění (viz applyShotgunEmergencyReturn).
+   */
+  hasDoubleBarrelShotgun: boolean;
+  /**
+   * Aktuální munice (0 až `getShotgunMaxAmmo`, viz shotgunEquipment.ts) —
+   * vždy 0, dokud `hasShotgun` není `true`; strop je 1 pro běžnou
+   * brokovnici, 2 pro dvouhlavňovku. Dobíjí se na max při každém startu
+   * nové/opakované noci a při každém bezpečném návratu z emergency výpravy
+   * (viz getRechargedShotgunAmmo) — MVP pravidlo je "vždy plný zásobník po
+   * dobití", žádné postupné doplňování.
    */
   shotgunAmmo: number;
 
@@ -592,14 +609,20 @@ export interface GameState {
    */
   monsterHitsToday: number;
   /**
-   * `true` od okamžiku, kdy hráč BĚHEM emergency výpravy trefí monstrum
-   * brokovnicí (viz gameActions.ts MARK_PENDING_MONSTER_HIT,
-   * EmergencyMiniGame.tsx#fireShot), dokud výprava neskončí. Bezpečný návrat
-   * ho potvrdí (CONFIRM_MONSTER_HIT, `monsterHitsToday += 1`, tohle se vrátí
-   * na `false`); smrt venku (EMERGENCY_MINIGAME_DIED) ho ZAHODÍ beze změny
-   * `monsterHitsToday` — zásah se tedy nikdy nepočítá bez bezpečného návratu.
+   * Kolik zásahů monstra brokovnicí hráč BĚHEM aktuální emergency výpravy
+   * zaznamenal, ale ještě nepotvrdil (viz gameActions.ts
+   * MARK_PENDING_MONSTER_HIT, EmergencyMiniGame.tsx#fireShot) — zvyšuje se
+   * o 1 při KAŽDÉM zásahu. Bezpečný návrat ho potvrdí celý najednou
+   * (CONFIRM_MONSTER_HIT: `monsterHitsToday += pendingMonsterHits`, tohle
+   * se vrátí na `0`); smrt venku (EMERGENCY_MINIGAME_DIED) ho ZAHODÍ celé
+   * beze změny `monsterHitsToday` — zásah se tedy nikdy nepočítá bez
+   * bezpečného návratu. Číselný typ (místo dřívějšího boolean) je
+   * připravený na dvouhlavňovku (až 2 zásahy za jednu výpravu, viz
+   * game/core/shotgunEquipment.ts) — MVP (EmergencyMiniGame.tsx
+   * `monsterHitThisRun` latch) zatím i s dvouhlavňovkou počítá nejvýš 1
+   * zásah za výpravu, viz TODO tam.
    */
-  pendingMonsterHit: boolean;
+  pendingMonsterHits: number;
   /**
    * `true`, jakmile `monsterHitsToday` dosáhne
    * `MONSTER_TRUE_ENDING_REQUIRED_HITS` (viz CONFIRM_MONSTER_HIT) — trvalý

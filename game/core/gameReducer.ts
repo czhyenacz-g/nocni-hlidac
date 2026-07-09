@@ -510,6 +510,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             action.livesRemaining,
             action.hasShotgun,
             action.shotgunAmmo,
+            action.hasDoubleBarrelShotgun,
           ),
           audioMuted: state.audioMuted,
           screen: "playing",
@@ -527,6 +528,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             action.livesRemaining,
             action.hasShotgun,
             action.shotgunAmmo,
+            action.hasDoubleBarrelShotgun,
           ),
           audioMuted: state.audioMuted,
           screen: "playing",
@@ -1165,9 +1167,10 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           screen: "death",
           deathReason: "emergency_run",
           livesRemaining: resolveLivesRemainingAfterDeath(state.gameMode, state.livesRemaining),
-          // Smrt venku zahazuje nepotvrzený zásah monstra (viz zadání "hidden
-          // true ending") — monsterHitsToday se NEZVYŠUJE, pending se jen vynuluje.
-          pendingMonsterHit: false,
+          // Smrt venku zahazuje VŠECHNY nepotvrzené zásahy monstra (viz zadání
+          // "hidden true ending") — monsterHitsToday se NEZVYŠUJE, pending se
+          // celý vynuluje, bez ohledu na to, kolik jich bylo.
+          pendingMonsterHits: 0,
         };
 
       case "APPLY_OFFICE_THREAT_ON_RETURN": {
@@ -1264,27 +1267,64 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
 
       // Hráč venku PRÁVĚ TEĎ trefil monstrum brokovnicí (viz
       // EmergencyMiniGame.tsx#fireShot, app/play/page.tsx#onMonsterHit) —
-      // zásah se ještě NEPOČÍTÁ (viz zadání), jen se poznamená, ať
-      // EMERGENCY_MINIGAME_DIED ví, že má co zahodit.
+      // zásah se ještě NEPOČÍTÁ (viz zadání), jen se přičte do pending
+      // počítadla, ať EMERGENCY_MINIGAME_DIED ví, kolik má zahodit. Za
+      // jednu výpravu může přijít víc než jedno volání (dvouhlavňovka, viz
+      // GameState.pendingMonsterHits) — MVP EmergencyMiniGame.tsx zatím
+      // volá nejvýš jednou za výpravu, viz TODO tam.
       case "MARK_PENDING_MONSTER_HIT":
         if (!state.isRunning) return state;
-        return { ...state, pendingMonsterHit: true };
+        return { ...state, pendingMonsterHits: state.pendingMonsterHits + 1 };
 
-      // Bezpečný návrat s potvrzeným zásahem (viz
+      // Bezpečný návrat s potvrzenými zásahy (viz
       // app/play/page.tsx#handleEmergencyMiniGameComplete, result.monsterHit) —
-      // jediné místo, které skutečně zvyšuje monsterHitsToday. Na 10. zásahu
-      // spustí hidden true ending (screen "monsterDefeated") místo pokračování
-      // běžné hry — má přednost před normálním win/death flow, nečeká se do 6:00.
+      // jediné místo, které skutečně zvyšuje monsterHitsToday, o CELÉ
+      // state.pendingMonsterHits najednou (viz confirmMonsterHit). Na 10.
+      // zásahu spustí hidden true ending (screen "monsterDefeated") místo
+      // pokračování běžné hry — má přednost před normálním win/death flow,
+      // nečeká se do 6:00.
       case "CONFIRM_MONSTER_HIT": {
         if (!state.isRunning) return state;
-        const result = confirmMonsterHit(state.monsterHitsToday);
+        const result = confirmMonsterHit(state.monsterHitsToday, state.pendingMonsterHits);
+
+        if (result.monsterDefeated) {
+          // Poslední (10.) zásah rovnou končí hru MonsterDefeatedScreenem —
+          // žádný "stažení ven" reset kanceláře už nemá smysl (hra už
+          // nepokračuje běžným loopem), viz zadání.
+          return {
+            ...state,
+            monsterHitsToday: result.monsterHitsToday,
+            pendingMonsterHits: 0,
+            monsterDefeated: true,
+            isRunning: false,
+            screen: "monsterDefeated",
+          };
+        }
+
         return {
           ...state,
           monsterHitsToday: result.monsterHitsToday,
-          pendingMonsterHit: false,
-          monsterDefeated: result.monsterDefeated,
-          isRunning: result.monsterDefeated ? false : state.isRunning,
-          screen: result.monsterDefeated ? "monsterDefeated" : state.screen,
+          pendingMonsterHits: 0,
+          monsterDefeated: false,
+          // Potvrzený zásah stáhne monstrum zpátky na bezpečný start trasy
+          // (viz zadání "po návratu hráč nesmí být okamžitě zabit monstrem,
+          // které právě trefil") — stejná stage jako door-light repel
+          // (night.enemy.monsterRetreatStage), žádná dlouhá imunita, jen
+          // "bestie začne znovu venku". Vyčistí i stejný balík
+          // bezprostředního door/repel/standoff stavu jako
+          // APPLY_OFFICE_THREAT_ON_RETURN výše, ať nic z předchozí situace u
+          // dveří nezůstane viset a matoucně neovlivní normální monster loop
+          // pokračující odtamtud.
+          enemyStage: night.enemy.monsterRetreatStage,
+          lastEnemyDecision: "monster_hit_confirmed",
+          enemyAtDoorSinceMs: null,
+          enemyDoorHoldTargetMs: null,
+          enemyDoorHoldProgressMs: 0,
+          doorLightRepelMs: 0,
+          doorHallwayUvRepelMs: 0,
+          enemyDoorAttackGraceUntilMs: null,
+          monsterRetreatedTo: null,
+          monsterRetreatVerified: false,
         };
       }
 

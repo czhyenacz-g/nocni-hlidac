@@ -20,6 +20,7 @@ import {
   directionFromVector,
   distance,
   getOfficeMarkerLabel,
+  hasFinalHitDelayElapsed,
   hasLineOfSight,
   isEnemyHit,
   isMonsterOfficeThreatArmed,
@@ -38,6 +39,7 @@ import {
   resolveMiniGameHeartbeatVolume,
   shouldHighlightOfficeMarker,
   shouldShowOfficeBoundCrisisMarker,
+  shouldTriggerFinalMonsterHit,
   tickEnemyStun,
   updateEnemyAi,
   updateMissionPhase,
@@ -1302,5 +1304,42 @@ describe("office marker — getOfficeMarkerLabel / shouldHighlightOfficeMarker",
     // return_to_office still requires the door to be unlocked too.
     expect(canReturnToOffice("return_to_office", true, false)).toBe(false);
     expect(canReturnToOffice("return_to_office", true, true)).toBe(true);
+  });
+});
+
+describe("shouldTriggerFinalMonsterHit", () => {
+  it("true on a hit, flagged as final, first hit of the run", () => {
+    expect(shouldTriggerFinalMonsterHit(true, true, false)).toBe(true);
+  });
+
+  it("false when the shot missed, even if flagged final", () => {
+    expect(shouldTriggerFinalMonsterHit(false, true, false)).toBe(false);
+  });
+
+  it("false when the run isn't flagged as final (hits 1-9)", () => {
+    expect(shouldTriggerFinalMonsterHit(true, false, false)).toBe(false);
+    expect(shouldTriggerFinalMonsterHit(true, undefined, false)).toBe(false);
+  });
+
+  it("false on a second hit within the same (already-triggered) final run", () => {
+    expect(shouldTriggerFinalMonsterHit(true, true, true)).toBe(false);
+  });
+});
+
+describe("hasFinalHitDelayElapsed", () => {
+  it("false while finalHitAtMs is null (final hit never happened)", () => {
+    expect(hasFinalHitDelayElapsed(null, 999_999, 5000)).toBe(false);
+  });
+
+  it("false before the delay has elapsed", () => {
+    expect(hasFinalHitDelayElapsed(1000, 4999, 5000)).toBe(false);
+  });
+
+  it("true exactly at the delay boundary", () => {
+    expect(hasFinalHitDelayElapsed(1000, 6000, 5000)).toBe(true);
+  });
+
+  it("true well past the delay", () => {
+    expect(hasFinalHitDelayElapsed(0, 20_000, 5000)).toBe(true);
   });
 });

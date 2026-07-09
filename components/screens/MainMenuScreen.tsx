@@ -12,6 +12,7 @@ import { DEFAULT_GAME_MODE, GameMode } from "@/game/core/gameMode";
 import ConsoleIcon from "@/components/game/ConsoleIcon";
 import { audioManager } from "@/game/audio/audioManager";
 import { AUDIO_EVENTS } from "@/game/audio/audioEvents";
+import { getMonsterDefeatReward } from "@/game/core/monsterDefeatReward";
 
 interface MainMenuScreenProps {
   /** Dostane zvolený režim (viz gameMode state níže) — zatím jen UI příprava, žádná death/leaderboard logika se pro "hardcore" ještě neliší (viz game/core/gameMode.ts). */
@@ -25,6 +26,12 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
   // nepřihlásí (a klikne znovu), gameMode zůstává "normal".
   const [showHardcoreLoginPrompt, setShowHardcoreLoginPrompt] = useState(false);
   const authStatus = useAuthStatus();
+  // True ending odměna (viz zadání, game/core/monsterDefeatReward.ts) — čte se
+  // jednou při mountu, stejný vzor jako survivedNights/deathCount v
+  // app/play/page.tsx. MainMenuScreen se znovu mountuje pokaždé, když
+  // state.screen přejde na "menu" (viz app/play/page.tsx), takže hodnota je
+  // vždy čerstvá po "ZPĚT DO MENU" z MonsterDefeatedScreen.
+  const [reward] = useState(() => getMonsterDefeatReward());
 
   // NORMAL/HARDCORE i "Zůstat v Normal" jsou čistě lokální stav (žádný
   // dispatch do app/play/page.tsx, kde normálně žije audio pro ostatní
@@ -69,7 +76,7 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
   // zakryl. <body> má bg-gray-900 jako fallback, což stačí.
   return (
     <main className="relative min-h-screen flex flex-col items-center justify-center p-4">
-      <SceneBackground scene={BACKGROUND_SCENES.menu} />
+      <SceneBackground scene={reward.hasDefeatedMonster ? BACKGROUND_SCENES.menuFirstWin : BACKGROUND_SCENES.menu} />
 
       {/* Menu jako fyzický "terminál" (viz zadání "control-room konzole, ne
           plakát") — kovový rám (.menu-terminal-frame) se 4 rohovými šrouby
@@ -94,11 +101,28 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
             <p className="text-gray-400 mb-6">{COPY.menu.subtitle}</p>
             <p className="text-sm text-gray-500 mb-8">{COPY.menu.intro}</p>
 
+            {/* Status karta po prvním true endingu (viz zadání,
+                game/core/monsterDefeatReward.ts) — jen "ZLATÝ HLÍDAČ" status +
+                odemčená odměna, žádný postup/číslo (monsterDefeatsCount se
+                zatím nikde nezobrazuje, viz report). Stejný vizuální jazyk
+                jako hardcore login prompt níže (tmavý rámeček, drobný text). */}
+            {reward.hasDefeatedMonster && (
+              <div className="mb-4 border border-amber-700/60 bg-amber-950/20 p-3 text-left text-[11px]">
+                <p className="text-amber-300">
+                  {COPY.veteranStatus.statusLabel} <span className="font-bold">{COPY.veteranStatus.statusValue}</span>
+                </p>
+                <p className="mt-1 text-gray-300">
+                  {COPY.veteranStatus.rewardLabel} {COPY.veteranStatus.rewardValue}
+                </p>
+                <p className="mt-1 text-gray-500 italic">{COPY.veteranStatus.note}</p>
+              </div>
+            )}
+
             <button
               className="pixel-button console-button console-button--primary tap-target px-6 py-3 text-sm w-full"
               onClick={() => onStart(gameMode)}
             >
-              {COPY.menu.startButton}
+              {reward.doubleBarrelUnlocked ? COPY.menu.startButtonVeteran : COPY.menu.startButton}
             </button>
 
             {/* Výběr režimu — výraznější než spodní odkazy, ale menší než

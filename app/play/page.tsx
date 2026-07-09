@@ -35,6 +35,7 @@ import AdminBadge from "@/components/game/AdminBadge";
 import { Achievement, getAchievement } from "@/content/achievements";
 import { unlockAchievement } from "@/game/core/achievementStorage";
 import { getDeathCount, incrementDeathCount } from "@/game/core/deathCount";
+import { getMonsterDefeatReward, recordMonsterDefeat } from "@/game/core/monsterDefeatReward";
 import { hasUsedFirstNightTechnicianWarning, markFirstNightTechnicianWarningUsed } from "@/game/core/firstNightWarning";
 import { getSurvivedNights, incrementSurvivedNights, resetSurvivedNights } from "@/game/core/survivedNights";
 import { getBulbsRemaining, setBulbsRemaining } from "@/game/core/bulbInventory";
@@ -49,10 +50,15 @@ import {
   createShotgunEmergencyInput,
   resolveBulbsGainedFromWorldEffects,
   resolveExtraLootItems,
+  resolveIsFinalMonsterHit,
   resolveOfficeThreatTriggeredFromWorldEffects,
   shouldLaunchEmergencyMiniGame,
 } from "@/game/core/emergencyMiniGameIntegration";
-import { applyShotgunEmergencyReturn, getRechargedShotgunAmmo } from "@/game/core/shotgunEquipment";
+import {
+  applyShotgunEmergencyReturn,
+  createFreshRunShotgunEquipment,
+  getRechargedShotgunAmmo,
+} from "@/game/core/shotgunEquipment";
 import EmergencyMiniGame from "@/components/minigame/EmergencyMiniGame";
 import { EmergencyMiniGameInput, EmergencyMiniGameResult } from "@/game/minigame/types";
 import { COPY } from "@/content/copy";
@@ -344,6 +350,9 @@ export default function PlayPage() {
           // warning (viz applyGuardRunResponse). gameMode se posílá v těle
           // requestu jako DRUHÁ (server-side) pojistka nad rámec toho, že
           // Normal tenhle fetch vůbec nevolá (viz app/api/player/death/route.ts).
+          // TODO (true ending odměna, viz TODO u survive-night níže v tomhle
+          // souboru pro plné zdůvodnění): stejné "veteránský run neoddělený
+          // od čistého Hardcore" omezení platí i tady.
           fetch("/api/player/death", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -404,6 +413,18 @@ export default function PlayPage() {
       // (viz zadání). Stejná pravidla jako u "death" výše (identita ze
       // session, žádné opakované volání, jen jednou za skutečný přechod na
       // "win"); gameMode v těle requestu je server-side pojistka navíc.
+      //
+      // TODO (true ending odměna, viz zadání část I "bezpečnost vůči
+      // leaderboardu"): tenhle Hardcore survive-night zápis NEROZLIŠUJE, jestli
+      // run běžel s odemčenou dvouhlavňovkou (viz
+      // shotgunEquipment.ts#isDoubleBarrelShotgun(state)) — hráč s výhodou
+      // navíc (2 náboje místo 1) tak zatím soutěží ve stejném
+      // bestRun/currentRun žebříčku jako čistý Hardcore run bez odměny.
+      // Server API/schéma se v tomhle kroku záměrně NEMĚNÍ. Až přijde na
+      // řadu: přidat `veteranRun`/`runUsedDoubleBarrel: boolean` do request
+      // body (počítáno tady z `isDoubleBarrelShotgun(state)`, ne nový
+      // GameState field), a na serveru/leaderboardu vést čistý Hardcore a
+      // veteránský Hardcore jako oddělené žebříčky (nebo aspoň sloupec navíc).
       if (state.gameMode === "hardcore") {
         fetch("/api/player/survive-night", {
           method: "POST",
@@ -570,6 +591,13 @@ export default function PlayPage() {
       // aktuálního GameState, ne natvrdo prázdné (viz
       // game/core/emergencyMiniGameIntegration.ts).
       const equipment = { hasShotgun: state.hasShotgun, ammo: state.shotgunAmmo };
+      // Hidden true ending (viz zadání, game/core/monsterEnding.ts) — spočítá
+      // se PŘED spuštěním výpravy, ať EmergencyMiniGame ví hned od začátku,
+      // jestli by první úspěšný zásah byl 10. (finální), viz
+      // resolveIsFinalMonsterHit. Platí pro OBĚ výpravy (battery i shotgun
+      // run) — hráč může mít brokovnici už z dřívějška, zásah proto není
+      // vázaný jen na "Jít ven pro brokovnici".
+      const isFinalMonsterHit = resolveIsFinalMonsterHit(state.monsterHitsToday);
       // Sandbox výprava (viz zadání) — mapa VŽDY obsahuje i doplňkový loot
       // navíc k hlavnímu objective (battery/bulb garantované, shotgun
       // podmíněně), viz resolveExtraLootItems.
@@ -579,14 +607,20 @@ export default function PlayPage() {
           nightFeatures: state.nightFeatures,
           hasShotgun: state.hasShotgun,
         });
-        setActiveMiniGame({ id: "shotgun_run", input: createShotgunEmergencyInput(equipment, extraLootItems) });
+        setActiveMiniGame({
+          id: "shotgun_run",
+          input: createShotgunEmergencyInput(equipment, extraLootItems, isFinalMonsterHit),
+        });
       } else {
         const extraLootItems = resolveExtraLootItems({
           primaryItemId: "battery",
           nightFeatures: state.nightFeatures,
           hasShotgun: state.hasShotgun,
         });
-        setActiveMiniGame({ id: "battery_run", input: createBatteryEmergencyInput(equipment, extraLootItems) });
+        setActiveMiniGame({
+          id: "battery_run",
+          input: createBatteryEmergencyInput(equipment, extraLootItems, isFinalMonsterHit),
+        });
       }
     }
     prevEmergencyRunReadySeqRef.current = state.emergencyRunReadySeq;
@@ -699,15 +733,23 @@ export default function PlayPage() {
       const rawLivesRemaining = restoreNearMissLifeRef.current ? state.livesRemaining + 1 : state.livesRemaining;
       restoreNearMissLifeRef.current = false;
       // rawLivesRemaining <= 0 znamená skutečný konec runu (Normal došly
-      // životy, nebo Hardcore) — nový run vždy začíná bez brokovnice (viz
-      // game/core/shotgunEquipment.ts, "Persistuje jen v rámci AKTUÁLNÍHO
-      // runu"), stejná signalizace jako u livesRemaining/gameMode.
+      // životy, nebo Hardcore) — nový run vždy začíná bez brokovnice, POKUD
+      // hráč nemá trvale odemčenou dvouhlavňovku (viz
+      // game/core/shotgunEquipment.ts#createFreshRunShotgunEquipment,
+      // game/core/monsterDefeatReward.ts) — stejná signalizace jako u
+      // livesRemaining/gameMode.
       const isFreshRun = rawLivesRemaining <= 0;
       const livesRemaining = isFreshRun ? GAME_MODE_CONFIG[gameMode].startingLives : rawLivesRemaining;
-      const hasShotgun = isFreshRun ? false : state.hasShotgun;
-      // Dobití náboje na začátku (opakované i nové) noci (viz zadání "Každý
-      // nový den / nová noc dobije 1 náboj") — bez brokovnice zůstává 0.
-      const shotgunAmmo = getRechargedShotgunAmmo(hasShotgun, state.shotgunAmmo);
+      const shotgunEquipment = isFreshRun
+        ? createFreshRunShotgunEquipment(getMonsterDefeatReward().doubleBarrelUnlocked)
+        : // Dobití náboje na začátku (opakované i nové) noci (viz zadání
+          // "Každý nový den / nová noc dobije 1 náboj") — bez brokovnice
+          // zůstává 0, s dvouhlavňovkou dobije na 2.
+          {
+            hasShotgun: state.hasShotgun,
+            hasDoubleBarrelShotgun: state.hasDoubleBarrelShotgun,
+            shotgunAmmo: getRechargedShotgunAmmo(state),
+          };
       dispatch({
         type: "RESTART_SHIFT",
         roomBulbs: getRoomBulbs(),
@@ -715,11 +757,13 @@ export default function PlayPage() {
         nightFeatures,
         gameMode,
         livesRemaining,
-        hasShotgun,
-        shotgunAmmo,
+        hasShotgun: shotgunEquipment.hasShotgun,
+        hasDoubleBarrelShotgun: shotgunEquipment.hasDoubleBarrelShotgun,
+        shotgunAmmo: shotgunEquipment.shotgunAmmo,
       });
     } else {
       const gameMode = selectedGameModeRef.current;
+      const shotgunEquipment = createFreshRunShotgunEquipment(getMonsterDefeatReward().doubleBarrelUnlocked);
       dispatch({
         type: "START_SHIFT",
         roomBulbs: getRoomBulbs(),
@@ -727,8 +771,9 @@ export default function PlayPage() {
         nightFeatures,
         gameMode,
         livesRemaining: GAME_MODE_CONFIG[gameMode].startingLives,
-        hasShotgun: false,
-        shotgunAmmo: 0,
+        hasShotgun: shotgunEquipment.hasShotgun,
+        hasDoubleBarrelShotgun: shotgunEquipment.hasDoubleBarrelShotgun,
+        shotgunAmmo: shotgunEquipment.shotgunAmmo,
       });
     }
   }
@@ -754,6 +799,17 @@ export default function PlayPage() {
   function handleGoToMenu() {
     audioManager.play(AUDIO_EVENTS.uiClick);
     dispatch({ type: "GO_TO_MENU" });
+  }
+
+  // Trvalá true ending odměna (viz zadání, game/core/monsterDefeatReward.ts) —
+  // volá se PŘESNĚ jednou, když MonsterDefeatedScreen dokončí (nebo hráč
+  // přeskočí) cinematic, NIKDY dřív (ne jen podle state.screen ===
+  // "monsterDefeated" — hráč ještě nemusí cinematic vidět celý). Normal i
+  // Hardcore odemykají stejnou odměnu — žádná podmínka na state.gameMode
+  // tady záměrně není. Čistě lokální localStorage MVP (viz komentář v
+  // monsterDefeatReward.ts) — server persistence není potřeba pro tenhle krok.
+  function handleMonsterDefeatedCinematicComplete() {
+    recordMonsterDefeat();
   }
 
   function handleToggleDoor() {
@@ -901,7 +957,11 @@ export default function PlayPage() {
       // měl dřív), bez ohledu na to, co přesně sebral/kolik nábojů cestou
       // vystřelil. "dead"/"failed" výše tenhle dispatch vůbec nezavolají —
       // brokovnice/náboj se tedy nikdy nezíská bez skutečného návratu.
-      const shotgunResult = applyShotgunEmergencyReturn(state.hasShotgun, state.shotgunAmmo, result.worldEffects);
+      const shotgunResult = applyShotgunEmergencyReturn(
+        { hasShotgun: state.hasShotgun, hasDoubleBarrelShotgun: state.hasDoubleBarrelShotgun },
+        state.shotgunAmmo,
+        result.worldEffects,
+      );
       if (shotgunResult.hasShotgun !== state.hasShotgun || shotgunResult.shotgunAmmo !== state.shotgunAmmo) {
         dispatch({ type: "APPLY_SHOTGUN_EFFECTS", hasShotgun: shotgunResult.hasShotgun, shotgunAmmo: shotgunResult.shotgunAmmo });
         if (!state.hasShotgun && shotgunResult.hasShotgun) {
@@ -939,7 +999,7 @@ export default function PlayPage() {
 
   // Hráč venku PRÁVĚ TEĎ trefil monstrum brokovnicí (viz
   // EmergencyMiniGame.tsx#fireShot) — jen se to poznamená
-  // (GameState.pendingMonsterHit), NEPOTVRZUJE se tím žádný zásah pro
+  // (GameState.pendingMonsterHits += 1), NEPOTVRZUJE se tím žádný zásah pro
   // hidden true ending. Potvrzení přijde až z handleEmergencyMiniGameComplete
   // při bezpečném návratu (result.monsterHit); smrt venku
   // (EMERGENCY_MINIGAME_DIED) ho zase zahodí.
@@ -1095,7 +1155,9 @@ export default function PlayPage() {
       {/* Skrytý true ending (viz zadání, game/core/monsterEnding.ts) — má
           přednost před běžným win/death flow (gameReducer.ts#CONFIRM_MONSTER_HIT
           nastaví screen "monsterDefeated" přímo, ne přes TICK/ENEMY_ADVANCE). */}
-      {state.screen === "monsterDefeated" && <MonsterDefeatedScreen onGoToMenu={handleGoToMenu} />}
+      {state.screen === "monsterDefeated" && (
+        <MonsterDefeatedScreen onGoToMenu={handleGoToMenu} onCinematicComplete={handleMonsterDefeatedCinematicComplete} />
+      )}
     </div>
     {/* Achievement toast (viz components/game/AchievementToast.tsx) je záměrně
         SOUROZENEC .atmosphere-root, ne jeho potomek — .atmosphere-root má

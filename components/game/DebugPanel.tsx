@@ -117,8 +117,9 @@ export default function DebugPanel({
             hráčovi, ale dev panel ho může klidně ukázat i s číslem, viz zadání
             "Debug panel může počet zásahů klidně ukazovat". */}
         <div>
-          Brokovnice: {state.hasShotgun ? `ano (náboj ${state.shotgunAmmo})` : "ne"} — zásahy dnes: {state.monsterHitsToday}
-          {state.pendingMonsterHit ? " (nepotvrzený zásah probíhá)" : ""}
+          Brokovnice: {state.hasShotgun ? (state.hasDoubleBarrelShotgun ? "dvouhlavňovka" : "ano") : "ne"}
+          {state.hasShotgun ? ` (náboj ${state.shotgunAmmo})` : ""} — zásahy dnes: {state.monsterHitsToday}
+          {state.pendingMonsterHits > 0 ? ` (nepotvrzené zásahy: ${state.pendingMonsterHits})` : ""}
           {state.monsterDefeated ? " — TRUE ENDING DOSAŽEN" : ""}
         </div>
         {state.bulbReplacement.active && (

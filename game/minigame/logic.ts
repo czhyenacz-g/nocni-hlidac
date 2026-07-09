@@ -1119,3 +1119,37 @@ export function getOfficeMarkerLabel(
   }
   return "KANCELÁŘ";
 }
+
+// ── Finální (10.) zásah monstra — hidden true ending (viz
+// EmergencyMiniGame.tsx#fireShot/tick, game/core/monsterEnding.ts). Čisté,
+// testovatelné rozhodovací funkce — samotné side-effecty (alive=false,
+// audio, completeGame) zůstávají v komponentě, tady jen "má se to stát" a
+// "už uplynul čas".
+
+/**
+ * Jestli TENHLE konkrétní zásah spouští finální (10.) sekvenci — musí to
+ * být skutečný zásah (`hit`), výprava musí být předem označená jako
+ * poslední (`isFinalMonsterHit`, viz `EmergencyMiniGameInput`), A nesmí to
+ * být opakovaný zásah stejné výpravy (`monsterHitThisRun` už `true` by
+ * znamenalo, že finální sekvence už jednou proběhla — za jednu výpravu se
+ * počítá nejvýš jeden zásah).
+ */
+export function shouldTriggerFinalMonsterHit(
+  hit: boolean,
+  isFinalMonsterHit: boolean | undefined,
+  monsterHitThisRun: boolean,
+): boolean {
+  return hit && Boolean(isFinalMonsterHit) && !monsterHitThisRun;
+}
+
+/**
+ * Jestli už uplynula dramatická pauza po finálním zásahu
+ * (`MONSTER_FINAL_DEATH_SCREEN_DELAY_MS`, viz game/minigame/config.ts) —
+ * `finalHitAtMs === null` (finální zásah vůbec nenastal) vždy vrací
+ * `false`, ať tick() nikdy nedokončí výpravu bez skutečného finálního
+ * zásahu.
+ */
+export function hasFinalHitDelayElapsed(finalHitAtMs: number | null, elapsedMs: number, delayMs: number): boolean {
+  if (finalHitAtMs === null) return false;
+  return elapsedMs - finalHitAtMs >= delayMs;
+}

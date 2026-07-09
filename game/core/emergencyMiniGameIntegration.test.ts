@@ -8,11 +8,13 @@ import {
   createShotgunEmergencyInput,
   resolveBulbsGainedFromWorldEffects,
   resolveExtraLootItems,
+  resolveIsFinalMonsterHit,
   resolveOfficeThreatTriggeredFromWorldEffects,
   shouldLaunchEmergencyMiniGame,
 } from "./emergencyMiniGameIntegration";
 import { MAX_POWER } from "../balancing/constants";
 import { SERVICE_FLOOR_EVAC_PLAN } from "../minigame/layouts/serviceFloorEvacPlan";
+import { MONSTER_TRUE_ENDING_REQUIRED_HITS } from "./monsterEnding";
 
 describe("createBatteryEmergencyInput", () => {
   it("has objective collect_item and itemToCollect battery", () => {
@@ -43,6 +45,14 @@ describe("createBatteryEmergencyInput", () => {
     expect(input.layoutId).toBe(SERVICE_FLOOR_EVAC_PLAN.id);
     expect(input.layoutId).toBe(DEFAULT_BATTERY_RUN_LAYOUT_ID);
   });
+
+  it("isFinalMonsterHit defaults to false when not passed", () => {
+    expect(createBatteryEmergencyInput({ hasShotgun: false, ammo: 0 }).isFinalMonsterHit).toBe(false);
+  });
+
+  it("passes isFinalMonsterHit through unchanged when provided (hidden true ending)", () => {
+    expect(createBatteryEmergencyInput({ hasShotgun: false, ammo: 0 }, [], true).isFinalMonsterHit).toBe(true);
+  });
 });
 
 describe("createShotgunEmergencyInput", () => {
@@ -69,6 +79,37 @@ describe("createShotgunEmergencyInput", () => {
       "battery",
       "bulb",
     ]);
+  });
+
+  it("isFinalMonsterHit defaults to false when not passed", () => {
+    expect(createShotgunEmergencyInput({ hasShotgun: false, ammo: 0 }).isFinalMonsterHit).toBe(false);
+  });
+
+  it("passes isFinalMonsterHit through unchanged when provided (hidden true ending)", () => {
+    expect(createShotgunEmergencyInput({ hasShotgun: false, ammo: 0 }, [], true).isFinalMonsterHit).toBe(true);
+  });
+});
+
+// Hidden true ending (viz zadání, game/core/monsterEnding.ts) — spočítá se
+// PŘED spuštěním výpravy (viz app/play/page.tsx), ne uvnitř minihry. Za
+// jednu výpravu se počítá nejvýš jeden zásah, proto "monsterHitsToday + 1".
+describe("resolveIsFinalMonsterHit", () => {
+  it("false for hits 1 through 8 (well below the threshold)", () => {
+    for (let hits = 0; hits < MONSTER_TRUE_ENDING_REQUIRED_HITS - 2; hits++) {
+      expect(resolveIsFinalMonsterHit(hits)).toBe(false);
+    }
+  });
+
+  it("false when the NEXT hit would be the 9th (still one more after it)", () => {
+    expect(resolveIsFinalMonsterHit(MONSTER_TRUE_ENDING_REQUIRED_HITS - 2)).toBe(false);
+  });
+
+  it("true when the NEXT hit would be the 10th (the actual threshold)", () => {
+    expect(resolveIsFinalMonsterHit(MONSTER_TRUE_ENDING_REQUIRED_HITS - 1)).toBe(true);
+  });
+
+  it("stays true past the threshold too (defensive, shouldn't normally happen)", () => {
+    expect(resolveIsFinalMonsterHit(MONSTER_TRUE_ENDING_REQUIRED_HITS)).toBe(true);
   });
 });
 
@@ -118,6 +159,21 @@ describe("resolveExtraLootItems", () => {
       hasShotgun: false,
     });
     expect(items).toEqual(["battery"]);
+  });
+
+  // Zadání (true ending odměna): hráč s odemčenou dvouhlavňovkou má
+  // `state.hasShotgun === true` od začátku runu (viz
+  // shotgunEquipment.ts#createFreshRunShotgunEquipment) — tahle funkce
+  // nezná/nepotřebuje znát hasDoubleBarrelShotgun zvlášť, `hasShotgun: true`
+  // už samo o sobě zaručuje, že se běžná brokovnice nespawne jako loot,
+  // stejně jako u hráče, co si obyčejnou brokovnici jen přinesl dřív.
+  it("never adds shotgun loot for a player who already owns a double-barrel shotgun (hasShotgun: true either way)", () => {
+    const items = resolveExtraLootItems({
+      primaryItemId: "battery",
+      nightFeatures: { emergencyRunsEnabled: true, shotgunLootEnabled: true },
+      hasShotgun: true,
+    });
+    expect(items).toEqual(["bulb"]);
   });
 });
 

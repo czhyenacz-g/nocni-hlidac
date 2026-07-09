@@ -233,6 +233,7 @@ export default function GameScreen({
                 emergencyRunWindupActive={state.emergencyRunWindup.active}
                 emergencyRunWindupProgressMs={state.emergencyRunWindup.progressMs}
                 hasShotgun={state.hasShotgun}
+                hasDoubleBarrelShotgun={state.hasDoubleBarrelShotgun}
                 shotgunAmmo={state.shotgunAmmo}
                 onStartThinkItOverWindup={onStartThinkItOverWindup}
                 onCancelThinkItOverWindup={onCancelThinkItOverWindup}

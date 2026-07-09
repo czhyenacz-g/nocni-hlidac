@@ -13,12 +13,17 @@ export interface ConfirmMonsterHitResult {
 }
 
 /**
- * Potvrdí jeden zásah — čistá funkce, žádná mutace. Volá se jen po
- * bezpečném návratu do kanceláře (viz gameReducer.ts CONFIRM_MONSTER_HIT),
- * nikdy při samotném výstřelu/zásahu v minihře. `monsterDefeated` se stane
- * `true` přesně na 10. potvrzeném zásahu, ne dřív.
+ * Potvrdí `hitCount` zásahů najednou — čistá funkce, žádná mutace. Volá se
+ * jen po bezpečném návratu do kanceláře (viz gameReducer.ts
+ * CONFIRM_MONSTER_HIT, `state.pendingMonsterHits`), nikdy při samotném
+ * výstřelu/zásahu v minihře. `hitCount` > 1 je připravené pro dvouhlavňovku
+ * (až 2 zásahy za jednu výpravu, viz GameState.pendingMonsterHits) — MVP
+ * v praxi zatím vždy posílá 0 nebo 1 (viz TODO u EmergencyMiniGame.tsx
+ * `monsterHitThisRun`). `monsterDefeated` se stane `true`, jakmile
+ * kumulativní počet dosáhne/přesáhne `MONSTER_TRUE_ENDING_REQUIRED_HITS` —
+ * i kdyby `hitCount` sám o sobě práh překročil (např. 8 + 2 z dvouhlavňovky).
  */
-export function confirmMonsterHit(monsterHitsToday: number): ConfirmMonsterHitResult {
-  const nextHits = monsterHitsToday + 1;
+export function confirmMonsterHit(monsterHitsToday: number, hitCount: number): ConfirmMonsterHitResult {
+  const nextHits = monsterHitsToday + hitCount;
   return { monsterHitsToday: nextHits, monsterDefeated: nextHits >= MONSTER_TRUE_ENDING_REQUIRED_HITS };
 }

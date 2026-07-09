@@ -111,3 +111,15 @@ syntetizovaný fallback (dva střídavé tóny), který se teď použije, jen kd
 (Freesound.org, autor **Breviceps**, licence **CC0**). Kandidát byl nejdřív k poslechu na
 `/dev-sound` (`public/dev-sound-candidates/monster_roar/`), servírovaná kopie je jen
 zkopírovaná beze změny gainu (peak už -0,4 dB, mean_volume -11,8 dB, 2,2 s).
+
+## Finální řev monstra (hidden true ending)
+
+`monster_final_death_roar.mp3` — hraje na 10. (finálním) potvrzeném zásahu monstra
+(`AUDIO_EVENTS.monsterFinalDeathRoar`, viz `game/core/monsterEnding.ts`,
+`components/minigame/EmergencyMiniGame.tsx#fireShot`). Znamená smrt, ne ústup — nikdy
+nezaměňovat s `monster_retreat_roar.mp3` (dočasné odehnání dveře+světlem, monstrum se
+vrací). Zdroj: `monster_roar/roar_12.mp3` — poslední (12.) z klipů rozřezaných z
+[479380__breviceps__dragon-roars-growls-snarls.wav](https://freesound.org/people/Breviceps/sounds/479380/)
+(Freesound.org, autor **Breviceps**, licence **CC0**), stejná dávka jako
+`hardcore_select_roar.mp3` výše. Servírovaná kopie je jen zkopírovaná beze změny gainu
+(peak už -0,3 dB, mean_volume -17,6 dB, 3,8 s).

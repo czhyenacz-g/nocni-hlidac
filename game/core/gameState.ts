@@ -39,6 +39,7 @@ export function createInitialGameState(
   livesRemainingOverride?: number,
   hasShotgunOverride?: boolean,
   shotgunAmmoOverride?: number,
+  hasDoubleBarrelShotgunOverride?: boolean,
 ): GameState {
   const gameMode = gameModeOverride ?? DEFAULT_GAME_MODE;
 
@@ -117,13 +118,14 @@ export function createInitialGameState(
     // pošle skutečnou hodnotu, jen když ji hráč v aktuálním runu už má (viz
     // game/core/shotgunEquipment.ts).
     hasShotgun: hasShotgunOverride ?? false,
+    hasDoubleBarrelShotgun: hasDoubleBarrelShotgunOverride ?? false,
     shotgunAmmo: shotgunAmmoOverride ?? 0,
 
     // Vždy čerstvé, bez override — "za jednu noc" počítadlo (viz zadání,
     // game/core/monsterEnding.ts), resetuje se i při RESTART_SHIFT (opakování
     // stejné noci po smrti v Normal), na rozdíl od hasShotgun/shotgunAmmo výše.
     monsterHitsToday: 0,
-    pendingMonsterHit: false,
+    pendingMonsterHits: 0,
     monsterDefeated: false,
 
     isRunning: false,

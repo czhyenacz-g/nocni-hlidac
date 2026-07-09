@@ -308,4 +308,21 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
       waveform: "sawtooth",
     },
   },
+  // Finální (10.) potvrzený zásah — hidden true ending (viz zadání "Řev
+  // monstra #12", game/core/monsterEnding.ts, assets/audio/README.md
+  // "Finální řev monstra"). Znamená smrt, ne ústup — nikdy nezaměňovat s
+  // monsterRetreatRoar.
+  [AUDIO_EVENTS.monsterFinalDeathRoar]: {
+    src: "/assets/audio/monster_final_death_roar.mp3",
+    volume: 0.8,
+    loop: false,
+    fallbackSynth: {
+      notes: [
+        { frequency: 140, durationMs: 260, gapMs: 20 },
+        { frequency: 90, durationMs: 400 },
+      ],
+      volume: 0.55,
+      waveform: "sawtooth",
+    },
+  },
 };

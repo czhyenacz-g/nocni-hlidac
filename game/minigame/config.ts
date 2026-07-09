@@ -82,6 +82,15 @@ export const ENEMY_STUN_DURATION_MS = 10_000;
 /** Jak dlouho (ms) bliká výseč po výstřelu (zásah i minutí) — čistě vizuální, neovlivňuje hit detection. */
 export const SHOT_FLASH_DURATION_MS = 150;
 
+/**
+ * Dramatická pauza (ms) po finálním (10.) zásahu monstra, než se výprava
+ * automaticky dokončí jako bezpečný návrat (viz EmergencyMiniGame.tsx#tick,
+ * `EmergencyMiniGameInput.isFinalMonsterHit`, GAME_DESIGN.md "Hidden true
+ * ending"). Hráč tenhle krok neřídí — cinematic samo přejde na
+ * MonsterDefeatedScreen, žádné riskantní doběhnutí zpátky do kanceláře.
+ */
+export const MONSTER_FINAL_DEATH_SCREEN_DELAY_MS = 5000;
+
 // ── Anti-stuck fallback (viz game/minigame/logic.ts#trackStuck/updateEnemyAi)
 // — nepřítel se v "investigating"/"chasing" může zaseknout o zeď; tyhle
 // konstanty řídí, jak citlivě se to pozná a jak rychle se AI zotaví.

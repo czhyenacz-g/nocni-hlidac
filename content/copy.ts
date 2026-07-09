@@ -5,11 +5,25 @@ export const COPY = {
     subtitle: "Objekt 13: První směna",
     intro: "Sedíš v malé místnosti. Kamery šumí. Dveře nevydrží věčně. Přežij do rána.",
     startButton: "Nastoupit na směnu",
+    // Zobrazí se místo startButton výše, jen když má hráč odemčenou
+    // dvouhlavňovku (viz game/core/monsterDefeatReward.ts, MainMenuScreen.tsx)
+    // — stejná akce (onStart), jen jiný text pro veterána.
+    startButtonVeteran: "Nastoupit na veteránskou směnu",
     termsLinkLabel: "Podmínky noční služby",
     // Přejmenováno ze "Žebříček hlídačů" na žádost — route/link (/leaderboard)
     // zůstává beze změny, mění se jen viditelný text.
     leaderboardLinkLabel: "Síň slávy hlídačů",
     authorEmail: "hynek@darbujan.com",
+  },
+  // Status karta po prvním true endingu (viz zadání, game/core/monsterDefeatReward.ts,
+  // MainMenuScreen.tsx) — zobrazí se jen když reward.hasDefeatedMonster. Texty
+  // přesně podle zadání, drženo stručné/temné (na žádost "nepřehánět texty").
+  veteranStatus: {
+    statusLabel: "Status hlídače:",
+    statusValue: "ZLATÝ HLÍDAČ",
+    rewardLabel: "Odměna:",
+    rewardValue: "Dvouhlavňová brokovnice odemčena",
+    note: "Bestie byla poražena. Objekt 13 ale pořád stojí.",
   },
   // Výběr herního režimu na úvodní obrazovce (viz MainMenuScreen.tsx,
   // game/core/gameMode.ts) — Normal/Hardcore životy a death/leaderboard
@@ -155,7 +169,14 @@ export const COPY = {
     shotgunAcquiredLabel: "Brokovnice nalezena. Teď máš aspoň šanci se bránit.",
     /** {ammo}/{max} u LeftWallView, jen když hasShotgun === true (viz zadání "nenápadná informace o munici"). */
     shotgunAmmoReadyLabel: "Brokovnice: {ammo}/{max}",
-    shotgunAmmoEmptyLabel: "Náboj: prázdno",
+    shotgunAmmoEmptyLabel: "Brokovnice: prázdná",
+    // Dvouhlavňovka (viz zadání "true ending odměna" část G,
+    // game/core/shotgunEquipment.ts#isDoubleBarrelShotgun) — stejné místo/
+    // vzor jako shotgunAmmoReadyLabel/shotgunAmmoEmptyLabel výše, jen jiný
+    // název zbraně a vlastní "prázdná" text (na žádost zadání, ne obecné
+    // "Náboj: prázdno").
+    doubleBarrelAmmoReadyLabel: "Dvouhlavňovka: {ammo}/{max}",
+    doubleBarrelAmmoEmptyLabel: "Dvouhlavňovka: prázdná",
     // Vedlejší tlačítko na left_wall, vidět jen s brokovnicí (viz zadání,
     // GameState.hasShotgun) — stejný "drž tlačítko" vzor jako
     // startEmergencyRunLabel výše, jen delší (THINK_IT_OVER_WINDUP_DURATION_MS)
@@ -167,8 +188,19 @@ export const COPY = {
     thinkItOverResultLabel: "Nevzdávej se a bojuj! To monstrum určitě lze nějak zabít. Potřebuješ možná více ran, nebo větší kalibr.",
     // Skrytý true ending (viz zadání, game/core/monsterEnding.ts) — zobrazí se
     // po KAŽDÉM potvrzeném zásahu (ne jen prvním), záměrně beze čísla/postupu
-    // ("X/10"), ať mechanismus zůstane skrytý.
-    monsterHitConfirmedLabel: "Něco zařvalo hlouběji ve skladu.",
+    // ("X/10"), ať mechanismus zůstane skrytý — proto i "9. zásah" dostává
+    // stejný text jako kterýkoliv jiný, žádná zvláštní "už jen jednou"
+    // hláška (na výslovnou žádost dřívějšího zadání by prozrazovala postup,
+    // proti smyslu "skrytý"). Text teď navíc odpovídá tomu, co se skutečně
+    // stane (viz gameReducer.ts#CONFIRM_MONSTER_HIT) — monstrum se po
+    // potvrzení stáhne zpátky ven, ne jen "zařve někde ve skladu".
+    monsterHitConfirmedLabel: "Zásah potvrzen. Bestie ustoupila do tmy.",
+    // 10. (finální) zásah — zobrazí se PŘÍMO v EmergencyMiniGame jako overlay
+    // po dobu MONSTER_FINAL_DEATH_SCREEN_DELAY_MS (viz
+    // EmergencyMiniGame.tsx#fireShot/tick, game/minigame/config.ts). Na
+    // rozdíl od monsterHitConfirmedLabel výše tenhle text hráč vidí HNED,
+    // uvnitř zamrzlé minihry, ne až v hlavní hře po dispatchi.
+    finalMonsterHitLabel: "Bestie padla.",
     // Doplňkový loot v emergency výpravě (viz zadání "sandbox výprava") —
     // {item} nahrazuje EmergencyMiniGame.tsx nominativem (Baterie/Žárovka/
     // Brokovnice — všechny gramaticky ženský rod, proto "sebrána" pevně).
@@ -273,6 +305,10 @@ export const COPY = {
     /** Vykreslené s whitespace-pre-line — \n\n je záměrně dvojitý (prázdný řádek mezi "Tentokrát opravdu." a "Zasloužil sis..."). */
     body: "Blahopřeji.\nTentokrát opravdu.\n\nZasloužil sis svoji výplatu :-D",
     backToMenuButton: "ZPĚT DO MENU",
+    // Cinematic (viz content/monsterDefeatedCinematic.ts) — přehraje se PŘED
+    // title/subtitle/body výše, ne misto nich. Tlačítko přeskočit je jen
+    // pohodlnost pro opakované testování/hraní, ne skrytí monologu natrvalo.
+    skipCinematicLabel: "Přeskočit",
   },
   loading: {
     title: "OBJEKT 13 — SERVISNÍ TERMINÁL",

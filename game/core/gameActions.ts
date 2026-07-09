@@ -20,9 +20,12 @@ export type GameAction =
   // pošle skutečnou hodnotu: čerstvou při novém startu (vybranou na
   // MainMenuScreen), nebo zachovanou `state.gameMode`/`state.livesRemaining`
   // při RESTART_SHIFT (viz gameMode.ts, handleBeginShift).
-  // hasShotgun/shotgunAmmo jsou stejná volitelná dvojice navíc (viz
-  // game/core/shotgunEquipment.ts) — chybí-li, createInitialGameState
-  // spadne na `false`/`0` (nový run bez brokovnice).
+  // hasShotgun/shotgunAmmo/hasDoubleBarrelShotgun jsou stejná volitelná
+  // trojice navíc (viz game/core/shotgunEquipment.ts) — chybí-li,
+  // createInitialGameState spadne na `false`/`0`/`false` (nový run bez
+  // brokovnice). app/play/page.tsx#handleBeginShift pošle
+  // hasDoubleBarrelShotgun: true jen na "fresh run" větvi, když má hráč
+  // trvale odemčenou dvouhlavňovku (viz monsterDefeatReward.ts).
   | {
       type: "START_SHIFT";
       roomBulbs?: RoomBulbsState;
@@ -32,6 +35,7 @@ export type GameAction =
       livesRemaining?: number;
       hasShotgun?: boolean;
       shotgunAmmo?: number;
+      hasDoubleBarrelShotgun?: boolean;
     }
   | {
       type: "RESTART_SHIFT";
@@ -42,6 +46,7 @@ export type GameAction =
       livesRemaining?: number;
       hasShotgun?: boolean;
       shotgunAmmo?: number;
+      hasDoubleBarrelShotgun?: boolean;
     }
   | { type: "TOGGLE_DOOR" }
   | { type: "TOGGLE_LIGHT" }

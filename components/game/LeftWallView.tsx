@@ -3,7 +3,7 @@ import { COPY } from "@/content/copy";
 import { EMERGENCY_RUN_WINDUP_DURATION_MS, THINK_IT_OVER_WINDUP_DURATION_MS } from "@/game/balancing/constants";
 import { computeEmergencyRunWindupProgressRatio } from "@/game/core/emergencyRunWindupProgress";
 import { computeThinkItOverWindupProgressRatio } from "@/game/core/thinkItOverWindupProgress";
-import { SHOTGUN_MAX_AMMO } from "@/game/core/shotgunEquipment";
+import { DOUBLE_BARREL_SHOTGUN_MAX_AMMO, SHOTGUN_MAX_AMMO } from "@/game/core/shotgunEquipment";
 import ViewSwitchArrow from "./ViewSwitchArrow";
 import ConsoleIcon from "./ConsoleIcon";
 
@@ -50,7 +50,9 @@ interface LeftWallViewProps {
   emergencyRunWindupProgressMs: number;
   /** Trvalé vlastnictví brokovnice (viz GameState.hasShotgun, game/core/shotgunEquipment.ts) — přepíná zeď z prázdného stojanu na stojan s brokovnicí. */
   hasShotgun: boolean;
-  /** Aktuální munice (0 nebo SHOTGUN_MAX_AMMO) — zobrazuje se jen když hasShotgun je true. */
+  /** Konkrétně dvouhlavňovka (viz GameState.hasDoubleBarrelShotgun, true ending odměna) — přepíná stojan na zlatě zarámovanou trofejní verzi a texty na "Dvouhlavňovka". */
+  hasDoubleBarrelShotgun: boolean;
+  /** Aktuální munice (0 až SHOTGUN_MAX_AMMO nebo DOUBLE_BARREL_SHOTGUN_MAX_AMMO) — zobrazuje se jen když hasShotgun je true. */
   shotgunAmmo: number;
   /**
    * Zahájí/zruší držení "Nechat si to projít hlavou" (viz
@@ -77,6 +79,13 @@ interface LeftWallViewProps {
 const EMPTY_LEFT_WALL_IMAGE_SRC = "/object_13/views/empty-shotgun.webp";
 /** Stejná scéna, ale s brokovnicí na zdi — hráč ji trvale získal (viz game/core/shotgunEquipment.ts). Zatím jen .webp (žádný .png fallback jako u prázdného stojanu), ale stejný imageFailed guard níže hru neshodí, kdyby soubor chyběl. */
 const SHOTGUN_LEFT_WALL_IMAGE_SRC = "/object_13/views/shotgun.webp";
+/**
+ * Trvalá true ending odměna (viz zadání, game/core/monsterDefeatReward.ts) —
+ * zlatě zarámovaná trofejní dvouhlavňovka s deskou "Big mamma for big boy!",
+ * dodaný asset (`public/object_13/views/reward_shotgun.png`, zkonvertovaný
+ * na .webp), NE stejný obrázek jako běžná brokovnice s jiným textem.
+ */
+const DOUBLE_BARREL_LEFT_WALL_IMAGE_SRC = "/object_13/views/reward_shotgun.webp";
 
 // Čistě atmosférický pohled bez herní mechaniky (viz gameReducer.ts
 // LOOK_AT_LEFT_WALL) — stejné rámované okno na scénu jako DoorView
@@ -96,6 +105,7 @@ export default function LeftWallView({
   emergencyRunWindupActive,
   emergencyRunWindupProgressMs,
   hasShotgun,
+  hasDoubleBarrelShotgun,
   shotgunAmmo,
   onStartThinkItOverWindup,
   onCancelThinkItOverWindup,
@@ -104,7 +114,12 @@ export default function LeftWallView({
   hasWoundedMonsterToday,
 }: LeftWallViewProps) {
   const [imageFailed, setImageFailed] = useState(false);
-  const wallImageSrc = hasShotgun ? SHOTGUN_LEFT_WALL_IMAGE_SRC : EMPTY_LEFT_WALL_IMAGE_SRC;
+  const wallImageSrc = !hasShotgun
+    ? EMPTY_LEFT_WALL_IMAGE_SRC
+    : hasDoubleBarrelShotgun
+      ? DOUBLE_BARREL_LEFT_WALL_IMAGE_SRC
+      : SHOTGUN_LEFT_WALL_IMAGE_SRC;
+  const shotgunMaxAmmo = hasDoubleBarrelShotgun ? DOUBLE_BARREL_SHOTGUN_MAX_AMMO : SHOTGUN_MAX_AMMO;
   // hasShotgun mění, KTERÝ soubor se má načíst — dřívější selhání jednoho z
   // nich (imageFailed) nesmí trvale skrýt i ten druhý, jakmile hráč
   // brokovnici získá (nebo v dev/testu naopak).
@@ -237,8 +252,12 @@ export default function LeftWallView({
         {hasShotgun && (
           <div className="text-[10px] text-gray-400">
             {shotgunAmmo > 0
-              ? COPY.game.shotgunAmmoReadyLabel.replace("{ammo}", String(shotgunAmmo)).replace("{max}", String(SHOTGUN_MAX_AMMO))
-              : COPY.game.shotgunAmmoEmptyLabel}
+              ? (hasDoubleBarrelShotgun ? COPY.game.doubleBarrelAmmoReadyLabel : COPY.game.shotgunAmmoReadyLabel)
+                  .replace("{ammo}", String(shotgunAmmo))
+                  .replace("{max}", String(shotgunMaxAmmo))
+              : hasDoubleBarrelShotgun
+                ? COPY.game.doubleBarrelAmmoEmptyLabel
+                : COPY.game.shotgunAmmoEmptyLabel}
           </div>
         )}
 

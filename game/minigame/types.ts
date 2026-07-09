@@ -171,6 +171,19 @@ export interface EmergencyMiniGameInput {
    * ať jsou reprodukovatelné.
    */
   seed?: string;
+  /**
+   * `true`, jen když by (podle `GameState.monsterHitsToday` PŘED touhle
+   * výpravou, spočítáno volajícím — viz app/play/page.tsx) byl PRVNÍ
+   * úspěšný zásah v týhle výpravě zároveň 10. potvrzený zásah celé noci
+   * (hidden true ending, `MONSTER_TRUE_ENDING_REQUIRED_HITS` v
+   * `game/core/monsterEnding.ts`). `game/minigame/*` záměrně nezná tenhle
+   * práh ani `game/core` vůbec (viz komentář nahoře v tomhle souboru) —
+   * dostává jen hotové rozhodnutí jako boolean. Za jednu výpravu se počítá
+   * nejvýš jeden zásah (`monsterHitThisRun` latch), takže se tohle
+   * rozhodnutí nemění v průběhu výpravy. Chybí/`false` = normální zásah
+   * (viz `EmergencyMiniGame.tsx#fireShot`).
+   */
+  isFinalMonsterHit?: boolean;
 }
 
 // ── Efekty pro hlavní hru (viz
