@@ -500,6 +500,22 @@
   border-color: #ef4444;
 }
 
+/* Stejný důvod jako u data-urgent výše — vybraný stav (NORMAL/HARDCORE
+ * přepínač, MainMenuScreen.tsx) nastavuje `.pixel-button[data-active="true"]`
+ * na rodiči, ikonový blok ho bez tohohle selektoru neodrazí. */
+.pixel-button[data-active="true"] .console-icon-block {
+  color: #fecaca;
+  border-color: #ef4444;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06), 0 0 10px rgba(239, 68, 68, 0.45);
+}
+
+/* Malý ikonový blok pro kompaktní tlačítka (viz MainMenuScreen.tsx
+ * NORMAL/HARDCORE) — stejný vzhled jako .console-icon-block, jen menší. */
+.console-icon-block--sm {
+  width: 20px;
+  height: 20px;
+}
+
 /* Mobil — menší ikonový blok, ať nezabírá nepřiměřeně místa (viz zadání
  * "mobilní UX nech prakticky stejné"). */
 @media (max-width: 767px) {
@@ -510,6 +526,10 @@
   .console-icon-block--primary {
     width: 32px;
     height: 32px;
+  }
+  .console-icon-block--sm {
+    width: 18px;
+    height: 18px;
   }
 }
 

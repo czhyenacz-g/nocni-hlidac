@@ -1,4 +1,4 @@
-export type ConsoleIconId = "arrow-left" | "arrow-right" | "map" | "door" | "warn" | "light";
+export type ConsoleIconId = "arrow-left" | "arrow-right" | "map" | "door" | "warn" | "light" | "power" | "shield";
 
 /**
  * Sdílené inline SVG ikony pro konzolové ikonové bloky (viz
@@ -48,6 +48,19 @@ export default function ConsoleIcon({ id }: { id: ConsoleIconId }) {
           <path d="M9 18h6" />
           <path d="M10 21h4" />
           <path d="M12 3a6 6 0 0 0-3 11.2c.5.4.9 1 .9 1.8h4.2c0-.8.4-1.4.9-1.8A6 6 0 0 0 12 3Z" />
+        </svg>
+      );
+    case "power":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+          <path d="M12 3v7" />
+          <path d="M7 5.5a8 8 0 1 0 10 0" />
+        </svg>
+      );
+    case "shield":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+          <path d="M12 3 5 6v5.5c0 4.5 3 7.7 7 9 4-1.3 7-4.5 7-9V6l-7-3Z" />
         </svg>
       );
   }
