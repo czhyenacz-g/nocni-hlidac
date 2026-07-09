@@ -343,9 +343,9 @@ export const COPY = {
   // Zatím jen mock data (viz lib/leaderboard/mockLeaderboard.ts) — žádné API/DB,
   // připraveno na budoucí náhradu za skutečné výsledky beze změny textů.
   leaderboard: {
-    seoTitle: "Žebříček hlídačů | Noční hlídač",
-    seoDescription: "Žebříček hlídačů Objektu 13 — kdo drží rekord a kdo právě slouží.",
-    heading: "Žebříček hlídačů",
+    seoTitle: "Síň slávy hlídačů | Noční hlídač",
+    seoDescription: "Síň slávy hlídačů Objektu 13 — kdo drží rekord a kdo právě slouží.",
+    heading: "Síň slávy hlídačů",
     subheading: "Pozice byla opakovaně obsazena. Někteří vydrželi déle.",
     explanation:
       "Rekord ukazuje nejlepší dosaženou směnu hráče. Aktuální směna ukazuje hlídače, " +

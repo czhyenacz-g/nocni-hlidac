@@ -96,6 +96,11 @@ export default function DebugPanel({
           (roars: {state.monsterRetreatRoarSeq})
         </div>
         <div>
+          doorHallwayUvRepel: {state.doorHallwayUvRepelMs.toFixed(0)} /{" "}
+          {night.enemy.doorHallwayUvRepelRequiredMs} ms (hallway retreat{" "}
+          {doorEncounter.hallwayUvForcingRetreat ? "accumulating" : "idle"})
+        </div>
+        <div>
           door encounter: at door {doorEncounter.atDoor ? "yes" : "no"}, blocked attack{" "}
           {doorEncounter.blockedByClosedDoor ? "yes" : "no"} (bangs: {state.doorBangSeq}), retreating{" "}
           {doorEncounter.lightForcingRetreat ? "yes" : "no"}

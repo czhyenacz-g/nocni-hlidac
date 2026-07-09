@@ -22,19 +22,32 @@ export default function WinScreen({ survivedNights, onRetry, onGoToMenu }: WinSc
     <main className="relative min-h-screen flex items-center justify-center p-4">
       <SceneBackground scene={BACKGROUND_SCENES.win} />
 
-      <div className="w-full max-w-md text-center pixel-panel p-8">
-        <h1 className="text-2xl font-bold mb-2 text-green-400">{COPY.win.title}</h1>
-        <p className="text-sm text-gray-400 mb-2">{COPY.win.subtitle}</p>
-        <p className="text-xs text-gray-500 mb-8">{formatSurvivedNights(survivedNights)}</p>
-        <button className="pixel-button tap-target px-6 py-3 text-sm w-full" onClick={onRetry}>
-          {COPY.win.retryButton}
-        </button>
-        <button
-          className="block mt-4 mx-auto text-center text-xs text-gray-500 hover:text-gray-300"
-          onClick={onGoToMenu}
-        >
-          {COPY.win.backToMenuLabel}
-        </button>
+      {/* Stejný "terminál" obal jako MainMenuScreen/BriefingScreen/DeathScreen
+          (viz zadání "podobným způsobem uprav") — kovový rám + 4 šrouby +
+          zapuštěná obrazovka, místo ploché pixel-panel karty. */}
+      <div className="w-full max-w-md menu-terminal-frame relative z-10">
+        <span className="camera-monitor-screw" style={{ top: 5, left: 5 }} aria-hidden="true" />
+        <span className="camera-monitor-screw" style={{ top: 5, right: 5 }} aria-hidden="true" />
+        <span className="camera-monitor-screw" style={{ bottom: 5, left: 5 }} aria-hidden="true" />
+        <span className="camera-monitor-screw" style={{ bottom: 5, right: 5 }} aria-hidden="true" />
+
+        <div className="menu-terminal-screen pixel-screen-static text-center p-8">
+          <h1 className="text-2xl font-bold mb-2 text-green-400">{COPY.win.title}</h1>
+          <p className="text-sm text-gray-400 mb-2">{COPY.win.subtitle}</p>
+          <p className="text-xs text-gray-500 mb-8">{formatSurvivedNights(survivedNights)}</p>
+          <button
+            className="pixel-button console-button console-button--primary tap-target px-6 py-3 text-sm w-full"
+            onClick={onRetry}
+          >
+            {COPY.win.retryButton}
+          </button>
+          <button
+            className="block mt-4 mx-auto text-center text-xs text-gray-500 hover:text-gray-300"
+            onClick={onGoToMenu}
+          >
+            {COPY.win.backToMenuLabel}
+          </button>
+        </div>
       </div>
     </main>
   );

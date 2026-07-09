@@ -100,6 +100,7 @@ describe("resolveDoorMonsterEncounter", () => {
       blockedByClosedDoor: true,
       lethal: false,
       lightForcingRetreat: false,
+      hallwayUvForcingRetreat: false,
     });
   });
 
@@ -112,6 +113,7 @@ describe("resolveDoorMonsterEncounter", () => {
       blockedByClosedDoor: false,
       lethal: true,
       lightForcingRetreat: false,
+      hallwayUvForcingRetreat: false,
     });
   });
 
@@ -124,10 +126,11 @@ describe("resolveDoorMonsterEncounter", () => {
       blockedByClosedDoor: true,
       lethal: false,
       lightForcingRetreat: true,
+      hallwayUvForcingRetreat: false,
     });
   });
 
-  it("summarizes a monster-away situation as all-false", () => {
+  it("summarizes a hallway-uv-forcing-retreat situation consistently with the individual helpers", () => {
     const state = stateWith({ enemyStage: "door_hallway", doorClosed: true, lightOn: true });
     const summary = resolveDoorMonsterEncounter(state);
     expect(summary).toEqual({
@@ -135,6 +138,20 @@ describe("resolveDoorMonsterEncounter", () => {
       wouldAttack: false,
       blockedByClosedDoor: false,
       lethal: false,
+      lightForcingRetreat: false,
+      hallwayUvForcingRetreat: true,
+    });
+  });
+
+  it("summarizes a monster-away situation as all-false", () => {
+    const state = stateWith({ enemyStage: "right_hallway", doorClosed: true, lightOn: true });
+    const summary = resolveDoorMonsterEncounter(state);
+    expect(summary).toEqual({
+      atDoor: false,
+      wouldAttack: false,
+      blockedByClosedDoor: false,
+      lethal: false,
+      hallwayUvForcingRetreat: false,
       lightForcingRetreat: false,
     });
   });

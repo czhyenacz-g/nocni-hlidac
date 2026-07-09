@@ -26,6 +26,7 @@ import {
   isDoorAttackBlockedByClosedDoor,
   isDoorAttackGraceActive,
   isMonsterAtDoor,
+  shouldDoorHallwayUvForceRetreat,
   shouldDoorLightForceRetreat,
 } from "./doorEncounter";
 
@@ -229,6 +230,63 @@ function updateDoorLightRepel(state: GameState, night: NightDefinition, deltaMs:
     enemyAtDoorSinceMs: null,
     enemyDoorHoldTargetMs: null,
     enemyDoorHoldProgressMs: 0,
+  };
+}
+
+// Na rozdíl od DoorLightRepelResult výše NENÍ Pick (všechny klíče vždy
+// přítomné) — je to záměrně Partial. doorLightRepelUpdate i
+// doorHallwayUvRepelUpdate sdílejí stejná pole GameState
+// (monsterRetreatRoarSeq/enemyStage/lastEnemyDecision/monsterRetreatedTo/
+// monsterRetreatVerified) a oba se spreadují do stejného výsledného objektu
+// v TICKu (viz níže) — kdyby "no-op" větev vracela VŠECHNA pole i beze
+// změny (jako u DoorLightRepelResult), přepsala by při spreadu i skutečnou
+// změnu, kterou tenhle tik provedl ten DRUHÝ repel updater (enemyStage
+// at_door/door_hallway se nikdy nepřekrývají, takže nejvýš jeden z nich
+// smí v daném tiku cokoliv měnit — ten druhý musí ve svém "no-op" výsledku
+// tahle pole úplně VYNECHAT, ne vracet stejné/staré hodnoty).
+type DoorHallwayUvRepelResult = { doorHallwayUvRepelMs: number } & Partial<
+  Pick<GameState, "monsterRetreatRoarSeq" | "enemyStage" | "lastEnemyDecision" | "monsterRetreatedTo" | "monsterRetreatVerified">
+>;
+
+// Stejný princip jako updateDoorLightRepel výše, ale pro nepřítele v
+// "door_hallway" (o krok dřív) — dveře zavřené + UV SKUTEČNĚ svítí (viz
+// shouldDoorHallwayUvForceRetreat) po night.enemy.doorHallwayUvRepelRequiredMs
+// (výchozí ~7 s, výrazně pomalejší než 1.5 s u dveří — UV je tu slabší/
+// pomalejší varovný nástroj, ne náhrada za stejně rychlý at_door repel).
+// Na rozdíl od updateDoorLightRepel tenhle repel NEteleportuje rovnou na
+// night.enemy.monsterRetreatStage bez potvrzení — prochází stejným "vzdání
+// se" flow jako standoff u dveří (viz ENEMY_ADVANCE "gave_up"):
+// monsterRetreatedTo/monsterRetreatVerified se nastaví stejně, takže hráč
+// útěk musí/může potvrdit kamerou (viz OPEN_CAMERA), přesně jako u give_up.
+// Roar/kroky ústupu hrají stejně jako u at_door repelu (sdílený
+// monsterRetreatRoarSeq, viz app/play/page.tsx) — žádný nový audio event.
+function updateDoorHallwayUvRepel(
+  state: GameState,
+  night: NightDefinition,
+  deltaMs: number,
+  requireMonsterRetreatVerification: boolean,
+): DoorHallwayUvRepelResult {
+  const conditionsMet = shouldDoorHallwayUvForceRetreat(state);
+  if (!conditionsMet) {
+    return { doorHallwayUvRepelMs: 0 };
+  }
+
+  const doorHallwayUvRepelMs = state.doorHallwayUvRepelMs + deltaMs;
+  if (doorHallwayUvRepelMs < night.enemy.doorHallwayUvRepelRequiredMs) {
+    return { doorHallwayUvRepelMs };
+  }
+
+  const retreatedTo = pickMonsterRetreatLocation(state.enemyRoute);
+  return {
+    doorHallwayUvRepelMs: 0,
+    monsterRetreatRoarSeq: state.monsterRetreatRoarSeq + 1,
+    enemyStage: retreatedTo,
+    lastEnemyDecision: "hallway_light_repelled",
+    monsterRetreatedTo: retreatedTo,
+    // Bez požadavku na ověření (easy, nebo vypnuté
+    // monsterRetreatVerificationEnabled tuhle noc) rovnou "ověřeno" — stejná
+    // konvence jako gave_up v ENEMY_ADVANCE.
+    monsterRetreatVerified: !requireMonsterRetreatVerification,
   };
 }
 
@@ -846,6 +904,16 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
 
         const generatorUpdate = updateGenerator(state, night, elapsedMs);
         const doorLightRepelUpdate = updateDoorLightRepel(state, night, action.deltaMs);
+        // Nezávislé na doorLightRepelUpdate výše — jiná stage (door_hallway,
+        // ne at_door), jiný (pomalejší) požadovaný čas, jiný výsledek
+        // (vzdání se s ověřením, ne okamžitý teleport) — viz
+        // updateDoorHallwayUvRepel.
+        const doorHallwayUvRepelUpdate = updateDoorHallwayUvRepel(
+          state,
+          night,
+          action.deltaMs,
+          requireMonsterRetreatVerification,
+        );
         // Životnost žárovky se počítá z PŘED-tikového state.lightOn (stejně
         // jako applyPowerDelta níže) — pokud tenhle tik žárovka právě praskne,
         // spotřeba/drain za tenhle tik se ještě počítá, jako by svítila celou
@@ -875,6 +943,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             ...state,
             ...generatorUpdate,
             ...doorLightRepelUpdate,
+            ...doorHallwayUvRepelUpdate,
             ...roomBulbsUpdate,
             elapsedMs,
             remainingMs,
@@ -898,6 +967,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             ...state,
             ...generatorUpdate,
             ...doorLightRepelUpdate,
+            ...doorHallwayUvRepelUpdate,
             ...roomBulbsUpdate,
             ...bulbReplacementUpdate,
             ...emergencyRunWindupUpdate,
@@ -930,6 +1000,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           ...state,
           ...generatorUpdate,
           ...doorLightRepelUpdate,
+          ...doorHallwayUvRepelUpdate,
           ...roomBulbsUpdate,
           ...bulbReplacementUpdate,
           ...emergencyRunWindupUpdate,

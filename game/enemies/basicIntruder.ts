@@ -19,5 +19,9 @@ export const BASIC_INTRUDER: EnemyDefinition = {
   doorHoldRangeMs: { min: 6000, max: 8000 },
   // Zavřené dveře + zapnuté světlo + u dveří po sobě 1.5 s -> okamžitý repel s řevem.
   doorLightRepelRequiredMs: 1500,
+  // Stejná kombinace o krok dřív (door_hallway, ne až u dveří) je záměrně
+  // pomalejší (~7 s) — slabší/pomalejší varovný nástroj, ne náhrada za
+  // stejně rychlý at_door repel (viz doorHallwayUvRepelRequiredMs v types.ts).
+  doorHallwayUvRepelRequiredMs: 7000,
   monsterRetreatStage: "outside",
 };

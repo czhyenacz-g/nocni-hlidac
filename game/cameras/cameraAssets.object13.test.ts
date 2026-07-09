@@ -104,3 +104,22 @@ describe("door_hallway camera never shows the lit variant when the bulb is broke
     expect(src).not.toContain("door_hallway_light");
   });
 });
+
+describe("getCameraImageSrc — door_hallway fleeing (hallway UV retreat)", () => {
+  // Viz gameReducer.ts#updateDoorHallwayUvRepel — na hallway UV retreatu se
+  // monsterRetreatedTo/enemyStage přesune na jednu z MONSTER_RETREAT_CANDIDATES
+  // (right_hallway/left_hallway/outer_yard), nikdy zůstane na "door_hallway"
+  // (to je stage, KDE se retreat spustil, ne kam nepřítel odešel). Tenhle
+  // test jen ověřuje, že door_hallway kamera samotná (obecný mechanismus,
+  // stejný jako u ostatních kamer) používá lightOn variantu fleeing setu,
+  // kdyby to jako cíl retreatu použil.
+  it("uses the lit fleeing asset when UV is still on", () => {
+    const src = getCameraImageSrc("door_hallway", true, true, 0, "door_hallway", "door_hallway", false);
+    expect(src).toBe("/object_13/camera/door_hallway_light/door_hallway_light_fleeing_monster.webp");
+  });
+
+  it("falls back to the dark fleeing asset when UV is off", () => {
+    const src = getCameraImageSrc("door_hallway", true, false, 0, "door_hallway", "door_hallway", false);
+    expect(src).toBe("/object_13/camera/door_hallway/door_hallway_fleeing_monster.webp");
+  });
+});

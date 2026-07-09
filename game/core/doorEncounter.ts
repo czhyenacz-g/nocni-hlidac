@@ -1,4 +1,5 @@
 import { GameState } from "./types";
+import { isNearRoomLightActive } from "./roomBulbs";
 
 // Čisté, testovatelné pojmenování pro "monstrum u dveří" rozhodování — žádná
 // nová herní logika, jen explicitní jména pro podmínky, které dřív žily jen
@@ -62,6 +63,21 @@ export function shouldDoorLightForceRetreat(state: GameState): boolean {
 }
 
 /**
+ * Stejný princip jako `shouldDoorLightForceRetreat`, ale o krok dřív —
+ * nepřítel v `door_hallway` (ne ještě u dveří), dveře zavřené, a UV
+ * SKUTEČNĚ svítí (`isNearRoomLightActive`, ne jen `state.lightOn` — prasklá
+ * žárovka nesmí mít repel efekt, i kdyby vypínač zůstal chybou zapnutý).
+ * Stejně jako u `shouldDoorLightForceRetreat`, samotný ústup NENÍ okamžitý —
+ * vyžaduje setrvalé splnění týhle podmínky po
+ * `night.enemy.doorHallwayUvRepelRequiredMs` (výrazně delší než u dveří —
+ * viz `gameReducer.ts#updateDoorHallwayUvRepel`), tahle funkce jen říká,
+ * jestli odpočet vůbec smí běžet.
+ */
+export function shouldDoorHallwayUvForceRetreat(state: GameState): boolean {
+  return state.enemyStage === "door_hallway" && state.doorClosed && isNearRoomLightActive(state);
+}
+
+/**
  * Jestli běží grace period po návratu z EmergencyMiniGame s aktivní
  * officeThreatOnReturn (viz GameState.enemyDoorAttackGraceUntilMs,
  * gameReducer.ts APPLY_OFFICE_THREAT_ON_RETURN) — jediné místo, kde se tenhle
@@ -81,6 +97,8 @@ export interface DoorMonsterEncounter {
   blockedByClosedDoor: boolean;
   lethal: boolean;
   lightForcingRetreat: boolean;
+  /** Stejné jako `lightForcingRetreat`, ale pro pomalejší hallway UV repel (viz shouldDoorHallwayUvForceRetreat). */
+  hallwayUvForcingRetreat: boolean;
 }
 
 export function resolveDoorMonsterEncounter(state: GameState): DoorMonsterEncounter {
@@ -90,5 +108,6 @@ export function resolveDoorMonsterEncounter(state: GameState): DoorMonsterEncoun
     blockedByClosedDoor: isDoorAttackBlockedByClosedDoor(state),
     lethal: isDoorAttackLethal(state),
     lightForcingRetreat: shouldDoorLightForceRetreat(state),
+    hallwayUvForcingRetreat: shouldDoorHallwayUvForceRetreat(state),
   };
 }

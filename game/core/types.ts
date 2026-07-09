@@ -29,6 +29,13 @@ export type EnemyMoveDecision =
   | "waiting_at_door"
   | "gave_up"
   | "light_repelled"
+  // Zavřené dveře + UV skutečně svítí, nepřítel v "door_hallway" (ne ještě
+  // u dveří) — viz doorHallwayUvRepelMs/updateDoorHallwayUvRepel. Na rozdíl
+  // od "light_repelled" (okamžitý, slyšitelný, bez ověření) tenhle repel
+  // prochází stejným "vzdání se" flow jako standoff u dveří
+  // (monsterRetreatedTo/monsterRetreatVerified) — hráč útěk musí/může
+  // potvrdit kamerou.
+  | "hallway_light_repelled"
   | "attack"
   | "returned_unverified"
   // Monstrum se posunulo blíž ke kanceláři jako přenesená hrozba z
@@ -137,6 +144,15 @@ export interface EnemyDefinition {
    * sobě (otevřené dveře) ani zavřené dveře bez světla repel nikdy nespustí.
    */
   doorLightRepelRequiredMs: number;
+  /**
+   * Stejný princip jako `doorLightRepelRequiredMs`, ale pro nepřítele v
+   * `door_hallway` — o krok dřív, a proto výrazně pomalejší (výchozí ~7000 ms
+   * vs. 1500 ms u dveří). UV má být slabší/pomalejší varovný nástroj o krok
+   * dřív, ne stejně silná náhrada za at_door repel. Viz
+   * `doorEncounter.ts#shouldDoorHallwayUvForceRetreat`,
+   * `gameReducer.ts#updateDoorHallwayUvRepel`.
+   */
+  doorHallwayUvRepelRequiredMs: number;
   /** Kam se nepřítel vrátí po repelu — stejný typ resetu jako vzdání se standoffu u dveří. */
   monsterRetreatStage: EnemyStage;
 }
@@ -379,7 +395,20 @@ export interface GameState {
    * Kdykoliv některá podmínka přestane platit, resetuje se na 0.
    */
   doorLightRepelMs: number;
-  /** Zvyšuje se při každém repelu — UI podle změny spouští monsterRetreatRoar (viz app/play/page.tsx). */
+  /**
+   * Stejný princip jako `doorLightRepelMs`, ale pro nepřítele v `door_hallway`
+   * (o krok dál od dveří) — dveře zavřené + UV SKUTEČNĚ svítí
+   * (`isNearRoomLightActive`, ne jen `state.lightOn`) po
+   * `EnemyDefinition.doorHallwayUvRepelRequiredMs` (výchozí ~7 s, výrazně
+   * pomalejší než 1.5 s u dveří — UV je o krok dřív slabší/pomalejší nástroj,
+   * ne náhrada za at_door repel). Kdykoliv některá podmínka přestane platit
+   * (dveře otevřené, UV zhasnuté/žárovka praskne, nepřítel opustí
+   * `door_hallway`), resetuje se na 0 — viz
+   * `doorEncounter.ts#shouldDoorHallwayUvForceRetreat`,
+   * `gameReducer.ts#updateDoorHallwayUvRepel`.
+   */
+  doorHallwayUvRepelMs: number;
+  /** Zvyšuje se při každém repelu (dveřní i hallway UV) — UI podle změny spouští monsterRetreatRoar (viz app/play/page.tsx). */
   monsterRetreatRoarSeq: number;
   /**
    * Zvyšuje se přesně jednou za každý ENEMY_ADVANCE tik, kdy monstrum u
