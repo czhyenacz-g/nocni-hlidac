@@ -138,6 +138,13 @@ export const COPY = {
     // po KAŽDÉM potvrzeném zásahu (ne jen prvním), záměrně beze čísla/postupu
     // ("X/10"), ať mechanismus zůstane skrytý.
     monsterHitConfirmedLabel: "Něco zařvalo hlouběji ve skladu.",
+    // Doplňkový loot v emergency výpravě (viz zadání "sandbox výprava") —
+    // {item} nahrazuje EmergencyMiniGame.tsx nominativem (Baterie/Žárovka/
+    // Brokovnice — všechny gramaticky ženský rod, proto "sebrána" pevně).
+    itemCollectedLabel: "{item} sebrána.",
+    // Zpráva po bezpečném návratu se žárovkou (viz worldEffect "bulbs_serviced",
+    // GameState.bulbsRemaining) — stejné místo/styl jako emergencyRunEnergyRechargedLabel.
+    bulbAcquiredLabel: "Náhradní žárovka uložena do skladu.",
     // Klik na tlačítko se zavřenými dveřmi (viz handleStartEmergencyRunWindup)
     // — hráč nemůže vyběhnout ven zavřenými dveřmi, tlačítko samo o sobě
     // zůstává klikatelné (jen vizuálně ztlumené), tenhle hint vysvětlí proč.

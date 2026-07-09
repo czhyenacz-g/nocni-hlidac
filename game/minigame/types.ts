@@ -117,6 +117,15 @@ export interface EmergencyMiniGameInput {
   objective: MiniGameObjective;
   /** Jen relevantní pro objective "collect_item" — chybí-li, view/logika použije obecné "item". */
   itemToCollect?: MiniGameItemId;
+  /**
+   * Doplňkový loot navíc k `itemToCollect` (viz zadání "sandbox výprava",
+   * game/minigame/layoutPlacement.ts#resolveMiniGamePlacement) — battery/bulb
+   * garantované na každé výpravě, shotgun podmíněně (viz
+   * game/core/emergencyMiniGameIntegration.ts#resolveExtraLootItems). Chybí-li/
+   * prázdné, mapa má jen `itemToCollect` jako dřív. Volající NIKDY sem
+   * nedává stejnou položku jako `itemToCollect` (byla by tak dvakrát).
+   */
+  extraLootItems?: MiniGameItemId[];
   /** Výbava hráče — chybí-li, default je brokovnice + 1 náboj (viz resolveEquipmentFromInput). */
   equipment?: EmergencyMiniGameEquipment;
   /**
@@ -200,5 +209,14 @@ export type EmergencyMiniGameResult =
        * TADY, po návratu, potvrdí zásah — nikdy dřív.
        */
       monsterHit?: boolean;
+      /**
+       * Všechny věci skutečně sebrané za tuhle výpravu — hlavní objective
+       * (pokud byl splněný) I doplňkový loot dohromady (viz zadání "sandbox
+       * výprava", EmergencyMiniGameInput.extraLootItems). `worldEffects` se
+       * z tohohle pole odvozuje (jeden `worldEffectsForItem` na položku),
+       * `collectedItems` samo navíc slouží i pro UI text ("Baterie sebrána.
+       * Žárovka sebrána."). Chybí/prázdné, pokud hráč nic nesebral.
+       */
+      collectedItems?: MiniGameItemId[];
     }
   | { outcome: "failed"; reason: "objective_failed"; elapsedMs: number; shotsUsed: number };

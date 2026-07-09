@@ -1,6 +1,6 @@
 import { MAX_POWER } from "../balancing/constants";
 import { NightFeatureFlags } from "../difficulty/nightConfig";
-import { EmergencyMiniGameEquipment, EmergencyMiniGameInput, EmergencyWorldEffect } from "../minigame/types";
+import { EmergencyMiniGameEquipment, EmergencyMiniGameInput, EmergencyWorldEffect, MiniGameItemId } from "../minigame/types";
 import { SERVICE_FLOOR_EVAC_PLAN } from "../minigame/layouts/serviceFloorEvacPlan";
 
 // První tenké napojení EmergencyMiniGame (game/minigame/*) do hlavní hry
@@ -34,10 +34,14 @@ export const DEFAULT_BATTERY_RUN_LAYOUT_ID = SERVICE_FLOOR_EVAC_PLAN.id;
  * getMiniGameLayout), ale odsud vždy posíláme skutečné `.id` existujícího
  * layoutu, takže tenhle fallback se v praxi nikdy neuplatní.
  */
-export function createBatteryEmergencyInput(equipment: EmergencyMiniGameEquipment): EmergencyMiniGameInput {
+export function createBatteryEmergencyInput(
+  equipment: EmergencyMiniGameEquipment,
+  extraLootItems: MiniGameItemId[] = [],
+): EmergencyMiniGameInput {
   return {
     objective: "collect_item",
     itemToCollect: "battery",
+    extraLootItems,
     equipment,
     difficulty: "medium",
     startLocation: "office",
@@ -54,15 +58,42 @@ export function createBatteryEmergencyInput(equipment: EmergencyMiniGameEquipmen
  * není potřeba. `equipment` stejně jako u battery runu: skutečná aktuální
  * výbava hráče, ne natvrdo prázdná.
  */
-export function createShotgunEmergencyInput(equipment: EmergencyMiniGameEquipment): EmergencyMiniGameInput {
+export function createShotgunEmergencyInput(
+  equipment: EmergencyMiniGameEquipment,
+  extraLootItems: MiniGameItemId[] = [],
+): EmergencyMiniGameInput {
   return {
     objective: "collect_item",
     itemToCollect: "shotgun",
+    extraLootItems,
     equipment,
     difficulty: "medium",
     startLocation: "office",
     layoutId: DEFAULT_BATTERY_RUN_LAYOUT_ID,
   };
+}
+
+/**
+ * Doplňkový loot vždy dostupný na mapě NAVÍC k hlavnímu objective (viz
+ * zadání "sandbox výprava") — battery/bulb garantované na KAŽDÉ výpravě,
+ * shotgun podmíněně podle `canStartShotgunEmergencyRun` (noc 10+, hráč ho
+ * ještě nemá). `primaryItemId` (co je zrovna hlavní objective) se z výsledku
+ * vynechá, ať se stejná položka nežádá dvakrát (viz
+ * game/minigame/layoutPlacement.ts#resolveMiniGamePlacement — dvě položky by
+ * si jinak konkurovaly o stejný tag/slot).
+ */
+export function resolveExtraLootItems(input: {
+  primaryItemId: MiniGameItemId;
+  nightFeatures: Pick<NightFeatureFlags, "emergencyRunsEnabled" | "shotgunLootEnabled">;
+  hasShotgun: boolean;
+}): MiniGameItemId[] {
+  const items: MiniGameItemId[] = [];
+  if (input.primaryItemId !== "battery") items.push("battery");
+  if (input.primaryItemId !== "bulb") items.push("bulb");
+  if (input.primaryItemId !== "shotgun" && canStartShotgunEmergencyRun(input.nightFeatures, input.hasShotgun)) {
+    items.push("shotgun");
+  }
+  return items;
 }
 
 /**
@@ -131,4 +162,16 @@ export function canStartShotgunEmergencyRun(
  */
 export function shouldLaunchEmergencyMiniGame(prevSeq: number, nextSeq: number): boolean {
   return nextSeq > prevSeq;
+}
+
+/**
+ * Kolik náhradních žárovek přibude do skladu (viz GameState.bulbsRemaining,
+ * game/core/bulbInventory.ts) za tuhle výpravu — sečte všechny "bulbs_serviced"
+ * efekty (v MVP nejvýš jeden, jedna žárovka na mapě, viz resolveExtraLootItems).
+ * Používá existující bulbsRemaining sklad (app/play/page.tsx dispatchne
+ * ADD_BULBS_REMAINING), ŽÁDNÝ nový paralelní systém — viz zadání "ověřit
+ * napojení žárovky do hlavní hry".
+ */
+export function resolveBulbsGainedFromWorldEffects(effects: EmergencyWorldEffect[] | undefined): number {
+  return (effects ?? []).filter((effect) => effect.type === "bulbs_serviced").length;
 }

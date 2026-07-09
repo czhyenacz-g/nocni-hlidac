@@ -102,6 +102,64 @@ describe("resolveMiniGamePlacement — determinism", () => {
   });
 });
 
+// Sandbox výprava (viz zadání) — extraLootItems navíc k hlavnímu objective.
+describe("resolveMiniGamePlacement — extraLoot (sandbox výprava)", () => {
+  function batteryInputWithExtraLoot(extraLootItems: EmergencyMiniGameInput["extraLootItems"]): EmergencyMiniGameInput {
+    return { objective: "collect_item", itemToCollect: "battery", extraLootItems };
+  }
+
+  it("defaults to an empty extraLoot array when extraLootItems is missing", () => {
+    const placement = resolveMiniGamePlacement(SERVICE_FLOOR_STORAGE, collectInput("battery"), "seed-a");
+    expect(placement.extraLoot).toEqual([]);
+  });
+
+  it("resolves one slot per requested extra loot item, each tagged correctly", () => {
+    const placement = resolveMiniGamePlacement(SERVICE_FLOOR_STORAGE, batteryInputWithExtraLoot(["bulb", "shotgun"]), "loot-seed");
+    expect(placement.extraLoot).toHaveLength(2);
+
+    const bulbLoot = placement.extraLoot.find((loot) => loot.itemId === "bulb")!;
+    const bulbSlot = SERVICE_FLOOR_STORAGE.slots.find((s) => s.id === bulbLoot.slotId);
+    expect(bulbSlot?.tags).toContain("bulb");
+
+    const shotgunLoot = placement.extraLoot.find((loot) => loot.itemId === "shotgun")!;
+    const shotgunSlot = SERVICE_FLOOR_STORAGE.slots.find((s) => s.id === shotgunLoot.slotId);
+    expect(shotgunSlot?.tags).toContain("shotgun");
+  });
+
+  it("never puts two loot items (objective + extra, or two extras) on the same slot", () => {
+    const placement = resolveMiniGamePlacement(SERVICE_FLOOR_STORAGE, batteryInputWithExtraLoot(["bulb", "shotgun"]), "loot-seed-2");
+    const allSlotIds = [
+      placement.playerStartSlotId,
+      placement.playerExitSlotId,
+      placement.monsterSpawnSlotId,
+      placement.objectiveSlotId,
+      ...placement.extraLoot.map((loot) => loot.slotId),
+    ].filter((id): id is string => id !== undefined);
+
+    expect(new Set(allSlotIds).size).toBe(allSlotIds.length);
+  });
+
+  it("battery + bulb extra loot together (the MVP guarantee) both resolve on service_floor_evac_plan", () => {
+    const placement = resolveMiniGamePlacement(
+      SERVICE_FLOOR_STORAGE,
+      { objective: "collect_item", itemToCollect: "shotgun", extraLootItems: ["battery", "bulb"] },
+      "evac-loot-seed",
+    );
+    const itemIds = placement.extraLoot.map((loot) => loot.itemId).sort();
+    expect(itemIds).toEqual(["battery", "bulb"]);
+  });
+
+  it("throws a clear MiniGamePlacementError instead of silently reusing a slot when a layout runs out of free slots for a tag", () => {
+    // service_floor_alpha's single item slot carries every tag on ONE slot —
+    // asking for battery as the objective AND bulb as extra loot means the
+    // second draw (bulb) has no free slot left (viz zadání "raději failni
+    // testem / jasnou chybou než tichým chybějícím itemem").
+    expect(() =>
+      resolveMiniGamePlacement(SERVICE_FLOOR_ALPHA, batteryInputWithExtraLoot(["bulb"]), "alpha-loot-seed"),
+    ).toThrow(MiniGamePlacementError);
+  });
+});
+
 describe("getRoomBoundsForSlot", () => {
   it("returns the bounds of the room containing the given slot", () => {
     const placement = resolveMiniGamePlacement(SERVICE_FLOOR_ALPHA, RETURN_INPUT, "seed-a");

@@ -738,6 +738,7 @@ describe("result builders", () => {
       elapsedMs: 5000,
       shotsUsed: 1,
       completedObjective: { type: "collected_item", itemId: "fuse" },
+      collectedItems: ["fuse"],
       worldEffects: [{ type: "generator_repaired" }],
     });
   });
@@ -748,6 +749,7 @@ describe("result builders", () => {
       elapsedMs: 5000,
       shotsUsed: 1,
       completedObjective: { type: "collected_item", itemId: "key" },
+      collectedItems: ["key"],
     });
   });
 
@@ -757,6 +759,7 @@ describe("result builders", () => {
       elapsedMs: 42150,
       shotsUsed: 1,
       completedObjective: { type: "collected_item", itemId: "battery" },
+      collectedItems: ["battery"],
       worldEffects: [{ type: "energy_recharged", amount: 35 }],
     });
   });
@@ -768,6 +771,7 @@ describe("result builders", () => {
       elapsedMs: 42150,
       shotsUsed: 1,
       completedObjective: { type: "collected_item", itemId: "battery" },
+      collectedItems: ["battery"],
       worldEffects: [{ type: "energy_recharged", amount: 35 }],
       officeThreatOnReturn: threat,
     });
@@ -805,8 +809,68 @@ describe("result builders", () => {
       elapsedMs: 5000,
       shotsUsed: 1,
       completedObjective: { type: "collected_item", itemId: "battery" },
+      collectedItems: ["battery"],
       worldEffects: [{ type: "energy_recharged", amount: 35 }],
       monsterHit: true,
+    });
+  });
+
+  // Sandbox výprava (viz zadání) — extraCollectedItemIds (6. parametr) se
+  // sčítá s completedObjective do jednoho collectedItems pole, worldEffects
+  // se odvodí ze VŠECH sebraných položek najednou.
+  describe("createReturnedResult with extraCollectedItemIds (multi-loot)", () => {
+    it("returns collectedItems + worldEffects for extra loot even without a completedObjective (5s timeout return)", () => {
+      expect(createReturnedResult(5000, 0, undefined, undefined, undefined, ["battery", "bulb"])).toEqual({
+        outcome: "returned",
+        elapsedMs: 5000,
+        shotsUsed: 0,
+        collectedItems: ["battery", "bulb"],
+        worldEffects: [
+          { type: "energy_recharged", amount: 35 },
+          { type: "bulbs_serviced" },
+        ],
+      });
+    });
+
+    it("combines the primary completedObjective with extra loot into one collectedItems/worldEffects set", () => {
+      expect(
+        createReturnedResult(5000, 1, { type: "collected_item", itemId: "shotgun" }, undefined, undefined, ["battery"]),
+      ).toEqual({
+        outcome: "returned",
+        elapsedMs: 5000,
+        shotsUsed: 1,
+        completedObjective: { type: "collected_item", itemId: "shotgun" },
+        collectedItems: ["shotgun", "battery"],
+        worldEffects: [{ type: "shotgun_acquired" }, { type: "energy_recharged", amount: 35 }],
+      });
+    });
+
+    it("monsterHit + extra loot together: both monsterHit and worldEffects for the loot are present", () => {
+      expect(createReturnedResult(5000, 1, undefined, undefined, true, ["bulb"])).toEqual({
+        outcome: "returned",
+        elapsedMs: 5000,
+        shotsUsed: 1,
+        collectedItems: ["bulb"],
+        worldEffects: [{ type: "bulbs_serviced" }],
+        monsterHit: true,
+      });
+    });
+
+    it("monsterHit without any loot: monsterHit is present, collectedItems/worldEffects are omitted", () => {
+      expect(createReturnedResult(5000, 1, undefined, undefined, true, [])).toEqual({
+        outcome: "returned",
+        elapsedMs: 5000,
+        shotsUsed: 1,
+        monsterHit: true,
+      });
+    });
+
+    it("empty extraCollectedItemIds and no completedObjective omits collectedItems/worldEffects entirely", () => {
+      expect(createReturnedResult(5000, 0, undefined, undefined, undefined, [])).toEqual({
+        outcome: "returned",
+        elapsedMs: 5000,
+        shotsUsed: 0,
+      });
     });
   });
 

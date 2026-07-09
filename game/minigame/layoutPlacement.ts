@@ -1,5 +1,5 @@
 import { MiniGameLayout, MiniGameLayoutRoom, MiniGameLayoutSlot, MiniGameLayoutSlotTag } from "./layoutTypes";
-import { EmergencyMiniGameInput, Vec2 } from "./types";
+import { EmergencyMiniGameInput, MiniGameItemId, Vec2 } from "./types";
 import { createSeededRandom } from "./seededRandom";
 
 // Vybírá KONKRÉTNÍ sloty (start/exit/monster spawn/objective) z datově
@@ -37,10 +37,22 @@ function pickWeighted(slots: MiniGameLayoutSlot[], rng: () => number): MiniGameL
   return slots[slots.length - 1];
 }
 
-function pickSlotByTag(layout: MiniGameLayout, tag: MiniGameLayoutSlotTag, rng: () => number): MiniGameLayoutSlot {
-  const candidates = slotsWithTag(layout, tag);
+/**
+ * `excludeSlotIds` (viz zadání "itemy se nesmí spawnout na stejném slotu") —
+ * volitelný, chybí-li se nic nevylučuje (beze změny oproti dřívějšku).
+ * Vyhodí MiniGamePlacementError i když tag technicky existuje, ale VŠECHNY
+ * jeho sloty jsou už obsazené jinou položkou — radši jasná chyba než tichý
+ * chybějící item (viz zadání).
+ */
+function pickSlotByTag(
+  layout: MiniGameLayout,
+  tag: MiniGameLayoutSlotTag,
+  rng: () => number,
+  excludeSlotIds: ReadonlySet<string> = new Set(),
+): MiniGameLayoutSlot {
+  const candidates = slotsWithTag(layout, tag).filter((slot) => !excludeSlotIds.has(slot.id));
   if (candidates.length === 0) {
-    throw new MiniGamePlacementError(`Layout "${layout.id}" has no slot tagged "${tag}"`);
+    throw new MiniGamePlacementError(`Layout "${layout.id}" has no free slot tagged "${tag}"`);
   }
   return pickWeighted(candidates, rng);
 }
@@ -49,6 +61,13 @@ function pickSlotByTag(layout: MiniGameLayout, tag: MiniGameLayoutSlotTag, rng: 
 function objectiveTagForInput(input: EmergencyMiniGameInput): MiniGameLayoutSlotTag | null {
   if (input.objective !== "collect_item") return null;
   return input.itemToCollect ?? "fuse";
+}
+
+/** Jeden vyřešený slot doplňkového lootu (viz EmergencyMiniGameInput.extraLootItems, zadání "sandbox výprava"). */
+export interface ResolvedLootPlacement {
+  itemId: MiniGameItemId;
+  slotId: string;
+  position: Vec2;
 }
 
 export interface ResolvedMiniGamePlacement {
@@ -63,14 +82,24 @@ export interface ResolvedMiniGamePlacement {
   playerExit: Vec2;
   monsterSpawn: Vec2;
   objectivePosition?: Vec2;
+  /**
+   * Doplňkový loot navíc k hlavnímu objective (viz
+   * EmergencyMiniGameInput.extraLootItems, zadání "sandbox výprava") — vždy
+   * pole (prázdné, pokud input.extraLootItems chybí/je prázdné), jeden záznam
+   * na položku, nikdy ne na stejném slotu jako start/exit/spawn/objective ani
+   * jiná loot položka (viz pickSlotByTag excludeSlotIds).
+   */
+  extraLoot: ResolvedLootPlacement[];
 }
 
 /**
- * Vybere konkrétní sloty (start/exit/monster spawn/objective) z layoutu pro
- * danou misi a seed — čistá funkce, žádný Math.random přímo (viz
- * createSeededRandom). Pořadí losování (start, exit, monster spawn,
- * objective) je pevné, ať je výsledek pro daný seed stabilní i při budoucích
- * úpravách týhle funkce, dokud se pořadí zachová.
+ * Vybere konkrétní sloty (start/exit/monster spawn/objective/doplňkový loot)
+ * z layoutu pro danou misi a seed — čistá funkce, žádný Math.random přímo
+ * (viz createSeededRandom). Pořadí losování (start, exit, monster spawn,
+ * objective, pak extraLootItems v pořadí, v jakém jsou v inputu) je pevné,
+ * ať je výsledek pro daný seed stabilní i při budoucích úpravách týhle
+ * funkce, dokud se pořadí zachová. Každý draw vylučuje všechny dosud vybrané
+ * sloty (viz `usedSlotIds`), ať žádné dvě položky nikdy nesdílí slot.
  */
 export function resolveMiniGamePlacement(
   layout: MiniGameLayout,
@@ -78,13 +107,25 @@ export function resolveMiniGamePlacement(
   seed: string,
 ): ResolvedMiniGamePlacement {
   const rng = createSeededRandom(seed);
+  const usedSlotIds = new Set<string>();
 
-  const playerStartSlot = pickSlotByTag(layout, "player_start", rng);
-  const playerExitSlot = pickSlotByTag(layout, "player_exit", rng);
-  const monsterSpawnSlot = pickSlotByTag(layout, "monster_spawn", rng);
+  const playerStartSlot = pickSlotByTag(layout, "player_start", rng, usedSlotIds);
+  usedSlotIds.add(playerStartSlot.id);
+  const playerExitSlot = pickSlotByTag(layout, "player_exit", rng, usedSlotIds);
+  usedSlotIds.add(playerExitSlot.id);
+  const monsterSpawnSlot = pickSlotByTag(layout, "monster_spawn", rng, usedSlotIds);
+  usedSlotIds.add(monsterSpawnSlot.id);
 
   const objectiveTag = objectiveTagForInput(input);
-  const objectiveSlot = objectiveTag ? pickSlotByTag(layout, objectiveTag, rng) : undefined;
+  const objectiveSlot = objectiveTag ? pickSlotByTag(layout, objectiveTag, rng, usedSlotIds) : undefined;
+  if (objectiveSlot) usedSlotIds.add(objectiveSlot.id);
+
+  const extraLoot: ResolvedLootPlacement[] = [];
+  for (const itemId of input.extraLootItems ?? []) {
+    const slot = pickSlotByTag(layout, itemId, rng, usedSlotIds);
+    usedSlotIds.add(slot.id);
+    extraLoot.push({ itemId, slotId: slot.id, position: { x: slot.x, y: slot.y } });
+  }
 
   return {
     layout,
@@ -97,6 +138,7 @@ export function resolveMiniGamePlacement(
     playerExit: { x: playerExitSlot.x, y: playerExitSlot.y },
     monsterSpawn: { x: monsterSpawnSlot.x, y: monsterSpawnSlot.y },
     objectivePosition: objectiveSlot ? { x: objectiveSlot.x, y: objectiveSlot.y } : undefined,
+    extraLoot,
   };
 }
 

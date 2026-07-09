@@ -9,6 +9,7 @@ import {
   EmergencyMissionState,
   EmergencyWorldEffect,
   EnemyMode,
+  MiniGameItemId,
   MiniGameObjective,
   MiniGameStatus,
   OfficeThreatOnReturn,
@@ -810,16 +811,16 @@ export function createDeadResult(elapsedMs: number, shotsUsed: number): Emergenc
 export const DEFAULT_BATTERY_ENERGY_RECHARGE = 35;
 
 /**
- * Efekty pro hlavní hru odvozené ze splněného dílčího úkolu — ČISTÁ příprava
- * dat pro `returned.worldEffects` (viz types.ts), samo o sobě nic nemění a
- * nic z game/core nezná/nevolá. MVP mapování: battery/fuse/bulb/shotgun/ammo
- * mají po jednom efektu; key/toolbox a "reached_location" zatím žádný ([]) —
- * připraveno pro budoucí scénáře, ne aktivně použité teď.
+ * Efekty pro hlavní hru odvozené z JEDNÉ sebrané položky — ČISTÁ příprava dat
+ * pro `returned.worldEffects` (viz types.ts), samo o sobě nic nemění a nic z
+ * game/core nezná/nevolá. MVP mapování: battery/fuse/bulb/shotgun/ammo mají
+ * po jednom efektu; key/toolbox zatím žádný ([]) — připraveno pro budoucí
+ * scénáře, ne aktivně použité teď. Sdílí ji `createWorldEffectsForCompletedObjective`
+ * (jedna položka, zpětná kompatibilita) i `createReturnedResult` (víc položek
+ * najednou, viz zadání "sandbox výprava").
  */
-export function createWorldEffectsForCompletedObjective(completedObjective: EmergencyCompletedObjective): EmergencyWorldEffect[] {
-  if (completedObjective.type !== "collected_item") return [];
-
-  switch (completedObjective.itemId) {
+export function worldEffectsForItem(itemId: MiniGameItemId): EmergencyWorldEffect[] {
+  switch (itemId) {
     case "battery":
       return [{ type: "energy_recharged", amount: DEFAULT_BATTERY_ENERGY_RECHARGE }];
     case "fuse":
@@ -836,17 +837,26 @@ export function createWorldEffectsForCompletedObjective(completedObjective: Emer
   }
 }
 
+/** @deprecated Zůstává jen jako tenký wrapper nad `worldEffectsForItem` kvůli zpětné kompatibilitě starších volání/testů — nové volání ať používá `worldEffectsForItem` přímo. */
+export function createWorldEffectsForCompletedObjective(completedObjective: EmergencyCompletedObjective): EmergencyWorldEffect[] {
+  if (completedObjective.type !== "collected_item") return [];
+  return worldEffectsForItem(completedObjective.itemId);
+}
+
 /**
  * `completedObjective` je volitelné — return_to_office se vrátí bez něj,
- * collect_item ho vyplní (viz completeObjective/canReturnToOffice níže).
- * Když je vyplněný, `worldEffects` se odvodí automaticky (viz
- * createWorldEffectsForCompletedObjective) — volající si je nevymýšlí ručně.
- * `officeThreatOnReturn` (viz officeThreat.ts#evaluateOfficeThreatOnReturn) se
- * jen předá dál beze změny, pokud je aktivní — volající (EmergencyMiniGame.tsx)
- * si ho spočítá sám z aktuálního stavu enemy/player/exitZone. `monsterHit`
- * (viz zadání "hidden true ending") je nezávislé na completedObjective — jestli
- * hráč BĚHEM tyhle výpravy trefil monstrum (viz EmergencyMiniGame.tsx#fireShot,
- * isEnemyHit), volající pošle `true`, jinak se pole vůbec nevyplní.
+ * collect_item ho vyplní (viz completeObjective/canReturnToOffice níže), a
+ * dál slouží hlavně jako "hlavní objective byl splněný" pro mission-hint UI.
+ * `extraCollectedItemIds` (viz zadání "sandbox výprava",
+ * EmergencyMiniGame.tsx#handleObjectiveKey) je doplňkový loot sebraný NAVÍC
+ * k `completedObjective` — oba dohromady tvoří `collectedItems` ve výsledku,
+ * `worldEffects` se odvodí ze VŠECH sebraných položek (`worldEffectsForItem`
+ * na každou), ne jen z té hlavní. `officeThreatOnReturn`
+ * (viz officeThreat.ts#evaluateOfficeThreatOnReturn) se jen předá dál beze
+ * změny, pokud je aktivní. `monsterHit` (viz zadání "hidden true ending") je
+ * nezávislé na obojím výše — jestli hráč BĚHEM tyhle výpravy trefil monstrum
+ * (viz EmergencyMiniGame.tsx#fireShot, isEnemyHit), volající pošle `true`,
+ * jinak se pole vůbec nevyplní.
  */
 export function createReturnedResult(
   elapsedMs: number,
@@ -854,16 +864,26 @@ export function createReturnedResult(
   completedObjective?: EmergencyCompletedObjective,
   officeThreatOnReturn?: OfficeThreatOnReturn,
   monsterHit?: boolean,
+  extraCollectedItemIds?: MiniGameItemId[],
 ): EmergencyMiniGameResult {
   const threat = officeThreatOnReturn?.active ? { officeThreatOnReturn } : {};
   const hit = monsterHit ? { monsterHit: true as const } : {};
+  const objective = completedObjective ? { completedObjective } : {};
 
-  if (!completedObjective) return { outcome: "returned", elapsedMs, shotsUsed, ...threat, ...hit };
+  const primaryItemIds: MiniGameItemId[] = completedObjective?.type === "collected_item" ? [completedObjective.itemId] : [];
+  const collectedItems = [...primaryItemIds, ...(extraCollectedItemIds ?? [])];
+  const worldEffects = collectedItems.flatMap(worldEffectsForItem);
 
-  const worldEffects = createWorldEffectsForCompletedObjective(completedObjective);
-  return worldEffects.length > 0
-    ? { outcome: "returned", elapsedMs, shotsUsed, completedObjective, worldEffects, ...threat, ...hit }
-    : { outcome: "returned", elapsedMs, shotsUsed, completedObjective, ...threat, ...hit };
+  return {
+    outcome: "returned",
+    elapsedMs,
+    shotsUsed,
+    ...objective,
+    ...(collectedItems.length > 0 ? { collectedItems } : {}),
+    ...(worldEffects.length > 0 ? { worldEffects } : {}),
+    ...threat,
+    ...hit,
+  };
 }
 
 export function createFailedResult(elapsedMs: number, shotsUsed: number): EmergencyMiniGameResult {

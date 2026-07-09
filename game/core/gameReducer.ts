@@ -1143,6 +1143,14 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         };
       }
 
+      // Sebraná žárovka v emergency výpravě, potvrzená bezpečným návratem
+      // (viz game/core/emergencyMiniGameIntegration.ts#resolveBulbsGainedFromWorldEffects) —
+      // stejný guard jako RECHARGE_POWER/APPLY_SHOTGUN_EFFECTS, přičte se do
+      // existujícího bulbsRemaining skladu.
+      case "ADD_BULBS_REMAINING":
+        if (action.amount <= 0 || !state.isRunning) return state;
+        return { ...state, bulbsRemaining: state.bulbsRemaining + action.amount };
+
       default:
         return state;
     }

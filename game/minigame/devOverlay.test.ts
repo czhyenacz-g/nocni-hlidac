@@ -139,6 +139,7 @@ describe("getSelectedSlotIds", () => {
       playerStart: { x: 0, y: 0 },
       playerExit: { x: 0, y: 0 },
       monsterSpawn: { x: 0, y: 0 },
+      extraLoot: [],
       ...overrides,
     };
   }

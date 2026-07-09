@@ -6,6 +6,8 @@ import {
   canStartShotgunEmergencyRun,
   createBatteryEmergencyInput,
   createShotgunEmergencyInput,
+  resolveBulbsGainedFromWorldEffects,
+  resolveExtraLootItems,
   shouldLaunchEmergencyMiniGame,
 } from "./emergencyMiniGameIntegration";
 import { MAX_POWER } from "../balancing/constants";
@@ -21,6 +23,17 @@ describe("createBatteryEmergencyInput", () => {
   it("passes the equipment argument through unchanged (real player equipment, not hardcoded)", () => {
     expect(createBatteryEmergencyInput({ hasShotgun: false, ammo: 0 }).equipment).toEqual({ hasShotgun: false, ammo: 0 });
     expect(createBatteryEmergencyInput({ hasShotgun: true, ammo: 1 }).equipment).toEqual({ hasShotgun: true, ammo: 1 });
+  });
+
+  it("extraLootItems defaults to an empty array when not passed", () => {
+    expect(createBatteryEmergencyInput({ hasShotgun: false, ammo: 0 }).extraLootItems).toEqual([]);
+  });
+
+  it("passes extraLootItems through unchanged when provided (sandbox výprava)", () => {
+    expect(createBatteryEmergencyInput({ hasShotgun: false, ammo: 0 }, ["bulb", "shotgun"]).extraLootItems).toEqual([
+      "bulb",
+      "shotgun",
+    ]);
   });
 
   it("uses service_floor_evac_plan as the layoutId (the real, larger map, not the alpha baseline)", () => {
@@ -44,6 +57,87 @@ describe("createShotgunEmergencyInput", () => {
 
   it("uses the same layout as the battery run", () => {
     expect(createShotgunEmergencyInput({ hasShotgun: false, ammo: 0 }).layoutId).toBe(DEFAULT_BATTERY_RUN_LAYOUT_ID);
+  });
+
+  it("extraLootItems defaults to an empty array when not passed", () => {
+    expect(createShotgunEmergencyInput({ hasShotgun: false, ammo: 0 }).extraLootItems).toEqual([]);
+  });
+
+  it("passes extraLootItems through unchanged when provided", () => {
+    expect(createShotgunEmergencyInput({ hasShotgun: false, ammo: 0 }, ["battery", "bulb"]).extraLootItems).toEqual([
+      "battery",
+      "bulb",
+    ]);
+  });
+});
+
+// Sandbox výprava (viz zadání) — battery/bulb garantované na KAŽDÉ výpravě,
+// shotgun podmíněně. Primární položka se nikdy nevrací i v extraLootItems.
+describe("resolveExtraLootItems", () => {
+  it("battery primary: guarantees bulb, no shotgun before night 10", () => {
+    const items = resolveExtraLootItems({
+      primaryItemId: "battery",
+      nightFeatures: { emergencyRunsEnabled: true, shotgunLootEnabled: false },
+      hasShotgun: false,
+    });
+    expect(items).toEqual(["bulb"]);
+  });
+
+  it("battery primary: adds shotgun once night 10+ and the player doesn't have it yet", () => {
+    const items = resolveExtraLootItems({
+      primaryItemId: "battery",
+      nightFeatures: { emergencyRunsEnabled: true, shotgunLootEnabled: true },
+      hasShotgun: false,
+    });
+    expect(items).toEqual(["bulb", "shotgun"]);
+  });
+
+  it("battery primary: never adds shotgun once the player already has it", () => {
+    const items = resolveExtraLootItems({
+      primaryItemId: "battery",
+      nightFeatures: { emergencyRunsEnabled: true, shotgunLootEnabled: true },
+      hasShotgun: true,
+    });
+    expect(items).toEqual(["bulb"]);
+  });
+
+  it("shotgun primary: guarantees battery + bulb, never re-adds shotgun itself", () => {
+    const items = resolveExtraLootItems({
+      primaryItemId: "shotgun",
+      nightFeatures: { emergencyRunsEnabled: true, shotgunLootEnabled: true },
+      hasShotgun: false,
+    });
+    expect(items).toEqual(["battery", "bulb"]);
+  });
+
+  it("bulb primary: guarantees battery, never re-adds bulb itself", () => {
+    const items = resolveExtraLootItems({
+      primaryItemId: "bulb",
+      nightFeatures: { emergencyRunsEnabled: true, shotgunLootEnabled: false },
+      hasShotgun: false,
+    });
+    expect(items).toEqual(["battery"]);
+  });
+});
+
+// Žárovka — ověření napojení do hlavní hry (viz zadání) — sečte
+// "bulbs_serviced" efekty, app/play/page.tsx z toho dispatchne ADD_BULBS_REMAINING.
+describe("resolveBulbsGainedFromWorldEffects", () => {
+  it("counts one bulbs_serviced effect", () => {
+    expect(resolveBulbsGainedFromWorldEffects([{ type: "bulbs_serviced" }])).toBe(1);
+  });
+
+  it("counts multiple bulbs_serviced effects (future-proofing, MVP only ever produces one)", () => {
+    expect(resolveBulbsGainedFromWorldEffects([{ type: "bulbs_serviced" }, { type: "bulbs_serviced" }])).toBe(2);
+  });
+
+  it("ignores unrelated effect types", () => {
+    expect(resolveBulbsGainedFromWorldEffects([{ type: "energy_recharged", amount: 35 }, { type: "shotgun_acquired" }])).toBe(0);
+  });
+
+  it("returns 0 for undefined/empty effects", () => {
+    expect(resolveBulbsGainedFromWorldEffects(undefined)).toBe(0);
+    expect(resolveBulbsGainedFromWorldEffects([])).toBe(0);
   });
 });
 

@@ -44,6 +44,35 @@ describe("RECHARGE_POWER", () => {
   });
 });
 
+// Žárovka sebraná v emergency výpravě (viz zadání "ověřit napojení žárovky do
+// hlavní hry") — přičte se do existujícího bulbsRemaining skladu, stejný
+// guard vzor jako RECHARGE_POWER výše.
+describe("ADD_BULBS_REMAINING", () => {
+  it("increases bulbsRemaining by amount", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = { ...createInitialGameState(NIGHT_01), isRunning: true, bulbsRemaining: 2 };
+
+    const result = reducer(state, { type: "ADD_BULBS_REMAINING", amount: 1 });
+
+    expect(result.bulbsRemaining).toBe(3);
+  });
+
+  it("is a no-op for amount <= 0", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = { ...createInitialGameState(NIGHT_01), isRunning: true, bulbsRemaining: 2 };
+
+    expect(reducer(state, { type: "ADD_BULBS_REMAINING", amount: 0 })).toBe(state);
+    expect(reducer(state, { type: "ADD_BULBS_REMAINING", amount: -1 })).toBe(state);
+  });
+
+  it("is a no-op while the game is not running", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = { ...createInitialGameState(NIGHT_01), isRunning: false, bulbsRemaining: 2 };
+
+    expect(reducer(state, { type: "ADD_BULBS_REMAINING", amount: 1 })).toBe(state);
+  });
+});
+
 describe("EMERGENCY_MINIGAME_DIED", () => {
   it("sends the game into the existing death flow with deathReason 'emergency_run'", () => {
     const reducer = createGameReducer(NIGHT_01);

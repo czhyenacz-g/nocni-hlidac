@@ -46,6 +46,8 @@ import {
   canStartShotgunEmergencyRun,
   createBatteryEmergencyInput,
   createShotgunEmergencyInput,
+  resolveBulbsGainedFromWorldEffects,
+  resolveExtraLootItems,
   shouldLaunchEmergencyMiniGame,
 } from "@/game/core/emergencyMiniGameIntegration";
 import { applyShotgunEmergencyReturn, getRechargedShotgunAmmo } from "@/game/core/shotgunEquipment";
@@ -545,10 +547,23 @@ export default function PlayPage() {
       // aktuálního GameState, ne natvrdo prázdné (viz
       // game/core/emergencyMiniGameIntegration.ts).
       const equipment = { hasShotgun: state.hasShotgun, ammo: state.shotgunAmmo };
+      // Sandbox výprava (viz zadání) — mapa VŽDY obsahuje i doplňkový loot
+      // navíc k hlavnímu objective (battery/bulb garantované, shotgun
+      // podmíněně), viz resolveExtraLootItems.
       if (canStartShotgunEmergencyRun(state.nightFeatures, state.hasShotgun)) {
-        setActiveMiniGame({ id: "shotgun_run", input: createShotgunEmergencyInput(equipment) });
+        const extraLootItems = resolveExtraLootItems({
+          primaryItemId: "shotgun",
+          nightFeatures: state.nightFeatures,
+          hasShotgun: state.hasShotgun,
+        });
+        setActiveMiniGame({ id: "shotgun_run", input: createShotgunEmergencyInput(equipment, extraLootItems) });
       } else {
-        setActiveMiniGame({ id: "battery_run", input: createBatteryEmergencyInput(equipment) });
+        const extraLootItems = resolveExtraLootItems({
+          primaryItemId: "battery",
+          nightFeatures: state.nightFeatures,
+          hasShotgun: state.hasShotgun,
+        });
+        setActiveMiniGame({ id: "battery_run", input: createBatteryEmergencyInput(equipment, extraLootItems) });
       }
     }
     prevEmergencyRunReadySeqRef.current = state.emergencyRunReadySeq;
@@ -848,6 +863,15 @@ export default function PlayPage() {
         if (!state.hasShotgun && shotgunResult.hasShotgun) {
           messages.push(COPY.game.shotgunAcquiredLabel);
         }
+      }
+
+      // Žárovka (viz zadání "ověřit napojení žárovky do hlavní hry") —
+      // "bulbs_serviced" worldEffect přičte do existujícího bulbsRemaining
+      // skladu (game/core/bulbInventory.ts), žádný nový paralelní systém.
+      const bulbsGained = resolveBulbsGainedFromWorldEffects(result.worldEffects);
+      if (bulbsGained > 0) {
+        dispatch({ type: "ADD_BULBS_REMAINING", amount: bulbsGained });
+        messages.push(COPY.game.bulbAcquiredLabel);
       }
 
       // Skrytý true ending (viz zadání, game/core/monsterEnding.ts) — zásah se

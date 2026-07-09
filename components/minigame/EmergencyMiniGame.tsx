@@ -88,6 +88,7 @@ import { getMiniGameSlotDebugLabel, getRoomAtPoint, getSelectedSlotIds, isMiniGa
 import { evaluateOfficeThreatOnReturn } from "@/game/minigame/officeThreat";
 import { PlayerVisionConfig, getPlayerVisibilityAtPoint } from "@/game/minigame/playerVision";
 import { audioManager } from "@/game/audio/audioManager";
+import { COPY } from "@/content/copy";
 import { AUDIO_EVENTS } from "@/game/audio/audioEvents";
 import {
   NO_TEXT_SELECT_STYLE,
@@ -125,6 +126,13 @@ interface EmergencyMiniGameProps {
 // SKUTEČNÉ změně, aby se stavový panel/overlay překreslil. Zatím NENÍ
 // napojený na hlavní hru (/play) — jen připravený kontrakt (input/
 // onComplete/onCancel), viz app/minihra/page.tsx pro samostatné použití.
+/** Jedna doplňková loot položka na mapě (viz zadání "sandbox výprava") — `collected` se nikdy nevrací zpátky na false. */
+interface MiniGameLootState {
+  itemId: MiniGameItemId;
+  position: Vec2;
+  collected: boolean;
+}
+
 interface MiniGameRefState {
   player: Player;
   enemy: Enemy;
@@ -163,6 +171,14 @@ interface MiniGameRefState {
   exitZone: Wall;
   /** Pozice objective itemu ("collect_item") pro tenhle run — chybí pro jiné objective. */
   itemPosition?: Vec2;
+  /**
+   * Doplňkový loot navíc k hlavnímu objective (viz zadání "sandbox
+   * výprava", EmergencyMiniGameInput.extraLootItems) — battery/bulb
+   * garantované, shotgun podmíněně. Sbírá se dotykem stejně jako hlavní item
+   * (viz shouldAutoCollectItem v tick()), ale NEZÁVISLE na mission.phase —
+   * hráč může sebrat kterýkoliv v libovolném pořadí, kdykoliv za výpravu.
+   */
+  extraLoot: MiniGameLootState[];
   /** Statická AI konfigurace se souřadnicemi TOHOTO layoutu (mapWidth/mapHeight) — jednou spočítaná při vytvoření, ne module-level konstanta (různé layouty mají různě velký svět). */
   enemyAiConfig: EnemyAiConfig;
   /**
@@ -216,6 +232,7 @@ function createInitialState(input: EmergencyMiniGameInput): MiniGameRefState {
     scale: computeMiniGameWorldScale(layout.world.width, layout.world.height),
     exitZone,
     itemPosition: placement.objectivePosition,
+    extraLoot: placement.extraLoot.map((loot) => ({ itemId: loot.itemId, position: loot.position, collected: false })),
     enemyAiConfig: createEnemyAiConfig(layout.world.width, layout.world.height),
     enemyVisibleToPlayer: false,
     moveTarget: null,
@@ -371,6 +388,15 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
   // Mobilní/dotykové ovládání (viz zadání, game/minigame/touchControls.ts) —
   // zjišťuje se jednou po mountu (viz effect níže), ne přepočítává za běhu.
   const [isTouchDevice, setIsTouchDevice] = useState(false);
+  // Krátká zpráva "Baterie sebrána."/"Žárovka sebrána."/"Brokovnice sebrána."
+  // po sebrání doplňkového lootu (viz zadání "hráč by měl poznat, co
+  // sebral") — auto-mizející, stejný vzor jako app/play/page.tsx#emergencyRunMessage.
+  const [pickupMessage, setPickupMessage] = useState<string | null>(null);
+  useEffect(() => {
+    if (!pickupMessage) return;
+    const timeout = setTimeout(() => setPickupMessage(null), 2500);
+    return () => clearTimeout(timeout);
+  }, [pickupMessage]);
   // Poslední odeslaný výsledek — `null`, dokud hra neskončí smysluplným
   // koncem. Debug stránka (app/minihra/page.tsx) ho může zobrazit dál poté,
   // co se tahle komponenta případně odmountuje (drží si vlastní kopii).
@@ -569,6 +595,11 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
         nearOfficeRadiusPx: OFFICE_THREAT_NEAR_OFFICE_RADIUS_PX,
       });
 
+      // Doplňkový loot sebraný za tuhle výpravu (viz zadání "sandbox
+      // výprava") — nezávislé na mission.completedObjective, sčítá se s ním
+      // teprve uvnitř createReturnedResult (viz collectedItems/worldEffects).
+      const collectedExtraLootItemIds = game.extraLoot.filter((loot) => loot.collected).map((loot) => loot.itemId);
+
       completeGame(
         createReturnedResult(
           game.elapsedMs,
@@ -576,6 +607,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
           game.mission.completedObjective,
           officeThreatOnReturn,
           game.monsterHitThisRun,
+          collectedExtraLootItemIds,
         ),
         "won",
       );
@@ -761,6 +793,19 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
           setMissionPhase(game.mission.phase);
         }
 
+        // Doplňkový loot (viz zadání "sandbox výprava") — sbírá se dotykem
+        // stejně jako hlavní item výše, ale NEZÁVISLE na mission.phase/
+        // objective (battery/bulb/shotgun jdou sebrat v libovolném pořadí,
+        // kdykoliv, i souběžně s hlavním objective). `collected` je čistě v
+        // gameRef (ne v mission), takže se nedotýká canReturnToOffice.
+        for (const loot of game.extraLoot) {
+          if (loot.collected) continue;
+          if (circlesTouch(game.player.x, game.player.y, game.player.radius, loot.position.x, loot.position.y, ITEM_RADIUS)) {
+            loot.collected = true;
+            setPickupMessage(COPY.game.itemCollectedLabel.replace("{item}", ITEM_LABELS_NOMINATIVE[loot.itemId]));
+          }
+        }
+
         // Aktuální místnost hráče — jen pro dev lištu, počítá se jen když je
         // overlay zapnutý (běžná hra tenhle výpočet vůbec nedělá). Stejný
         // setState-bailout vzor jako výše.
@@ -867,6 +912,9 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
           <div style={{ color: "#ff5c5c", textShadow: "0 0 4px rgba(255,92,92,0.8)" }}>
             ZRANĚNÍ: {(woundedMsLeft / 1000).toFixed(1)} s
           </div>
+        )}
+        {pickupMessage && (
+          <div style={{ color: "#facc15", textShadow: "0 0 4px rgba(250,204,21,0.7)" }}>{pickupMessage}</div>
         )}
         <div style={{ color: "#3f7a58" }}>SYSTÉM: AKTIVNÍ · MŘÍŽKA: 1.0m</div>
         <div style={{ color: "#3f7a58" }}>WASD / šipky / klik do mapy: pohyb · mezerník: výstřel · E: akce · R: restart</div>
@@ -1317,6 +1365,37 @@ function draw(
     ctx.font = "10px monospace";
     ctx.textAlign = "center";
     ctx.fillText(`${ITEM_LABELS_NOMINATIVE[input.itemToCollect ?? "fuse"].toUpperCase()} (E)`, itemPosition.x, itemPosition.y - 16);
+    ctx.restore();
+  }
+
+  // Doplňkový loot (viz zadání "sandbox výprava") — stejný vizuál jako hlavní
+  // item marker výše (žlutý bod + popisek), jen bez "(E)" (sbírá se čistě
+  // dotykem, viz tick()#shouldAutoCollectItem-analog smyčka), a jeden na
+  // KAŽDOU dosud nesebranou položku. Skryté mimo viditelnost hráče stejně
+  // jako hlavní item (dev overlay ho vidí vždy přes itemVisible).
+  for (const loot of game.extraLoot) {
+    if (loot.collected) continue;
+    const lootVisible =
+      devOverlayEnabled ||
+      getPlayerVisibilityAtPoint(
+        { playerX: player.x, playerY: player.y, facingAngle: facing, pointX: loot.position.x, pointY: loot.position.y },
+        game.walls,
+        PLAYER_VISION_CONFIG,
+      ).visible;
+    if (!lootVisible) continue;
+
+    ctx.save();
+    ctx.shadowColor = "rgba(250, 204, 21, 0.9)";
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = "#facc15";
+    ctx.beginPath();
+    ctx.arc(loot.position.x, loot.position.y, ITEM_RADIUS, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "rgba(250, 204, 21, 0.9)";
+    ctx.font = "10px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText(ITEM_LABELS_NOMINATIVE[loot.itemId].toUpperCase(), loot.position.x, loot.position.y - 16);
     ctx.restore();
   }
 

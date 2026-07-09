@@ -115,4 +115,10 @@ export type GameAction =
   // zvýší. Smrt venku (EMERGENCY_MINIGAME_DIED) pending zásah jen zahodí,
   // CONFIRM_MONSTER_HIT se pro ni nikdy nedispatchne.
   | { type: "MARK_PENDING_MONSTER_HIT" }
-  | { type: "CONFIRM_MONSTER_HIT" };
+  | { type: "CONFIRM_MONSTER_HIT" }
+  // Sebraná žárovka v emergency výpravě, potvrzená bezpečným návratem (viz
+  // game/core/emergencyMiniGameIntegration.ts#resolveBulbsGainedFromWorldEffects,
+  // app/play/page.tsx#handleEmergencyMiniGameComplete) — přičte se do
+  // existujícího GameState.bulbsRemaining skladu, žádný nový paralelní
+  // systém (viz zadání "ověřit napojení žárovky do hlavní hry").
+  | { type: "ADD_BULBS_REMAINING"; amount: number };
