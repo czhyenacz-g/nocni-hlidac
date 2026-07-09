@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_NIGHT_FEATURES, SHOTGUN_LOOT_MIN_NIGHT, canSpawnShotgun, getNightConfig } from "./nightConfig";
+import { MONSTER_TRUE_ENDING_REQUIRED_HITS, MONSTER_TRUE_ENDING_REQUIRED_HITS_ADMIN } from "../core/monsterEnding";
 
 describe("getNightConfig", () => {
   it("night 1: no generator faults, no bulb lifetime, no retreat verification", () => {
@@ -65,9 +66,12 @@ describe("getNightConfig", () => {
   it("never returns undefined values in features, for any defined or undefined night", () => {
     for (const nightNumber of [1, 2, 3, 4, 5, 6, 42]) {
       const { features } = getNightConfig(nightNumber);
-      for (const value of Object.values(features)) {
+      for (const [key, value] of Object.entries(features)) {
         expect(value).not.toBeUndefined();
-        expect(typeof value).toBe("boolean");
+        // monsterTrueEndingRequiredHits is the one non-boolean flag (viz
+        // game/core/monsterEnding.ts#resolveMonsterTrueEndingRequiredHits) —
+        // every other feature stays a plain on/off boolean.
+        expect(typeof value).toBe(key === "monsterTrueEndingRequiredHits" ? "number" : "boolean");
       }
     }
   });
@@ -148,5 +152,24 @@ describe("getNightConfig — emergency runs stay on for every night (current dev
     const config = getNightConfig(nightNumber);
     expect(config.features.emergencyRunsEnabled).toBe(true);
     expect(config.features.batteryRunEnabled).toBe(true);
+  });
+});
+
+// Admin zkrácený práh pro true ending (viz zadání "for admin reduce
+// necessary monster death count to 2", game/core/monsterEnding.ts) — stejný
+// vzor jako shotgunLootEnabled/canSpawnShotgun výše.
+describe("getNightConfig — monsterTrueEndingRequiredHits follows resolveMonsterTrueEndingRequiredHits", () => {
+  it("regular players (isAdmin false or omitted) get the full MONSTER_TRUE_ENDING_REQUIRED_HITS (10)", () => {
+    expect(getNightConfig(1).features.monsterTrueEndingRequiredHits).toBe(MONSTER_TRUE_ENDING_REQUIRED_HITS);
+    expect(getNightConfig(1, false).features.monsterTrueEndingRequiredHits).toBe(MONSTER_TRUE_ENDING_REQUIRED_HITS);
+  });
+
+  it("admin gets the shortened threshold (2), on any night including night 1", () => {
+    expect(getNightConfig(1, true).features.monsterTrueEndingRequiredHits).toBe(MONSTER_TRUE_ENDING_REQUIRED_HITS_ADMIN);
+    expect(getNightConfig(5, true).features.monsterTrueEndingRequiredHits).toBe(MONSTER_TRUE_ENDING_REQUIRED_HITS_ADMIN);
+  });
+
+  it("defaults to the full (non-admin) threshold in DEFAULT_NIGHT_FEATURES", () => {
+    expect(DEFAULT_NIGHT_FEATURES.monsterTrueEndingRequiredHits).toBe(MONSTER_TRUE_ENDING_REQUIRED_HITS);
   });
 });

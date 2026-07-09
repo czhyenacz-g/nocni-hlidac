@@ -37,6 +37,7 @@ import { unlockAchievement } from "@/game/core/achievementStorage";
 import { getDeathCount, incrementDeathCount } from "@/game/core/deathCount";
 import { getMonsterDefeatReward, recordMonsterDefeat } from "@/game/core/monsterDefeatReward";
 import {
+  getPlayerProfileStats,
   recordBulbReplaced,
   recordDeath,
   recordExpeditionReturned,
@@ -47,6 +48,10 @@ import {
   recordNightSurvived,
   recordRunStarted,
 } from "@/game/core/playerProfileStats";
+import {
+  createHardcoreProfileSnapshotFromLocalState,
+  recordLocalHardcoreMonsterDefeat,
+} from "@/game/core/hardcorePlayerProfileSnapshot";
 import { hasUsedFirstNightTechnicianWarning, markFirstNightTechnicianWarningUsed } from "@/game/core/firstNightWarning";
 import { getSurvivedNights, incrementSurvivedNights, resetSurvivedNights } from "@/game/core/survivedNights";
 import { getBulbsRemaining, setBulbsRemaining } from "@/game/core/bulbInventory";
@@ -625,11 +630,15 @@ export default function PlayPage() {
       const equipment = { hasShotgun: state.hasShotgun, ammo: state.shotgunAmmo };
       // Hidden true ending (viz zadání, game/core/monsterEnding.ts) — spočítá
       // se PŘED spuštěním výpravy, ať EmergencyMiniGame ví hned od začátku,
-      // jestli by první úspěšný zásah byl 10. (finální), viz
-      // resolveIsFinalMonsterHit. Platí pro OBĚ výpravy (battery i shotgun
-      // run) — hráč může mít brokovnici už z dřívějška, zásah proto není
-      // vázaný jen na "Jít ven pro brokovnici".
-      const isFinalMonsterHit = resolveIsFinalMonsterHit(state.monsterHitsToday);
+      // jestli by první úspěšný zásah byl finální, viz resolveIsFinalMonsterHit.
+      // Platí pro OBĚ výpravy (battery i shotgun run) — hráč může mít
+      // brokovnici už z dřívějška, zásah proto není vázaný jen na "Jít ven
+      // pro brokovnici". Práh (state.nightFeatures.monsterTrueEndingRequiredHits)
+      // je admin-zkrácený (viz getNightConfig), ne natvrdo 10.
+      const isFinalMonsterHit = resolveIsFinalMonsterHit(
+        state.monsterHitsToday,
+        state.nightFeatures.monsterTrueEndingRequiredHits,
+      );
       // Sandbox výprava (viz zadání) — mapa VŽDY obsahuje i doplňkový loot
       // navíc k hlavnímu objective (battery/bulb garantované, shotgun
       // podmíněně), viz resolveExtraLootItems.
@@ -852,6 +861,35 @@ export default function PlayPage() {
     // MonsterDefeatedScreen.tsx sám hlídá, že onCinematicComplete nevystřelí
     // dvakrát za jedno mountnutí (viz jeho doneRef guard).
     recordMonsterKill();
+
+    // Serverový Hardcore profil (viz zadání "serverové ukládání profilu
+    // hlídače jen pro Hardcore") — VÝHRADNĚ Hardcore. Normal true ending se
+    // zastaví přesně tady: lokální reward/stats výše se zapíšou beze změny
+    // (Normal chování zůstává, jak bylo), ale žádný fetch na server se
+    // nezavolá, žádná serverová Hardcore hodnota se nedotkne (viz zadání
+    // "Normal true ending NESMÍ odemknout serverovou dvouhlavňovku/zvýšit
+    // hardcoreMonsterDefeatsCount/hardcoreMonsterKills").
+    if (state.gameMode !== "hardcore") return;
+
+    // Izolovaný Hardcore-only lokální counter (viz
+    // game/core/hardcorePlayerProfileSnapshot.ts) — NIKDY
+    // game/core/monsterDefeatReward.ts (ten je mode-agnostic). Zvyšuje se
+    // jen tady, jen pro Hardcore.
+    const hardcoreProgress = recordLocalHardcoreMonsterDefeat();
+    const snapshot = createHardcoreProfileSnapshotFromLocalState(getPlayerProfileStats(), hardcoreProgress);
+
+    // Best-effort, stejný "fire and forget s warning logem" vzor jako
+    // /api/player/death a /api/player/survive-night výše — selhání
+    // (nepřihlášený hráč, VPS nedostupné) nesmí zablokovat/rozbít
+    // MonsterDefeatedScreen, ProfileScreen.tsx na příštím načtení prostě
+    // zůstane u lokálních dat.
+    fetch("/api/player/hardcore-profile/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(snapshot),
+    }).catch((err) => {
+      console.warn("[nocni-hlidac] hardcore-profile sync request failed", err);
+    });
   }
 
   function handleToggleDoor() {

@@ -6,6 +6,8 @@
 // Nezávislé na Difficulty (easy/medium/hard) — ta říká, jaký je zvolený
 // režim hry, tohle říká, co už hráč tuhle noc vůbec potkává.
 
+import { MONSTER_TRUE_ENDING_REQUIRED_HITS, resolveMonsterTrueEndingRequiredHits } from "../core/monsterEnding";
+
 export interface NightFeatureFlags {
   generatorFaultsEnabled: boolean;
   bulbLifetimeEnabled: boolean;
@@ -36,6 +38,16 @@ export interface NightFeatureFlags {
    * místo pravdy pro "od jaké noci" zůstane SHOTGUN_LOOT_MIN_NIGHT.
    */
   shotgunLootEnabled: boolean;
+  /**
+   * Kolik potvrzených zásahů monstra za JEDNU noc je potřeba pro hidden true
+   * ending (viz game/core/monsterEnding.ts#confirmMonsterHit) — na rozdíl od
+   * ostatních flagů výše NENÍ ruční hodnota v NIGHT_CONFIGS, ale vždy
+   * dopočítaná (viz getNightConfig níže) z
+   * `resolveMonsterTrueEndingRequiredHits(isAdmin)`, stejný vzor jako
+   * shotgunLootEnabled/canSpawnShotgun výše. Admin dostane zkrácený práh
+   * (viz MONSTER_TRUE_ENDING_REQUIRED_HITS_ADMIN) pro rychlejší testování.
+   */
+  monsterTrueEndingRequiredHits: number;
 }
 
 export const DEFAULT_NIGHT_FEATURES: NightFeatureFlags = {
@@ -47,6 +59,7 @@ export const DEFAULT_NIGHT_FEATURES: NightFeatureFlags = {
   batteryRunEnabled: true,
   bulbRunEnabled: false,
   shotgunLootEnabled: false,
+  monsterTrueEndingRequiredHits: MONSTER_TRUE_ENDING_REQUIRED_HITS,
 };
 
 /**
@@ -166,9 +179,15 @@ export function getNightConfig(nightNumber: number, isAdmin: boolean = false): R
   return {
     nightNumber: safeNightNumber,
     briefing: entry?.briefing ?? { title: `Noc ${safeNightNumber}`, lines: FALLBACK_BRIEFING_LINES },
-    // shotgunLootEnabled se VŽDY dopočítá z canSpawnShotgun — na rozdíl od
-    // ostatních flagů to není nastavitelné přes NIGHT_CONFIGS[].features (i
+    // shotgunLootEnabled/monsterTrueEndingRequiredHits se VŽDY dopočítají z
+    // canSpawnShotgun/resolveMonsterTrueEndingRequiredHits — na rozdíl od
+    // ostatních flagů tohle není nastavitelné přes NIGHT_CONFIGS[].features (i
     // kdyby tam někdo omylem hodnotu napsal, tenhle spread ji přepíše).
-    features: { ...DEFAULT_NIGHT_FEATURES, ...entry?.features, shotgunLootEnabled: canSpawnShotgun(safeNightNumber, isAdmin) },
+    features: {
+      ...DEFAULT_NIGHT_FEATURES,
+      ...entry?.features,
+      shotgunLootEnabled: canSpawnShotgun(safeNightNumber, isAdmin),
+      monsterTrueEndingRequiredHits: resolveMonsterTrueEndingRequiredHits(isAdmin),
+    },
   };
 }

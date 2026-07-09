@@ -1459,11 +1459,138 @@ Zvoleno přesně podle preferované varianty ze zadání:
   state" v `guardRunRequestHandlers.test.ts`).
 - Žádné secrety commitované, `.env.example` má jen prázdné hodnoty.
 
+## Serverový Hardcore profil (object13_hardcore_player_profile)
+
+Druhé, NEZÁVISLÉ napojení na stejné VPS API jako leaderboard výše (stejný `lib/hubClient.ts`,
+žádné nové env proměnné) — trvalý Hardcore profil (status/odměna/statistiky) pro
+přihlášeného hráče, oddělený od `bestRun`/`currentRun` leaderboard tabulky. Normal režim
+se na server vůbec neukládá (viz zadání "serverové ukládání profilu hlídače pouze pro
+Hardcore" — Normal zůstává čistě lokální/localStorage, `game/core/playerProfileStats.ts`/
+`game/core/monsterDefeatReward.ts`).
+
+**Stejný princip jako leaderboard výše: implementace samotné VPS appky (routes/DB
+schema/deploy) NENÍ součástí tohoto repozitáře — tohle je přesná specifikace, kterou musí
+VPS strana splnit.** `lib/hardcoreProfile/remoteHardcoreProfile.ts` volá dva NOVÉ VPS
+endpointy, které ke dni psaní tohohle záznamu ještě neexistují — Next.js strana (routes,
+validace, testy) je hotová a chová se bezpečně (502 `{ ok: false }`, stejně jako 202 u
+leaderboardu) i BEZ nich, dokud VPS strana spec nedoplní.
+
+### Doporučený DB objekt (VPS strana)
+
+`object13_hardcore_player_profile` — samostatná tabulka, NIKDY stejná jako leaderboard
+tabulka (žádné sdílené sloupce/migrace/rename existujících objektů). Sloupce přesně podle
+`game/core/hardcorePlayerProfileSnapshot.ts#ServerHardcorePlayerProfile`:
+
+```
+discordUserId               text, UNIQUE (primární identifikátor hráče)
+displayName                 text, nullable
+avatarUrl                   text, nullable
+
+hardcoreHasDefeatedMonster  boolean, default false
+hardcoreDoubleBarrelUnlocked boolean, default false
+hardcoreMonsterDefeatsCount integer, default 0
+
+hardcoreBestNight           integer, default 0, INDEX
+hardcoreTotalDeaths         integer, default 0
+hardcoreTotalRunsStarted    integer, default 0
+hardcoreTotalNightsSurvived integer, default 0
+hardcoreMonsterHitsConfirmed integer, default 0
+hardcoreMonsterKills        integer, default 0
+
+createdAt                   timestamp
+updatedAt                   timestamp
+lastSeenAt                  timestamp
+```
+
+Migrace (na VPS straně, mimo tenhle repozitář) musí být append-only: `CREATE TABLE IF NOT
+EXISTS object13_hardcore_player_profile (...)`, unikátní klíč na `discordUserId`, index na
+`hardcoreBestNight`. Žádná změna/DROP existujících tabulek (leaderboard/`guard_runs`/cokoliv
+z jiných projektů na stejném VPS).
+
+### Navržená specifikace VPS endpointů
+
+**`GET /nocni-hlidac/hardcore-profile?discordUserId=...`** — Authorization: Bearer token
+(stejná hlavička jako leaderboard endpointy). Pokud hráč pro dané `discordUserId` ještě
+nemá záznam, VPS strana ho založí s výchozími hodnotami (stejný "upsert-on-first-request"
+princip jako `POST /nocni-hlidac/player/upsert`) a rovnou vrátí — Next.js strana žádný
+"vytvoř default" krok sama nedělá, jen předává, co VPS vrátí. Vrátí
+`ServerHardcorePlayerProfile` JSON.
+
+**`POST /nocni-hlidac/hardcore-profile/sync`** — body `{ discordUserId, displayName,
+avatarUrl, hardcoreHasDefeatedMonster, hardcoreDoubleBarrelUnlocked,
+hardcoreMonsterDefeatsCount, hardcoreBestNight, hardcoreTotalDeaths,
+hardcoreTotalRunsStarted, hardcoreTotalNightsSurvived, hardcoreMonsterHitsConfirmed,
+hardcoreMonsterKills }` — `discordUserId` smí posílat JEN nocni-hlidac server-side kód po
+ověření session (nikdy klient napřímo, viz Next.js route níže). VPS strana najde/založí
+hráče a slouží ho s příchozím snapshotem podle přesné referenční specifikace
+`game/core/hardcorePlayerProfileSnapshot.ts#mergeHardcoreProfileSnapshot` (testovaná v
+tomhle repozitáři, ale v nocni-hlidac samotném se nevykonává proti žádné databázi — stejný
+vzor jako `guardRunTransitions.ts#applySurviveNight`/`applyDeath` pro leaderboard):
+
+- `hardcoreHasDefeatedMonster`/`hardcoreDoubleBarrelUnlocked`: OR (`server || local`).
+- Všechny countery (`hardcoreMonsterDefeatsCount`, `hardcoreBestNight`,
+  `hardcoreTotalDeaths`, `hardcoreTotalRunsStarted`, `hardcoreTotalNightsSurvived`,
+  `hardcoreMonsterHitsConfirmed`, `hardcoreMonsterKills`): `max(server, local)`, NIKDY
+  součet — opakovaný sync téhož lokálního snapshotu nesmí zdvojovat počítadla.
+- `updatedAt`/`lastSeenAt`: aktuální čas.
+- Clamp: countery max 1 000 000, `hardcoreBestNight` max 10 000,
+  `hardcoreMonsterDefeatsCount` max 100 000 (stejné limity jako
+  `sanitizeHardcoreProfileSnapshot` na Next.js straně — VPS strana by je měla dodržet
+  nezávisle, ne spoléhat, že Next.js vždy pošle už čisté hodnoty).
+
+Vrátí výsledný `ServerHardcorePlayerProfile` JSON. Obě volání vyžadují stejnou
+`Authorization: Bearer` autorizaci jako leaderboard endpointy.
+
+### Next.js API routes
+
+- **`GET /api/player/hardcore-profile`** (`app/api/player/hardcore-profile/route.ts`) —
+  `getSession()` → `handleGetHardcoreProfileRequest`
+  (`lib/hardcoreProfile/hardcoreProfileRequestHandlers.ts`). Bez session → 401. VPS
+  nedostupné/nenakonfigurované/endpoint ještě neexistuje → 502 `{ ok: false, error:
+  "hardcore_profile_unavailable" }`. Úspěch → 200 `{ ok: true, profile }`.
+- **`POST /api/player/hardcore-profile/sync`**
+  (`app/api/player/hardcore-profile/sync/route.ts`) — stejný vzor, tělo requestu (lokální
+  Hardcore snapshot z `app/play/page.tsx`/`components/screens/ProfileScreen.tsx`) projde
+  `sanitizeHardcoreProfileSnapshot` (whitelist devíti `hardcore*` polí, typová validace,
+  clamp) PŘED odesláním na VPS — neznámá/Normal-like pole (např. omylem poslané
+  `totalDeaths` bez `hardcore` prefixu) se tiše zahodí. Bez session → 401. VPS
+  nedostupné → 502 `{ ok: false, error: "hardcore_profile_sync_failed" }`. Úspěch → 200
+  `{ ok: true, profile }`.
+
+### Napojení hry — kdy se sync volá (Hardcore only)
+
+`app/play/page.tsx#handleMonsterDefeatedCinematicComplete` — VÝHRADNĚ když
+`state.gameMode === "hardcore"`:
+1. lokální reward (`recordMonsterDefeat`) a stats (`recordMonsterKill`) se zapíšou beze
+   změny (stejně jako pro Normal),
+2. NAVÍC (jen Hardcore): izolovaný lokální counter
+   `game/core/hardcorePlayerProfileSnapshot.ts#recordLocalHardcoreMonsterDefeat` (NIKDY
+   `monsterDefeatReward.ts`, ten zůstává mode-agnostic) se zvýší,
+3. `createHardcoreProfileSnapshotFromLocalState` postaví snapshot,
+4. `fetch("/api/player/hardcore-profile/sync", ...)` best-effort, fire-and-forget (stejný
+   `.catch()` vzor jako survive-night/death).
+
+Pro `gameMode !== "hardcore"` (Normal true ending) se celý blok od kroku 2 PŘESKOČÍ —
+žádný fetch, žádná serverová Hardcore hodnota se nedotkne.
+
+### Proč lokální total* countery (deaths/runs/nights/hits) zatím nejdou bezpečně poslat
+
+`game/core/playerProfileStats.ts` dnes NEROZLIŠUJE Normal vs Hardcore u `totalDeaths`/
+`totalRunsStarted`/`totalNightsSurvived`/`monsterHitsConfirmed` (volají se bez ohledu na
+`gameMode`). `createHardcoreProfileSnapshotFromLocalState` proto posílá `0` za tahle čtyři
+pole — pod `max(server, local)` merge pravidlem je `0` vždy bezpečný no-op (nikdy server
+hodnotu neponíží ani nenafoukne). Jediné dvě bezpečně Hardcore-scoped hodnoty dnes jsou
+`hardcoreBestNight` (už mode-gated v `recordNightSurvived`) a reward/kills z izolovaného
+`recordLocalHardcoreMonsterDefeat` počítadla. Follow-up: rozdělit `PlayerProfileStats` na
+mode-segmentované countery (např. `hardcoreTotalDeaths`/`normalTotalDeaths` zvlášť), pak
+tuhle funkci rozšířit beze změny kontraktu.
+
 ### Co zůstává na další krok (výslovně mimo rozsah)
 
-Skutečná implementace VPS appky (routes/DB schema/deploy), death reason posílaný na
-survive-night/death, `guard_runs` historie, vzkazy hlídačů, admin/moderace, detailní
-statistiky.
+Skutečná implementace VPS appky (routes/DB schema/deploy) pro leaderboard I Hardcore
+profil, death reason posílaný na survive-night/death, `guard_runs` historie, vzkazy
+hlídačů, admin/moderace, detailní statistiky, mode-segmentované lokální countery (viz
+výše), veteránský Hardcore run (dvouhlavňovka) jako oddělený leaderboard track.
 
 ## Power drain diagnostika (audit podezřele rychlého vybití energie)
 

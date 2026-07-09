@@ -1,51 +1,130 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { COPY } from "@/content/copy";
 import SceneBackground from "@/components/SceneBackground";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 import { useAuthStatus } from "@/components/auth/useAuthStatus";
-import { getMonsterDefeatReward, resetMonsterDefeatReward } from "@/game/core/monsterDefeatReward";
+import { getMonsterDefeatReward, resetMonsterDefeatReward, MonsterDefeatReward } from "@/game/core/monsterDefeatReward";
 import { getPlayerProfileStats, resetPlayerProfileStats, PlayerProfileStats } from "@/game/core/playerProfileStats";
 import { resolvePlayerAchievements } from "@/game/core/playerAchievements";
+import {
+  ServerHardcorePlayerProfile,
+  createHardcoreProfileSnapshotFromLocalState,
+  getLocalHardcoreMonsterProgress,
+  serverHardcoreProfileToReward,
+} from "@/game/core/hardcorePlayerProfileSnapshot";
 
-// Profil hlídače (viz zadání) — první verze budoucího účtu/profilu, čistě
-// lokální localStorage data (game/core/monsterDefeatReward.ts,
-// game/core/playerProfileStats.ts, game/core/playerAchievements.ts). Veřejně
-// dostupná bez Discord loginu — přihlášení jen doplní jméno/avatar navrch
-// (viz useAuthStatus, stejný hook jako AuthStatus.tsx v hlavním menu), hra
-// samotná se přihlášením nijak nemění.
+// Profil hlídače (viz zadání) — první verze budoucího účtu/profilu. Lokální
+// data (game/core/monsterDefeatReward.ts, game/core/playerProfileStats.ts)
+// zůstávají zdroj pravdy pro nepřihlášené hráče a pro Normal aktivitu.
+// Přihlášený hráč navíc dostane serverový HARDCORE profil (viz
+// game/core/hardcorePlayerProfileSnapshot.ts, /api/player/hardcore-profile) —
+// server ukládá výhradně Hardcore hodnoty, Normal se na server nikdy
+// neposílá (viz zadání). Veřejně dostupná bez Discord loginu.
 //
-// "use client" komponenta (localStorage čtení může běžet jen v prohlížeči) —
-// stránka app/profile/page.tsx zůstává Server Component kvůli metadata
-// exportu, stejný vzor jako MainMenuScreen.tsx pod app/play/page.tsx.
+// "use client" komponenta (localStorage čtení/fetch může běžet jen v
+// prohlížeči) — stránka app/profile/page.tsx zůstává Server Component kvůli
+// metadata exportu, stejný vzor jako MainMenuScreen.tsx pod app/play/page.tsx.
 export default function ProfileScreen() {
   const authStatus = useAuthStatus();
   // Čte se jednou při mountu (stejný vzor jako MainMenuScreen.tsx#reward) —
   // "Resetovat lokální profil" níže vynutí remount přes location.reload(),
   // ať se nemusí ručně sestavovat druhý zdroj pravdy pro live re-render.
-  const [reward] = useState(() => getMonsterDefeatReward());
+  const [reward] = useState<MonsterDefeatReward>(() => getMonsterDefeatReward());
   const [stats] = useState<PlayerProfileStats>(() => getPlayerProfileStats());
-  const achievements = resolvePlayerAchievements(stats, reward);
+
+  // Serverový Hardcore profil — `null` dokud se nenačte/hráč není
+  // přihlášený/načtení selhalo. `serverError` odlišuje "ještě nezkoušeno"
+  // od "zkoušeno, ale selhalo" (viz zadání bod 4 "pokud server selže,
+  // zobrazil lokální profil a nenápadné varování").
+  const [serverProfile, setServerProfile] = useState<ServerHardcorePlayerProfile | null>(null);
+  const [serverError, setServerError] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  useEffect(() => {
+    if (authStatus.status !== "authenticated") return;
+    let cancelled = false;
+    fetch("/api/player/hardcore-profile")
+      .then((res) => res.json().then((body) => ({ res, body })))
+      .then(({ res, body }) => {
+        if (cancelled) return;
+        if (res.ok && body?.ok) {
+          setServerProfile(body.profile as ServerHardcorePlayerProfile);
+          setServerError(false);
+        } else {
+          setServerError(true);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setServerError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [authStatus.status]);
+
+  // Ruční sync (viz zadání "Synchronizovat Hardcore profil") — pošle
+  // aktuální lokální Hardcore snapshot (jen skutečně Hardcore-scoped pole,
+  // viz createHardcoreProfileSnapshotFromLocalState) a při úspěchu rovnou
+  // zobrazí vrácený serverový profil, ať hráč vidí výsledek okamžitě.
+  function handleSyncHardcoreProfile() {
+    setIsSyncing(true);
+    const snapshot = createHardcoreProfileSnapshotFromLocalState(stats, getLocalHardcoreMonsterProgress());
+    fetch("/api/player/hardcore-profile/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(snapshot),
+    })
+      .then((res) => res.json().then((body) => ({ res, body })))
+      .then(({ res, body }) => {
+        if (res.ok && body?.ok) {
+          setServerProfile(body.profile as ServerHardcorePlayerProfile);
+          setServerError(false);
+        } else {
+          setServerError(true);
+        }
+      })
+      .catch(() => setServerError(true))
+      .finally(() => setIsSyncing(false));
+  }
+
+  // Zdroj pravdy pro služební kartu + Hardcore/reward achievementy (viz
+  // zadání "Pokud jsou dostupná serverová Hardcore data, použij je POUZE
+  // pro Hardcore/reward achievementy": not_a_rookie_anymore, golden_guard,
+  // hardcore_night_5, hardcore_night_10, monster_slayer). `effectiveReward`
+  // nahradí CELÝ reward objekt (ten je čistě Hardcore/reward téma beztak).
+  // `effectiveStats` přepíše JEN hardcoreBestNight/monsterKills — zbytek
+  // (totalDeaths/totalRunsStarted/expeditions/bulbsReplaced/...) zůstává
+  // lokální, ať first_shift/first_death/first_expedition/first_bulb_replaced/
+  // first_generator_restart/first_monster_hit (mimo těch pět jmenovaných)
+  // dál počítají z lokální, mode-agnostic aktivity beze změny.
+  const usingServerData = serverProfile !== null;
+  const effectiveReward: MonsterDefeatReward = serverProfile ? serverHardcoreProfileToReward(serverProfile) : reward;
+  const effectiveStats: PlayerProfileStats = serverProfile
+    ? { ...stats, hardcoreBestNight: serverProfile.hardcoreBestNight, monsterKills: serverProfile.hardcoreMonsterKills }
+    : stats;
+  const achievements = resolvePlayerAchievements(effectiveStats, effectiveReward);
 
   const statTiles: { label: string; value: number }[] = [
     { label: COPY.profile.statTotalDeaths, value: stats.totalDeaths },
     { label: COPY.profile.statTotalRunsStarted, value: stats.totalRunsStarted },
     { label: COPY.profile.statTotalNightsSurvived, value: stats.totalNightsSurvived },
-    { label: COPY.profile.statHardcoreBestNight, value: stats.hardcoreBestNight },
+    { label: COPY.profile.statHardcoreBestNight, value: effectiveStats.hardcoreBestNight },
     { label: COPY.profile.statBulbsReplaced, value: stats.bulbsReplaced },
     { label: COPY.profile.statGeneratorsRestarted, value: stats.generatorsRestarted },
     { label: COPY.profile.statExpeditionsStarted, value: stats.expeditionsStarted },
     { label: COPY.profile.statExpeditionsReturned, value: stats.expeditionsReturned },
     { label: COPY.profile.statMonsterHitsConfirmed, value: stats.monsterHitsConfirmed },
-    { label: COPY.profile.statMonsterKills, value: stats.monsterKills },
+    { label: COPY.profile.statMonsterKills, value: effectiveStats.monsterKills },
   ];
 
   // Dev/debug nástroj (viz zadání "později schovat za dev mode") — resetuje
   // OBĚ lokální úložiště (reward i stats), pak vynutí čerstvé načtení
   // stránky, ať se nemusí ručně synchronizovat lokální React state s nově
-  // vynulovanými daty.
+  // vynulovanými daty. Resetuje jen lokální data — serverový Hardcore profil
+  // se odsud NEMAŽE (viz zadání "Nevytvářej: serverový reset profilu").
   function handleResetLocalProfile() {
     if (!window.confirm(COPY.profile.resetConfirmLabel)) return;
     resetPlayerProfileStats();
@@ -88,35 +167,54 @@ export default function ProfileScreen() {
             )}
             {authStatus.status !== "authenticated" && <div className="mb-6" />}
 
+            {/* Nenápadné varování při selhání serverového načtení (viz
+                zadání bod 4) — jen pro přihlášeného hráče, jen když jsme se
+                o server opravdu pokusili a nepovedlo se. */}
+            {authStatus.status === "authenticated" && serverError && !usingServerData && (
+              <p className="mb-4 text-center text-[11px] text-amber-600 italic">{COPY.profile.serverLoadFailedWarning}</p>
+            )}
+
             {/* Sekce 1: Služební karta. */}
             <section className="console-panel p-4 mb-6">
-              <h2 className="text-xs uppercase tracking-wide text-gray-500 mb-3">{COPY.profile.serviceCardHeading}</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-xs uppercase tracking-wide text-gray-500">{COPY.profile.serviceCardHeading}</h2>
+                {authStatus.status === "authenticated" && (
+                  <span className="text-[10px] text-gray-600">
+                    {usingServerData ? COPY.profile.hardcoreSourceServer : COPY.profile.hardcoreSourceLocal}
+                  </span>
+                )}
+              </div>
               <div className="flex flex-col gap-1.5 text-sm">
                 <p>
                   <span className="text-gray-500">{COPY.profile.statusLabel}: </span>
-                  <span className={reward.hasDefeatedMonster ? "text-amber-300 font-bold" : "text-gray-300"}>
-                    {reward.hasDefeatedMonster ? COPY.profile.statusGolden : COPY.profile.statusRookie}
+                  <span className={effectiveReward.hasDefeatedMonster ? "text-amber-300 font-bold" : "text-gray-300"}>
+                    {effectiveReward.hasDefeatedMonster ? COPY.profile.statusGolden : COPY.profile.statusRookie}
                   </span>
                 </p>
                 <p>
                   <span className="text-gray-500">{COPY.profile.rewardLabel}: </span>
-                  <span className={reward.doubleBarrelUnlocked ? "text-amber-300" : "text-gray-500"}>
-                    {reward.doubleBarrelUnlocked ? COPY.profile.rewardUnlocked : COPY.profile.rewardLocked}
+                  <span className={effectiveReward.doubleBarrelUnlocked ? "text-amber-300" : "text-gray-500"}>
+                    {effectiveReward.doubleBarrelUnlocked ? COPY.profile.rewardUnlocked : COPY.profile.rewardLocked}
                   </span>
                 </p>
                 <p>
                   <span className="text-gray-500">{COPY.profile.monsterDefeatsLabel}: </span>
-                  <span className="text-gray-300">{reward.monsterDefeatsCount}</span>
+                  <span className="text-gray-300">{effectiveReward.monsterDefeatsCount}</span>
                 </p>
               </div>
               <p className="mt-3 text-xs text-gray-500 italic">
-                {reward.hasDefeatedMonster ? COPY.profile.noteGolden : COPY.profile.noteRookie}
+                {effectiveReward.hasDefeatedMonster ? COPY.profile.noteGolden : COPY.profile.noteRookie}
               </p>
             </section>
 
-            {/* Sekce 2: Statistiky. */}
+            {/* Sekce 2: Statistiky. Normal + Hardcore lokální countery zatím
+                dohromady (viz zadání "pokud je to moc UI zásah, napiš do
+                reportu, že se Normal/casual sekce vyčistí později") —
+                hardcoreBestNight/monsterKills výše jsou server-preferred,
+                zbytek je čistě lokální/nekompetitivní. */}
             <section className="mb-6">
               <h2 className="text-xs uppercase tracking-wide text-gray-500 mb-3">{COPY.profile.statsHeading}</h2>
+              <p className="text-[10px] text-gray-600 mb-2 italic">{COPY.profile.statsLocalNote}</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {statTiles.map((tile) => (
                   <div key={tile.label} className="console-panel p-3 text-center">
@@ -158,7 +256,7 @@ export default function ProfileScreen() {
             {/* Sekce 4: Výbava. */}
             <section className="mb-6">
               <h2 className="text-xs uppercase tracking-wide text-gray-500 mb-3">{COPY.profile.loadoutHeading}</h2>
-              {reward.doubleBarrelUnlocked ? (
+              {effectiveReward.doubleBarrelUnlocked ? (
                 <div className="console-panel p-3 flex items-center gap-3">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -176,6 +274,17 @@ export default function ProfileScreen() {
                 <div className="console-panel p-3 text-xs text-gray-500 italic">{COPY.profile.loadoutEmpty}</div>
               )}
             </section>
+
+            {authStatus.status === "authenticated" && (
+              <button
+                type="button"
+                onClick={handleSyncHardcoreProfile}
+                disabled={isSyncing}
+                className="pixel-button console-button tap-target px-4 py-2 text-xs w-full mb-6 disabled:opacity-50"
+              >
+                {isSyncing ? COPY.profile.syncButtonSyncing : COPY.profile.syncButtonLabel}
+              </button>
+            )}
 
             <Link href="/play" className="block text-center text-xs text-gray-400 hover:text-gray-200 mb-6">
               {COPY.profile.backToMenuLabel}

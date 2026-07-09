@@ -111,6 +111,21 @@ describe("resolveIsFinalMonsterHit", () => {
   it("stays true past the threshold too (defensive, shouldn't normally happen)", () => {
     expect(resolveIsFinalMonsterHit(MONSTER_TRUE_ENDING_REQUIRED_HITS)).toBe(true);
   });
+
+  // Admin zkrácený práh (viz zadání "for admin reduce necessary monster
+  // death count to 2") — requiredHits je explicitní druhý parametr, výchozí
+  // na MONSTER_TRUE_ENDING_REQUIRED_HITS, ale volající (app/play/page.tsx)
+  // posílá state.nightFeatures.monsterTrueEndingRequiredHits.
+  describe("requiredHits (admin override)", () => {
+    it("defaults to MONSTER_TRUE_ENDING_REQUIRED_HITS when omitted", () => {
+      expect(resolveIsFinalMonsterHit(5)).toBe(resolveIsFinalMonsterHit(5, MONSTER_TRUE_ENDING_REQUIRED_HITS));
+    });
+
+    it("with requiredHits 2, the very first hit (0 hits so far) is already final", () => {
+      expect(resolveIsFinalMonsterHit(0, 2)).toBe(false);
+      expect(resolveIsFinalMonsterHit(1, 2)).toBe(true);
+    });
+  });
 });
 
 // Sandbox výprava (viz zadání) — battery/bulb garantované na KAŽDÉ výpravě,

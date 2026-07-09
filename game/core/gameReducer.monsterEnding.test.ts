@@ -206,6 +206,27 @@ describe("CONFIRM_MONSTER_HIT", () => {
 
     expect(reducer(state, { type: "CONFIRM_MONSTER_HIT" })).toBe(state);
   });
+
+  // Admin zkrácený práh (viz zadání "for admin reduce necessary monster
+  // death count to 2") — reducer čte state.nightFeatures.monsterTrueEndingRequiredHits,
+  // ne natvrdo MONSTER_TRUE_ENDING_REQUIRED_HITS (viz gameReducer.ts CONFIRM_MONSTER_HIT).
+  it("honors a lowered state.nightFeatures.monsterTrueEndingRequiredHits (admin override)", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = {
+      ...createInitialGameState(NIGHT_01),
+      isRunning: true,
+      screen: "playing" as const,
+      monsterHitsToday: 1,
+      pendingMonsterHits: 1,
+      nightFeatures: { ...createInitialGameState(NIGHT_01).nightFeatures, monsterTrueEndingRequiredHits: 2 },
+    };
+
+    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT" });
+
+    expect(result.monsterHitsToday).toBe(2);
+    expect(result.monsterDefeated).toBe(true);
+    expect(result.screen).toBe("monsterDefeated");
+  });
 });
 
 // Zadání: potvrzený zásah nesmí nechat hráče po bezpečném návratu čelit

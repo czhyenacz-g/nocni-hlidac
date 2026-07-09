@@ -48,8 +48,20 @@ export const COPY = {
     monsterDefeatsLabel: "Porážky bestie",
     noteGolden: "Tenhle hlídač už bestii skolil. Objekt 13 ale pořád stojí.",
     noteRookie: "Zatím jen další jméno na služební kartě.",
+    // Serverový Hardcore profil (viz zadání "serverové ukládání profilu
+    // hlídače jen pro Hardcore", game/core/hardcorePlayerProfileSnapshot.ts) —
+    // jen pro přihlášeného hráče, ProfileScreen.tsx zobrazí jedno ze dvou.
+    hardcoreSourceServer: "Zdroj Hardcore dat: server",
+    hardcoreSourceLocal: "Zdroj Hardcore dat: lokální profil",
+    serverLoadFailedWarning: "Serverový Hardcore profil se nepodařilo načíst. Zobrazuji lokální data.",
+    syncButtonLabel: "Synchronizovat Hardcore profil",
+    syncButtonSyncing: "Synchronizuji…",
     // Sekce 2: Statistiky.
     statsHeading: "Statistiky",
+    // Zadání: "pokud je to moc UI zásah, zatím pouze zobraz Hardcore server
+    // source a do reportu napiš, že Normal/casual lokální sekce bude
+    // vyčištěna později" — tenhle krátký disclaimer je ten minimální zásah.
+    statsLocalNote: "Normal i Hardcore aktivita zatím dohromady — lokální, nekompetitivní přehled.",
     statTotalDeaths: "Celkem smrtí",
     statTotalRunsStarted: "Nastoupené směny",
     statTotalNightsSurvived: "Přežité noci",
@@ -80,8 +92,11 @@ export const COPY = {
   gameMode: {
     normalLabel: "NORMAL",
     hardcoreLabel: "HARDCORE",
-    normalTooltip: "Normal: 3 životy. Nezapisuje se do Síně slávy.",
-    hardcoreTooltip: "Hardcore: 1 život. Jen legendy se dostanou do síně slávy! Vyžaduje Discord.",
+    // Druhá věta na vlastním řádku (viz zadání "čitelnější, druhá věta na
+    // novém řádku") — vykresluje se přes whitespace-pre-line
+    // (MainMenuScreen.tsx), stejný vzor jako DeathScreen.tsx/monsterDefeated body.
+    normalTooltip: "Normal: 3 životy.\nVýsledky se nezapisují do Síně slávy.\nObtížnost pro lidi jako je Filip Turek.",
+    hardcoreTooltip: "Hardcore: 1 život.\nJen legendy se dostanou do síně slávy!",
     // Zobrazí se při kliknutí na HARDCORE bez Discord přihlášení (viz
     // MainMenuScreen.tsx#handleSelectHardcore) — hráč zůstává v Normal,
     // dokud se nepřihlásí.

@@ -139,7 +139,7 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
                 >
                   {COPY.gameMode.normalLabel}
                 </button>
-                <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-1.5 w-56 -translate-x-1/2 rounded-none border border-gray-600 bg-gray-900/95 p-2 text-[10px] text-gray-300 opacity-0 shadow-lg transition-opacity duration-100 group-hover:opacity-100">
+                <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-1.5 w-56 -translate-x-1/2 rounded-none border border-gray-600 bg-gray-900/95 p-2 text-[10px] text-gray-300 opacity-0 shadow-lg transition-opacity duration-100 group-hover:opacity-100 whitespace-pre-line">
                   {COPY.gameMode.normalTooltip}
                 </div>
               </div>
@@ -154,7 +154,7 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
                   </span>
                   <span>{COPY.gameMode.hardcoreLabel}</span>
                 </button>
-                <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-1.5 w-56 -translate-x-1/2 rounded-none border border-gray-600 bg-gray-900/95 p-2 text-[10px] text-gray-300 opacity-0 shadow-lg transition-opacity duration-100 group-hover:opacity-100">
+                <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-1.5 w-56 -translate-x-1/2 rounded-none border border-gray-600 bg-gray-900/95 p-2 text-[10px] text-gray-300 opacity-0 shadow-lg transition-opacity duration-100 group-hover:opacity-100 whitespace-pre-line">
                   {COPY.gameMode.hardcoreTooltip}
                 </div>
               </div>

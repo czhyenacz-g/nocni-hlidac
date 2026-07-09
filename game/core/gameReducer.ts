@@ -1300,7 +1300,11 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
       // nečeká se do 6:00.
       case "CONFIRM_MONSTER_HIT": {
         if (!state.isRunning) return state;
-        const result = confirmMonsterHit(state.monsterHitsToday, state.pendingMonsterHits);
+        const result = confirmMonsterHit(
+          state.monsterHitsToday,
+          state.pendingMonsterHits,
+          state.nightFeatures.monsterTrueEndingRequiredHits,
+        );
 
         if (result.monsterDefeated) {
           // Poslední (10.) zásah rovnou končí hru MonsterDefeatedScreenem —

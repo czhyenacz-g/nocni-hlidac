@@ -1,9 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { MONSTER_TRUE_ENDING_REQUIRED_HITS, confirmMonsterHit } from "./monsterEnding";
+import {
+  MONSTER_TRUE_ENDING_REQUIRED_HITS,
+  MONSTER_TRUE_ENDING_REQUIRED_HITS_ADMIN,
+  confirmMonsterHit,
+  resolveMonsterTrueEndingRequiredHits,
+} from "./monsterEnding";
 
 describe("MONSTER_TRUE_ENDING_REQUIRED_HITS", () => {
   it("is exactly 10", () => {
     expect(MONSTER_TRUE_ENDING_REQUIRED_HITS).toBe(10);
+  });
+});
+
+describe("resolveMonsterTrueEndingRequiredHits", () => {
+  it("regular players (isAdmin false or omitted) need the full 10", () => {
+    expect(resolveMonsterTrueEndingRequiredHits()).toBe(MONSTER_TRUE_ENDING_REQUIRED_HITS);
+    expect(resolveMonsterTrueEndingRequiredHits(false)).toBe(MONSTER_TRUE_ENDING_REQUIRED_HITS);
+  });
+
+  it("admin gets the shortened threshold (2)", () => {
+    expect(resolveMonsterTrueEndingRequiredHits(true)).toBe(2);
+    expect(resolveMonsterTrueEndingRequiredHits(true)).toBe(MONSTER_TRUE_ENDING_REQUIRED_HITS_ADMIN);
   });
 });
 
@@ -43,6 +60,25 @@ describe("confirmMonsterHit", () => {
 
     it("confirming 2 hits at once from 9 overshoots to 11 — still defeated", () => {
       expect(confirmMonsterHit(9, 2)).toEqual({ monsterHitsToday: 11, monsterDefeated: true });
+    });
+  });
+
+  // Admin zkrácený práh (viz zadání "for admin reduce necessary monster
+  // death count to 2") — requiredHits je explicitní třetí parametr, výchozí
+  // na MONSTER_TRUE_ENDING_REQUIRED_HITS, ale volající (gameReducer.ts)
+  // posílá state.nightFeatures.monsterTrueEndingRequiredHits.
+  describe("requiredHits (admin override)", () => {
+    it("defaults to MONSTER_TRUE_ENDING_REQUIRED_HITS when omitted", () => {
+      expect(confirmMonsterHit(9, 1)).toEqual(confirmMonsterHit(9, 1, MONSTER_TRUE_ENDING_REQUIRED_HITS));
+    });
+
+    it("with a lowered requiredHits (2), defeats the monster much earlier", () => {
+      expect(confirmMonsterHit(0, 1, 2)).toEqual({ monsterHitsToday: 1, monsterDefeated: false });
+      expect(confirmMonsterHit(1, 1, 2)).toEqual({ monsterHitsToday: 2, monsterDefeated: true });
+    });
+
+    it("a single hitCount of 2 against requiredHits 2 defeats immediately from 0", () => {
+      expect(confirmMonsterHit(0, 2, 2)).toEqual({ monsterHitsToday: 2, monsterDefeated: true });
     });
   });
 });

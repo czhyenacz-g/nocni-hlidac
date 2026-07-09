@@ -115,10 +115,15 @@ describe("COPY.gameMode", () => {
   });
 
   it("has the exact tooltip texts", () => {
-    expect(COPY.gameMode.normalTooltip).toContain("3 životy");
-    expect(COPY.gameMode.normalTooltip).toContain("Síně slávy");
-    expect(COPY.gameMode.hardcoreTooltip).toContain("1 život");
-    expect(COPY.gameMode.hardcoreTooltip).toContain("Discord");
+    expect(COPY.gameMode.normalTooltip).toBe(
+      "Normal: 3 životy.\nVýsledky se nezapisují do Síně slávy.\nObtížnost pro lidi jako je Filip Turek.",
+    );
+    expect(COPY.gameMode.hardcoreTooltip).toBe("Hardcore: 1 život.\nJen legendy se dostanou do síně slávy!");
+  });
+
+  it("puts each sentence of the tooltips on its own line", () => {
+    expect(COPY.gameMode.normalTooltip.split("\n")).toHaveLength(3);
+    expect(COPY.gameMode.hardcoreTooltip.split("\n")).toHaveLength(2);
   });
 
   it("has the exact hardcore login prompt text", () => {
