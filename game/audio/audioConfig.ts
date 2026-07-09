@@ -260,4 +260,17 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
       waveform: "sawtooth",
     },
   },
+  // Sebrání lootu v EmergencyMiniGame (viz zadání "hlasitě UI click") —
+  // stejný soubor jako uiClick, jen výrazně hlasitější, ať potvrzení sběru
+  // vynikne i přes ambientní heartbeat loop během výpravy.
+  [AUDIO_EVENTS.itemPickup]: {
+    src: "/assets/audio/ui_click.mp3",
+    volume: 0.9,
+    loop: false,
+    fallbackSynth: {
+      notes: [{ frequency: 880, durationMs: 70, gapMs: 20 }, { frequency: 1320, durationMs: 90 }],
+      volume: 0.5,
+      waveform: "sine",
+    },
+  },
 };

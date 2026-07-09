@@ -191,4 +191,11 @@ export const SOUND_REGISTRY: Record<AudioEventId, SoundRegistryEntry> = {
     guess: "Krátký bolestivý řev, tišší/kratší než jumpscare nebo blackoutMonsterRoar.",
     usedIn: "components/minigame/EmergencyMiniGame.tsx — fireShot() na result.hit.",
   },
+  [AUDIO_EVENTS.itemPickup]: {
+    id: AUDIO_EVENTS.itemPickup,
+    label: "Item pickup",
+    description: "Hráč sebral loot v EmergencyMiniGame (baterie/žárovka/brokovnice, hlavní objective i doplňkový loot).",
+    guess: "Stejný soubor jako UI click, jen výrazně hlasitější.",
+    usedIn: "components/minigame/EmergencyMiniGame.tsx — tick() auto-collect (hlavní item i extraLoot smyčka).",
+  },
 };

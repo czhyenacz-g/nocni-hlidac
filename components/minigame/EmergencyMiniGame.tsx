@@ -465,6 +465,23 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
     );
   }, []);
 
+  // Ambientní zvukové pozadí výpravy (viz zadání) — minihra sama žádnou
+  // vlastní ambience loop nemá, tak se znovupoužije existující "fast
+  // heartbeat" loop (game/audio/audioEvents.ts, sdílený s hlavní hrou přes
+  // useHeartbeatStress.ts) na 60 % hlasitosti. Na rozdíl od hlavní hry se
+  // NIKDY nevolá stopLoop (to by natvrdo zpauzoval sdílený <audio> element) —
+  // při odchodu z minihry se hlasitost jen ztiší na 0; v /play ji hned zase
+  // převezme useHeartbeatStress na dalším tiku (jeho efekt běží až po
+  // resetu activeMiniGame), v samostatném /minihra zůstane tiše.
+  useEffect(() => {
+    audioManager.init();
+    audioManager.startLoop(AUDIO_EVENTS.heartbeatStressFast);
+    audioManager.setVolume(AUDIO_EVENTS.heartbeatStressFast, 0.6);
+    return () => {
+      audioManager.setVolume(AUDIO_EVENTS.heartbeatStressFast, 0);
+    };
+  }, []);
+
   // Tap/click do mapy nastaví tap-to-move cíl (viz game/minigame/touchControls.ts)
   // — funguje myší i dotykem (PointerEvent sjednocuje oboje), klávesnicový
   // pohyb ho v tick() přebije/zruší. Canvas nemá potomky, takže
@@ -791,6 +808,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
             itemId: input.itemToCollect ?? "fuse",
           });
           setMissionPhase(game.mission.phase);
+          audioManager.play(AUDIO_EVENTS.itemPickup);
         }
 
         // Doplňkový loot (viz zadání "sandbox výprava") — sbírá se dotykem
@@ -803,6 +821,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
           if (circlesTouch(game.player.x, game.player.y, game.player.radius, loot.position.x, loot.position.y, ITEM_RADIUS)) {
             loot.collected = true;
             setPickupMessage(COPY.game.itemCollectedLabel.replace("{item}", ITEM_LABELS_NOMINATIVE[loot.itemId]));
+            audioManager.play(AUDIO_EVENTS.itemPickup);
           }
         }
 

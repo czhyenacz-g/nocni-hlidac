@@ -38,6 +38,10 @@ export const AUDIO_EVENTS = {
   // components/minigame/EmergencyMiniGame.tsx#fireShot, isEnemyHit) — krátký
   // bolestivý řev, ne smrtelný jumpscare (monstrum je jen "wounded", ne mrtvé).
   monsterWounded: "monster_wounded",
+  // Sebrání lootu v EmergencyMiniGame (baterie/žárovka/brokovnice, viz
+  // shouldAutoCollectItem/extraLoot v EmergencyMiniGame.tsx) — hlasitější
+  // varianta uiClick, ať sběr věci má jasnou zvukovou odezvu.
+  itemPickup: "item_pickup",
 } as const;
 
 export type AudioEventId = (typeof AUDIO_EVENTS)[keyof typeof AUDIO_EVENTS];
