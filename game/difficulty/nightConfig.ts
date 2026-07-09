@@ -51,16 +51,20 @@ export const DEFAULT_NIGHT_FEATURES: NightFeatureFlags = {
 
 /**
  * Od jaké noci se může brokovnice objevit jako loot — jediné místo, které
- * tohle číslo definuje.
- *
- * DOČASNĚ nastaveno na 1 kvůli ručnímu testování (na žádost) — herní logika
- * (canSpawnShotgun/canStartShotgunEmergencyRun) se NEMĚNÍ, mění se jen tahle
- * konstanta. Až testování skončí, vrať zpátky na 10.
+ * tohle číslo definuje. Admin účty (viz lib/auth/adminUsers.ts, zadání
+ * "výjimky ve hře a lepší debug") tenhle práh obchází úplně, viz
+ * `isAdmin` parametr canSpawnShotgun níže.
  */
-export const SHOTGUN_LOOT_MIN_NIGHT = 1;
+export const SHOTGUN_LOOT_MIN_NIGHT = 10;
 
-/** Čistá funkce nezávislá na getNightConfig, ať se dá otestovat bez celého ResolvedNightConfig. */
-export function canSpawnShotgun(nightNumber: number): boolean {
+/**
+ * Čistá funkce nezávislá na getNightConfig, ať se dá otestovat bez celého
+ * ResolvedNightConfig. `isAdmin` (viz lib/auth/adminUsers.ts#isAdminUsername)
+ * je záměrně samostatný parametr, ne nová konstanta/night override — je to
+ * vlastnost PŘIHLÁŠENÉHO HRÁČE, ne noci samotné.
+ */
+export function canSpawnShotgun(nightNumber: number, isAdmin: boolean = false): boolean {
+  if (isAdmin) return true;
   return nightNumber >= SHOTGUN_LOOT_MIN_NIGHT;
 }
 
@@ -151,9 +155,11 @@ const FALLBACK_BRIEFING_LINES: string[] = ["Služby jsou čím dál horší.", "
  * features (chybějící klíče se vždy doplní z DEFAULT_NIGHT_FEATURES).
  * Neplatné/nesmyslné číslo (< 1, NaN, ...) se bezpečně bere jako noc 1,
  * stejná konvence jako computeNightScaling. Nedefinovaná noc (typicky 6+)
- * dostane fallback briefing + čistě DEFAULT_NIGHT_FEATURES.
+ * dostane fallback briefing + čistě DEFAULT_NIGHT_FEATURES. `isAdmin` (viz
+ * lib/auth/adminUsers.ts) se předá dál jen do canSpawnShotgun — žádný jiný
+ * night feature flag na něm zatím nezávisí.
  */
-export function getNightConfig(nightNumber: number): ResolvedNightConfig {
+export function getNightConfig(nightNumber: number, isAdmin: boolean = false): ResolvedNightConfig {
   const safeNightNumber = Number.isFinite(nightNumber) && nightNumber >= 1 ? Math.floor(nightNumber) : 1;
   const entry = NIGHT_CONFIGS.find((config) => config.nightNumber === safeNightNumber);
 
@@ -163,6 +169,6 @@ export function getNightConfig(nightNumber: number): ResolvedNightConfig {
     // shotgunLootEnabled se VŽDY dopočítá z canSpawnShotgun — na rozdíl od
     // ostatních flagů to není nastavitelné přes NIGHT_CONFIGS[].features (i
     // kdyby tam někdo omylem hodnotu napsal, tenhle spread ji přepíše).
-    features: { ...DEFAULT_NIGHT_FEATURES, ...entry?.features, shotgunLootEnabled: canSpawnShotgun(safeNightNumber) },
+    features: { ...DEFAULT_NIGHT_FEATURES, ...entry?.features, shotgunLootEnabled: canSpawnShotgun(safeNightNumber, isAdmin) },
   };
 }

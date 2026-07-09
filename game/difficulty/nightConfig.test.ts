@@ -98,9 +98,8 @@ describe("DEFAULT_NIGHT_FEATURES — emergency runs", () => {
   });
 });
 
-// SHOTGUN_LOOT_MIN_NIGHT je DOČASNĚ 1 (ruční testování brokovnice, na
-// žádost) — testy jsou psané relativně k téhle konstantě, ne natvrdo k "10",
-// ať zůstanou platné i po vrácení prahu zpět na 10.
+// Testy jsou psané relativně k SHOTGUN_LOOT_MIN_NIGHT, ne natvrdo k "10", ať
+// zůstanou platné i kdyby se práh znovu změnil.
 describe("canSpawnShotgun", () => {
   it("is false one night before the threshold", () => {
     expect(canSpawnShotgun(SHOTGUN_LOOT_MIN_NIGHT - 1)).toBe(false);
@@ -110,6 +109,18 @@ describe("canSpawnShotgun", () => {
     expect(canSpawnShotgun(SHOTGUN_LOOT_MIN_NIGHT)).toBe(true);
     expect(canSpawnShotgun(SHOTGUN_LOOT_MIN_NIGHT + 1)).toBe(true);
   });
+
+  it("defaults isAdmin to false — same as calling without the second argument", () => {
+    expect(canSpawnShotgun(1, false)).toBe(canSpawnShotgun(1));
+    expect(canSpawnShotgun(SHOTGUN_LOOT_MIN_NIGHT, false)).toBe(canSpawnShotgun(SHOTGUN_LOOT_MIN_NIGHT));
+  });
+
+  // Admin výjimka (viz zadání "u admina ať je výjimka už od noci 1") —
+  // isAdmin: true obchází SHOTGUN_LOOT_MIN_NIGHT úplně, i pro noc 1.
+  it("isAdmin: true bypasses the threshold entirely, even on night 1", () => {
+    expect(canSpawnShotgun(1, true)).toBe(true);
+    expect(canSpawnShotgun(SHOTGUN_LOOT_MIN_NIGHT - 1, true)).toBe(true);
+  });
 });
 
 describe("getNightConfig — shotgunLootEnabled follows canSpawnShotgun", () => {
@@ -117,6 +128,12 @@ describe("getNightConfig — shotgunLootEnabled follows canSpawnShotgun", () => 
     for (const nightNumber of [1, 2, 3, 4, 5, 9, 10, 11, 50]) {
       expect(getNightConfig(nightNumber).features.shotgunLootEnabled).toBe(canSpawnShotgun(nightNumber));
     }
+  });
+
+  it("isAdmin: true turns shotgunLootEnabled on even for night 1 (regular players stay gated by the threshold)", () => {
+    expect(getNightConfig(1, true).features.shotgunLootEnabled).toBe(true);
+    expect(getNightConfig(1, false).features.shotgunLootEnabled).toBe(false);
+    expect(getNightConfig(1).features.shotgunLootEnabled).toBe(false);
   });
 });
 

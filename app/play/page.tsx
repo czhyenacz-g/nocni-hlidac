@@ -31,6 +31,7 @@ import { chooseDoorBangPlaybackPlan } from "@/game/audio/doorBangPlayback";
 import CinematicScreen from "@/components/screens/CinematicScreen";
 import { CinematicSceneId } from "@/content/cinematics";
 import AchievementToast from "@/components/game/AchievementToast";
+import AdminBadge from "@/components/game/AdminBadge";
 import { Achievement, getAchievement } from "@/content/achievements";
 import { unlockAchievement } from "@/game/core/achievementStorage";
 import { getDeathCount, incrementDeathCount } from "@/game/core/deathCount";
@@ -56,6 +57,7 @@ import EmergencyMiniGame from "@/components/minigame/EmergencyMiniGame";
 import { EmergencyMiniGameInput, EmergencyMiniGameResult } from "@/game/minigame/types";
 import { COPY } from "@/content/copy";
 import type { AuthenticatedPlayer } from "@/lib/auth/types";
+import { isAdminUsername } from "@/lib/auth/adminUsers";
 import type { GuardRunState } from "@/lib/leaderboard/types";
 import type { GuardRunResponse } from "@/lib/leaderboard/guardRunRequestHandlers";
 import { DEFAULT_GAME_MODE, GAME_MODE_CONFIG, GameMode, resolveGameMode } from "@/game/core/gameMode";
@@ -91,6 +93,12 @@ export default function PlayPage() {
   // "i start handler by měl být bezpečný"), ať se nemusí volat druhý
   // (duplicitní) /api/auth/me fetch jen pro tenhle jeden check.
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // Admin účet (viz lib/auth/adminUsers.ts, zadání "výjimky ve hře a lepší
+  // debug") — vypočtené z přihlášeného Discord username, ne z vlastního
+  // API/session pole. Zatím jediná herní výjimka: canSpawnShotgun (viz
+  // nightFeatures níže), plus trvalý badge (AdminBadge) vidět na všech
+  // obrazovkách.
+  const [isAdmin, setIsAdmin] = useState(false);
   // Režim zvolený na MainMenuScreen (viz game/core/gameMode.ts) — čte se v
   // handleBeginShift (START_SHIFT gameMode/livesRemaining) i v `currentNight`
   // níže. Deklarováno tady (ne u ostatních refů, viz pendingShiftKindRef níže)
@@ -131,6 +139,7 @@ export default function PlayPage() {
       .then((data: { player: AuthenticatedPlayer | null }) => {
         if (cancelled || !data.player) return;
         setIsAuthenticated(true);
+        setIsAdmin(isAdminUsername(data.player.username));
         if (data.player.currentRun !== null && data.player.bestRun !== null) {
           setServerRunState({ currentRun: data.player.currentRun, bestRun: data.player.bestRun });
         }
@@ -668,7 +677,7 @@ export default function PlayPage() {
     // směna ho vždy explicitně vyčistí, ať /minihra nikdy nepřežije do
     // dalšího života hlídače.
     setActiveMiniGame(null);
-    const nightFeatures = getNightConfig(currentNight).features;
+    const nightFeatures = getNightConfig(currentNight, isAdmin).features;
     if (pendingShiftKindRef.current === "restart") {
       const gameMode = state.gameMode;
       // restoreNearMissLifeRef: viz komentář u deklarace výše — scriptovaný
@@ -1073,6 +1082,10 @@ export default function PlayPage() {
     {activeAchievement && (
       <AchievementToast achievement={activeAchievement} onDismiss={() => setActiveAchievement(null)} />
     )}
+    {/* Trvalý admin indikátor (viz lib/auth/adminUsers.ts, zadání) — na
+        VŠECH obrazovkách, ne jen během hraní, proto tady vedle
+        AchievementToast (sourozenec .atmosphere-root), ne uvnitř GameScreen. */}
+    {isAdmin && <AdminBadge />}
     {/* Krátká zpráva po návratu z nouzové minihry (viz handleEmergencyMiniGameComplete)
         — stejný "sourozenec .atmosphere-root" důvod jako AchievementToast výše,
         záměrně bez nového toast systému (žádná animace, jen auto-mizející text). */}
