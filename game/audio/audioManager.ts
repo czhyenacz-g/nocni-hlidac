@@ -20,6 +20,15 @@ class AudioManager {
    * ho musí zrušit, jinak by syntetizovaná siréna hrála donekonečna.
    */
   private loopFallbackTimers = new Map<AudioEventId, ReturnType<typeof setInterval>>();
+  /**
+   * Které loopy jsou "chtěné" právě teď (naposledy startLoop, ne stopLoop) —
+   * bez tohohle by setMuted(false) neměl jak poznat, které pauznuté <audio>
+   * elementy má zase pustit. Nic jiného loop sám od sebe znovu nespustí
+   * (viz useHeartbeatStress.ts#loopsStartedRef — startLoop volá jen JEDNOU
+   * za mount), takže ambient/heartbeat by po odmutování jinak zůstaly navždy
+   * potichu, i když `muted` je zase `false`.
+   */
+  private activeLoops = new Set<AudioEventId>();
 
   init(): void {
     if (this.initialized || typeof window === "undefined") return;
@@ -48,6 +57,16 @@ class AudioManager {
         clearInterval(timer);
       }
       this.loopFallbackTimers.clear();
+    } else {
+      // Znovu spustí VŠECHNY loopy, které byly aktivní před ztlumením (viz
+      // activeLoops) — pause() výše je jen natvrdo zastavil, nic jiného by
+      // je samo od sebe znovu nespustilo (ambient loop i heartbeat startují
+      // jen jednou za mount, viz app/play/page.tsx / useHeartbeatStress.ts).
+      // startLoop() sám řeší i případný fallbackSynth, kdyby reálný soubor
+      // znovu selhal.
+      for (const id of this.activeLoops) {
+        this.startLoop(id);
+      }
     }
   }
 
@@ -77,6 +96,11 @@ class AudioManager {
     const audio = this.elements.get(id);
     if (!audio) return;
 
+    // Zapamatuje si "tenhle loop má hrát" bez ohledu na aktuální muted stav
+    // (viz activeLoops) — setMuted(false) podle tohohle pozná, které loopy
+    // má zase pustit, i kdyby k prvnímu startLoop došlo ještě před
+    // odmutováním.
+    this.activeLoops.add(id);
     if (this.muted) return;
 
     const config = AUDIO_CONFIG[id];
@@ -110,6 +134,7 @@ class AudioManager {
   }
 
   stopLoop(id: AudioEventId): void {
+    this.activeLoops.delete(id);
     const audio = this.elements.get(id);
     if (audio) {
       audio.pause();
@@ -147,6 +172,10 @@ class AudioManager {
         audio.pause();
         audio.currentTime = 0;
         audio.volume = config.volume;
+        // Stejný důvod jako stopLoop — po dokončeném fade-outu (smrt/
+        // blackout) už tenhle loop není "chtěný", ať ho případné pozdější
+        // odmutování znovu nenahodí.
+        this.activeLoops.delete(id);
       }
     };
     requestAnimationFrame(step);
@@ -157,6 +186,11 @@ class AudioManager {
       audio.pause();
       audio.currentTime = 0;
     }
+    this.activeLoops.clear();
+    for (const timer of this.loopFallbackTimers.values()) {
+      clearInterval(timer);
+    }
+    this.loopFallbackTimers.clear();
   }
 
   // Krátká náhradní sekvence tónů přes Web Audio API — žádná externí knihovna,
