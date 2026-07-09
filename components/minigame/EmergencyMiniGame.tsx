@@ -280,6 +280,19 @@ const ITEM_LABELS_NOMINATIVE: Record<MiniGameItemId, string> = {
 };
 
 /**
+ * Zvuk při sebrání konkrétní věci (viz zadání "u brokovnice by měl být
+ * výraznější zvuk, třeba stejný jako bulb replace success") — brokovnice je
+ * dost důležitý nález (první krok k true endingu), ať to zní jinak než
+ * obyčejné sebrání baterie/žárovky/náboje (ty zůstávají u obecného
+ * itemPickup). Používá se pro OBĚ cesty sebrání (hlavní objective i
+ * doplňkový loot), ať zní stejně bez ohledu na to, jestli byla brokovnice
+ * zrovna hlavní cíl výpravy, nebo doplňkový nález.
+ */
+function pickupSoundForItem(itemId: MiniGameItemId) {
+  return itemId === "shotgun" ? AUDIO_EVENTS.bulbReplaceSuccess : AUDIO_EVENTS.itemPickup;
+}
+
+/**
  * HUD hint pod REŽIM řádkem — vysvětluje hráči, co má aktuálně udělat (viz
  * mission phase / EmergencyMissionPhase). Zamčené dveře (viz
  * `officeDoorUnlocked`, EMERGENCY_OFFICE_DOOR_LOCK_MS) jsou teď jediná
@@ -866,12 +879,18 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
             itemRadius: ITEM_RADIUS,
           })
         ) {
+          const collectedItemId = input.itemToCollect ?? "fuse";
           game.mission = completeObjective(game.mission, {
             type: "collected_item",
-            itemId: input.itemToCollect ?? "fuse",
+            itemId: collectedItemId,
           });
           setMissionPhase(game.mission.phase);
-          audioManager.play(AUDIO_EVENTS.itemPickup);
+          // Chybělo tu úplně (na rozdíl od doplňkového lootu níže) — hlavní
+          // objective (typicky baterie/brokovnice) po sebrání dřív neukázal
+          // žádnou hlášku, viz zadání "u brokovnice se nezobrazila žádná
+          // hláška, u žárovky ano".
+          setPickupMessage(COPY.game.itemCollectedLabel.replace("{item}", ITEM_LABELS_NOMINATIVE[collectedItemId]));
+          audioManager.play(pickupSoundForItem(collectedItemId));
         }
 
         // Doplňkový loot (viz zadání "sandbox výprava") — sbírá se dotykem
@@ -884,7 +903,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
           if (circlesTouch(game.player.x, game.player.y, game.player.radius, loot.position.x, loot.position.y, ITEM_RADIUS)) {
             loot.collected = true;
             setPickupMessage(COPY.game.itemCollectedLabel.replace("{item}", ITEM_LABELS_NOMINATIVE[loot.itemId]));
-            audioManager.play(AUDIO_EVENTS.itemPickup);
+            audioManager.play(pickupSoundForItem(loot.itemId));
           }
         }
 
