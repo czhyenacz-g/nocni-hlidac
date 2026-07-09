@@ -28,9 +28,14 @@ import {
   isTargetInCone,
   lineIntersectsRect,
   moveWithWallSliding,
+  MINIGAME_HEARTBEAT_VOLUME_BASE,
+  MINIGAME_HEARTBEAT_VOLUME_CHASING,
+  MINIGAME_HEARTBEAT_VOLUME_RAGE,
+  MINIGAME_HEARTBEAT_VOLUME_VISIBLE,
   msSinceOfficeDoorOpened,
   msUntilOfficeDoorOpens,
   resolveEquipmentFromInput,
+  resolveMiniGameHeartbeatVolume,
   shouldHighlightOfficeMarker,
   shouldShowOfficeBoundCrisisMarker,
   tickEnemyStun,
@@ -681,6 +686,87 @@ describe("updateEnemyAi", () => {
         expect(shouldShowOfficeBoundCrisisMarker(baseEnemy({ mode }), false)).toBe(false);
       },
     );
+  });
+
+  // Hlasitost ambientního tepu podle situace (viz zadání "1) vidím monstrum
+  // 2) ono vidí mě a jde po mě 3) rage mode namax").
+  describe("resolveMiniGameHeartbeatVolume", () => {
+    const AGGRO_RANGE = 150;
+
+    it("base level when the enemy is dead/vanished, regardless of mode/visibility", () => {
+      expect(
+        resolveMiniGameHeartbeatVolume({
+          enemyAlive: false,
+          enemyVisible: true,
+          enemyMode: "chasing",
+          distanceToPlayer: 10,
+          aggroRange: AGGRO_RANGE,
+        }),
+      ).toBe(MINIGAME_HEARTBEAT_VOLUME_BASE);
+    });
+
+    it("base level when not visible and not chasing", () => {
+      expect(
+        resolveMiniGameHeartbeatVolume({
+          enemyAlive: true,
+          enemyVisible: false,
+          enemyMode: "investigating",
+          distanceToPlayer: 1000,
+          aggroRange: AGGRO_RANGE,
+        }),
+      ).toBe(MINIGAME_HEARTBEAT_VOLUME_BASE);
+    });
+
+    it("visible level: player sees the enemy, but it is not chasing", () => {
+      expect(
+        resolveMiniGameHeartbeatVolume({
+          enemyAlive: true,
+          enemyVisible: true,
+          enemyMode: "waiting",
+          distanceToPlayer: 300,
+          aggroRange: AGGRO_RANGE,
+        }),
+      ).toBe(MINIGAME_HEARTBEAT_VOLUME_VISIBLE);
+    });
+
+    it("chasing level: enemy is chasing but still outside aggroRange", () => {
+      expect(
+        resolveMiniGameHeartbeatVolume({
+          enemyAlive: true,
+          enemyVisible: true,
+          enemyMode: "chasing",
+          distanceToPlayer: AGGRO_RANGE + 1,
+          aggroRange: AGGRO_RANGE,
+        }),
+      ).toBe(MINIGAME_HEARTBEAT_VOLUME_CHASING);
+    });
+
+    it("rage level: enemy is chasing AND within aggroRange (max volume)", () => {
+      expect(
+        resolveMiniGameHeartbeatVolume({
+          enemyAlive: true,
+          enemyVisible: true,
+          enemyMode: "chasing",
+          distanceToPlayer: AGGRO_RANGE,
+          aggroRange: AGGRO_RANGE,
+        }),
+      ).toBe(MINIGAME_HEARTBEAT_VOLUME_RAGE);
+      expect(
+        resolveMiniGameHeartbeatVolume({
+          enemyAlive: true,
+          enemyVisible: true,
+          enemyMode: "chasing",
+          distanceToPlayer: 10,
+          aggroRange: AGGRO_RANGE,
+        }),
+      ).toBe(MINIGAME_HEARTBEAT_VOLUME_RAGE);
+    });
+
+    it("volume levels strictly escalate: base < visible < chasing < rage", () => {
+      expect(MINIGAME_HEARTBEAT_VOLUME_BASE).toBeLessThan(MINIGAME_HEARTBEAT_VOLUME_VISIBLE);
+      expect(MINIGAME_HEARTBEAT_VOLUME_VISIBLE).toBeLessThan(MINIGAME_HEARTBEAT_VOLUME_CHASING);
+      expect(MINIGAME_HEARTBEAT_VOLUME_CHASING).toBeLessThan(MINIGAME_HEARTBEAT_VOLUME_RAGE);
+    });
   });
 });
 

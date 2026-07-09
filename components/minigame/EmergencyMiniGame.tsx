@@ -76,9 +76,11 @@ import {
   getOfficeMarkerLabel,
   isMonsterOfficeThreatArmed,
   isOfficeDoorLocked,
+  MINIGAME_HEARTBEAT_VOLUME_BASE,
   moveWithWallSliding,
   msUntilOfficeDoorOpens,
   resolveEquipmentFromInput,
+  resolveMiniGameHeartbeatVolume,
   shouldHighlightOfficeMarker,
   shouldShowOfficeBoundCrisisMarker,
   updateEnemyAi,
@@ -520,15 +522,18 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
   // Ambientní zvukové pozadí výpravy (viz zadání) — minihra sama žádnou
   // vlastní ambience loop nemá, tak se znovupoužije existující "fast
   // heartbeat" loop (game/audio/audioEvents.ts, sdílený s hlavní hrou přes
-  // useHeartbeatStress.ts) na 60 % hlasitosti. Na rozdíl od hlavní hry se
-  // NIKDY nevolá stopLoop (to by natvrdo zpauzoval sdílený <audio> element) —
-  // při odchodu z minihry se hlasitost jen ztiší na 0; v /play ji hned zase
-  // převezme useHeartbeatStress na dalším tiku (jeho efekt běží až po
-  // resetu activeMiniGame), v samostatném /minihra zůstane tiše.
+  // useHeartbeatStress.ts). Klidová hladina hned po startu (viz
+  // MINIGAME_HEARTBEAT_VOLUME_BASE) — tick() ji pak každý snímek přepočítá
+  // podle situace (viz resolveMiniGameHeartbeatVolume, zadání "hlasitost
+  // tepu podle situace"). Na rozdíl od hlavní hry se NIKDY nevolá stopLoop
+  // (to by natvrdo zpauzoval sdílený <audio> element) — při odchodu z
+  // minihry se hlasitost jen ztiší na 0; v /play ji hned zase převezme
+  // useHeartbeatStress na dalším tiku (jeho efekt běží až po resetu
+  // activeMiniGame), v samostatném /minihra zůstane tiše.
   useEffect(() => {
     audioManager.init();
     audioManager.startLoop(AUDIO_EVENTS.heartbeatStressFast);
-    audioManager.setVolume(AUDIO_EVENTS.heartbeatStressFast, 0.6);
+    audioManager.setVolume(AUDIO_EVENTS.heartbeatStressFast, MINIGAME_HEARTBEAT_VOLUME_BASE);
     return () => {
       audioManager.setVolume(AUDIO_EVENTS.heartbeatStressFast, 0);
     };
@@ -978,6 +983,21 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
           // hodnotou je no-op), takže tohle nezpůsobuje re-render 60×/s.
           setWoundedMsLeft(game.enemy.mode === "wounded" ? Math.ceil(game.enemy.stunRemainingMs / 100) * 100 : null);
         }
+
+        // Hlasitost ambientního tepu podle situace (viz zadání "1) vidím
+        // monstrum 2) ono vidí mě a jde po mě 3) rage mode namax") —
+        // audioManager.setVolume je levné volat každý tik (jen nastaví
+        // audio.volume), žádný extra bailout stav navíc potřeba.
+        audioManager.setVolume(
+          AUDIO_EVENTS.heartbeatStressFast,
+          resolveMiniGameHeartbeatVolume({
+            enemyAlive: game.enemy.alive,
+            enemyVisible: game.enemyVisibleToPlayer,
+            enemyMode: game.enemy.mode,
+            distanceToPlayer: distance(game.player.x, game.player.y, game.enemy.x, game.enemy.y),
+            aggroRange: ENEMY_AGGRO_RANGE,
+          }),
+        );
       }
 
       draw(ctx, game, gridCanvas, fogCanvas, input, isDevOverlayEnabledRef.current);

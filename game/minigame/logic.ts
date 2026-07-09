@@ -765,6 +765,42 @@ export function shouldShowOfficeBoundCrisisMarker(enemy: Pick<Enemy, "alive" | "
   return enemy.alive && enemy.mode === "office_bound" && !officeThreatTriggered;
 }
 
+// ── Ambientní tlukot srdce v minihře (viz zadání "hlasitost tepu podle
+// situace: vidím monstrum / ono vidí mě a jde po mě / rage mode namax") —
+// EmergencyMiniGame.tsx#tick volá tohle KAŽDÝ tik a výsledek pošle přímo do
+// audioManager.setVolume(heartbeatStressFast, ...), žádný vlastní stav
+// navíc. Čtyři pevné úrovně, striktně eskalující s hrozbou.
+export const MINIGAME_HEARTBEAT_VOLUME_BASE = 0.3;
+export const MINIGAME_HEARTBEAT_VOLUME_VISIBLE = 0.55;
+export const MINIGAME_HEARTBEAT_VOLUME_CHASING = 0.8;
+export const MINIGAME_HEARTBEAT_VOLUME_RAGE = 1;
+
+/**
+ * 1) Mrtvé/zmizelé monstrum (office_bound doražení do kanceláře, viz
+ *    Enemy.alive) — klidová hladina, pořád riziková výprava, jen bez
+ *    konkrétního monstra na mapě.
+ * 2) "chasing" NABLÍZKO (stejný dosah jako aggroRange/rychlostní boost v
+ *    updateEnemyAi) — "rage mode", tlukot namax.
+ * 3) "chasing" na dálku — hlasitěji, ale ne namax.
+ * 4) Hráč monstrum jen VIDÍ (fog/LOS, žádná honička) — tišší zvýšení.
+ * 5) Nic z toho — klidová hladina.
+ */
+export function resolveMiniGameHeartbeatVolume(input: {
+  enemyAlive: boolean;
+  enemyVisible: boolean;
+  enemyMode: EnemyMode;
+  distanceToPlayer: number;
+  aggroRange: number;
+}): number {
+  if (!input.enemyAlive) return MINIGAME_HEARTBEAT_VOLUME_BASE;
+  if (input.enemyMode === "chasing" && input.distanceToPlayer <= input.aggroRange) {
+    return MINIGAME_HEARTBEAT_VOLUME_RAGE;
+  }
+  if (input.enemyMode === "chasing") return MINIGAME_HEARTBEAT_VOLUME_CHASING;
+  if (input.enemyVisible) return MINIGAME_HEARTBEAT_VOLUME_VISIBLE;
+  return MINIGAME_HEARTBEAT_VOLUME_BASE;
+}
+
 // ── Kontrakt pro budoucí spuštění z hlavní hry (viz
 // components/minigame/EmergencyMiniGame.tsx) — čisté, testovatelné funkce
 // pro vstup/výsledek, žádné React/DOM.
