@@ -273,4 +273,23 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
       waveform: "sine",
     },
   },
+  // Siréna po dobu držení "Nouzově opustit místnost" (viz zadání) — reálná
+  // nahrávka poplachové sirény (viz assets/audio/README.md "Emergency run
+  // siréna"), 11s seamless smyčka, `loop: true` ji AudioManager přehrává
+  // nepřetržitě, dokud drží tlačítko (startLoop/stopLoop). fallbackSynth
+  // (dva střídavé tóny) se použije jen kdyby se skutečný soubor nepodařilo
+  // načíst (viz audioManager.ts#startFallbackSynthLoop).
+  [AUDIO_EVENTS.emergencyRunSiren]: {
+    src: "/assets/audio/emergency_run_siren.mp3",
+    volume: 0.5,
+    loop: true,
+    fallbackSynth: {
+      notes: [
+        { frequency: 700, durationMs: 300 },
+        { frequency: 1000, durationMs: 300 },
+      ],
+      volume: 0.35,
+      waveform: "sawtooth",
+    },
+  },
 };

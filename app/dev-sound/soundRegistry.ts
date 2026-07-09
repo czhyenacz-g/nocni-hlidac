@@ -198,4 +198,11 @@ export const SOUND_REGISTRY: Record<AudioEventId, SoundRegistryEntry> = {
     guess: "Stejný soubor jako UI click, jen výrazně hlasitější.",
     usedIn: "components/minigame/EmergencyMiniGame.tsx — tick() auto-collect (hlavní item i extraLoot smyčka).",
   },
+  [AUDIO_EVENTS.emergencyRunSiren]: {
+    id: AUDIO_EVENTS.emergencyRunSiren,
+    label: "Emergency run siren",
+    description: 'Hráč drží tlačítko "Nouzově opustit místnost" — hraje po celou dobu držení, ne jednorázově.',
+    guess: "Reálná poplachová siréna (Whelen WPS-3016 WAIL), 11s bezešvá smyčka.",
+    usedIn: "app/play/page.tsx — efekt na state.emergencyRunWindup.active (startLoop/stopLoop).",
+  },
 };

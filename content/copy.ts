@@ -105,7 +105,7 @@ export const COPY = {
       "Chceš opustit kancelář, co máš chránit? TO NENÍ DOBRÝ NÁPAD. Nedělej to, pokud nemáš absolutně jinou možnost.",
     // Text tlačítka během držení (viz GameState.emergencyRunWindup) —
     // {seconds} se nahradí zbývajícím počtem sekund do spuštění minihry.
-    emergencyRunHoldingLabel: "Vydrž… {seconds} s",
+    emergencyRunHoldingLabel: "PŘIPRAVUJI NOUZOVÉ OPUŠTĚNÍ… {seconds} s",
     // Krátká zpráva po úspěšném návratu z nouzové minihry (viz
     // handleEmergencyMiniGameComplete) — {amount} nahrazuje počet dobité
     // energie z worldEffects (energy_recharged).

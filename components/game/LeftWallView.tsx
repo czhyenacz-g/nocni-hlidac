@@ -156,6 +156,19 @@ export default function LeftWallView({
             <button
               type="button"
               className={`pixel-button tap-target px-3 py-2 text-xs touch-none select-none ${doorClosed ? "opacity-50" : ""}`}
+              // Žluté blikání po dobu držení (viz zadání) — stejná
+              // `pixel-blink` animace jako GeneratorView.tsx "restarting"
+              // indikátor (styles/pixel.css), jen aplikovaná přímo na
+              // tlačítko přes inline style, ať nemusí vznikat nová CSS
+              // třída jen pro tenhle jeden podmíněný případ. Siréna (viz
+              // app/play/page.tsx efekt na state.emergencyRunWindup.active)
+              // jede nezávisle na tomhle — vizuál a zvuk oba řídí stejný
+              // zdroj pravdy (emergencyRunWindupActive), ale samostatně.
+              style={
+                emergencyRunWindupActive
+                  ? { animation: "pixel-blink 0.35s steps(2) infinite", backgroundColor: "#facc15", color: "#1a1a1a" }
+                  : undefined
+              }
               onPointerDown={handlePointerDown}
               onPointerUp={handlePointerUp}
               onPointerLeave={handlePointerUp}

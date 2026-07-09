@@ -447,6 +447,19 @@ export default function PlayPage() {
     prevPowerRef.current = state.power;
   }, [state.power]);
 
+  // Siréna po dobu držení "Nouzově opustit místnost" (viz zadání,
+  // LeftWallView.tsx#handlePointerDown/Up) — startLoop/stopLoop jsou
+  // idempotentní (opakované volání stejného stavu nic nerozbije), takže
+  // stačí přímo sledovat state.emergencyRunWindup.active, žádný prevRef
+  // diffing navíc jako u ostatních efektů výše.
+  useEffect(() => {
+    if (state.emergencyRunWindup.active) {
+      audioManager.startLoop(AUDIO_EVENTS.emergencyRunSiren);
+    } else {
+      audioManager.stopLoop(AUDIO_EVENTS.emergencyRunSiren);
+    }
+  }, [state.emergencyRunWindup.active]);
+
   useEffect(() => {
     // Stejné pípnutí jako normální provoz, i v criticalBeeping — jen rychlejší
     // tempo (viz night.generator.criticalBeepIntervalMs). Jediná signalizace

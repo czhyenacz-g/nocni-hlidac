@@ -42,6 +42,11 @@ export const AUDIO_EVENTS = {
   // shouldAutoCollectItem/extraLoot v EmergencyMiniGame.tsx) — hlasitější
   // varianta uiClick, ať sběr věci má jasnou zvukovou odezvu.
   itemPickup: "item_pickup",
+  // Držení tlačítka "Nouzově opustit místnost" (viz zadání,
+  // GameState.emergencyRunWindup, app/play/page.tsx efekt na
+  // state.emergencyRunWindup.active) — poplašná siréna, hraje jen po dobu
+  // držení, ne jednorázově.
+  emergencyRunSiren: "emergency_run_siren",
 } as const;
 
 export type AudioEventId = (typeof AUDIO_EVENTS)[keyof typeof AUDIO_EVENTS];

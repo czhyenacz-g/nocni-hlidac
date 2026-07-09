@@ -88,3 +88,16 @@ Originální OpenGameArt soubory byly hodně tiché (mean_volume ~-30 dB, o ~23 
 `ambience_loop.mp3`) — po prvním playtestu (heartbeat nebyl vůbec slyšet) byl na tyhle dvě
 servírované kopie aplikovaný `+12dB` gain (`ffmpeg -af "volume=12dB"`, peak teď ~-2,2 dB).
 Raw originály v `downloads/opengameart/heartbeat/` zůstávají netknuté (nezesílené).
+
+## Emergency run siréna
+
+`emergency_run_siren.mp3` — hraje nepřetržitě po dobu držení tlačítka "Nouzově opustit
+místnost" (`AUDIO_EVENTS.emergencyRunSiren`, viz `app/play/page.tsx` efekt na
+`state.emergencyRunWindup.active`). Zdroj:
+[172353__theblockofsound235__emergency-wail-loop-whelen.wav](https://freesound.org/people/theblockofsound235/sounds/172353/)
+(Freesound.org, licence **CC0**) — reálná civilní poplachová siréna (Whelen WPS-3016), WAIL
+tón, 11s bezešvá smyčka. Kandidát byl nejdřív k poslechu na `/dev-sound`
+(`public/dev-sound-candidates/siren/`), servírovaná kopie je jen zkopírovaná beze změny
+gainu (peak už -3,3 dB, mean_volume -14,1 dB — hlasitá už v originále). Nahrazuje dřívější
+syntetizovaný fallback (dva střídavé tóny), který se teď použije, jen kdyby se
+`emergency_run_siren.mp3` nepodařilo načíst.

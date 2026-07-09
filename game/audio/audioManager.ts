@@ -12,6 +12,14 @@ class AudioManager {
   private muted = false;
   private initialized = false;
   private synthCtx: AudioContext | null = null;
+  /**
+   * Když `startLoop` selže (chybějící/nenačtený soubor pro `loop: true`
+   * event, viz emergencyRunSiren), opakovaně přehrává `fallbackSynth` v
+   * intervalu podle délky jeho notové sekvence — jediný způsob, jak má i
+   * loop zvuk fallback, ne jen jednorázový `play()`. `stopLoop`/`setMuted`
+   * ho musí zrušit, jinak by syntetizovaná siréna hrála donekonečna.
+   */
+  private loopFallbackTimers = new Map<AudioEventId, ReturnType<typeof setInterval>>();
 
   init(): void {
     if (this.initialized || typeof window === "undefined") return;
@@ -32,6 +40,14 @@ class AudioManager {
       for (const audio of this.elements.values()) {
         audio.pause();
       }
+      // Ztlumení musí zastavit i syntetizované loop fallbacky (viz
+      // loopFallbackTimers) — jinak by siréna dál "hrála" (jen tiše, přes
+      // playFallbackSynth samotné, které mute respektuje, ale interval by
+      // dál běžel a nikdy sám neskončil).
+      for (const timer of this.loopFallbackTimers.values()) {
+        clearInterval(timer);
+      }
+      this.loopFallbackTimers.clear();
     }
   }
 
@@ -63,11 +79,27 @@ class AudioManager {
 
     if (this.muted) return;
 
+    const config = AUDIO_CONFIG[id];
     try {
-      void audio.play().catch(() => {});
+      void audio.play().catch(() => {
+        // Soubor chybí/nejde přehrát — na rozdíl od `play()` výše se sem
+        // dřív fallbackSynth vůbec nedostal (loop zvuk bez souboru byl
+        // prostě potichu), proto ho tu nově opakovaně přehrává, dokud
+        // nepřijde stopLoop (viz startFallbackSynthLoop).
+        if (config.fallbackSynth) this.startFallbackSynthLoop(id, config.fallbackSynth);
+      });
     } catch {
-      // Ignoruj.
+      if (config.fallbackSynth) this.startFallbackSynthLoop(id, config.fallbackSynth);
     }
+  }
+
+  /** Opakuje `playFallbackSynth` v intervalu podle délky jedné notové sekvence — viz loopFallbackTimers. No-op, pokud už pro tenhle `id` běží. */
+  private startFallbackSynthLoop(id: AudioEventId, synth: FallbackSynthConfig): void {
+    if (this.loopFallbackTimers.has(id) || this.muted) return;
+    const cycleDurationMs = synth.notes.reduce((total, note) => total + note.durationMs + (note.gapMs ?? 0), 0);
+    this.playFallbackSynth(synth);
+    const timer = setInterval(() => this.playFallbackSynth(synth), Math.max(50, cycleDurationMs));
+    this.loopFallbackTimers.set(id, timer);
   }
 
   /** Průběžná změna hlasitosti běžícího (i zastaveného) loopu — pro plynulé fady, viz useHeartbeatStress.ts. */
@@ -79,9 +111,15 @@ class AudioManager {
 
   stopLoop(id: AudioEventId): void {
     const audio = this.elements.get(id);
-    if (!audio) return;
-    audio.pause();
-    audio.currentTime = 0;
+    if (audio) {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+    const timer = this.loopFallbackTimers.get(id);
+    if (timer !== undefined) {
+      clearInterval(timer);
+      this.loopFallbackTimers.delete(id);
+    }
   }
 
   /**
