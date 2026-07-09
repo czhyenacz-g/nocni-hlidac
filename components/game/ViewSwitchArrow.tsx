@@ -1,4 +1,4 @@
-type ViewSwitchIconId = "arrow-left" | "arrow-right" | "map" | "door";
+import ConsoleIcon, { ConsoleIconId } from "./ConsoleIcon";
 
 interface ViewSwitchArrowProps {
   label: string;
@@ -14,51 +14,18 @@ interface ViewSwitchArrowProps {
   variant?: "default" | "primary";
   /**
    * Ikona v konzolovém bloku (viz zadání "silnější ikonografie než obyčejný
-   * textový znak šipky") — chybí-li, odvodí se z `align`
+   * textový znak šipky", ConsoleIcon.tsx) — chybí-li, odvodí se z `align`
    * (DEFAULT_ICON_BY_ALIGN), volající ji přepíše jen když výchozí
    * nesedí (viz DeskView.tsx "Otočit se ke dveřím" -> icon="door").
    */
-  icon?: ViewSwitchIconId;
+  icon?: ConsoleIconId;
 }
 
-const DEFAULT_ICON_BY_ALIGN: Record<"left" | "right" | "center", ViewSwitchIconId> = {
+const DEFAULT_ICON_BY_ALIGN: Record<"left" | "right" | "center", ConsoleIconId> = {
   left: "arrow-left",
   right: "arrow-right",
   center: "map",
 };
-
-// Malé inline SVG ikony — žádná nová závislost/asset, jen pár čar
-// (stroke="currentColor" ať respektují barvu podle stavu tlačítka,
-// včetně urgent/hover, viz styles/pixel.css #console-icon-block).
-function ViewSwitchIcon({ id }: { id: ViewSwitchIconId }) {
-  switch (id) {
-    case "arrow-left":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-          <path d="M15 5 7 12l8 7" />
-        </svg>
-      );
-    case "arrow-right":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-          <path d="M9 5l8 7-8 7" />
-        </svg>
-      );
-    case "map":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-          <path d="M9 4 4 6v14l5-2 6 2 5-2V4l-5 2-6-2Z" />
-          <path d="M9 4v14M15 6v14" />
-        </svg>
-      );
-    case "door":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-          <path d="M6 9l6 7 6-7" />
-        </svg>
-      );
-  }
-}
 
 /**
  * Hotspot pro přepnutí pohledu hráče (stůl/kamery <-> dveře/generátor).
@@ -82,7 +49,7 @@ export default function ViewSwitchArrow({
 
   const iconBlock = (
     <span className={`console-icon-block ${isPrimary ? "console-icon-block--primary" : ""}`} aria-hidden="true">
-      <ViewSwitchIcon id={resolvedIcon} />
+      <ConsoleIcon id={resolvedIcon} />
     </span>
   );
   const labelSpan = <span className={align === "center" ? "text-center" : "flex-1 text-left"}>{label}</span>;

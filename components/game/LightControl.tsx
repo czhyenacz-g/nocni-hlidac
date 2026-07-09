@@ -1,4 +1,5 @@
 import { COPY } from "@/content/copy";
+import ConsoleIcon from "./ConsoleIcon";
 
 interface LightControlProps {
   lightOn: boolean;
@@ -11,12 +12,15 @@ export default function LightControl({ lightOn, bulbBroken, onToggle }: LightCon
   const label = bulbBroken ? COPY.game.lightBrokenLabel : lightOn ? COPY.game.lightOnLabel : COPY.game.lightOffLabel;
   return (
     <button
-      className="pixel-button tap-target px-4 py-3 text-sm w-full"
+      className="pixel-button console-button tap-target flex items-center gap-2.5 px-4 py-3 text-sm w-full"
       data-active={lightOn}
       onClick={onToggle}
       aria-label={label}
     >
-      {label}
+      <span className="console-icon-block" aria-hidden="true">
+        <ConsoleIcon id="light" />
+      </span>
+      <span className="flex-1 text-left">{label}</span>
     </button>
   );
 }

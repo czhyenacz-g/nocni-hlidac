@@ -5,6 +5,7 @@ import { computeEmergencyRunWindupProgressRatio } from "@/game/core/emergencyRun
 import { computeThinkItOverWindupProgressRatio } from "@/game/core/thinkItOverWindupProgress";
 import { SHOTGUN_MAX_AMMO } from "@/game/core/shotgunEquipment";
 import ViewSwitchArrow from "./ViewSwitchArrow";
+import ConsoleIcon from "./ConsoleIcon";
 
 interface LeftWallViewProps {
   onLookAtDesk: () => void;
@@ -171,7 +172,7 @@ export default function LeftWallView({
           {canStartEmergencyRun && (
             <button
               type="button"
-              className={`pixel-button tap-target px-3 py-2 text-xs touch-none select-none ${doorClosed ? "opacity-50" : ""}`}
+              className={`pixel-button console-button tap-target flex items-center gap-2 px-3 py-2 text-xs touch-none select-none ${doorClosed ? "opacity-50" : ""}`}
               // Žluté blikání po dobu držení (viz zadání) — stejná
               // `pixel-blink` animace jako GeneratorView.tsx "restarting"
               // indikátor (styles/pixel.css), jen aplikovaná přímo na
@@ -190,11 +191,16 @@ export default function LeftWallView({
               onPointerLeave={handlePointerUp}
               onPointerCancel={handlePointerUp}
             >
-              {emergencyRunWindupActive
-                ? COPY.game.emergencyRunHoldingLabel.replace("{seconds}", windupSeconds)
-                : hasWoundedMonsterToday
-                  ? COPY.game.startEmergencyRunHuntingLabel
-                  : COPY.game.startEmergencyRunLabel}
+              <span className="console-icon-block" aria-hidden="true">
+                <ConsoleIcon id="warn" />
+              </span>
+              <span>
+                {emergencyRunWindupActive
+                  ? COPY.game.emergencyRunHoldingLabel.replace("{seconds}", windupSeconds)
+                  : hasWoundedMonsterToday
+                    ? COPY.game.startEmergencyRunHuntingLabel
+                    : COPY.game.startEmergencyRunLabel}
+              </span>
             </button>
           )}
         </div>
@@ -212,7 +218,7 @@ export default function LeftWallView({
             stejné pulzující zvýraznění jako emergency-run tlačítko výše. */}
         <button
           type="button"
-          className="pixel-button tap-target px-3 py-2 text-xs touch-none select-none w-full"
+          className="pixel-button console-button console-button--primary tap-target flex items-center gap-2.5 px-3 py-2.5 text-xs touch-none select-none w-full"
           style={
             officeBreachActive
               ? { animation: "pixel-blink 0.6s steps(2) infinite", backgroundColor: "#ef4444", color: "#fff" }
@@ -220,7 +226,10 @@ export default function LeftWallView({
           }
           onClick={onLookAtDoor}
         >
-          {officeBreachActive ? COPY.game.turnToDoorUrgentLabel : COPY.game.turnToDoorLabel}
+          <span className="console-icon-block console-icon-block--primary" aria-hidden="true">
+            <ConsoleIcon id="door" />
+          </span>
+          <span className="flex-1 text-left">{officeBreachActive ? COPY.game.turnToDoorUrgentLabel : COPY.game.turnToDoorLabel}</span>
         </button>
         {/* Nenápadná informace o munici (viz zadání) — jen když má hráč
             brokovnici vůbec (bez ní nedává tenhle text smysl a jen by
@@ -242,15 +251,20 @@ export default function LeftWallView({
           <div className="w-full flex items-center justify-end gap-3">
             <button
               type="button"
-              className="pixel-button tap-target px-3 py-2 text-xs touch-none select-none"
+              className="pixel-button console-button tap-target flex items-center gap-2 px-3 py-2 text-xs touch-none select-none"
               onPointerDown={handleThinkItOverPointerDown}
               onPointerUp={handleThinkItOverPointerUp}
               onPointerLeave={handleThinkItOverPointerUp}
               onPointerCancel={handleThinkItOverPointerUp}
             >
-              {thinkItOverWindupActive
-                ? COPY.game.thinkItOverHoldingLabel.replace("{seconds}", thinkItOverSeconds)
-                : COPY.game.startThinkItOverLabel}
+              <span className="console-icon-block" aria-hidden="true">
+                <ConsoleIcon id="warn" />
+              </span>
+              <span>
+                {thinkItOverWindupActive
+                  ? COPY.game.thinkItOverHoldingLabel.replace("{seconds}", thinkItOverSeconds)
+                  : COPY.game.startThinkItOverLabel}
+              </span>
             </button>
           </div>
         )}
