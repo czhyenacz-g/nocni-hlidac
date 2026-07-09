@@ -404,3 +404,112 @@
   flex: none;
 }
 
+/* ── Spodní navigační/akční tlačítka control-roomu jako fyzické konzolové
+ * moduly (viz ViewSwitchArrow.tsx, zadání "ne ploché HTML boxy, ale
+ * konzolové moduly") — tmavý kov, jemně zaoblené rohy, inset stín,
+ * samostatný svítící ikonový blok se studeným modrošedým leskem. Hlavní
+ * akce (.console-button--primary, "Otočit se ke dveřím") dostane výstražný
+ * oranžový akcent a větší ikonový blok, ne jen jinou barvu borderu. */
+.console-button {
+  border-radius: 6px;
+  border-width: 1px;
+  border-color: #3b4048;
+  background: linear-gradient(180deg, rgba(38, 42, 48, 0.9), rgba(20, 22, 26, 0.92));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 -2px 5px rgba(0, 0, 0, 0.55),
+    0 2px 6px rgba(0, 0, 0, 0.4);
+  transition: border-color 0.12s steps(2), box-shadow 0.12s steps(2), background-color 0.12s steps(2);
+}
+
+.console-button:hover,
+.console-button:focus-visible {
+  border-color: #64748b;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    inset 0 -2px 5px rgba(0, 0, 0, 0.55),
+    0 0 10px rgba(100, 116, 139, 0.35);
+}
+
+.console-button:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 2px;
+}
+
+.console-icon-block {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 4px;
+  border: 1px solid #48566b;
+  background: linear-gradient(180deg, rgba(51, 65, 85, 0.55), rgba(15, 23, 42, 0.7));
+  color: #93c5fd;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 0 6px rgba(59, 130, 246, 0.25);
+  transition: box-shadow 0.12s steps(2), color 0.12s steps(2);
+}
+
+.console-button:hover .console-icon-block,
+.console-button:focus-visible .console-icon-block {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06), 0 0 12px rgba(96, 165, 250, 0.55);
+  color: #bfdbfe;
+}
+
+/* Hlavní akce ("Otočit se ke dveřím") — výstražný oranžový akcent, větší
+ * ikonový blok, jemný amber glow. */
+.console-button--primary {
+  border-color: rgba(245, 158, 11, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -2px 5px rgba(0, 0, 0, 0.55),
+    0 0 12px rgba(245, 158, 11, 0.22);
+}
+
+.console-button--primary:hover,
+.console-button--primary:focus-visible {
+  border-color: rgba(251, 191, 36, 0.85);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -2px 5px rgba(0, 0, 0, 0.55),
+    0 0 18px rgba(245, 158, 11, 0.45);
+}
+
+.console-icon-block--primary {
+  width: 38px;
+  height: 38px;
+  border-color: rgba(245, 158, 11, 0.6);
+  background: linear-gradient(180deg, rgba(120, 53, 15, 0.4), rgba(20, 12, 4, 0.7));
+  color: #fbbf24;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 0 8px rgba(245, 158, 11, 0.35);
+}
+
+.console-button--primary:hover .console-icon-block--primary,
+.console-button--primary:focus-visible .console-icon-block--primary {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 0 16px rgba(245, 158, 11, 0.6);
+  color: #fde68a;
+}
+
+/* Urgentní stav (viz .pixel-button[data-urgent="true"] výše) nastavuje
+ * `color` na tlačítku, ale .console-icon-block má vlastní `color` (dědění
+ * by ho jinak nepřebilo) — tenhle selektor ho pro urgentní stav vrátí zpět
+ * do souladu, ať ikona zčervená spolu se zbytkem blikajícího tlačítka. */
+.pixel-button[data-urgent="true"] .console-icon-block {
+  color: #fecaca;
+  border-color: #ef4444;
+}
+
+/* Mobil — menší ikonový blok, ať nezabírá nepřiměřeně místa (viz zadání
+ * "mobilní UX nech prakticky stejné"). */
+@media (max-width: 767px) {
+  .console-icon-block {
+    width: 24px;
+    height: 24px;
+  }
+  .console-icon-block--primary {
+    width: 32px;
+    height: 32px;
+  }
+}
+

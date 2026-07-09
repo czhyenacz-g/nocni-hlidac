@@ -73,7 +73,13 @@ export default function DeskView({
 
       <ViewSwitchArrow label={COPY.game.lookAtMapLabel} onClick={onLookAtMap} align="center" />
 
-      <ViewSwitchArrow label={COPY.game.lookAtDoorLabel} onClick={onLookAtDoor} align="center" variant="primary" />
+      <ViewSwitchArrow
+        label={COPY.game.lookAtDoorLabel}
+        onClick={onLookAtDoor}
+        align="center"
+        variant="primary"
+        icon="door"
+      />
     </div>
   );
 }

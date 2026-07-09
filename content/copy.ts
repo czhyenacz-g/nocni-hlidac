@@ -19,7 +19,7 @@ export const COPY = {
     normalLabel: "NORMAL",
     hardcoreLabel: "HARDCORE",
     normalTooltip: "Normal: 3 životy. Nezapisuje se do Síně slávy.",
-    hardcoreTooltip: "Hardcore: 1 život. Smrt znamená návrat na noc 1. Zapisuje se do Síně slávy. Vyžaduje Discord.",
+    hardcoreTooltip: "Hardcore: 1 život. Jen legendy se dostanou do síně slávy! Vyžaduje Discord.",
     // Zobrazí se při kliknutí na HARDCORE bez Discord přihlášení (viz
     // MainMenuScreen.tsx#handleSelectHardcore) — hráč zůstává v Normal,
     // dokud se nepřihlásí.
@@ -57,15 +57,17 @@ export const COPY = {
     nightLabel: "Noc {n}",
     camerasLabel: "Kamery",
     cameraOverviewHint: "Klikni na monitor pro detail.",
-    backToOverviewLabel: "← Zpět na přehled",
+    // Šipka byla dřív součástí textu — teď ji kreslí ikonový blok
+    // (viz ViewSwitchArrow.tsx#ViewSwitchIcon "arrow-left"), text zůstává čistý.
+    backToOverviewLabel: "Zpět na přehled",
     cameraFocusingLabel: "LADÍM SIGNÁL...",
     audioOnLabel: "Zvuk: zapnutý",
     audioOffLabel: "Zvuk: vypnutý",
     // Dominantní navigace v control roomu — šipka dolů, ne doprava, ať
     // odpovídá tomu, že dveře jsou "hlavní směr pohledu" spodní navigace
     // (viz DeskView.tsx, ViewSwitchArrow variant="primary").
-    lookAtDoorLabel: "Otočit se ke dveřím ↓",
-    lookAtDeskLabel: "← Zpět k panelu",
+    lookAtDoorLabel: "Otočit se ke dveřím",
+    lookAtDeskLabel: "Zpět k panelu",
     // Text hotspotu odráží akci, kterou klik provede (ne popis "klikni na
     // dveře") — viz DoorView.tsx, stejná dvojice jako aria-label u hotspotu.
     doorViewHintOpen: "Otevřít dveře",
@@ -84,11 +86,11 @@ export const COPY = {
     bulbReplaceProgressShortLabel: "{seconds} s",
     /** Krátká hláška po úspěšném dokončení výměny (viz DoorView.tsx, bulbReplaceSuccessSeq). */
     bulbReplaceSuccessLabel: "Žárovka vyměněna.",
-    lookAtGeneratorLabel: "Zkontrolovat generátor →",
+    lookAtGeneratorLabel: "Zkontrolovat generátor",
     // Čistě atmosférický pohled bez herní mechaniky (viz LeftWallView.tsx,
     // gameReducer.ts LOOK_AT_LEFT_WALL) — vlastní text návratu na výslovné
     // přání zadání, ne sdílený lookAtDeskLabel.
-    lookAtLeftWallLabel: "← Podívat se na stěnu vlevo",
+    lookAtLeftWallLabel: "Podívat se na stěnu vlevo",
     leftWallBackLabel: "Zpět ke stolu",
     // Spustí EmergencyMiniGame (viz LeftWallView.tsx, app/play/page.tsx
     // handleStartEmergencyRunWindup) — první tenké napojení nouzové minihry

@@ -41,32 +41,44 @@ export default function GeneratorView({ generatorState, beepSeq, accidentalResta
     <div className="flex flex-col gap-3">
       <ViewSwitchArrow label={COPY.game.lookAtDeskLabel} onClick={onLookAtDesk} align="left" />
 
-      <button
-        className="pixel-button pixel-screen-static tap-target-critical h-48 w-full flex flex-col items-center justify-center gap-3 text-sm relative"
-        data-active={generatorState !== "normal"}
-        onClick={onRestartGenerator}
-        aria-label="Restartovat generátor"
-      >
-        <span
-          key={indicatorKey}
-          className="pixel-indicator"
-          data-state={generatorState}
-          data-flash={generatorState === "normal"}
-        />
-        <span>{COPY.game.generatorStateLabels[generatorState]}</span>
-        <span className="text-[10px] text-gray-400">{COPY.game.generatorViewHint}</span>
+      {/* Stejný "terminál" obal jako MainMenuScreen/LoadingScreen/BriefingScreen
+          (viz zadání "udělej ve stejným stylu jako úvodní stránka") — kovový
+          rám + 4 šrouby kolem, samotné tlačítko restartu dostane navíc třídu
+          .menu-terminal-screen (zapuštěná tmavší obrazovka + zelený CRT
+          nádech), beze změny klikatelnosti/data-active/obsahu. */}
+      <div className="menu-terminal-frame">
+        <span className="camera-monitor-screw" style={{ top: 5, left: 5 }} aria-hidden="true" />
+        <span className="camera-monitor-screw" style={{ top: 5, right: 5 }} aria-hidden="true" />
+        <span className="camera-monitor-screw" style={{ bottom: 5, left: 5 }} aria-hidden="true" />
+        <span className="camera-monitor-screw" style={{ bottom: 5, right: 5 }} aria-hidden="true" />
 
-        {showAccidentalRestartMessage && (
-          // pointer-events-none: čistě informativní hláška, nesmí bránit
-          // dalším kliknutím na tlačítko pod ní.
-          <div
-            className="absolute pointer-events-none text-sm text-amber-300 bg-black/70 px-3 py-1 rounded whitespace-nowrap"
-            style={{ left: "50%", top: "8%", transform: "translate(-50%, -50%)" }}
-          >
-            {COPY.game.generatorAccidentalRestartMessage}
-          </div>
-        )}
-      </button>
+        <button
+          className="pixel-button pixel-screen-static menu-terminal-screen tap-target-critical h-48 w-full flex flex-col items-center justify-center gap-3 text-sm relative"
+          data-active={generatorState !== "normal"}
+          onClick={onRestartGenerator}
+          aria-label="Restartovat generátor"
+        >
+          <span
+            key={indicatorKey}
+            className="pixel-indicator"
+            data-state={generatorState}
+            data-flash={generatorState === "normal"}
+          />
+          <span>{COPY.game.generatorStateLabels[generatorState]}</span>
+          <span className="text-[10px] text-gray-400">{COPY.game.generatorViewHint}</span>
+
+          {showAccidentalRestartMessage && (
+            // pointer-events-none: čistě informativní hláška, nesmí bránit
+            // dalším kliknutím na tlačítko pod ní.
+            <div
+              className="absolute pointer-events-none text-sm text-amber-300 bg-black/70 px-3 py-1 rounded whitespace-nowrap"
+              style={{ left: "50%", top: "8%", transform: "translate(-50%, -50%)" }}
+            >
+              {COPY.game.generatorAccidentalRestartMessage}
+            </div>
+          )}
+        </button>
+      </div>
     </div>
   );
 }
