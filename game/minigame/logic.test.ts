@@ -23,6 +23,7 @@ import {
   hasFinalHitDelayElapsed,
   hasLineOfSight,
   isEnemyHit,
+  isMonsterHitFinal,
   isMonsterOfficeThreatArmed,
   isOfficeDoorLocked,
   isPointInCone,
@@ -35,11 +36,11 @@ import {
   MINIGAME_HEARTBEAT_VOLUME_VISIBLE,
   msSinceOfficeDoorOpened,
   msUntilOfficeDoorOpens,
+  qualifiesAsNewMonsterHit,
   resolveEquipmentFromInput,
   resolveMiniGameHeartbeatVolume,
   shouldHighlightOfficeMarker,
   shouldShowOfficeBoundCrisisMarker,
-  shouldTriggerFinalMonsterHit,
   tickEnemyStun,
   updateEnemyAi,
   updateMissionPhase,
@@ -899,7 +900,7 @@ describe("result builders", () => {
   });
 
   it("createReturnedResult without a completedObjective (return_to_office)", () => {
-    expect(createReturnedResult(5000, 1)).toEqual({ outcome: "returned", elapsedMs: 5000, shotsUsed: 1 });
+    expect(createReturnedResult(5000, 1)).toEqual({ outcome: "returned", elapsedMs: 5000, shotsUsed: 1, monsterHits: 0 });
   });
 
   it("createReturnedResult with a completedObjective (collect_item) also derives worldEffects", () => {
@@ -907,6 +908,7 @@ describe("result builders", () => {
       outcome: "returned",
       elapsedMs: 5000,
       shotsUsed: 1,
+      monsterHits: 0,
       completedObjective: { type: "collected_item", itemId: "fuse" },
       collectedItems: ["fuse"],
       worldEffects: [{ type: "generator_repaired" }],
@@ -918,6 +920,7 @@ describe("result builders", () => {
       outcome: "returned",
       elapsedMs: 5000,
       shotsUsed: 1,
+      monsterHits: 0,
       completedObjective: { type: "collected_item", itemId: "key" },
       collectedItems: ["key"],
     });
@@ -928,6 +931,7 @@ describe("result builders", () => {
       outcome: "returned",
       elapsedMs: 42150,
       shotsUsed: 1,
+      monsterHits: 0,
       completedObjective: { type: "collected_item", itemId: "battery" },
       collectedItems: ["battery"],
       worldEffects: [{ type: "energy_recharged", amount: 35 }],
@@ -940,6 +944,7 @@ describe("result builders", () => {
       outcome: "returned",
       elapsedMs: 42150,
       shotsUsed: 1,
+      monsterHits: 0,
       completedObjective: { type: "collected_item", itemId: "battery" },
       collectedItems: ["battery"],
       worldEffects: [{ type: "energy_recharged", amount: 35 }],
@@ -949,39 +954,57 @@ describe("result builders", () => {
 
   it("createReturnedResult omits officeThreatOnReturn entirely when it is inactive", () => {
     const inactiveThreat = { active: false as const, reason: "monster_chasing" as const, intensity: "low" as const };
-    expect(createReturnedResult(5000, 1, undefined, inactiveThreat)).toEqual({ outcome: "returned", elapsedMs: 5000, shotsUsed: 1 });
-  });
-
-  it("createReturnedResult omits monsterHit when not passed (miss/no shot fired)", () => {
-    expect(createReturnedResult(5000, 1)).toEqual({ outcome: "returned", elapsedMs: 5000, shotsUsed: 1 });
-  });
-
-  it("createReturnedResult omits monsterHit when explicitly false", () => {
-    expect(createReturnedResult(5000, 1, undefined, undefined, false)).toEqual({
+    expect(createReturnedResult(5000, 1, undefined, inactiveThreat)).toEqual({
       outcome: "returned",
       elapsedMs: 5000,
       shotsUsed: 1,
+      monsterHits: 0,
     });
   });
 
-  it("createReturnedResult includes monsterHit: true when the player hit the monster this run", () => {
-    expect(createReturnedResult(5000, 1, undefined, undefined, true)).toEqual({
+  it("createReturnedResult has monsterHits: 0 and omits monsterHit when not passed (miss/no shot fired)", () => {
+    expect(createReturnedResult(5000, 1)).toEqual({ outcome: "returned", elapsedMs: 5000, shotsUsed: 1, monsterHits: 0 });
+  });
+
+  it("createReturnedResult has monsterHits: 0 and omits monsterHit when explicitly 0", () => {
+    expect(createReturnedResult(5000, 1, undefined, undefined, 0)).toEqual({
       outcome: "returned",
       elapsedMs: 5000,
       shotsUsed: 1,
+      monsterHits: 0,
+    });
+  });
+
+  it("createReturnedResult includes monsterHits: 1 and monsterHit: true for a single confirmed hit (regular shotgun)", () => {
+    expect(createReturnedResult(5000, 1, undefined, undefined, 1)).toEqual({
+      outcome: "returned",
+      elapsedMs: 5000,
+      shotsUsed: 1,
+      monsterHits: 1,
       monsterHit: true,
     });
   });
 
-  it("createReturnedResult combines monsterHit with a completedObjective/worldEffects independently", () => {
-    expect(createReturnedResult(5000, 1, { type: "collected_item", itemId: "battery" }, undefined, true)).toEqual({
+  it("createReturnedResult includes monsterHits: 2 and monsterHit: true for two confirmed hits (double-barrel shotgun)", () => {
+    expect(createReturnedResult(5000, 2, undefined, undefined, 2)).toEqual({
+      outcome: "returned",
+      elapsedMs: 5000,
+      shotsUsed: 2,
+      monsterHits: 2,
+      monsterHit: true,
+    });
+  });
+
+  it("createReturnedResult combines monsterHits with a completedObjective/worldEffects independently", () => {
+    expect(createReturnedResult(5000, 1, { type: "collected_item", itemId: "battery" }, undefined, 1)).toEqual({
       outcome: "returned",
       elapsedMs: 5000,
       shotsUsed: 1,
+      monsterHits: 1,
+      monsterHit: true,
       completedObjective: { type: "collected_item", itemId: "battery" },
       collectedItems: ["battery"],
       worldEffects: [{ type: "energy_recharged", amount: 35 }],
-      monsterHit: true,
     });
   });
 
@@ -994,6 +1017,7 @@ describe("result builders", () => {
         outcome: "returned",
         elapsedMs: 5000,
         shotsUsed: 0,
+        monsterHits: 0,
         collectedItems: ["battery", "bulb"],
         worldEffects: [
           { type: "energy_recharged", amount: 35 },
@@ -1009,28 +1033,31 @@ describe("result builders", () => {
         outcome: "returned",
         elapsedMs: 5000,
         shotsUsed: 1,
+        monsterHits: 0,
         completedObjective: { type: "collected_item", itemId: "shotgun" },
         collectedItems: ["shotgun", "battery"],
         worldEffects: [{ type: "shotgun_acquired" }, { type: "energy_recharged", amount: 35 }],
       });
     });
 
-    it("monsterHit + extra loot together: both monsterHit and worldEffects for the loot are present", () => {
-      expect(createReturnedResult(5000, 1, undefined, undefined, true, ["bulb"])).toEqual({
+    it("monsterHits + extra loot together: both monsterHits/monsterHit and worldEffects for the loot are present", () => {
+      expect(createReturnedResult(5000, 1, undefined, undefined, 1, ["bulb"])).toEqual({
         outcome: "returned",
         elapsedMs: 5000,
         shotsUsed: 1,
+        monsterHits: 1,
+        monsterHit: true,
         collectedItems: ["bulb"],
         worldEffects: [{ type: "bulbs_serviced" }],
-        monsterHit: true,
       });
     });
 
-    it("monsterHit without any loot: monsterHit is present, collectedItems/worldEffects are omitted", () => {
-      expect(createReturnedResult(5000, 1, undefined, undefined, true, [])).toEqual({
+    it("monsterHits without any loot: monsterHits/monsterHit are present, collectedItems/worldEffects are omitted", () => {
+      expect(createReturnedResult(5000, 1, undefined, undefined, 1, [])).toEqual({
         outcome: "returned",
         elapsedMs: 5000,
         shotsUsed: 1,
+        monsterHits: 1,
         monsterHit: true,
       });
     });
@@ -1040,6 +1067,7 @@ describe("result builders", () => {
         outcome: "returned",
         elapsedMs: 5000,
         shotsUsed: 0,
+        monsterHits: 0,
       });
     });
   });
@@ -1053,6 +1081,7 @@ describe("result builders", () => {
         outcome: "returned",
         elapsedMs: 25000,
         shotsUsed: 0,
+        monsterHits: 0,
         worldEffects: [{ type: "monster_reached_office" }],
       });
     });
@@ -1062,6 +1091,7 @@ describe("result builders", () => {
         outcome: "returned",
         elapsedMs: 25000,
         shotsUsed: 0,
+        monsterHits: 0,
         collectedItems: ["battery"],
         worldEffects: [{ type: "energy_recharged", amount: 35 }, { type: "monster_reached_office" }],
       });
@@ -1072,8 +1102,9 @@ describe("result builders", () => {
         outcome: "returned",
         elapsedMs: 5000,
         shotsUsed: 0,
+        monsterHits: 0,
       });
-      expect(createReturnedResult(5000, 0)).toEqual({ outcome: "returned", elapsedMs: 5000, shotsUsed: 0 });
+      expect(createReturnedResult(5000, 0)).toEqual({ outcome: "returned", elapsedMs: 5000, shotsUsed: 0, monsterHits: 0 });
     });
   });
 
@@ -1307,22 +1338,54 @@ describe("office marker — getOfficeMarkerLabel / shouldHighlightOfficeMarker",
   });
 });
 
-describe("shouldTriggerFinalMonsterHit", () => {
-  it("true on a hit, flagged as final, first hit of the run", () => {
-    expect(shouldTriggerFinalMonsterHit(true, true, false)).toBe(true);
+describe("qualifiesAsNewMonsterHit", () => {
+  it("false when the shot missed, regardless of the wounded/recover window", () => {
+    expect(qualifiesAsNewMonsterHit(false, null, 0)).toBe(false);
+    expect(qualifiesAsNewMonsterHit(false, 5000, 6000)).toBe(false);
   });
 
-  it("false when the shot missed, even if flagged final", () => {
-    expect(shouldTriggerFinalMonsterHit(false, true, false)).toBe(false);
+  it("true on the first hit of the run (monsterWoundedUntilMs still null)", () => {
+    expect(qualifiesAsNewMonsterHit(true, null, 1234)).toBe(true);
   });
 
-  it("false when the run isn't flagged as final (hits 1-9)", () => {
-    expect(shouldTriggerFinalMonsterHit(true, false, false)).toBe(false);
-    expect(shouldTriggerFinalMonsterHit(true, undefined, false)).toBe(false);
+  it("false for a second hit landing while still inside the wounded/recover window", () => {
+    // First hit at elapsedMs=1000 sets monsterWoundedUntilMs=1000+1100=2100.
+    expect(qualifiesAsNewMonsterHit(true, 2100, 1050)).toBe(false);
+    expect(qualifiesAsNewMonsterHit(true, 2100, 2099)).toBe(false);
   });
 
-  it("false on a second hit within the same (already-triggered) final run", () => {
-    expect(shouldTriggerFinalMonsterHit(true, true, true)).toBe(false);
+  it("true again once the wounded/recover window has elapsed", () => {
+    expect(qualifiesAsNewMonsterHit(true, 2100, 2100)).toBe(true);
+    expect(qualifiesAsNewMonsterHit(true, 2100, 3000)).toBe(true);
+  });
+});
+
+describe("isMonsterHitFinal", () => {
+  it("false when requiredHits is not provided", () => {
+    expect(isMonsterHitFinal(9, 1, undefined)).toBe(false);
+    expect(isMonsterHitFinal(999, 999, undefined)).toBe(false);
+  });
+
+  it("false when monsterHitsToday=8 plus a single hit this run (total 9, below 10)", () => {
+    expect(isMonsterHitFinal(8, 1, 10)).toBe(false);
+  });
+
+  it("true when monsterHitsToday=8 plus two hits this run (total 10, double-barrel)", () => {
+    expect(isMonsterHitFinal(8, 2, 10)).toBe(true);
+  });
+
+  it("true when monsterHitsToday=9 plus a single hit this run (total 10)", () => {
+    expect(isMonsterHitFinal(9, 1, 10)).toBe(true);
+  });
+
+  it("stays true past the threshold too (defensive, shouldn't normally happen)", () => {
+    expect(isMonsterHitFinal(10, 1, 10)).toBe(true);
+  });
+
+  it("respects an admin-shortened threshold", () => {
+    expect(isMonsterHitFinal(0, 1, 2)).toBe(false);
+    expect(isMonsterHitFinal(1, 1, 2)).toBe(true);
+    expect(isMonsterHitFinal(0, 2, 2)).toBe(true);
   });
 });
 

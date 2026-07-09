@@ -66,7 +66,6 @@ import {
   createShotgunEmergencyInput,
   resolveBulbsGainedFromWorldEffects,
   resolveExtraLootItems,
-  resolveIsFinalMonsterHit,
   resolveOfficeThreatTriggeredFromWorldEffects,
   shouldLaunchEmergencyMiniGame,
 } from "@/game/core/emergencyMiniGameIntegration";
@@ -628,17 +627,16 @@ export default function PlayPage() {
       // aktuálního GameState, ne natvrdo prázdné (viz
       // game/core/emergencyMiniGameIntegration.ts).
       const equipment = { hasShotgun: state.hasShotgun, ammo: state.shotgunAmmo };
-      // Hidden true ending (viz zadání, game/core/monsterEnding.ts) — spočítá
-      // se PŘED spuštěním výpravy, ať EmergencyMiniGame ví hned od začátku,
-      // jestli by první úspěšný zásah byl finální, viz resolveIsFinalMonsterHit.
+      // Hidden true ending (viz zadání, game/core/monsterEnding.ts) — pošle se
+      // jen SUROVÝ stav (kolik zásahů má hráč PŘED výpravou, kolik jich noc
+      // vyžaduje), ne předem spočítaný "je první zásah finální" boolean.
+      // EmergencyMiniGame.tsx si finální zásah vyhodnocuje kumulativně PO
+      // KAŽDÉM zásahu zvlášť (viz game/minigame/logic.ts#isMonsterHitFinal) —
+      // nutné pro dvouhlavňovku, kde finální může být až druhý zásah výpravy.
       // Platí pro OBĚ výpravy (battery i shotgun run) — hráč může mít
       // brokovnici už z dřívějška, zásah proto není vázaný jen na "Jít ven
       // pro brokovnici". Práh (state.nightFeatures.monsterTrueEndingRequiredHits)
       // je admin-zkrácený (viz getNightConfig), ne natvrdo 10.
-      const isFinalMonsterHit = resolveIsFinalMonsterHit(
-        state.monsterHitsToday,
-        state.nightFeatures.monsterTrueEndingRequiredHits,
-      );
       // Sandbox výprava (viz zadání) — mapa VŽDY obsahuje i doplňkový loot
       // navíc k hlavnímu objective (battery/bulb garantované, shotgun
       // podmíněně), viz resolveExtraLootItems.
@@ -650,7 +648,12 @@ export default function PlayPage() {
         });
         setActiveMiniGame({
           id: "shotgun_run",
-          input: createShotgunEmergencyInput(equipment, extraLootItems, isFinalMonsterHit),
+          input: createShotgunEmergencyInput(
+            equipment,
+            extraLootItems,
+            state.monsterHitsToday,
+            state.nightFeatures.monsterTrueEndingRequiredHits,
+          ),
         });
       } else {
         const extraLootItems = resolveExtraLootItems({
@@ -660,7 +663,12 @@ export default function PlayPage() {
         });
         setActiveMiniGame({
           id: "battery_run",
-          input: createBatteryEmergencyInput(equipment, extraLootItems, isFinalMonsterHit),
+          input: createBatteryEmergencyInput(
+            equipment,
+            extraLootItems,
+            state.monsterHitsToday,
+            state.nightFeatures.monsterTrueEndingRequiredHits,
+          ),
         });
       }
     }
@@ -1062,12 +1070,12 @@ export default function PlayPage() {
       }
 
       // Skrytý true ending (viz zadání, game/core/monsterEnding.ts) — zásah se
-      // potvrdí AŽ TADY, při bezpečném návratu (result.monsterHit); smrt/
-      // nedokončená výprava (outcome "dead"/"failed") tenhle dispatch nikdy
-      // nezavolají. Zpráva je záměrně nekonkrétní (žádné "X/10"), ať zůstane
-      // skrytý — stejný text při každém potvrzeném zásahu, bez odhalování
-      // postupu.
-      if (result.monsterHit) {
+      // potvrdí AŽ TADY, při bezpečném návratu (result.monsterHits, 0/1/2 s
+      // dvouhlavňovkou); smrt/nedokončená výprava (outcome "dead"/"failed")
+      // tenhle dispatch nikdy nezavolají. Zpráva je záměrně nekonkrétní
+      // (žádné "X/10"), ať zůstane skrytý — stejný text při každém
+      // potvrzeném zásahu (i při dvou najednou), bez odhalování postupu.
+      if (result.monsterHits > 0) {
         // Profil hlídače (viz zadání, game/core/playerProfileStats.ts) —
         // state.pendingMonsterHits je tady pořád PŘED-dispatchová hodnota
         // (stejná, kterou CONFIRM_MONSTER_HIT níže právě potvrdí) — přesně
@@ -1086,11 +1094,13 @@ export default function PlayPage() {
   }
 
   // Hráč venku PRÁVĚ TEĎ trefil monstrum brokovnicí (viz
-  // EmergencyMiniGame.tsx#fireShot) — jen se to poznamená
-  // (GameState.pendingMonsterHits += 1), NEPOTVRZUJE se tím žádný zásah pro
-  // hidden true ending. Potvrzení přijde až z handleEmergencyMiniGameComplete
-  // při bezpečném návratu (result.monsterHit); smrt venku
-  // (EMERGENCY_MINIGAME_DIED) ho zase zahodí.
+  // EmergencyMiniGame.tsx#fireShot) — volá se jednou za KAŽDÝ nově
+  // započítaný zásah (až dvakrát za výpravu s dvouhlavňovkou), jen se to
+  // poznamená (GameState.pendingMonsterHits += 1), NEPOTVRZUJE se tím žádný
+  // zásah pro hidden true ending. Potvrzení přijde až z
+  // handleEmergencyMiniGameComplete při bezpečném návratu
+  // (result.monsterHits); smrt venku (EMERGENCY_MINIGAME_DIED) ho zase
+  // zahodí.
   function handleMonsterHit() {
     dispatch({ type: "MARK_PENDING_MONSTER_HIT" });
   }

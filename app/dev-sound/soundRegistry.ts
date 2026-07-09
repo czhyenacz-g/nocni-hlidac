@@ -217,6 +217,6 @@ export const SOUND_REGISTRY: Record<AudioEventId, SoundRegistryEntry> = {
     label: "Monster final death roar",
     description: "Hráč dá monstru 10. (finální) potvrzený zásah — hidden true ending, znamená smrt, ne ústup.",
     guess: "Krátký (3.8s) hlubší/ostřejší řev než hardcoreSelectRoar — poslední, definitivní.",
-    usedIn: "components/minigame/EmergencyMiniGame.tsx — fireShot() při isFinalMonsterHit.",
+    usedIn: "components/minigame/EmergencyMiniGame.tsx — fireShot() při isMonsterHitFinal.",
   },
 };

@@ -79,15 +79,27 @@ export const INVESTIGATION_MAX_ATTEMPTS = 8;
 /** Jak dlouho (ms) zůstane nepřítel po zásahu brokovnicí "wounded" (omráčený, ne mrtvý) — viz updateEnemyAi. */
 export const ENEMY_STUN_DURATION_MS = 10_000;
 
+/**
+ * Jak dlouho (ms) po zásahu monstrum nejde znovu POČÍTAT jako nový zásah
+ * (viz EmergencyMiniGame.tsx#fireShot, qualifiesAsNewMonsterHit) — jiná věc
+ * než ENEMY_STUN_DURATION_MS výše (ten řídí, jak dlouho je monstrum
+ * neškodné/bez AI pohybu, 10s). Tohle je krátké okno jen pro
+ * HIT-COUNTING: dvouhlavňovka může vystřelit podruhé hned, ale druhý
+ * zásah do ještě "čerstvě" zraněného monstra se nesmí započítat jako
+ * druhý potvrzený zásah (jeden dobrý zásah != dva zásahy ve stejném framu).
+ */
+export const MONSTER_WOUNDED_RECOVER_MS = 1100;
+
 /** Jak dlouho (ms) bliká výseč po výstřelu (zásah i minutí) — čistě vizuální, neovlivňuje hit detection. */
 export const SHOT_FLASH_DURATION_MS = 150;
 
 /**
- * Dramatická pauza (ms) po finálním (10.) zásahu monstra, než se výprava
+ * Dramatická pauza (ms) po finálním zásahu monstra, než se výprava
  * automaticky dokončí jako bezpečný návrat (viz EmergencyMiniGame.tsx#tick,
- * `EmergencyMiniGameInput.isFinalMonsterHit`, GAME_DESIGN.md "Hidden true
- * ending"). Hráč tenhle krok neřídí — cinematic samo přejde na
- * MonsterDefeatedScreen, žádné riskantní doběhnutí zpátky do kanceláře.
+ * `EmergencyMiniGameInput.monsterHitsToday`/`monsterHitsRequiredForFinal`,
+ * GAME_DESIGN.md "Hidden true ending"). Hráč tenhle krok neřídí — cinematic
+ * samo přejde na MonsterDefeatedScreen, žádné riskantní doběhnutí zpátky do
+ * kanceláře.
  */
 export const MONSTER_FINAL_DEATH_SCREEN_DELAY_MS = 5000;
 

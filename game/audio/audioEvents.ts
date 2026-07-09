@@ -51,9 +51,9 @@ export const AUDIO_EVENTS = {
   // #handleSelectHardcore) — krátký řev monstra místo obyčejného uiClick,
   // ať volba nejtěžšího režimu má vlastní výraznou zvukovou odezvu.
   hardcoreSelectRoar: "hardcore_select_roar",
-  // Finální (10.) potvrzený zásah monstra — hidden true ending (viz
+  // Finální potvrzený zásah monstra — hidden true ending (viz
   // game/core/monsterEnding.ts, EmergencyMiniGame.tsx#fireShot
-  // isFinalMonsterHit). Znamená SMRT, ne ústup — NIKDY nezaměňovat s
+  // isMonsterHitFinal). Znamená SMRT, ne ústup — NIKDY nezaměňovat s
   // monsterRetreatRoar (to je jen dočasné odehnání, monstrum se vrací).
   monsterFinalDeathRoar: "monster_final_death_roar",
 } as const;

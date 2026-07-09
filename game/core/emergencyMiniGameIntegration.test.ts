@@ -8,13 +8,11 @@ import {
   createShotgunEmergencyInput,
   resolveBulbsGainedFromWorldEffects,
   resolveExtraLootItems,
-  resolveIsFinalMonsterHit,
   resolveOfficeThreatTriggeredFromWorldEffects,
   shouldLaunchEmergencyMiniGame,
 } from "./emergencyMiniGameIntegration";
 import { MAX_POWER } from "../balancing/constants";
 import { SERVICE_FLOOR_EVAC_PLAN } from "../minigame/layouts/serviceFloorEvacPlan";
-import { MONSTER_TRUE_ENDING_REQUIRED_HITS } from "./monsterEnding";
 
 describe("createBatteryEmergencyInput", () => {
   it("has objective collect_item and itemToCollect battery", () => {
@@ -46,12 +44,16 @@ describe("createBatteryEmergencyInput", () => {
     expect(input.layoutId).toBe(DEFAULT_BATTERY_RUN_LAYOUT_ID);
   });
 
-  it("isFinalMonsterHit defaults to false when not passed", () => {
-    expect(createBatteryEmergencyInput({ hasShotgun: false, ammo: 0 }).isFinalMonsterHit).toBe(false);
+  it("monsterHitsToday/monsterHitsRequiredForFinal default to undefined when not passed", () => {
+    const input = createBatteryEmergencyInput({ hasShotgun: false, ammo: 0 });
+    expect(input.monsterHitsToday).toBeUndefined();
+    expect(input.monsterHitsRequiredForFinal).toBeUndefined();
   });
 
-  it("passes isFinalMonsterHit through unchanged when provided (hidden true ending)", () => {
-    expect(createBatteryEmergencyInput({ hasShotgun: false, ammo: 0 }, [], true).isFinalMonsterHit).toBe(true);
+  it("passes monsterHitsToday/monsterHitsRequiredForFinal through unchanged when provided (hidden true ending)", () => {
+    const input = createBatteryEmergencyInput({ hasShotgun: false, ammo: 0 }, [], 8, 10);
+    expect(input.monsterHitsToday).toBe(8);
+    expect(input.monsterHitsRequiredForFinal).toBe(10);
   });
 });
 
@@ -81,50 +83,16 @@ describe("createShotgunEmergencyInput", () => {
     ]);
   });
 
-  it("isFinalMonsterHit defaults to false when not passed", () => {
-    expect(createShotgunEmergencyInput({ hasShotgun: false, ammo: 0 }).isFinalMonsterHit).toBe(false);
+  it("monsterHitsToday/monsterHitsRequiredForFinal default to undefined when not passed", () => {
+    const input = createShotgunEmergencyInput({ hasShotgun: false, ammo: 0 });
+    expect(input.monsterHitsToday).toBeUndefined();
+    expect(input.monsterHitsRequiredForFinal).toBeUndefined();
   });
 
-  it("passes isFinalMonsterHit through unchanged when provided (hidden true ending)", () => {
-    expect(createShotgunEmergencyInput({ hasShotgun: false, ammo: 0 }, [], true).isFinalMonsterHit).toBe(true);
-  });
-});
-
-// Hidden true ending (viz zadání, game/core/monsterEnding.ts) — spočítá se
-// PŘED spuštěním výpravy (viz app/play/page.tsx), ne uvnitř minihry. Za
-// jednu výpravu se počítá nejvýš jeden zásah, proto "monsterHitsToday + 1".
-describe("resolveIsFinalMonsterHit", () => {
-  it("false for hits 1 through 8 (well below the threshold)", () => {
-    for (let hits = 0; hits < MONSTER_TRUE_ENDING_REQUIRED_HITS - 2; hits++) {
-      expect(resolveIsFinalMonsterHit(hits)).toBe(false);
-    }
-  });
-
-  it("false when the NEXT hit would be the 9th (still one more after it)", () => {
-    expect(resolveIsFinalMonsterHit(MONSTER_TRUE_ENDING_REQUIRED_HITS - 2)).toBe(false);
-  });
-
-  it("true when the NEXT hit would be the 10th (the actual threshold)", () => {
-    expect(resolveIsFinalMonsterHit(MONSTER_TRUE_ENDING_REQUIRED_HITS - 1)).toBe(true);
-  });
-
-  it("stays true past the threshold too (defensive, shouldn't normally happen)", () => {
-    expect(resolveIsFinalMonsterHit(MONSTER_TRUE_ENDING_REQUIRED_HITS)).toBe(true);
-  });
-
-  // Admin zkrácený práh (viz zadání "for admin reduce necessary monster
-  // death count to 2") — requiredHits je explicitní druhý parametr, výchozí
-  // na MONSTER_TRUE_ENDING_REQUIRED_HITS, ale volající (app/play/page.tsx)
-  // posílá state.nightFeatures.monsterTrueEndingRequiredHits.
-  describe("requiredHits (admin override)", () => {
-    it("defaults to MONSTER_TRUE_ENDING_REQUIRED_HITS when omitted", () => {
-      expect(resolveIsFinalMonsterHit(5)).toBe(resolveIsFinalMonsterHit(5, MONSTER_TRUE_ENDING_REQUIRED_HITS));
-    });
-
-    it("with requiredHits 2, the very first hit (0 hits so far) is already final", () => {
-      expect(resolveIsFinalMonsterHit(0, 2)).toBe(false);
-      expect(resolveIsFinalMonsterHit(1, 2)).toBe(true);
-    });
+  it("passes monsterHitsToday/monsterHitsRequiredForFinal through unchanged when provided (hidden true ending)", () => {
+    const input = createShotgunEmergencyInput({ hasShotgun: false, ammo: 0 }, [], 9, 10);
+    expect(input.monsterHitsToday).toBe(9);
+    expect(input.monsterHitsRequiredForFinal).toBe(10);
   });
 });
 

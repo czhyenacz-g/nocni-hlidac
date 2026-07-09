@@ -32,6 +32,7 @@ import {
   MINIGAME_PLAYER_VISION_RAY_COUNT,
   MINIGAME_PLAYER_VISION_RAY_STEP_PX,
   MONSTER_FINAL_DEATH_SCREEN_DELAY_MS,
+  MONSTER_WOUNDED_RECOVER_MS,
   MOVE_TARGET_ARRIVAL_RADIUS_PX,
   MOVE_TARGET_MARKER_DURATION_MS,
   OFFICE_THREAT_NEAR_OFFICE_RADIUS_PX,
@@ -76,16 +77,17 @@ import {
   distance,
   getOfficeMarkerLabel,
   hasFinalHitDelayElapsed,
+  isMonsterHitFinal,
   isMonsterOfficeThreatArmed,
   isOfficeDoorLocked,
   MINIGAME_HEARTBEAT_VOLUME_BASE,
   moveWithWallSliding,
   msUntilOfficeDoorOpens,
+  qualifiesAsNewMonsterHit,
   resolveEquipmentFromInput,
   resolveMiniGameHeartbeatVolume,
   shouldHighlightOfficeMarker,
   shouldShowOfficeBoundCrisisMarker,
-  shouldTriggerFinalMonsterHit,
   updateEnemyAi,
   updateMissionPhase,
 } from "@/game/minigame/logic";
@@ -204,26 +206,25 @@ interface MiniGameRefState {
   /** elapsedMs v okamžiku nastavení moveTarget — řídí, jak dlouho zůstává vidět marker (viz isMoveTargetMarkerVisible). */
   moveTargetSetAtElapsedMs: number;
   /**
-   * `true`, jakmile hráč BĚHEM tyhle výpravy aspoň jednou skutečně trefí
-   * monstrum (viz fireShot, isEnemyHit) — nikdy se nevrací zpátky na false.
-   * Posílá se v EmergencyMiniGameResult.monsterHit teprve při skutečném
-   * návratu do kanceláře (viz handleObjectiveKey) — hidden true ending
-   * (game/core/monsterEnding.ts) zásah potvrdí až tam, ne tady.
-   *
-   * TODO (dvouhlavňovka, viz zadání "true ending odměna" část F): tenhle
-   * latch záměrně počítá NEJVÝŠ JEDEN zásah za výpravu, i s dvouhlavňovkou
-   * (2 náboje) — druhý výstřel může minout/omráčit znovu, ale nezvyšuje
-   * potvrzený počet. `GameState.pendingMonsterHits` už JE číselný typ
-   * (připravený na >1), takže plné "2 potvrzené zásahy za jednu výpravu s
-   * dvouhlavňovkou" by šlo doplnit později bez další migrace GameState —
-   * jen by bylo potřeba: (1) tohle pole změnit na counter, (2) povolit
-   * druhý hit jen když se enemy.mode mezitím vrátil z "wounded" (aby
-   * dvojitý zásah do OMRÁČENÉHO monstra nešel počítat jako dva), (3)
-   * přepočítávat "je tenhle konkrétní zásah finální" kumulativně (aktuální
-   * monsterHitsToday + counter téhle výpravy), ne jen jednou předem
-   * spočítaný `isFinalMonsterHit` boolean.
+   * Kolik zásahů monstra hráč BĚHEM tyhle výpravy skutečně dal (viz
+   * fireShot, qualifiesAsNewMonsterHit) — 0, 1, nebo 2 s dvouhlavňovkou
+   * (běžná brokovnice má jen 1 náboj, takže u ní nikdy nepřesáhne 1). Nikdy
+   * se nevrací zpátky dolů. Posílá se v EmergencyMiniGameResult.monsterHits
+   * teprve při skutečném návratu do kanceláře (viz handleObjectiveKey) —
+   * hidden true ending (game/core/monsterEnding.ts) zásahy potvrdí až tam,
+   * ne tady.
    */
-  monsterHitThisRun: boolean;
+  monsterHitsThisRun: number;
+  /**
+   * `elapsedMs`, do kterého ještě NEJDE nový zásah počítat jako další
+   * potvrzený zásah (viz qualifiesAsNewMonsterHit, MONSTER_WOUNDED_RECOVER_MS)
+   * — nastaví se při KAŽDÉM započítaném zásahu na `elapsedMs +
+   * MONSTER_WOUNDED_RECOVER_MS`. `null` = zatím žádný zásah v týhle výpravě
+   * (první zásah vždy počítá). Gate čistě pro HIT-COUNTING — enemy.mode
+   * "wounded"/kolizní neškodnost řeší samostatně ENEMY_STUN_DURATION_MS
+   * (mnohem delší, 10s), tohle pole se ho vůbec netýká.
+   */
+  monsterWoundedUntilMs: number | null;
   /**
    * `true` od okamžiku, kdy monstrum FYZICKY DORAZILO do kanceláře (viz
    * tick() — `enemy.mode === "office_bound"` + `circleIntersectsWall`
@@ -236,18 +237,20 @@ interface MiniGameRefState {
    */
   officeThreatTriggered: boolean;
   /**
-   * `true` od okamžiku, kdy zásah trefí monstrum a `input.isFinalMonsterHit`
-   * je nastavené (viz app/play/page.tsx#handleStartEmergencyRun — počítá
-   * "tenhle zásah by byl 10." předem, PŘED spuštěním výpravy, protože se za
-   * jednu výpravu počítá jen jeden zásah). Latch, nikdy zpátky na false.
-   * `game.enemy.alive` se ve stejném okamžiku nastaví na `false` (stejný
-   * mechanismus jako `officeThreatTriggered` výše) — enemy tak přestane
-   * jednat jako běžný nepřítel (žádný pohyb/AI, žádná kolizní smrt hráče,
-   * viz `tick()` `if (game.enemy.alive)` guardy). tick() navíc přestane
-   * vyhodnocovat pohyb/AI/sběr CELÉ herní smyčky (ne jen enemy část), ať
-   * hráč zůstane "zamrzlý" na dramatickou pauzu (viz
-   * MONSTER_FINAL_DEATH_SCREEN_DELAY_MS), po které se výprava automaticky
-   * dokončí jako bezpečný návrat s `monsterHit: true`.
+   * `true` od okamžiku, kdy zásah (nově započítaný, viz
+   * qualifiesAsNewMonsterHit) kumulativně dosáhne `input.monsterHitsToday +
+   * monsterHitsThisRun >= input.monsterHitsRequiredForFinal` (viz
+   * game/minigame/logic.ts#isMonsterHitFinal, vyhodnocuje se PO KAŽDÉM
+   * zásahu zvlášť — s dvouhlavňovkou tedy může spustit i DRUHÝ zásah
+   * výpravy, ne jen první). Latch, nikdy zpátky na false. `game.enemy.alive`
+   * se ve stejném okamžiku nastaví na `false` (stejný mechanismus jako
+   * `officeThreatTriggered` výše) — enemy tak přestane jednat jako běžný
+   * nepřítel (žádný pohyb/AI, žádná kolizní smrt hráče, viz `tick()`
+   * `if (game.enemy.alive)` guardy). tick() navíc přestane vyhodnocovat
+   * pohyb/AI/sběr CELÉ herní smyčky (ne jen enemy část), ať hráč zůstane
+   * "zamrzlý" na dramatickou pauzu (viz MONSTER_FINAL_DEATH_SCREEN_DELAY_MS),
+   * po které se výprava automaticky dokončí jako bezpečný návrat s
+   * `monsterHits` rovným `monsterHitsThisRun`.
    */
   finalHitTriggered: boolean;
   /** elapsedMs v okamžiku finálního zásahu — `null` mimo finalHitTriggered. Řídí odpočet do automatického dokončení (viz tick()). */
@@ -290,7 +293,8 @@ function createInitialState(input: EmergencyMiniGameInput): MiniGameRefState {
     enemyVisibleToPlayer: false,
     moveTarget: null,
     moveTargetSetAtElapsedMs: 0,
-    monsterHitThisRun: false,
+    monsterHitsThisRun: 0,
+    monsterWoundedUntilMs: null,
     officeThreatTriggered: false,
     finalHitTriggered: false,
     finalHitAtMs: null,
@@ -640,42 +644,53 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
     // Čistě vizuální bliknutí výseče — nezávisí na tom, jestli výstřel trefí.
     game.shotFlashRemainingMs = result.shotFlashRemainingMs;
 
-    if (shouldTriggerFinalMonsterHit(result.hit, input.isFinalMonsterHit, game.monsterHitThisRun)) {
-      // 10. (finální) zásah — hidden true ending (viz
-      // game/core/monsterEnding.ts, MONSTER_FINAL_DEATH_SCREEN_DELAY_MS).
-      // NENÍ jen další "wounded" — monstrum od teď definitivně přestává
-      // jednat jako běžný nepřítel (stejný `alive = false` mechanismus jako
-      // officeThreatTriggered výše: žádný další pohyb/AI, žádná kolizní
-      // smrt hráče, viz tick()). Marker zůstává na místě zásahu, ať hráč má
-      // vizuální potvrzení i po zbytek zamrzlé scény. tick() rozpozná
-      // `finalHitTriggered` a po MONSTER_FINAL_DEATH_SCREEN_DELAY_MS
-      // výpravu samo dokončí jako bezpečný návrat — hráč už nemusí fyzicky
-      // doběhnout zpátky do kanceláře.
+    // Gate proti dvojitému započítání zásahu do ještě "čerstvě" zraněného
+    // monstra (viz MONSTER_WOUNDED_RECOVER_MS) — dvouhlavňovka může
+    // vystřelit podruhé hned, ale druhý zásah počítá jen po uplynutí okna.
+    // Geometrický zásah, který teď nekvalifikuje, se chová jako miss:
+    // náboj je pryč, ale nic dalšího se nemění.
+    if (!qualifiesAsNewMonsterHit(result.hit, game.monsterWoundedUntilMs, game.elapsedMs)) return;
+
+    game.monsterHitsThisRun += 1;
+    game.monsterWoundedUntilMs = game.elapsedMs + MONSTER_WOUNDED_RECOVER_MS;
+
+    // Kumulativní vyhodnocení PO KAŽDÉM zásahu zvlášť (viz
+    // isMonsterHitFinal) — s dvouhlavňovkou tak může finální sekvenci
+    // spustit i DRUHÝ zásah výpravy, ne jen první.
+    if (isMonsterHitFinal(input.monsterHitsToday ?? 0, game.monsterHitsThisRun, input.monsterHitsRequiredForFinal)) {
+      // Finální zásah — hidden true ending (viz game/core/monsterEnding.ts,
+      // MONSTER_FINAL_DEATH_SCREEN_DELAY_MS). NENÍ jen další "wounded" —
+      // monstrum od teď definitivně přestává jednat jako běžný nepřítel
+      // (stejný `alive = false` mechanismus jako officeThreatTriggered
+      // výše: žádný další pohyb/AI, žádná kolizní smrt hráče, viz tick()).
+      // Marker zůstává na místě zásahu, ať hráč má vizuální potvrzení i po
+      // zbytek zamrzlé scény. tick() rozpozná `finalHitTriggered` a po
+      // MONSTER_FINAL_DEATH_SCREEN_DELAY_MS výpravu samo dokončí jako
+      // bezpečný návrat — hráč už nemusí fyzicky doběhnout zpátky do
+      // kanceláře.
       game.enemy.alive = false;
       game.enemy.mode = "wounded";
       game.finalHitTriggered = true;
       game.finalHitAtMs = game.elapsedMs;
       game.finalHitMarkerPosition = { x: game.enemy.x, y: game.enemy.y };
-      game.monsterHitThisRun = true;
       audioManager.play(AUDIO_EVENTS.monsterFinalDeathRoar);
       setFinalHitTriggered(true);
       onMonsterHit?.();
-    } else if (result.hit) {
+    } else {
       // Zásah NENÍ smrt — monstrum zůstane na místě a dočasně se omráčí
-      // (viz ENEMY_STUN_DURATION_MS), hra dál běží (status zůstává "playing").
+      // (viz ENEMY_STUN_DURATION_MS, mnohem delší než wounded/recover okno
+      // pro hit-counting výše), hra dál běží (status zůstává "playing").
       game.enemy.stunRemainingMs = ENEMY_STUN_DURATION_MS;
       game.enemy.mode = "wounded";
       audioManager.play(AUDIO_EVENTS.monsterWounded);
       // Hidden true ending (viz zadání, game/core/monsterEnding.ts) — zásah se
       // POTVRDÍ až při bezpečném návratu (viz handleObjectiveKey), tady se jen
-      // zapamatuje, že k němu během týhle výpravy došlo. Nikdy se nevrací na
-      // false (i kdyby hráč "wounded" enemy trefil znovu). `onMonsterHit`
+      // zapamatuje, že k němu během týhle výpravy došlo. `onMonsterHit`
       // informuje app/play/page.tsx HNED (GameState.pendingMonsterHits), ať se
-      // dá zahodit, pokud hráč potom venku zemře.
-      game.monsterHitThisRun = true;
+      // dá zahodit, pokud hráč potom venku zemře. S dvouhlavňovkou se volá
+      // znovu při druhém kvalifikujícím zásahu (viz qualifiesAsNewMonsterHit).
       onMonsterHit?.();
     }
-    // Miss (i miss "za zdí"): náboj je pryč, hra dál běží, enemy nezraněn.
   }
 
   // "E" — dvě věci, které pro MVP dává smysl řešit explicitním stiskem (ne
@@ -747,7 +762,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
           game.shotsUsed,
           game.mission.completedObjective,
           officeThreatOnReturn,
-          game.monsterHitThisRun,
+          game.monsterHitsThisRun,
           collectedExtraLootItemIds,
           game.officeThreatTriggered,
         ),
@@ -850,7 +865,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
                 game.shotsUsed,
                 game.mission.completedObjective,
                 undefined,
-                true,
+                game.monsterHitsThisRun,
                 collectedExtraLootItemIds,
                 false,
               ),

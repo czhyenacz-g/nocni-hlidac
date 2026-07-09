@@ -616,11 +616,10 @@ export interface GameState {
    * (CONFIRM_MONSTER_HIT: `monsterHitsToday += pendingMonsterHits`, tohle
    * se vrátí na `0`); smrt venku (EMERGENCY_MINIGAME_DIED) ho ZAHODÍ celé
    * beze změny `monsterHitsToday` — zásah se tedy nikdy nepočítá bez
-   * bezpečného návratu. Číselný typ (místo dřívějšího boolean) je
-   * připravený na dvouhlavňovku (až 2 zásahy za jednu výpravu, viz
-   * game/core/shotgunEquipment.ts) — MVP (EmergencyMiniGame.tsx
-   * `monsterHitThisRun` latch) zatím i s dvouhlavňovkou počítá nejvýš 1
-   * zásah za výpravu, viz TODO tam.
+   * bezpečného návratu. Číselný typ umí až 2 zásahy za jednu výpravu s
+   * dvouhlavňovkou (viz game/core/shotgunEquipment.ts,
+   * EmergencyMiniGame.tsx `monsterHitsThisRun` counter + wounded/recover
+   * gate), 1 s běžnou brokovnicí.
    */
   pendingMonsterHits: number;
   /**

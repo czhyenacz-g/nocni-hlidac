@@ -2,27 +2,6 @@ import { MAX_POWER } from "../balancing/constants";
 import { NightFeatureFlags } from "../difficulty/nightConfig";
 import { EmergencyMiniGameEquipment, EmergencyMiniGameInput, EmergencyWorldEffect, MiniGameItemId } from "../minigame/types";
 import { SERVICE_FLOOR_EVAC_PLAN } from "../minigame/layouts/serviceFloorEvacPlan";
-import { MONSTER_TRUE_ENDING_REQUIRED_HITS } from "./monsterEnding";
-
-/**
- * Jestli by PRVNÍ úspěšný zásah v týhle výpravě byl zároveň finální
- * potvrzený zásah noci — počítáno PŘED spuštěním výpravy (viz
- * app/play/page.tsx), ne uvnitř minihry samotné (game/minigame/* záměrně
- * nezná `MONSTER_TRUE_ENDING_REQUIRED_HITS`, viz komentář v
- * game/minigame/types.ts#EmergencyMiniGameInput.isFinalMonsterHit). Za
- * jednu výpravu se počítá nejvýš jeden zásah, takže tohle rozhodnutí platí
- * po celou dobu výpravy beze změny. `requiredHits` výchozí na
- * `MONSTER_TRUE_ENDING_REQUIRED_HITS`, ale volající (app/play/page.tsx)
- * posílá skutečnou `state.nightFeatures.monsterTrueEndingRequiredHits`, ať
- * admin zkrácený práh (viz monsterEnding.ts#resolveMonsterTrueEndingRequiredHits)
- * funguje i tady.
- */
-export function resolveIsFinalMonsterHit(
-  monsterHitsToday: number,
-  requiredHits: number = MONSTER_TRUE_ENDING_REQUIRED_HITS,
-): boolean {
-  return monsterHitsToday + 1 >= requiredHits;
-}
 
 // První tenké napojení EmergencyMiniGame (game/minigame/*) do hlavní hry
 // (/play) — viz app/play/page.tsx#handleStartEmergencyRun/
@@ -58,7 +37,8 @@ export const DEFAULT_BATTERY_RUN_LAYOUT_ID = SERVICE_FLOOR_EVAC_PLAN.id;
 export function createBatteryEmergencyInput(
   equipment: EmergencyMiniGameEquipment,
   extraLootItems: MiniGameItemId[] = [],
-  isFinalMonsterHit = false,
+  monsterHitsToday?: number,
+  monsterHitsRequiredForFinal?: number,
 ): EmergencyMiniGameInput {
   return {
     objective: "collect_item",
@@ -68,7 +48,8 @@ export function createBatteryEmergencyInput(
     difficulty: "medium",
     startLocation: "office",
     layoutId: DEFAULT_BATTERY_RUN_LAYOUT_ID,
-    isFinalMonsterHit,
+    monsterHitsToday,
+    monsterHitsRequiredForFinal,
   };
 }
 
@@ -84,7 +65,8 @@ export function createBatteryEmergencyInput(
 export function createShotgunEmergencyInput(
   equipment: EmergencyMiniGameEquipment,
   extraLootItems: MiniGameItemId[] = [],
-  isFinalMonsterHit = false,
+  monsterHitsToday?: number,
+  monsterHitsRequiredForFinal?: number,
 ): EmergencyMiniGameInput {
   return {
     objective: "collect_item",
@@ -94,7 +76,8 @@ export function createShotgunEmergencyInput(
     difficulty: "medium",
     startLocation: "office",
     layoutId: DEFAULT_BATTERY_RUN_LAYOUT_ID,
-    isFinalMonsterHit,
+    monsterHitsToday,
+    monsterHitsRequiredForFinal,
   };
 }
 

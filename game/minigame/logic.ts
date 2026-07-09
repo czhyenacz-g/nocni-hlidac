@@ -941,17 +941,18 @@ export function createWorldEffectsForCompletedObjective(completedObjective: Emer
  * `worldEffects` se odvodí ze VŠECH sebraných položek (`worldEffectsForItem`
  * na každou), ne jen z té hlavní. `officeThreatOnReturn`
  * (viz officeThreat.ts#evaluateOfficeThreatOnReturn) se jen předá dál beze
- * změny, pokud je aktivní. `monsterHit` (viz zadání "hidden true ending") je
- * nezávislé na obojím výše — jestli hráč BĚHEM tyhle výpravy trefil monstrum
- * (viz EmergencyMiniGame.tsx#fireShot, isEnemyHit), volající pošle `true`,
- * jinak se pole vůbec nevyplní.
+ * změny, pokud je aktivní. `monsterHits` (viz zadání "hidden true ending",
+ * dvouhlavňovka) je nezávislé na obojím výše — kolik zásahů hráč BĚHEM
+ * tyhle výpravy skutečně dal (viz EmergencyMiniGame.tsx#fireShot,
+ * qualifiesAsNewMonsterHit) — 0, 1, nebo 2. Nahrazuje dřívější boolean
+ * `monsterHit`, který za výpravu uměl nejvýš jeden.
  */
 export function createReturnedResult(
   elapsedMs: number,
   shotsUsed: number,
   completedObjective?: EmergencyCompletedObjective,
   officeThreatOnReturn?: OfficeThreatOnReturn,
-  monsterHit?: boolean,
+  monsterHits: number = 0,
   extraCollectedItemIds?: MiniGameItemId[],
   /**
    * `true`, jen když monstrum BĚHEM tyhle výpravy skutečně zamířilo na
@@ -963,7 +964,6 @@ export function createReturnedResult(
   officeThreatTriggered?: boolean,
 ): EmergencyMiniGameResult {
   const threat = officeThreatOnReturn?.active ? { officeThreatOnReturn } : {};
-  const hit = monsterHit ? { monsterHit: true as const } : {};
   const objective = completedObjective ? { completedObjective } : {};
 
   const primaryItemIds: MiniGameItemId[] = completedObjective?.type === "collected_item" ? [completedObjective.itemId] : [];
@@ -977,11 +977,12 @@ export function createReturnedResult(
     outcome: "returned",
     elapsedMs,
     shotsUsed,
+    monsterHits,
+    ...(monsterHits > 0 ? { monsterHit: true as const } : {}),
     ...objective,
     ...(collectedItems.length > 0 ? { collectedItems } : {}),
     ...(worldEffects.length > 0 ? { worldEffects } : {}),
     ...threat,
-    ...hit,
   };
 }
 
@@ -1127,19 +1128,34 @@ export function getOfficeMarkerLabel(
 // "už uplynul čas".
 
 /**
- * Jestli TENHLE konkrétní zásah spouští finální (10.) sekvenci — musí to
- * být skutečný zásah (`hit`), výprava musí být předem označená jako
- * poslední (`isFinalMonsterHit`, viz `EmergencyMiniGameInput`), A nesmí to
- * být opakovaný zásah stejné výpravy (`monsterHitThisRun` už `true` by
- * znamenalo, že finální sekvence už jednou proběhla — za jednu výpravu se
- * počítá nejvýš jeden zásah).
+ * Jestli TENHLE konkrétní zásah smí být započítán jako NOVÝ potvrzený zásah
+ * (viz EmergencyMiniGame.tsx#fireShot, dvouhlavňovka) — musí to být
+ * geometrický zásah (`hit`, viz isEnemyHit/applyShot) A monstrum nesmí být
+ * ve wounded/recover okně z předchozího zásahu (`monsterWoundedUntilMs` —
+ * `null` = zatím žádný zásah v týhle výpravě, vždy počítá se jako nový).
+ * Gate proti tomu, aby dva zásahy dopadlé prakticky ve stejném framu (nebo
+ * do ještě "čerstvě" zraněného monstra) počítaly jako dva zásahy — viz
+ * MONSTER_WOUNDED_RECOVER_MS v config.ts.
  */
-export function shouldTriggerFinalMonsterHit(
-  hit: boolean,
-  isFinalMonsterHit: boolean | undefined,
-  monsterHitThisRun: boolean,
-): boolean {
-  return hit && Boolean(isFinalMonsterHit) && !monsterHitThisRun;
+export function qualifiesAsNewMonsterHit(hit: boolean, monsterWoundedUntilMs: number | null, elapsedMs: number): boolean {
+  if (!hit) return false;
+  if (monsterWoundedUntilMs === null) return true;
+  return elapsedMs >= monsterWoundedUntilMs;
+}
+
+/**
+ * Jestli TENHLE konkrétní (nově započítaný) zásah spouští finální sekvenci
+ * — kumulativně, PO KAŽDÉM zásahu zvlášť (na rozdíl od dřívějšího
+ * `shouldTriggerFinalMonsterHit`, který počítal jen s JEDNÍM precomputed
+ * booleanem platným pro celou výpravu). `monsterHitsToday` = potvrzené
+ * zásahy PŘED touhle výpravou, `monsterHitsThisRunAfterHit` = kolik zásahů
+ * v týhle výpravě už včetně tohohle proběhlo (1 nebo 2 u dvouhlavňovky).
+ * `requiredHits` chybí = finální sekvence se nikdy nespustí (viz
+ * `EmergencyMiniGameInput.monsterHitsRequiredForFinal`).
+ */
+export function isMonsterHitFinal(monsterHitsToday: number, monsterHitsThisRunAfterHit: number, requiredHits: number | undefined): boolean {
+  if (requiredHits === undefined) return false;
+  return monsterHitsToday + monsterHitsThisRunAfterHit >= requiredHits;
 }
 
 /**

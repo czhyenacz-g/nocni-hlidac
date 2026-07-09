@@ -1284,9 +1284,9 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
       // EmergencyMiniGame.tsx#fireShot, app/play/page.tsx#onMonsterHit) —
       // zásah se ještě NEPOČÍTÁ (viz zadání), jen se přičte do pending
       // počítadla, ať EMERGENCY_MINIGAME_DIED ví, kolik má zahodit. Za
-      // jednu výpravu může přijít víc než jedno volání (dvouhlavňovka, viz
-      // GameState.pendingMonsterHits) — MVP EmergencyMiniGame.tsx zatím
-      // volá nejvýš jednou za výpravu, viz TODO tam.
+      // jednu výpravu může přijít až dvakrát (dvouhlavňovka, viz
+      // GameState.pendingMonsterHits) — EmergencyMiniGame.tsx zavolá znovu
+      // jen po uplynutí wounded/recover okna (MONSTER_WOUNDED_RECOVER_MS).
       case "MARK_PENDING_MONSTER_HIT":
         if (!state.isRunning) return state;
         return { ...state, pendingMonsterHits: state.pendingMonsterHits + 1 };

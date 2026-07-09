@@ -172,18 +172,26 @@ export interface EmergencyMiniGameInput {
    */
   seed?: string;
   /**
-   * `true`, jen když by (podle `GameState.monsterHitsToday` PŘED touhle
-   * výpravou, spočítáno volajícím — viz app/play/page.tsx) byl PRVNÍ
-   * úspěšný zásah v týhle výpravě zároveň 10. potvrzený zásah celé noci
-   * (hidden true ending, `MONSTER_TRUE_ENDING_REQUIRED_HITS` v
-   * `game/core/monsterEnding.ts`). `game/minigame/*` záměrně nezná tenhle
-   * práh ani `game/core` vůbec (viz komentář nahoře v tomhle souboru) —
-   * dostává jen hotové rozhodnutí jako boolean. Za jednu výpravu se počítá
-   * nejvýš jeden zásah (`monsterHitThisRun` latch), takže se tohle
-   * rozhodnutí nemění v průběhu výpravy. Chybí/`false` = normální zásah
-   * (viz `EmergencyMiniGame.tsx#fireShot`).
+   * Kolik potvrzených zásahů monstra hráč má PŘED touhle výpravou (viz
+   * `GameState.monsterHitsToday`, spočítáno volajícím — app/play/page.tsx).
+   * `game/minigame/*` záměrně nezná `MONSTER_TRUE_ENDING_REQUIRED_HITS` ani
+   * `game/core` vůbec (viz komentář nahoře v tomhle souboru) — dostává jen
+   * hotová čísla, ne předem spočítaný boolean. Na rozdíl od dřívějšího
+   * `isFinalMonsterHit` (jeden precomputed boolean, platný jen pro PRVNÍ
+   * zásah výpravy) se s tímhle číslem finální zásah vyhodnocuje PO KAŽDÉM
+   * zásahu zvlášť (viz `isMonsterHitFinal` v logic.ts) — nutné pro
+   * dvouhlavňovku, kde druhý zásah ve stejné výpravě může být ten finální,
+   * i když první nebyl. Chybí = `0`.
    */
-  isFinalMonsterHit?: boolean;
+  monsterHitsToday?: number;
+  /**
+   * Kolik potvrzených zásahů za noc je potřeba pro hidden true ending (viz
+   * `MONSTER_TRUE_ENDING_REQUIRED_HITS`/`resolveMonsterTrueEndingRequiredHits`
+   * v `game/core/monsterEnding.ts`, admin zkrácený práh) — posílá volající,
+   * `game/minigame/*` samo číslo nikdy nevolí. Chybí = finální sekvence se
+   * v týhle výpravě nikdy nespustí (viz `isMonsterHitFinal`).
+   */
+  monsterHitsRequiredForFinal?: number;
 }
 
 // ── Efekty pro hlavní hru (viz
@@ -240,14 +248,21 @@ export type EmergencyMiniGameResult =
       /** Chybí/`active: false`, pokud monstrum na návrat nemělo vliv — viz evaluateOfficeThreatOnReturn. */
       officeThreatOnReturn?: OfficeThreatOnReturn;
       /**
-       * `true`, jen když hráč BĚHEM tyhle výpravy skutečně trefil monstrum
-       * brokovnicí (viz isEnemyHit/applyShot) A bezpečně se vrátil —
-       * nezávislé na `completedObjective`/`worldEffects` (zásah nesouvisí s
-       * tím, co hráč zrovna sbíral). Samotné vystřelení/minutí tohle
-       * nenastaví; smrt venku tenhle result vůbec nevznikne (viz outcome
-       * "dead"), takže nedokončený zásah se sem nikdy nedostane. Hlavní hra
-       * (viz game/core/monsterEnding.ts, app/play/page.tsx) z něj teprve
-       * TADY, po návratu, potvrdí zásah — nikdy dřív.
+       * Kolik zásahů monstra brokovnicí hráč BĚHEM tyhle výpravy skutečně
+       * dal (viz isEnemyHit/applyShot, qualifiesAsNewMonsterHit) A bezpečně
+       * se s nimi vrátil — 0, 1, nebo 2 (dvouhlavňovka). Zdroj pravdy pro
+       * potvrzení zásahu (nahrazuje dřívější `monsterHit: boolean`, který
+       * uměl počítat nejvýš jeden zásah za výpravu). Nezávislé na
+       * `completedObjective`/`worldEffects`. Smrt venku tenhle result vůbec
+       * nevznikne (viz outcome "dead"), takže nedokončené zásahy se sem
+       * nikdy nedostanou. Hlavní hra (viz game/core/monsterEnding.ts,
+       * app/play/page.tsx) z něj teprve TADY, po návratu, potvrdí zásahy —
+       * nikdy dřív.
+       */
+      monsterHits: number;
+      /**
+       * Odvozený helper (`monsterHits > 0`) — jen kvůli čitelnosti volajícího
+       * kódu, ne zdroj pravdy. Přítomný pouze když `monsterHits > 0`.
        */
       monsterHit?: boolean;
       /**

@@ -35,10 +35,9 @@ export interface ConfirmMonsterHitResult {
  * Potvrdí `hitCount` zásahů najednou — čistá funkce, žádná mutace. Volá se
  * jen po bezpečném návratu do kanceláře (viz gameReducer.ts
  * CONFIRM_MONSTER_HIT, `state.pendingMonsterHits`), nikdy při samotném
- * výstřelu/zásahu v minihře. `hitCount` > 1 je připravené pro dvouhlavňovku
- * (až 2 zásahy za jednu výpravu, viz GameState.pendingMonsterHits) — MVP
- * v praxi zatím vždy posílá 0 nebo 1 (viz TODO u EmergencyMiniGame.tsx
- * `monsterHitThisRun`). `monsterDefeated` se stane `true`, jakmile
+ * výstřelu/zásahu v minihře. `hitCount` > 1 podporuje dvouhlavňovku (až 2
+ * zásahy za jednu výpravu, viz GameState.pendingMonsterHits,
+ * EmergencyMiniGame.tsx `monsterHitsThisRun`). `monsterDefeated` se stane `true`, jakmile
  * kumulativní počet dosáhne/přesáhne `requiredHits` (výchozí
  * `MONSTER_TRUE_ENDING_REQUIRED_HITS`, ale volající — gameReducer.ts —
  * posílá skutečnou `state.nightFeatures.monsterTrueEndingRequiredHits`, ať
