@@ -292,4 +292,20 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
       waveform: "sawtooth",
     },
   },
+  // Výběr HARDCORE na hlavním menu (viz zadání "Řev monstra #8", MainMenuScreen.tsx
+  // #handleSelectHardcore) — krátký (2.2s) řev, viz assets/audio/README.md
+  // "Hardcore výběr".
+  [AUDIO_EVENTS.hardcoreSelectRoar]: {
+    src: "/assets/audio/hardcore_select_roar.mp3",
+    volume: 0.7,
+    loop: false,
+    fallbackSynth: {
+      notes: [
+        { frequency: 160, durationMs: 220, gapMs: 20 },
+        { frequency: 110, durationMs: 320 },
+      ],
+      volume: 0.5,
+      waveform: "sawtooth",
+    },
+  },
 };

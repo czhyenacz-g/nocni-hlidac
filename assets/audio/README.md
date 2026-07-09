@@ -101,3 +101,13 @@ tón, 11s bezešvá smyčka. Kandidát byl nejdřív k poslechu na `/dev-sound`
 gainu (peak už -3,3 dB, mean_volume -14,1 dB — hlasitá už v originále). Nahrazuje dřívější
 syntetizovaný fallback (dva střídavé tóny), který se teď použije, jen kdyby se
 `emergency_run_siren.mp3` nepodařilo načíst.
+
+## Hardcore výběr
+
+`hardcore_select_roar.mp3` — krátký řev při kliknutí na HARDCORE v hlavním menu
+(`AUDIO_EVENTS.hardcoreSelectRoar`, viz `components/screens/MainMenuScreen.tsx`
+`#handleSelectHardcore`). Zdroj: `monster_roar/roar_08.mp3` — jeden z 12 klipů rozřezaných
+(ffmpeg silencedetect) z [479380__breviceps__dragon-roars-growls-snarls.wav](https://freesound.org/people/Breviceps/sounds/479380/)
+(Freesound.org, autor **Breviceps**, licence **CC0**). Kandidát byl nejdřív k poslechu na
+`/dev-sound` (`public/dev-sound-candidates/monster_roar/`), servírovaná kopie je jen
+zkopírovaná beze změny gainu (peak už -0,4 dB, mean_volume -11,8 dB, 2,2 s).

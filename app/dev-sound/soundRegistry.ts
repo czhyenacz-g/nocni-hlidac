@@ -205,4 +205,11 @@ export const SOUND_REGISTRY: Record<AudioEventId, SoundRegistryEntry> = {
     guess: "Reálná poplachová siréna (Whelen WPS-3016 WAIL), 11s bezešvá smyčka.",
     usedIn: "app/play/page.tsx — efekt na state.emergencyRunWindup.active (startLoop/stopLoop).",
   },
+  [AUDIO_EVENTS.hardcoreSelectRoar]: {
+    id: AUDIO_EVENTS.hardcoreSelectRoar,
+    label: "Hardcore select roar",
+    description: "Hráč klikne na HARDCORE v hlavním menu.",
+    guess: "Krátký (2.2s) řev monstra místo obyčejného UI kliknutí.",
+    usedIn: "components/screens/MainMenuScreen.tsx — handleSelectHardcore().",
+  },
 };

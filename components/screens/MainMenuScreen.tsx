@@ -43,7 +43,10 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
 
   function handleSelectHardcore() {
     audioManager.init();
-    audioManager.play(AUDIO_EVENTS.uiClick);
+    // Vlastní zvuk místo obyčejného uiClick (viz zadání "Řev monstra #8") —
+    // volba nejtěžšího režimu má mít výraznější odezvu, hraje i když se
+    // nakonec jen zobrazí login prompt (viz showHardcoreLoginPrompt níže).
+    audioManager.play(AUDIO_EVENTS.hardcoreSelectRoar);
     if (authStatus.status === "authenticated") {
       setGameMode("hardcore");
       setShowHardcoreLoginPrompt(false);

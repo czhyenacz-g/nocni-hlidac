@@ -47,6 +47,10 @@ export const AUDIO_EVENTS = {
   // state.emergencyRunWindup.active) — poplašná siréna, hraje jen po dobu
   // držení, ne jednorázově.
   emergencyRunSiren: "emergency_run_siren",
+  // Výběr HARDCORE na hlavním menu (viz zadání, MainMenuScreen.tsx
+  // #handleSelectHardcore) — krátký řev monstra místo obyčejného uiClick,
+  // ať volba nejtěžšího režimu má vlastní výraznou zvukovou odezvu.
+  hardcoreSelectRoar: "hardcore_select_roar",
 } as const;
 
 export type AudioEventId = (typeof AUDIO_EVENTS)[keyof typeof AUDIO_EVENTS];
