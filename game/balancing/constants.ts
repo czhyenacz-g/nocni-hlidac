@@ -145,6 +145,14 @@ export const BULB_REPLACE_SUCCESS_MESSAGE_MS = 1800;
 // lokální React timeout vzor jako BULB_REPLACE_SUCCESS_MESSAGE_MS výše.
 export const GENERATOR_ACCIDENTAL_RESTART_MESSAGE_MS = 2500;
 
+// Jak dlouho (ms) PowerMeter.tsx animuje výplň postupně po RECHARGE_POWER
+// (viz zadání "uspokojivý efekt" po přinesení baterie, GameState.powerRechargeSeq)
+// — čistě vizuální CSS transition-duration, ne herní stav. Normální
+// odčerpávání energie v TICKu zůstává bez animace (mění se plynule každý
+// snímek samo o sobě), tahle delší tranzice se aplikuje jen na tenhle jeden
+// diskrétní skok.
+export const POWER_RECHARGE_ANIMATION_MS = 2000;
+
 // Nouzová výprava "Jít ven" (viz game/core/types.ts EmergencyRunWindupState,
 // gameReducer.ts, LeftWallView.tsx) — stejný "drž tlačítko, ať to má cenu"
 // vzor jako ruční výměna žárovky výše: hráč musí tlačítko držet

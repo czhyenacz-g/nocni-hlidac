@@ -1076,7 +1076,13 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
 
       case "RECHARGE_POWER":
         if (action.amount <= 0 || !state.isRunning) return state;
-        return { ...state, power: clamp(state.power + action.amount, 0, MAX_POWER) };
+        return {
+          ...state,
+          power: clamp(state.power + action.amount, 0, MAX_POWER),
+          // Viz GameState.powerRechargeSeq — PowerMeter.tsx podle změny
+          // přehraje delší CSS animaci výplně (zadání "uspokojivý efekt").
+          powerRechargeSeq: state.powerRechargeSeq + 1,
+        };
 
       case "EMERGENCY_MINIGAME_DIED":
         // Stejný death flow jako ostatní smrti (viz TICK blackout_timeout /

@@ -297,6 +297,17 @@ export interface GameState {
 
   power: number;
   /**
+   * Zvyšuje se přesně jednou při každém RECHARGE_POWER s kladným `amount`
+   * (viz gameReducer.ts, app/play/page.tsx#handleEmergencyMiniGameComplete
+   * po přinesení baterie) — stejný "seq" vzor jako bulbBreakSeq/
+   * generatorBeepSeq výše. `power` samotné se v reduceru mění okamžitě
+   * (gameplay hodnota), tohle pole slouží JEN PowerMeter.tsx, aby poznal
+   * "tenhle konkrétní skok byl dobití" a přehrál delší, postupnou CSS
+   * animaci výplně (viz zadání "uspokojivý efekt"), místo okamžitého skoku
+   * nebo pomalé animace i běžného odčerpávání v TICKu.
+   */
+  powerRechargeSeq: number;
+  /**
    * "blackout" = baterie na nule, všechny systémy vypnuté, zámek povolil.
    * Hráč přežije, pokud směna doběhne do konce dřív než blackoutElapsedMs
    * dosáhne night.blackout.durationMs — jinak smrt. Viz GAME_DESIGN.md "Blackout".

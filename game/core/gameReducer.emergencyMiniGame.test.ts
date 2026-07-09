@@ -42,6 +42,30 @@ describe("RECHARGE_POWER", () => {
 
     expect(reducer(state, { type: "RECHARGE_POWER", amount: 35 })).toBe(state);
   });
+
+  // powerRechargeSeq (viz zadání "ať se energie dobije postupně, uspokojivý
+  // efekt") — PowerMeter.tsx podle změny přehraje delší CSS animaci výplně,
+  // reducer jen počítadlo zvyšuje, žádnou animaci/timing sám neřeší.
+  it("increments powerRechargeSeq by exactly one per successful recharge", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = { ...createInitialGameState(NIGHT_01), isRunning: true, power: 50 };
+    expect(state.powerRechargeSeq).toBe(0);
+
+    const result = reducer(state, { type: "RECHARGE_POWER", amount: 35 });
+    expect(result.powerRechargeSeq).toBe(1);
+
+    const again = reducer(result, { type: "RECHARGE_POWER", amount: 5 });
+    expect(again.powerRechargeSeq).toBe(2);
+  });
+
+  it("does not increment powerRechargeSeq on a no-op recharge (amount <= 0, or not running)", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const running = { ...createInitialGameState(NIGHT_01), isRunning: true, power: 50 };
+    expect(reducer(running, { type: "RECHARGE_POWER", amount: 0 }).powerRechargeSeq).toBe(0);
+
+    const notRunning = { ...createInitialGameState(NIGHT_01), isRunning: false, power: 50 };
+    expect(reducer(notRunning, { type: "RECHARGE_POWER", amount: 35 }).powerRechargeSeq).toBe(0);
+  });
 });
 
 // Žárovka sebraná v emergency výpravě (viz zadání "ověřit napojení žárovky do

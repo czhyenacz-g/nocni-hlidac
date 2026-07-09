@@ -50,6 +50,7 @@ export function createInitialGameState(
     remainingMs: night.durationMs,
 
     power: night.startPower,
+    powerRechargeSeq: 0,
     gameStatus: "normal",
     blackoutElapsedMs: 0,
     blackoutPhaseSeq: 0,

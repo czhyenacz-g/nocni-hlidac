@@ -1,10 +1,19 @@
+import { useEffect, useRef, useState } from "react";
 import { COPY } from "@/content/copy";
-import { CRITICAL_POWER_THRESHOLD, LOW_POWER_THRESHOLD } from "@/game/balancing/constants";
+import { CRITICAL_POWER_THRESHOLD, LOW_POWER_THRESHOLD, POWER_RECHARGE_ANIMATION_MS } from "@/game/balancing/constants";
 import { PALETTE } from "@/game/visuals/palette";
 import ConsoleIcon from "./ConsoleIcon";
 
 interface PowerMeterProps {
   power: number;
+  /**
+   * Zvyšuje se přesně jednou při každém RECHARGE_POWER (viz
+   * GameState.powerRechargeSeq) — jediný účel je spustit delší, postupnou
+   * CSS animaci výplně (viz zadání "uspokojivý efekt" po přinesení
+   * baterie), místo okamžitého skoku. Volitelné, ať PowerMeter jde použít
+   * i bez tohohle propu (vždy rychlá 300ms tranzice jako dřív).
+   */
+  rechargeSeq?: number;
   /** Dev-only "Stres: X" vedle energie (viz STRESS_DEV_HUD_ENABLED) — undefined = nezobrazovat. */
   stressPercent?: number;
   /** Zatím jen zobrazení (viz game/core/bulbInventory.ts) — undefined = nezobrazovat. */
@@ -17,13 +26,29 @@ interface PowerMeterProps {
   nearRoomBulbLabel?: string;
 }
 
-export default function PowerMeter({ power, stressPercent, bulbsRemaining, nearRoomBulbLabel }: PowerMeterProps) {
+export default function PowerMeter({ power, rechargeSeq, stressPercent, bulbsRemaining, nearRoomBulbLabel }: PowerMeterProps) {
   const color =
     power <= CRITICAL_POWER_THRESHOLD
       ? PALETTE.powerCritical
       : power <= LOW_POWER_THRESHOLD
         ? PALETTE.powerLow
         : PALETTE.powerFull;
+
+  // Normální odčerpávání v TICKu se mění plynule každý snímek samo o sobě
+  // (žádná animace navíc potřeba) — jen SKUTEČNÉ dobití (RECHARGE_POWER,
+  // viz rechargeSeq) má dostat delší, postupnou tranzici výplně, ať je vidět
+  // "uspokojivý efekt", ne okamžitý skok. Ref drží poslední viděnou hodnotu,
+  // ať efekt na prvním mountu animaci nespustí (stejný vzor jako
+  // DoorView.tsx#showSuccessMessage).
+  const [isRecharging, setIsRecharging] = useState(false);
+  const prevRechargeSeqRef = useRef(rechargeSeq);
+  useEffect(() => {
+    if (rechargeSeq === undefined || prevRechargeSeqRef.current === rechargeSeq) return;
+    prevRechargeSeqRef.current = rechargeSeq;
+    setIsRecharging(true);
+    const timeout = setTimeout(() => setIsRecharging(false), POWER_RECHARGE_ANIMATION_MS);
+    return () => clearTimeout(timeout);
+  }, [rechargeSeq]);
 
   return (
     <div className="console-panel p-2 flex items-center gap-2.5">
@@ -45,8 +70,12 @@ export default function PowerMeter({ power, stressPercent, bulbsRemaining, nearR
         </div>
         <div className="h-3 bg-gray-800 border border-gray-700">
           <div
-            className="h-full transition-all duration-300"
-            style={{ width: `${power}%`, backgroundColor: color }}
+            className="h-full transition-[width,background-color] ease-out"
+            style={{
+              width: `${power}%`,
+              backgroundColor: color,
+              transitionDuration: isRecharging ? `${POWER_RECHARGE_ANIMATION_MS}ms` : "300ms",
+            }}
           />
         </div>
         {nearRoomBulbLabel !== undefined && (
