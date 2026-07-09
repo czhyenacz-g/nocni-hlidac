@@ -34,6 +34,10 @@ export const AUDIO_EVENTS = {
   blackoutMonsterRoar: "blackout_monster_roar",
   bulbBreak: "bulb_break",
   bulbReplaceSuccess: "bulb_replace_success",
+  // Zásah monstra brokovnicí v EmergencyMiniGame (viz
+  // components/minigame/EmergencyMiniGame.tsx#fireShot, isEnemyHit) — krátký
+  // bolestivý řev, ne smrtelný jumpscare (monstrum je jen "wounded", ne mrtvé).
+  monsterWounded: "monster_wounded",
 } as const;
 
 export type AudioEventId = (typeof AUDIO_EVENTS)[keyof typeof AUDIO_EVENTS];

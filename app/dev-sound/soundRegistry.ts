@@ -184,4 +184,11 @@ export const SOUND_REGISTRY: Record<AudioEventId, SoundRegistryEntry> = {
     guess: "Krátké, pozitivní elektrické „vzum“/naskočení světla, ne UI beep, ne hororový zvuk.",
     usedIn: "app/play/page.tsx — efekt na state.bulbReplaceSuccessSeq (viz gameReducer.ts#updateBulbReplacement).",
   },
+  [AUDIO_EVENTS.monsterWounded]: {
+    id: AUDIO_EVENTS.monsterWounded,
+    label: "Monster wounded",
+    description: "Hráč trefil monstrum brokovnicí v EmergencyMiniGame (isEnemyHit) — monstrum je jen omráčené, ne mrtvé.",
+    guess: "Krátký bolestivý řev, tišší/kratší než jumpscare nebo blackoutMonsterRoar.",
+    usedIn: "components/minigame/EmergencyMiniGame.tsx — fireShot() na result.hit.",
+  },
 };

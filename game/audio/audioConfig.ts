@@ -243,4 +243,21 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
       waveform: "sine",
     },
   },
+  // Zásah monstra brokovnicí (viz EmergencyMiniGame.tsx#fireShot) — reálný
+  // soubor (CC0, Freesound.org, Robinhood76 — krátký bolestivý řev, ne smrt,
+  // proto tišší/kratší tón než jumpscare/blackoutMonsterRoar). Fallback pro
+  // případ selhání načtení zůstává, stejný vzor jako ostatní monster* eventy.
+  [AUDIO_EVENTS.monsterWounded]: {
+    src: "/assets/audio/monster_wounded.mp3",
+    volume: 0.75,
+    loop: false,
+    fallbackSynth: {
+      notes: [
+        { frequency: 180, durationMs: 160, gapMs: 20 },
+        { frequency: 110, durationMs: 200 },
+      ],
+      volume: 0.4,
+      waveform: "sawtooth",
+    },
+  },
 };

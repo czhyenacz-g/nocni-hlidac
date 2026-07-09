@@ -87,6 +87,8 @@ import { createRandomSeed } from "@/game/minigame/seededRandom";
 import { getMiniGameSlotDebugLabel, getRoomAtPoint, getSelectedSlotIds, isMiniGameDevToggleHit } from "@/game/minigame/devOverlay";
 import { evaluateOfficeThreatOnReturn } from "@/game/minigame/officeThreat";
 import { PlayerVisionConfig, getPlayerVisibilityAtPoint } from "@/game/minigame/playerVision";
+import { audioManager } from "@/game/audio/audioManager";
+import { AUDIO_EVENTS } from "@/game/audio/audioEvents";
 import {
   NO_TEXT_SELECT_STYLE,
   canShowMobileFireButton,
@@ -498,6 +500,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
       // (viz ENEMY_STUN_DURATION_MS), hra dál běží (status zůstává "playing").
       game.enemy.stunRemainingMs = ENEMY_STUN_DURATION_MS;
       game.enemy.mode = "wounded";
+      audioManager.play(AUDIO_EVENTS.monsterWounded);
       // Hidden true ending (viz zadání, game/core/monsterEnding.ts) — zásah se
       // POTVRDÍ až při bezpečném návratu (viz handleObjectiveKey), tady se jen
       // zapamatuje, že k němu během týhle výpravy došlo. Nikdy se nevrací na
