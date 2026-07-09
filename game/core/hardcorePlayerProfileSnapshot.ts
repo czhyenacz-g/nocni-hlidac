@@ -19,7 +19,18 @@ import { PlayerProfileStats } from "./playerProfileStats";
 //
 // Server ukládá VÝHRADNĚ Hardcore hodnoty — žádné Normal pole tenhle soubor
 // vůbec nezná (viz zadání "Normal se na server neukládá").
-
+//
+// Tvar tady je záměrně JEN těch 9 polí, která project-hub-api skutečně vrací
+// (viz zadání "Srovnat ServerHardcorePlayerProfile typ a client mapping s
+// reálným project-hub-api contractem", project-hub-api
+// src/modules/nocniHlidac/hardcoreProfileService.ts). Dřívější verze tohohle
+// typu navíc deklarovala `hardcoreTotalDeaths`/`hardcoreTotalRunsStarted`/
+// `hardcoreTotalNightsSurvived`/`hardcoreMonsterHitsConfirmed`/
+// `hardcoreMonsterKills` — server je NEUKLÁDÁ (zatím nejsou bezpečně
+// mode-specific, viz project-hub-api report), takže by tu vždycky skončily
+// jako `undefined` navzdory typu `number`. Až budou tyhle countery na
+// serveru skutečně dostupné, přidat je zpátky sem je jednoduché — do té doby
+// ale typ nesmí slibovat víc, než co endpoint reálně vrací.
 export interface ServerHardcorePlayerProfile {
   discordUserId: string;
   displayName: string | null;
@@ -28,13 +39,7 @@ export interface ServerHardcorePlayerProfile {
   hardcoreHasDefeatedMonster: boolean;
   hardcoreDoubleBarrelUnlocked: boolean;
   hardcoreMonsterDefeatsCount: number;
-
   hardcoreBestNight: number;
-  hardcoreTotalDeaths: number;
-  hardcoreTotalRunsStarted: number;
-  hardcoreTotalNightsSurvived: number;
-  hardcoreMonsterHitsConfirmed: number;
-  hardcoreMonsterKills: number;
 
   createdAt: string;
   updatedAt: string;
@@ -49,15 +54,7 @@ export interface ServerHardcorePlayerProfile {
  */
 export type HardcoreProfileSnapshot = Pick<
   ServerHardcorePlayerProfile,
-  | "hardcoreHasDefeatedMonster"
-  | "hardcoreDoubleBarrelUnlocked"
-  | "hardcoreMonsterDefeatsCount"
-  | "hardcoreBestNight"
-  | "hardcoreTotalDeaths"
-  | "hardcoreTotalRunsStarted"
-  | "hardcoreTotalNightsSurvived"
-  | "hardcoreMonsterHitsConfirmed"
-  | "hardcoreMonsterKills"
+  "hardcoreHasDefeatedMonster" | "hardcoreDoubleBarrelUnlocked" | "hardcoreMonsterDefeatsCount" | "hardcoreBestNight"
 >;
 
 export const DEFAULT_HARDCORE_PROFILE_SNAPSHOT: HardcoreProfileSnapshot = {
@@ -65,11 +62,6 @@ export const DEFAULT_HARDCORE_PROFILE_SNAPSHOT: HardcoreProfileSnapshot = {
   hardcoreDoubleBarrelUnlocked: false,
   hardcoreMonsterDefeatsCount: 0,
   hardcoreBestNight: 0,
-  hardcoreTotalDeaths: 0,
-  hardcoreTotalRunsStarted: 0,
-  hardcoreTotalNightsSurvived: 0,
-  hardcoreMonsterHitsConfirmed: 0,
-  hardcoreMonsterKills: 0,
 };
 
 /** Výchozí profil pro hráče, který na VPS ještě nemá záznam (viz zadání "Pokud profil neexistuje, vytvoří default profil a vrátí ho"). */
@@ -92,7 +84,6 @@ export function createDefaultServerHardcoreProfile(identity: {
 }
 
 // ── Validace/clamp (viz zadání "Validace"/"Clamp hodnot") ──
-const COUNTER_MAX = 1_000_000;
 const BEST_NIGHT_MAX = 10_000;
 const MONSTER_DEFEATS_MAX = 100_000;
 
@@ -113,8 +104,8 @@ function clampFieldFromUnknown(value: unknown, max: number): number {
  * odesláním na VPS (viz lib/hardcoreProfile/hardcoreProfileRequestHandlers.ts),
  * ať server nikdy nepředá dál nečíselné/záporné/obří/neznámá pole. Neznámá
  * pole (včetně "Normal-like" polí bez "hardcore" prefixu, např. by se
- * omylem poslalo `totalDeaths`) se TIŠE IGNORUJÍ — jen devět jmenovaných
- * `Hardcore*` klíčů se vůbec čte, cokoliv jiného ve vstupu se prostě
+ * omylem poslalo `totalDeaths`) se TIŠE IGNORUJÍ — jen čtyři jmenované
+ * `Hardcore*` klíče se vůbec čtou, cokoliv jiného ve vstupu se prostě
  * nezkopíruje nikam dál.
  */
 export function sanitizeHardcoreProfileSnapshot(raw: unknown): HardcoreProfileSnapshot {
@@ -126,11 +117,6 @@ export function sanitizeHardcoreProfileSnapshot(raw: unknown): HardcoreProfileSn
     hardcoreDoubleBarrelUnlocked: typeof input.hardcoreDoubleBarrelUnlocked === "boolean" ? input.hardcoreDoubleBarrelUnlocked : false,
     hardcoreMonsterDefeatsCount: clampFieldFromUnknown(input.hardcoreMonsterDefeatsCount, MONSTER_DEFEATS_MAX),
     hardcoreBestNight: clampFieldFromUnknown(input.hardcoreBestNight, BEST_NIGHT_MAX),
-    hardcoreTotalDeaths: clampFieldFromUnknown(input.hardcoreTotalDeaths, COUNTER_MAX),
-    hardcoreTotalRunsStarted: clampFieldFromUnknown(input.hardcoreTotalRunsStarted, COUNTER_MAX),
-    hardcoreTotalNightsSurvived: clampFieldFromUnknown(input.hardcoreTotalNightsSurvived, COUNTER_MAX),
-    hardcoreMonsterHitsConfirmed: clampFieldFromUnknown(input.hardcoreMonsterHitsConfirmed, COUNTER_MAX),
-    hardcoreMonsterKills: clampFieldFromUnknown(input.hardcoreMonsterKills, COUNTER_MAX),
   };
 }
 
@@ -165,26 +151,6 @@ export function mergeHardcoreProfileSnapshot(
       MONSTER_DEFEATS_MAX,
     ),
     hardcoreBestNight: clampInt(Math.max(server.hardcoreBestNight, clampInt(local.hardcoreBestNight, BEST_NIGHT_MAX)), BEST_NIGHT_MAX),
-    hardcoreTotalDeaths: clampInt(
-      Math.max(server.hardcoreTotalDeaths, clampInt(local.hardcoreTotalDeaths, COUNTER_MAX)),
-      COUNTER_MAX,
-    ),
-    hardcoreTotalRunsStarted: clampInt(
-      Math.max(server.hardcoreTotalRunsStarted, clampInt(local.hardcoreTotalRunsStarted, COUNTER_MAX)),
-      COUNTER_MAX,
-    ),
-    hardcoreTotalNightsSurvived: clampInt(
-      Math.max(server.hardcoreTotalNightsSurvived, clampInt(local.hardcoreTotalNightsSurvived, COUNTER_MAX)),
-      COUNTER_MAX,
-    ),
-    hardcoreMonsterHitsConfirmed: clampInt(
-      Math.max(server.hardcoreMonsterHitsConfirmed, clampInt(local.hardcoreMonsterHitsConfirmed, COUNTER_MAX)),
-      COUNTER_MAX,
-    ),
-    hardcoreMonsterKills: clampInt(
-      Math.max(server.hardcoreMonsterKills, clampInt(local.hardcoreMonsterKills, COUNTER_MAX)),
-      COUNTER_MAX,
-    ),
     updatedAt: nowIso,
     lastSeenAt: nowIso,
   };
@@ -202,30 +168,31 @@ export function serverHardcoreProfileToReward(server: ServerHardcorePlayerProfil
 }
 
 /**
- * Server nemá ekvivalent pro `bulbsReplaced`/`generatorsRestarted`/
- * `expeditionsStarted`/`expeditionsReturned` (ty se dnes lokálně nesledují
- * odděleně podle gameMode vůbec, viz report) — tenhle převod proto vrací
- * PLNÝ `PlayerProfileStats` tvar (kvůli `resolvePlayerAchievements`, který
- * jiný tvar nepřijme), ale jen pole se skutečným server ekvivalentem
- * (`hardcoreBestNight` jako `hardcoreBestNight`, `totalDeaths`/
- * `totalRunsStarted`/`totalNightsSurvived`/`monsterHitsConfirmed`/
- * `monsterKills` z odpovídajících `hardcore*` polí) nesou reálná data —
- * zbytek je `0`. NEPOUŽÍVAT tenhle výstup jako "kompletní stats hráče" pro
- * obecné UI — jen pro Hardcore/reward achievementy (viz ProfileScreen.tsx,
- * zadání "použij je pouze pro Hardcore/reward achievementy").
+ * Server (project-hub-api) dnes vrací JEN `hardcoreBestNight` a
+ * `hardcoreMonsterDefeatsCount` (viz `ServerHardcorePlayerProfile` výše) —
+ * `totalDeaths`/`totalRunsStarted`/`totalNightsSurvived`/`monsterHitsConfirmed`
+ * NEMAJÍ žádný server ekvivalent (zatím nejsou bezpečně mode-specific, viz
+ * project-hub-api report), takže se pro ně použije `localStats` beze změny
+ * (stejná lokální, mode-agnostic hodnota, jakou by ProfileScreen.tsx
+ * zobrazil i bez serveru) — NIKDY `undefined`/natvrdo `0`, jen "server tohle
+ * pole nezná, ber lokální". `monsterKills` (stat dlaždice "Zabité bestie")
+ * nemá vlastní server pole buď — bezpečně se dá znovupoužít
+ * `hardcoreMonsterDefeatsCount` (stejný koncept, "kolikrát jsi porazil
+ * bestii", jen jiné jméno pole na dvou různých místech UI). Jediná hodnota,
+ * kterou tenhle převod skutečně PŘEPÍŠE oproti `localStats`, je tedy
+ * `hardcoreBestNight` a `monsterKills` — zbytek jde beze změny skrz.
+ * NEPOUŽÍVAT tenhle výstup jako "kompletní stats hráče" pro obecné UI — jen
+ * pro Hardcore/reward achievementy (viz ProfileScreen.tsx, zadání "použij je
+ * pouze pro Hardcore/reward achievementy").
  */
-export function serverHardcoreProfileToPlayerProfileStats(server: ServerHardcorePlayerProfile): PlayerProfileStats {
+export function serverHardcoreProfileToPlayerProfileStats(
+  server: ServerHardcorePlayerProfile,
+  localStats: PlayerProfileStats,
+): PlayerProfileStats {
   return {
-    totalDeaths: server.hardcoreTotalDeaths,
-    totalRunsStarted: server.hardcoreTotalRunsStarted,
-    totalNightsSurvived: server.hardcoreTotalNightsSurvived,
+    ...localStats,
     hardcoreBestNight: server.hardcoreBestNight,
-    bulbsReplaced: 0,
-    generatorsRestarted: 0,
-    expeditionsStarted: 0,
-    expeditionsReturned: 0,
-    monsterHitsConfirmed: server.hardcoreMonsterHitsConfirmed,
-    monsterKills: server.hardcoreMonsterKills,
+    monsterKills: server.hardcoreMonsterDefeatsCount,
   };
 }
 
@@ -237,18 +204,12 @@ export function serverHardcoreProfileToPlayerProfileStats(server: ServerHardcore
  * proto se posílá přímo. `hardcoreMonsterProgress` je izolovaný Hardcore-only
  * lokální počítadlo (viz getLocalHardcoreMonsterProgress níže) — NIKDY
  * game/core/monsterDefeatReward.ts (ten zůstává mode-agnostic napříč Normal
- * i Hardcore, viz zadání "neměň ho na velký mode-specific systém").
- *
- * `hardcoreTotalDeaths`/`hardcoreTotalRunsStarted`/`hardcoreTotalNightsSurvived`/
- * `hardcoreMonsterHitsConfirmed` se posílají jako `0` — lokální
- * `PlayerProfileStats` dnes NEROZLIŠUJE Normal vs Hardcore u těchhle čtyř
- * counterů (viz report, `recordDeath`/`recordRunStarted`/
- * `recordMonsterHitsConfirmed` se volají bez ohledu na gameMode). Posílat
- * mode-agnostic hodnotu jako "Hardcore" by ji falešně nafouklo o Normal
- * aktivitu. `0` je pod `max(server, local)` merge pravidlem VŽDY bezpečný
- * no-op (nikdy server hodnotu neponíží ani nenafoukne) — až vznikne
- * mode-segmented lokální tracking (viz TODO/report "follow-up"), stačí sem
- * doplnit skutečné hodnoty beze změny kontraktu funkce.
+ * i Hardcore, viz zadání "neměň ho na velký mode-specific systém"). Server
+ * (project-hub-api) dnes žádné jiné pole nepřijímá/neukládá (viz
+ * `HardcoreProfileSnapshot`) — dřívější `hardcoreTotalDeaths`/
+ * `hardcoreTotalRunsStarted`/`hardcoreTotalNightsSurvived`/
+ * `hardcoreMonsterHitsConfirmed`/`hardcoreMonsterKills` pole tenhle payload
+ * už neposílá vůbec (dřív se posílaly jako `0`, teď na typu ani neexistují).
  */
 export function createHardcoreProfileSnapshotFromLocalState(
   stats: PlayerProfileStats,
@@ -259,11 +220,6 @@ export function createHardcoreProfileSnapshotFromLocalState(
     hardcoreDoubleBarrelUnlocked: hardcoreMonsterProgress.doubleBarrelUnlocked,
     hardcoreMonsterDefeatsCount: hardcoreMonsterProgress.monsterDefeatsCount,
     hardcoreBestNight: stats.hardcoreBestNight,
-    hardcoreTotalDeaths: 0,
-    hardcoreTotalRunsStarted: 0,
-    hardcoreTotalNightsSurvived: 0,
-    hardcoreMonsterHitsConfirmed: 0,
-    hardcoreMonsterKills: hardcoreMonsterProgress.monsterDefeatsCount,
   };
 }
 

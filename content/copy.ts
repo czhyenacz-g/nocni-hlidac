@@ -76,6 +76,13 @@ export const COPY = {
     achievementsHeading: "Achievementy",
     achievementUnlockedMark: "✓",
     achievementLockedMark: "?",
+    // Název/popis NEZÍSKANÉHO achievementu je pro běžného hráče schválně
+    // skrytý (viz zadání "zobrazuj názvy a popisy nezískaných achievementů
+    // jen adminovi", ProfileScreen.tsx) — admin (lib/auth/adminUsers.ts)
+    // vidí i tak skutečný title/description kvůli debugu. Odemčené
+    // achievementy zůstávají viditelné úplně pro všechny beze změny.
+    achievementHiddenTitle: "Neznámý úspěch",
+    achievementHiddenDescription: "Odemkni ho a zjisti, o co jde.",
     // Sekce 4: Výbava.
     loadoutHeading: "Výbava",
     loadoutDoubleBarrelName: "Dvouhlavňová brokovnice",

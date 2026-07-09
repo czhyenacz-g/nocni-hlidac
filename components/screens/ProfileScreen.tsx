@@ -6,6 +6,7 @@ import { COPY } from "@/content/copy";
 import SceneBackground from "@/components/SceneBackground";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 import { useAuthStatus } from "@/components/auth/useAuthStatus";
+import { isAdminUsername } from "@/lib/auth/adminUsers";
 import { getMonsterDefeatReward, resetMonsterDefeatReward, MonsterDefeatReward } from "@/game/core/monsterDefeatReward";
 import { getPlayerProfileStats, resetPlayerProfileStats, PlayerProfileStats } from "@/game/core/playerProfileStats";
 import { resolvePlayerAchievements } from "@/game/core/playerAchievements";
@@ -13,6 +14,7 @@ import {
   ServerHardcorePlayerProfile,
   createHardcoreProfileSnapshotFromLocalState,
   getLocalHardcoreMonsterProgress,
+  serverHardcoreProfileToPlayerProfileStats,
   serverHardcoreProfileToReward,
 } from "@/game/core/hardcorePlayerProfileSnapshot";
 
@@ -102,10 +104,14 @@ export default function ProfileScreen() {
   // dál počítají z lokální, mode-agnostic aktivity beze změny.
   const usingServerData = serverProfile !== null;
   const effectiveReward: MonsterDefeatReward = serverProfile ? serverHardcoreProfileToReward(serverProfile) : reward;
-  const effectiveStats: PlayerProfileStats = serverProfile
-    ? { ...stats, hardcoreBestNight: serverProfile.hardcoreBestNight, monsterKills: serverProfile.hardcoreMonsterKills }
-    : stats;
+  const effectiveStats: PlayerProfileStats = serverProfile ? serverHardcoreProfileToPlayerProfileStats(serverProfile, stats) : stats;
   const achievements = resolvePlayerAchievements(effectiveStats, effectiveReward);
+  // Název/popis nezískaného achievementu je schválně skrytý pro běžné
+  // hráče (viz zadání, content/copy.ts#achievementHiddenTitle) — jen admin
+  // (lib/auth/adminUsers.ts, stejná vlastnost jako jinde ve hře) vidí, o co
+  // přesně jde, i než ho odemkne. Odemčené achievementy vidí všichni beze
+  // změny.
+  const isAdmin = authStatus.status === "authenticated" && isAdminUsername(authStatus.player.username);
 
   const statTiles: { label: string; value: number }[] = [
     { label: COPY.profile.statTotalDeaths, value: stats.totalDeaths },
@@ -229,27 +235,33 @@ export default function ProfileScreen() {
             <section className="mb-6">
               <h2 className="text-xs uppercase tracking-wide text-gray-500 mb-3">{COPY.profile.achievementsHeading}</h2>
               <div className="flex flex-col gap-2">
-                {achievements.map((achievement) => (
-                  <div
-                    key={achievement.id}
-                    className={`console-panel p-3 flex items-start gap-3 ${achievement.unlocked ? "" : "opacity-50"}`}
-                  >
-                    <span
-                      className={`shrink-0 w-6 h-6 flex items-center justify-center rounded-full border text-xs font-bold ${
-                        achievement.unlocked ? "border-amber-400 text-amber-300" : "border-gray-600 text-gray-500"
-                      }`}
-                      aria-hidden="true"
+                {achievements.map((achievement) => {
+                  // Nezískaný achievement: název/popis vidí jen admin (viz
+                  // isAdmin výše) — běžný hráč vidí jen skrytý placeholder,
+                  // ať achievementy zůstanou překvapením.
+                  const canSeeDetails = achievement.unlocked || isAdmin;
+                  const title = canSeeDetails ? achievement.title : COPY.profile.achievementHiddenTitle;
+                  const description = canSeeDetails ? achievement.description : COPY.profile.achievementHiddenDescription;
+                  return (
+                    <div
+                      key={achievement.id}
+                      className={`console-panel p-3 flex items-start gap-3 ${achievement.unlocked ? "" : "opacity-50"}`}
                     >
-                      {achievement.unlocked ? COPY.profile.achievementUnlockedMark : COPY.profile.achievementLockedMark}
-                    </span>
-                    <div>
-                      <div className={`text-sm font-bold ${achievement.unlocked ? "text-amber-300" : "text-gray-400"}`}>
-                        {achievement.title}
+                      <span
+                        className={`shrink-0 w-6 h-6 flex items-center justify-center rounded-full border text-xs font-bold ${
+                          achievement.unlocked ? "border-amber-400 text-amber-300" : "border-gray-600 text-gray-500"
+                        }`}
+                        aria-hidden="true"
+                      >
+                        {achievement.unlocked ? COPY.profile.achievementUnlockedMark : COPY.profile.achievementLockedMark}
+                      </span>
+                      <div>
+                        <div className={`text-sm font-bold ${achievement.unlocked ? "text-amber-300" : "text-gray-400"}`}>{title}</div>
+                        <div className="text-xs text-gray-500 mt-0.5">{description}</div>
                       </div>
-                      <div className="text-xs text-gray-500 mt-0.5">{achievement.description}</div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
 

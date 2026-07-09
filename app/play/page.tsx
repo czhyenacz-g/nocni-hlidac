@@ -876,7 +876,7 @@ export default function PlayPage() {
     // (Normal chování zůstává, jak bylo), ale žádný fetch na server se
     // nezavolá, žádná serverová Hardcore hodnota se nedotkne (viz zadání
     // "Normal true ending NESMÍ odemknout serverovou dvouhlavňovku/zvýšit
-    // hardcoreMonsterDefeatsCount/hardcoreMonsterKills").
+    // hardcoreMonsterDefeatsCount").
     if (state.gameMode !== "hardcore") return;
 
     // Izolovaný Hardcore-only lokální counter (viz

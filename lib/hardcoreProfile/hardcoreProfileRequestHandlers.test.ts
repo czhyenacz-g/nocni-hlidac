@@ -141,11 +141,11 @@ describe("handleSyncHardcoreProfileRequest", () => {
     const fetchSpy = vi.fn((_url: string, _init?: RequestInit) => Promise.resolve(new Response(JSON.stringify(SAMPLE_PROFILE), { status: 200 })));
     vi.stubGlobal("fetch", fetchSpy);
 
-    await handleSyncHardcoreProfileRequest(LOGGED_IN_SESSION, { hardcoreBestNight: -50, hardcoreMonsterKills: "lots" });
+    await handleSyncHardcoreProfileRequest(LOGGED_IN_SESSION, { hardcoreBestNight: -50, hardcoreMonsterDefeatsCount: "lots" });
 
     const sentBody = JSON.parse(String(fetchSpy.mock.calls[0][1]?.body));
     expect(sentBody.hardcoreBestNight).toBe(0);
-    expect(sentBody.hardcoreMonsterKills).toBe(0);
+    expect(sentBody.hardcoreMonsterDefeatsCount).toBe(0);
   });
 
   it("returns 502 when the VPS API is unconfigured", async () => {
