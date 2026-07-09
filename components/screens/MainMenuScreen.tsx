@@ -10,6 +10,8 @@ import { useAuthStatus } from "@/components/auth/useAuthStatus";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 import { DEFAULT_GAME_MODE, GameMode } from "@/game/core/gameMode";
 import ConsoleIcon from "@/components/game/ConsoleIcon";
+import { audioManager } from "@/game/audio/audioManager";
+import { AUDIO_EVENTS } from "@/game/audio/audioEvents";
 
 interface MainMenuScreenProps {
   /** Dostane zvolený režim (viz gameMode state níže) — zatím jen UI příprava, žádná death/leaderboard logika se pro "hardcore" ještě neliší (viz game/core/gameMode.ts). */
@@ -24,12 +26,24 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
   const [showHardcoreLoginPrompt, setShowHardcoreLoginPrompt] = useState(false);
   const authStatus = useAuthStatus();
 
+  // NORMAL/HARDCORE i "Zůstat v Normal" jsou čistě lokální stav (žádný
+  // dispatch do app/play/page.tsx, kde normálně žije audio pro ostatní
+  // tlačítka) — proto tady volají audioManager přímo, přesně jak to
+  // CLAUDE.md dovoluje ("komponenty volají jen audioManager.play(...)").
+  // audioManager.init() je bezpečné volat opakovaně (no-op po prvním
+  // spuštění), potřeba tu je, protože klik na NORMAL/HARDCORE může být
+  // úplně první interakce hráče se stránkou, ještě před "NASTOUPIT NA
+  // SMĚNU" (ten init() volá taky, viz handleStart v app/play/page.tsx).
   function handleSelectNormal() {
+    audioManager.init();
+    audioManager.play(AUDIO_EVENTS.uiClick);
     setGameMode("normal");
     setShowHardcoreLoginPrompt(false);
   }
 
   function handleSelectHardcore() {
+    audioManager.init();
+    audioManager.play(AUDIO_EVENTS.uiClick);
     if (authStatus.status === "authenticated") {
       setGameMode("hardcore");
       setShowHardcoreLoginPrompt(false);
@@ -38,6 +52,12 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
     // Nepřihlášený hráč — NEvybírat hardcore potichu, jen zobrazit výzvu.
     // gameMode zůstává "normal" (nebo cokoliv bylo zvolené předtím).
     setShowHardcoreLoginPrompt(true);
+  }
+
+  function handleStayNormal() {
+    audioManager.init();
+    audioManager.play(AUDIO_EVENTS.uiClick);
+    setShowHardcoreLoginPrompt(false);
   }
 
   // Bez bg-* třídy na <main> záměrně — main nezakládá vlastní stacking context
@@ -120,10 +140,7 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
                   <a href="/api/auth/login" className="pixel-button tap-target flex-1 px-2 py-1.5 text-center text-[10px]">
                     {COPY.auth.discordLoginLabel}
                   </a>
-                  <button
-                    className="pixel-button tap-target flex-1 px-2 py-1.5 text-[10px]"
-                    onClick={() => setShowHardcoreLoginPrompt(false)}
-                  >
+                  <button className="pixel-button tap-target flex-1 px-2 py-1.5 text-[10px]" onClick={handleStayNormal}>
                     {COPY.gameMode.hardcoreLoginPromptStayNormalLabel}
                   </button>
                 </div>
