@@ -1,4 +1,16 @@
-export type ConsoleIconId = "arrow-left" | "arrow-right" | "map" | "door" | "warn" | "light" | "power" | "shield";
+export type ConsoleIconId =
+  | "arrow-left"
+  | "arrow-right"
+  | "map"
+  | "door"
+  | "warn"
+  | "light"
+  | "power"
+  | "shield"
+  | "speaker"
+  | "speaker-muted"
+  | "clock"
+  | "battery";
 
 /**
  * Sdílené inline SVG ikony pro konzolové ikonové bloky (viz
@@ -61,6 +73,36 @@ export default function ConsoleIcon({ id }: { id: ConsoleIconId }) {
       return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
           <path d="M12 3 5 6v5.5c0 4.5 3 7.7 7 9 4-1.3 7-4.5 7-9V6l-7-3Z" />
+        </svg>
+      );
+    case "speaker":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+          <path d="M4 9v6h4l5 4V5L8 9H4Z" />
+          <path d="M16.5 9a4.5 4.5 0 0 1 0 6" />
+          <path d="M19 7a8 8 0 0 1 0 10" />
+        </svg>
+      );
+    case "speaker-muted":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+          <path d="M4 9v6h4l5 4V5L8 9H4Z" />
+          <path d="M16 9l5 6M21 9l-5 6" />
+        </svg>
+      );
+    case "clock":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 7v5l3.5 2" />
+        </svg>
+      );
+    case "battery":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+          <rect x="2.5" y="8" width="16" height="8" rx="1.5" />
+          <path d="M21.5 10.5v3" />
+          <path d="M5.5 11v2M8.5 11v2M11.5 11v2" />
         </svg>
       );
   }

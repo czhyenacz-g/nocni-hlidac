@@ -410,7 +410,8 @@
  * samostatný svítící ikonový blok se studeným modrošedým leskem. Hlavní
  * akce (.console-button--primary, "Otočit se ke dveřím") dostane výstražný
  * oranžový akcent a větší ikonový blok, ne jen jinou barvu borderu. */
-.console-button {
+.console-button,
+.console-panel {
   border-radius: 6px;
   border-width: 1px;
   border-color: #3b4048;
@@ -419,7 +420,16 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
     inset 0 -2px 5px rgba(0, 0, 0, 0.55),
     0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.console-button {
   transition: border-color 0.12s steps(2), box-shadow 0.12s steps(2), background-color 0.12s steps(2);
+}
+
+/* Neinteraktivní konzolová varianta (viz ShiftTimer.tsx, PowerMeter.tsx) —
+ * stejný kovový vzhled jako .console-button, jen bez hover/focus stavů. */
+.console-panel {
+  border-style: solid;
 }
 
 .console-button:hover,

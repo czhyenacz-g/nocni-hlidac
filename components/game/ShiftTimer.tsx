@@ -1,4 +1,5 @@
 import { COPY } from "@/content/copy";
+import ConsoleIcon from "./ConsoleIcon";
 
 interface ShiftTimerProps {
   remainingMs: number;
@@ -22,11 +23,16 @@ function formatTime(ms: number): string {
 
 export default function ShiftTimer({ remainingMs, nightNumber, onNightLabelContextMenu }: ShiftTimerProps) {
   return (
-    <div className="pixel-panel p-2 text-center">
-      <div className="text-[10px] text-gray-400" onContextMenu={onNightLabelContextMenu}>
-        {COPY.game.nightLabel.replace("{n}", String(nightNumber))} — {COPY.game.timeLabel}
+    <div className="console-panel p-2 flex items-center gap-2.5">
+      <span className="console-icon-block console-icon-block--sm" aria-hidden="true">
+        <ConsoleIcon id="clock" />
+      </span>
+      <div className="text-left">
+        <div className="text-[10px] text-gray-400" onContextMenu={onNightLabelContextMenu}>
+          {COPY.game.nightLabel.replace("{n}", String(nightNumber))} — {COPY.game.timeLabel}
+        </div>
+        <div className="text-lg tabular-nums">{formatTime(remainingMs)}</div>
       </div>
-      <div className="text-lg tabular-nums">{formatTime(remainingMs)}</div>
     </div>
   );
 }

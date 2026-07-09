@@ -2,6 +2,7 @@ import { COPY } from "@/content/copy";
 import { getNightConfig } from "@/game/difficulty/nightConfig";
 import SceneBackground from "@/components/SceneBackground";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
+import ConsoleIcon from "@/components/game/ConsoleIcon";
 
 interface BriefingScreenProps {
   /** currentNight = survivedNights + 1 (viz game/core/survivedNights.ts) — stejný zdroj jako HUD/ShiftTimer. */
@@ -42,8 +43,14 @@ export default function BriefingScreen({ nightNumber, onStartShift }: BriefingSc
                 <p key={line}>{line}</p>
               ))}
             </div>
-            <button className="pixel-button tap-target px-6 py-3 text-sm w-full" onClick={onStartShift}>
-              {COPY.menu.startButton}
+            <button
+              className="pixel-button console-button console-button--primary tap-target flex items-center gap-3 px-6 py-3 text-sm w-full"
+              onClick={onStartShift}
+            >
+              <span className="console-icon-block console-icon-block--primary" aria-hidden="true">
+                <ConsoleIcon id="power" />
+              </span>
+              <span className="flex-1 text-left">{COPY.menu.startButton}</span>
             </button>
           </div>
         </div>

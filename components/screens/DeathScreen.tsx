@@ -6,6 +6,7 @@ import { DeathReason } from "@/game/core/types";
 import { GameMode } from "@/game/core/gameMode";
 import SceneBackground from "@/components/SceneBackground";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
+import ConsoleIcon from "@/components/game/ConsoleIcon";
 
 interface DeathScreenProps {
   reason: DeathReason | null;
@@ -49,36 +50,55 @@ export default function DeathScreen({ reason, deathCount, gameMode, livesRemaini
     <main className="relative min-h-screen flex items-center justify-center p-4">
       <SceneBackground scene={scene} />
       <div className="jumpscare-overlay" />
-      <div className="w-full max-w-md text-center pixel-panel p-8 relative z-10">
-        <h1 className="text-2xl font-bold mb-2 text-red-500">{COPY.death.title}</h1>
-        <p className="text-sm text-gray-400 mb-4">{reason ? COPY.death.reasons[reason] : ""}</p>
-        <p className="text-xs text-gray-300 mb-2 italic">{corporateMessage}</p>
-        <p className="text-xs text-gray-400 mb-4">
-          {COPY.death.previousGuardsLabel.replace("{count}", String(deathCount))}
-        </p>
 
-        {isNormalContinuing ? (
-          <p className="text-sm text-amber-400 mb-6">
-            {COPY.death.normalContinueLivesLabel.replace("{lives}", String(livesRemaining))}
-            <br />
-            {COPY.death.normalContinueNightLabel.replace("{night}", String(nightNumber))}
+      {/* Stejný "terminál" obal jako MainMenuScreen/BriefingScreen (viz
+          zadání "podobným způsobem uprav") — kovový rám + 4 šrouby +
+          zapuštěná obrazovka, místo ploché pixel-panel karty. */}
+      <div className="w-full max-w-md menu-terminal-frame relative z-10">
+        <span className="camera-monitor-screw" style={{ top: 5, left: 5 }} aria-hidden="true" />
+        <span className="camera-monitor-screw" style={{ top: 5, right: 5 }} aria-hidden="true" />
+        <span className="camera-monitor-screw" style={{ bottom: 5, left: 5 }} aria-hidden="true" />
+        <span className="camera-monitor-screw" style={{ bottom: 5, right: 5 }} aria-hidden="true" />
+
+        <div className="menu-terminal-screen pixel-screen-static text-center p-8">
+          <h1 className="text-2xl font-bold mb-2 text-red-500">{COPY.death.title}</h1>
+          <p className="text-sm text-gray-400 mb-4">{reason ? COPY.death.reasons[reason] : ""}</p>
+          <p className="text-xs text-gray-300 mb-2 italic">{corporateMessage}</p>
+          <p className="text-xs text-gray-400 mb-4">
+            {COPY.death.previousGuardsLabel.replace("{count}", String(deathCount))}
           </p>
-        ) : (
-          <div className="mb-6">
-            <p className="text-sm text-red-400">
-              {gameMode === "hardcore" ? COPY.death.hardcoreGameOverLabel : COPY.death.normalGameOverLabel}
-            </p>
-            {gameMode === "normal" && <p className="text-[11px] text-gray-500 mt-2">{COPY.death.normalLeaderboardNote}</p>}
-          </div>
-        )}
 
-        <button className="pixel-button tap-target px-6 py-3 text-sm w-full" onClick={onRetry}>
-          {isNormalContinuing
-            ? COPY.death.normalContinueButton
-            : gameMode === "hardcore"
-              ? COPY.death.hardcoreGameOverButton
-              : COPY.death.normalGameOverButton}
-        </button>
+          {isNormalContinuing ? (
+            <p className="text-sm text-amber-400 mb-6">
+              {COPY.death.normalContinueLivesLabel.replace("{lives}", String(livesRemaining))}
+              <br />
+              {COPY.death.normalContinueNightLabel.replace("{night}", String(nightNumber))}
+            </p>
+          ) : (
+            <div className="mb-6">
+              <p className="text-sm text-red-400">
+                {gameMode === "hardcore" ? COPY.death.hardcoreGameOverLabel : COPY.death.normalGameOverLabel}
+              </p>
+              {gameMode === "normal" && <p className="text-[11px] text-gray-500 mt-2">{COPY.death.normalLeaderboardNote}</p>}
+            </div>
+          )}
+
+          <button
+            className="pixel-button console-button console-button--primary tap-target flex items-center gap-3 px-6 py-3 text-sm w-full"
+            onClick={onRetry}
+          >
+            <span className="console-icon-block console-icon-block--primary" aria-hidden="true">
+              <ConsoleIcon id={isNormalContinuing ? "arrow-right" : "power"} />
+            </span>
+            <span className="flex-1 text-left">
+              {isNormalContinuing
+                ? COPY.death.normalContinueButton
+                : gameMode === "hardcore"
+                  ? COPY.death.hardcoreGameOverButton
+                  : COPY.death.normalGameOverButton}
+            </span>
+          </button>
+        </div>
       </div>
     </main>
   );
