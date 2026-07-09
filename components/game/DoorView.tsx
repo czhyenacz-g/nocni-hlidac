@@ -21,6 +21,14 @@ interface DoorViewProps {
   bulbReplacementProgressMs: number;
   /** viz GameState.bulbReplaceSuccessSeq — zvyšuje se jen při úspěšném dokončení výměny. */
   bulbReplaceSuccessSeq: number;
+  /**
+   * `true` jen během "monster_reached_office" krize, dokud dveře ještě
+   * nejsou zavřené (viz zadání, game/core/officeBreachAftermath.ts
+   * #resolveOfficeBreachPhase === "close_door", GameScreen.tsx) — vymění
+   * klidný hotspot label za výraznější, pulzující variantu. Stejný hotspot/
+   * akce (onToggleDoor), jen naléhavější prezentace.
+   */
+  closeDoorUrgent: boolean;
   onToggleDoor: () => void;
   onLookAtDesk: () => void;
   onStartBulbReplacement: () => void;
@@ -49,6 +57,7 @@ export default function DoorView({
   bulbReplacementActive,
   bulbReplacementProgressMs,
   bulbReplaceSuccessSeq,
+  closeDoorUrgent,
   onToggleDoor,
   onLookAtDesk,
   onStartBulbReplacement,
@@ -124,8 +133,15 @@ export default function DoorView({
           onClick={onToggleDoor}
           aria-label={doorClosed ? "Otevřít dveře" : "Zavřít dveře"}
         >
-          <span className="door-hotspot-label">
-            {doorClosed ? COPY.game.doorViewHintOpen : COPY.game.doorViewHintClose}
+          <span
+            className="door-hotspot-label"
+            style={
+              closeDoorUrgent && !doorClosed
+                ? { animation: "pixel-blink 0.6s steps(2) infinite", background: "#ef4444", color: "#fff" }
+                : undefined
+            }
+          >
+            {doorClosed ? COPY.game.doorViewHintOpen : closeDoorUrgent ? COPY.game.doorViewHintCloseUrgent : COPY.game.doorViewHintClose}
           </span>
         </button>
 

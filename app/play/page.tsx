@@ -886,6 +886,13 @@ export default function PlayPage() {
       if (resolveOfficeThreatTriggeredFromWorldEffects(result.worldEffects)) {
         dispatch({ type: "APPLY_MONSTER_REACHED_OFFICE_AFTERMATH" });
         messages.push(COPY.game.emergencyRunMonsterReachedOfficeLabel);
+        // Krizový návrat musí posadit hráče rovnou před dveře (viz zadání
+        // "první krok je zavřít dveře, ne přepínat pohledy") — hráč se
+        // typicky vrací zpátky na left_wall (odkud minihru spustil), stejná
+        // existující akce jako tlačítko "Otočit se ke dveřím". Běžný návrat
+        // BEZ monster_reached_office zůstává beze změny (playerView se
+        // nedotýká).
+        dispatch({ type: "LOOK_AT_DOOR" });
       }
 
       // Brokovnice/náboj (viz zadání "první krok k true endingu",

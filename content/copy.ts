@@ -70,6 +70,11 @@ export const COPY = {
     // dveře") — viz DoorView.tsx, stejná dvojice jako aria-label u hotspotu.
     doorViewHintOpen: "Otevřít dveře",
     doorViewHintClose: "Zavřít dveře",
+    // Výraznější varianta doorViewHintClose během "monster_reached_office"
+    // krize (viz zadání, resolveOfficeBreachPhase === "close_door") — stejný
+    // hotspot/akce (onToggleDoor), jen naléhavější text + pulzování
+    // (DoorView.tsx#closeDoorUrgent).
+    doorViewHintCloseUrgent: "ZABOUCHNOUT DVEŘE!",
     // Ruční výměna prasklé žárovky (viz DoorView.tsx, gameReducer.ts
     // START_BULB_REPLACEMENT) — jen MVP text, žádný nový obrázkový asset.
     bulbReplaceLabel: "Vyměnit žárovku",

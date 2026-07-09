@@ -749,6 +749,22 @@ export function updateEnemyAi(input: UpdateEnemyAiInput): Enemy {
   };
 }
 
+/**
+ * Jestli EmergencyMiniGame.tsx#draw má vykreslit krizový "radar ping" marker
+ * navíc k běžnému fog/LOS vykreslování (viz zadání "monstrum musí být lépe
+ * viditelné i ve tmě") — NEZÁVISLE na `enemyVisibleToPlayer`/fogu, ale
+ * PŘÍSNĚ jen pro `office_bound` (běžné patrolující monstrum mimo LOS se
+ * tímhle nikdy neodhalí). `officeThreatTriggered` (monstrum už fyzicky
+ * dorazilo a zmizelo, viz EmergencyMiniGame.tsx#tick) marker vypne stejně
+ * jako zbytek vykreslování nepřítele. Draw() marker vždy kreslí na
+ * SKUTEČNÉ `enemy.x/y` (stejné souřadnice jako hit detekce v
+ * applyShot/isEnemyHit) — tahle funkce jen rozhoduje "ano/ne", nikdy
+ * pozici neodvozuje ani neposouvá.
+ */
+export function shouldShowOfficeBoundCrisisMarker(enemy: Pick<Enemy, "alive" | "mode">, officeThreatTriggered: boolean): boolean {
+  return enemy.alive && enemy.mode === "office_bound" && !officeThreatTriggered;
+}
+
 // ── Kontrakt pro budoucí spuštění z hlavní hry (viz
 // components/minigame/EmergencyMiniGame.tsx) — čisté, testovatelné funkce
 // pro vstup/výsledek, žádné React/DOM.

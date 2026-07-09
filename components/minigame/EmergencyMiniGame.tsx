@@ -80,6 +80,7 @@ import {
   msUntilOfficeDoorOpens,
   resolveEquipmentFromInput,
   shouldHighlightOfficeMarker,
+  shouldShowOfficeBoundCrisisMarker,
   updateEnemyAi,
   updateMissionPhase,
 } from "@/game/minigame/logic";
@@ -1666,6 +1667,34 @@ function draw(
       ctx.stroke();
       ctx.restore();
     }
+  }
+
+  // Krizový marker "office_bound" (viz zadání "monstrum musí být lépe
+  // viditelné i ve tmě") — NEZÁVISLÝ na `enemyVisible`/fogu výše, běžné
+  // patrolující monstrum mimo LOS se tímhle NEODHALUJE (podmínka je striktně
+  // `mode === "office_bound"`, ne "cokoliv mimo fog"). Je to úmyslně
+  // stylizovaný "radar ping" (pulzující prstenec + vždy plně jasná tečka),
+  // ne plné odhalení detailního bodu jako za světla — ale na SKUTEČNÉ pozici
+  // enemy.x/y, ne posunuté/přibližné, ať hráč nikdy nestřílí vedle (hit
+  // detekce v applyShot/isEnemyHit stejně čte enemy.x/y přímo, tohle je
+  // čistě vizuální navíc vrstva). Zmizí spolu se zbytkem monstra, jakmile
+  // dorazí (officeThreatTriggered), stejně jako detailní kreslení výše.
+  if (shouldShowOfficeBoundCrisisMarker(enemy, game.officeThreatTriggered)) {
+    const pingPulse = 0.5 + 0.5 * Math.sin(performance.now() / 150);
+    ctx.save();
+    ctx.strokeStyle = `rgba(239, 68, 68, ${0.3 + pingPulse * 0.35})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(enemy.x, enemy.y, enemy.radius + 10 + pingPulse * 14, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.shadowColor = "rgba(239, 68, 68, 0.95)";
+    ctx.shadowBlur = 12 + pingPulse * 8;
+    ctx.fillStyle = "#ff3b3b";
+    ctx.beginPath();
+    ctx.arc(enemy.x, enemy.y, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 
   // Hráč — světlý zelenobílý bod s glow + malý směrník podle direction.

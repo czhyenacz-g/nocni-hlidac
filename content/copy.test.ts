@@ -35,6 +35,11 @@ describe("COPY.game office breach aftermath copy", () => {
     expect(COPY.game.turnToDoorUrgentLabel.length).toBeGreaterThan(0);
     expect(COPY.game.turnToDoorUrgentLabel).not.toBe(COPY.game.turnToDoorLabel);
   });
+
+  it("doorViewHintCloseUrgent is non-empty and distinct from the regular doorViewHintClose", () => {
+    expect(COPY.game.doorViewHintCloseUrgent.length).toBeGreaterThan(0);
+    expect(COPY.game.doorViewHintCloseUrgent).not.toBe(COPY.game.doorViewHintClose);
+  });
 });
 
 // Přejmenování odkazu na žebříček v hlavním menu (viz components/screens/MainMenuScreen.tsx) —

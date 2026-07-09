@@ -269,3 +269,46 @@ describe("officeBreachAftermathActive defaults to false for a fresh/restarted sh
     expect(result.officeBreachAftermathActive).toBe(false);
   });
 });
+
+// Krizový návrat musí posadit hráče rovnou před dveře (viz zadání, novější
+// úprava po ručním testování) — app/play/page.tsx#handleEmergencyMiniGameComplete
+// dispatchne LOOK_AT_DOOR hned po APPLY_MONSTER_REACHED_OFFICE_AFTERMATH.
+// Tenhle blok testuje tu samou sekvenci na úrovni reduceru — LOOK_AT_DOOR
+// musí po aftermath akci projít (žádný guard ho neblokuje) a TOGGLE_DOOR
+// musí na door view fungovat okamžitě, i uprostřed krize.
+describe("Crisis return lands the player at the door (LOOK_AT_DOOR after the aftermath action)", () => {
+  it("LOOK_AT_DOOR right after APPLY_MONSTER_REACHED_OFFICE_AFTERMATH sets playerView to 'door'", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const afterAftermath = reducer(baseState({ playerView: "left_wall", doorClosed: false }), {
+      type: "APPLY_MONSTER_REACHED_OFFICE_AFTERMATH",
+    });
+    const afterLookAtDoor = reducer(afterAftermath, { type: "LOOK_AT_DOOR" });
+    expect(afterLookAtDoor.playerView).toBe("door");
+  });
+
+  it("closing the door (TOGGLE_DOOR) works immediately once on the door view during the crisis", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const afterAftermath = reducer(baseState({ playerView: "left_wall", doorClosed: false }), {
+      type: "APPLY_MONSTER_REACHED_OFFICE_AFTERMATH",
+    });
+    const afterLookAtDoor = reducer(afterAftermath, { type: "LOOK_AT_DOOR" });
+    expect(afterLookAtDoor.doorClosed).toBe(false);
+
+    const afterToggle = reducer(afterLookAtDoor, { type: "TOGGLE_DOOR" });
+    expect(afterToggle.doorClosed).toBe(true);
+    expect(resolveOfficeBreachPhase(afterToggle)).toBe("restart_generator");
+  });
+
+  it("a regular return (no monster_reached_office) does not force playerView — LOOK_AT_DOOR is simply not dispatched", () => {
+    // This is the guard app/play/page.tsx already relies on
+    // (resolveOfficeThreatTriggeredFromWorldEffects false -> no dispatch at
+    // all) — documented here as the reducer-level building block: without a
+    // LOOK_AT_DOOR dispatch, playerView is untouched by APPLY_SHOTGUN_EFFECTS/
+    // RECHARGE_POWER/ADD_BULBS_REMAINING (the other "returned" outcome
+    // dispatches), so a normal return never redirects the view.
+    const reducer = createGameReducer(NIGHT_01);
+    const state = baseState({ playerView: "left_wall" });
+    const result = reducer(state, { type: "RECHARGE_POWER", amount: 10 });
+    expect(result.playerView).toBe("left_wall");
+  });
+});

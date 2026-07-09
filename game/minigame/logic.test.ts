@@ -32,6 +32,7 @@ import {
   msUntilOfficeDoorOpens,
   resolveEquipmentFromInput,
   shouldHighlightOfficeMarker,
+  shouldShowOfficeBoundCrisisMarker,
   tickEnemyStun,
   updateEnemyAi,
   updateMissionPhase,
@@ -653,6 +654,33 @@ describe("updateEnemyAi", () => {
       expect(enemy.mode).toBe("office_bound");
       expect(enemy.y).toBeLessThan(afterOneTick); // kept advancing toward the target
     });
+  });
+
+  // Krizový "radar ping" marker (viz zadání "monstrum musí být lépe
+  // viditelné i ve tmě") — draw() v EmergencyMiniGame.tsx tohle volá
+  // NEZÁVISLE na fog/LOS (enemyVisibleToPlayer), takže testováno tady jako
+  // čistá funkce, ne přes canvas.
+  describe("shouldShowOfficeBoundCrisisMarker", () => {
+    it("true for a live enemy in office_bound mode, threat not yet triggered", () => {
+      expect(shouldShowOfficeBoundCrisisMarker(baseEnemy({ mode: "office_bound" }), false)).toBe(true);
+    });
+
+    it("false once officeThreatTriggered (monster already arrived and vanished)", () => {
+      expect(shouldShowOfficeBoundCrisisMarker(baseEnemy({ mode: "office_bound" }), true)).toBe(false);
+    });
+
+    it("false for a dead enemy, even in office_bound mode", () => {
+      expect(shouldShowOfficeBoundCrisisMarker(baseEnemy({ mode: "office_bound", alive: false }), false)).toBe(false);
+    });
+
+    // Běžné patrolující monstrum mimo LOS/fog se NESMÍ odhalit tímhle
+    // markerem — ověřeno pro všechny ostatní mody, ne jen jeden příklad.
+    it.each(["investigating", "waiting", "chasing", "wounded"] as const)(
+      "false for a regular patrolling enemy in mode '%s' (no office_bound commitment)",
+      (mode) => {
+        expect(shouldShowOfficeBoundCrisisMarker(baseEnemy({ mode }), false)).toBe(false);
+      },
+    );
   });
 });
 
