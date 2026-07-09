@@ -6,7 +6,6 @@ import { DeathReason } from "@/game/core/types";
 import { GameMode } from "@/game/core/gameMode";
 import SceneBackground from "@/components/SceneBackground";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
-import ConsoleIcon from "@/components/game/ConsoleIcon";
 
 interface DeathScreenProps {
   reason: DeathReason | null;
@@ -84,19 +83,14 @@ export default function DeathScreen({ reason, deathCount, gameMode, livesRemaini
           )}
 
           <button
-            className="pixel-button console-button console-button--primary tap-target flex items-center gap-3 px-6 py-3 text-sm w-full"
+            className="pixel-button console-button console-button--primary tap-target px-6 py-3 text-sm w-full"
             onClick={onRetry}
           >
-            <span className="console-icon-block console-icon-block--primary" aria-hidden="true">
-              <ConsoleIcon id={isNormalContinuing ? "arrow-right" : "power"} />
-            </span>
-            <span className="flex-1 text-left">
-              {isNormalContinuing
-                ? COPY.death.normalContinueButton
-                : gameMode === "hardcore"
-                  ? COPY.death.hardcoreGameOverButton
-                  : COPY.death.normalGameOverButton}
-            </span>
+            {isNormalContinuing
+              ? COPY.death.normalContinueButton
+              : gameMode === "hardcore"
+                ? COPY.death.hardcoreGameOverButton
+                : COPY.death.normalGameOverButton}
           </button>
         </div>
       </div>

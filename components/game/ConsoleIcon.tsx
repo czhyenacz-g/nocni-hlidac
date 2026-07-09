@@ -10,7 +10,8 @@ export type ConsoleIconId =
   | "speaker"
   | "speaker-muted"
   | "clock"
-  | "battery";
+  | "battery"
+  | "skull";
 
 /**
  * Sdílené inline SVG ikony pro konzolové ikonové bloky (viz
@@ -103,6 +104,14 @@ export default function ConsoleIcon({ id }: { id: ConsoleIconId }) {
           <rect x="2.5" y="8" width="16" height="8" rx="1.5" />
           <path d="M21.5 10.5v3" />
           <path d="M5.5 11v2M8.5 11v2M11.5 11v2" />
+        </svg>
+      );
+    case "skull":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+          <path d="M12 3a7 7 0 0 0-7 7c0 2.4 1.1 4 2.5 5.3V18a1 1 0 0 0 1 1H10v1.5a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5V19h1.5a1 1 0 0 0 1-1v-2.7c1.4-1.3 2.5-2.9 2.5-5.3a7 7 0 0 0-7-7Z" />
+          <circle cx="9.3" cy="11" r="1.3" fill="currentColor" stroke="none" />
+          <circle cx="14.7" cy="11" r="1.3" fill="currentColor" stroke="none" />
         </svg>
       );
   }

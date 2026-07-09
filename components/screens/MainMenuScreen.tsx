@@ -72,13 +72,10 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
             <p className="text-sm text-gray-500 mb-8">{COPY.menu.intro}</p>
 
             <button
-              className="pixel-button console-button console-button--primary tap-target flex items-center gap-3 px-6 py-3 text-sm w-full"
+              className="pixel-button console-button console-button--primary tap-target px-6 py-3 text-sm w-full"
               onClick={() => onStart(gameMode)}
             >
-              <span className="console-icon-block console-icon-block--primary" aria-hidden="true">
-                <ConsoleIcon id="power" />
-              </span>
-              <span className="flex-1 text-left">{COPY.menu.startButton}</span>
+              {COPY.menu.startButton}
             </button>
 
             {/* Výběr režimu — výraznější než spodní odkazy, ale menší než
@@ -89,14 +86,11 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
             <div className="flex gap-2 mt-4">
               <div className="group relative flex-1">
                 <button
-                  className="pixel-button console-button tap-target flex items-center justify-center gap-2 px-3 py-1.5 text-xs w-full"
+                  className="pixel-button console-button tap-target px-3 py-1.5 text-xs w-full"
                   data-active={gameMode === "normal"}
                   onClick={handleSelectNormal}
                 >
-                  <span className="console-icon-block console-icon-block--sm" aria-hidden="true">
-                    <ConsoleIcon id="shield" />
-                  </span>
-                  <span>{COPY.gameMode.normalLabel}</span>
+                  {COPY.gameMode.normalLabel}
                 </button>
                 <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-1.5 w-56 -translate-x-1/2 rounded-none border border-gray-600 bg-gray-900/95 p-2 text-[10px] text-gray-300 opacity-0 shadow-lg transition-opacity duration-100 group-hover:opacity-100">
                   {COPY.gameMode.normalTooltip}
@@ -109,7 +103,7 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
                   onClick={handleSelectHardcore}
                 >
                   <span className="console-icon-block console-icon-block--sm" aria-hidden="true">
-                    <ConsoleIcon id="warn" />
+                    <ConsoleIcon id="skull" />
                   </span>
                   <span>{COPY.gameMode.hardcoreLabel}</span>
                 </button>

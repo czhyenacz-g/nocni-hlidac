@@ -67,6 +67,7 @@ export default function DeskView({
           label={COPY.game.lookAtGeneratorLabel}
           onClick={onLookAtGenerator}
           align="right"
+          icon="power"
           urgent={isGeneratorArrowUrgent(state, night.generator)}
         />
       </div>
