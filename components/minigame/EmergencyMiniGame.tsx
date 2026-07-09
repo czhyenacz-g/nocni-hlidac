@@ -206,11 +206,14 @@ interface MiniGameRefState {
    */
   monsterHitThisRun: boolean;
   /**
-   * `true` od okamžiku, kdy monstrum zamířilo na kancelář/generátor (viz
-   * EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS, isMonsterOfficeThreatArmed) —
-   * latch, ať se `game.enemy.alive = false` (a tím pádem výsledný
-   * "monster_reached_office" worldEffect) nastaví přesně jednou za výpravu,
-   * nikdy se nevrací zpátky na false.
+   * `true` od okamžiku, kdy monstrum FYZICKY DORAZILO do kanceláře (viz
+   * tick() — `enemy.mode === "office_bound"` + `circleIntersectsWall`
+   * proti `exitZone`) — NENÍ totéž jako "začalo cílit" (viz
+   * `enemy.officeTarget`/isMonsterOfficeThreatArmed, které se nastaví
+   * dřív a monstrum od tohohle okamžiku ještě běží napříč mapou, viditelné
+   * a zastřelitelné). Latch, ať se `game.enemy.alive = false` (a tím pádem
+   * výsledný "monster_reached_office" worldEffect) nastaví přesně jednou
+   * za výpravu, nikdy se nevrací zpátky na false.
    */
   officeThreatTriggered: boolean;
 }
@@ -353,6 +356,7 @@ const MODE_LABELS: Record<EnemyMode, string> = {
   waiting: "Čeká",
   chasing: "Lov",
   wounded: "Zraněno",
+  office_bound: "Míří ke kanceláři",
 };
 
 const MOVE_KEYS: Record<string, { dx: number; dy: number }> = {
@@ -405,13 +409,16 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
   // výše). `doorCountdownMs` je živý odpočet pro panel nad rámečkem hry
   // (viz JSX níže) — zaokrouhlený na desetiny sekundy stejně jako
   // woundedMsLeft, ať nezpůsobuje re-render 60×/s. `monsterOfficeThreatArmed`
-  // řídí text "Monstrum větří prázdnou kancelář..." (viz
-  // EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS) — nezávislé na tom, jestli
-  // monstrum už fakticky zmizelo z mapy (to řeší gameRef.officeThreatTriggered
-  // přímo, bez potřeby React state).
+  // řídí text "Monstrum míří ke kanceláři..." (viz
+  // EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS) — JEN že monstrum ZAČALO
+  // cílit (Enemy.officeTarget nastavený, mode "office_bound"), NE že už
+  // dorazilo. `officeThreatTriggered` zrcadlí gameRef.officeThreatTriggered
+  // (monstrum fyzicky dorazilo do kanceláře a zmizelo z mapy, viz tick()) —
+  // dvě samostatné React state proměnné pro dvě samostatné fáze hrozby.
   const [officeDoorUnlocked, setOfficeDoorUnlocked] = useState(false);
   const [doorCountdownMs, setDoorCountdownMs] = useState(EMERGENCY_OFFICE_DOOR_LOCK_MS);
   const [monsterOfficeThreatArmed, setMonsterOfficeThreatArmed] = useState(false);
+  const [officeThreatTriggered, setOfficeThreatTriggered] = useState(false);
   // Mobilní/dotykové ovládání (viz zadání, game/minigame/touchControls.ts) —
   // zjišťuje se jednou po mountu (viz effect níže), ne přepočítává za běhu.
   const [isTouchDevice, setIsTouchDevice] = useState(false);
@@ -479,6 +486,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
     setOfficeDoorUnlocked(false);
     setDoorCountdownMs(EMERGENCY_OFFICE_DOOR_LOCK_MS);
     setMonsterOfficeThreatArmed(false);
+    setOfficeThreatTriggered(false);
     setResult(null);
   }
 
@@ -819,23 +827,24 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
         // ať panel "Automatické otevření za: X.X s" nezpůsobuje re-render 60×/s.
         setDoorCountdownMs(Math.ceil(msUntilOfficeDoorOpens(game.elapsedMs, EMERGENCY_OFFICE_DOOR_LOCK_MS) / 100) * 100);
 
-        // Monstrum zamíří na kancelář/generátor, jakmile hráč zůstane venku
-        // moc dlouho PO otevření dveří (viz EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS,
-        // isMonsterOfficeThreatArmed) — spustí se přesně jednou (viz
-        // game.officeThreatTriggered latch), monstrum "zmizí" z mapy
-        // (enemy.alive = false, viz applyShot/draw — stejný háček, jaký typ
-        // Enemy.alive už měl připravený, jen dosud nevyužitý) a tenhle
-        // moment se přenese do EmergencyMiniGameResult teprve při skutečném
-        // návratu (viz handleObjectiveKey#createReturnedResult).
+        // Monstrum zamíří na kancelář, jakmile hráč zůstane venku moc dlouho
+        // PO otevření dveří (viz EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS,
+        // isMonsterOfficeThreatArmed) — NASTAVÍ jen commitnutý cíl
+        // (Enemy.officeTarget = game.placement.playerExit, existující
+        // "dveře kanceláře" bod, viz resolveMiniGamePlacement), monstrum od
+        // teď běží tam stejným pohybovým mechanismem jako investigating/
+        // chasing (mode "office_bound", viz updateEnemyAi v logic.ts).
+        // Samotné zmizení z mapy + worldEffect "monster_reached_office" se
+        // řeší až níže, PO skutečném doražení do kanceláře — armed samo o
+        // sobě NIKDY neznamená "dorazilo" (viz zadání).
         const threatArmedNow = isMonsterOfficeThreatArmed(
           game.elapsedMs,
           EMERGENCY_OFFICE_DOOR_LOCK_MS,
           EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS,
         );
         setMonsterOfficeThreatArmed(threatArmedNow);
-        if (threatArmedNow && !game.officeThreatTriggered) {
-          game.officeThreatTriggered = true;
-          game.enemy.alive = false;
+        if (threatArmedNow && !game.enemy.officeTarget) {
+          game.enemy.officeTarget = game.placement.playerExit;
         }
 
         // Čistě pro HUD hint (viz getMissionHint) — setState bailout, mění se
@@ -895,9 +904,29 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
             config: game.enemyAiConfig,
           });
 
-          // Game over jen když enemy NENÍ wounded a fyzicky se dotkne hráče —
-          // wounded se dotykem game over nikdy nezpůsobí (viz zadání).
+          // Dorazilo monstrum do office cíle? (viz zadání "zamčené dveře") —
+          // kontrola PO pohybu tohohle tiku, čistě podle skutečné pozice
+          // vůči kanceláři (stejná room-bounds zóna jako pro hráčův návrat,
+          // game.exitZone), ne podle vzdálenosti k bodu — "dorazilo" =
+          // monstrum je fyzicky v místnosti kanceláře. Latch přes
+          // `!game.officeThreatTriggered`, ať se nespustí opakovaně.
           if (
+            game.enemy.mode === "office_bound" &&
+            !game.officeThreatTriggered &&
+            circleIntersectsWall(game.enemy.x, game.enemy.y, game.enemy.radius, game.exitZone)
+          ) {
+            game.officeThreatTriggered = true;
+            game.enemy.alive = false;
+            setOfficeThreatTriggered(true);
+          }
+
+          // Game over jen když enemy NENÍ wounded, JE naživu (monstrum, co
+          // právě tenhle tik doražením do kanceláře zmizelo výše, nesmí
+          // stejným dotykem ještě jednou "zabít" jako gameOver) a fyzicky
+          // se dotkne hráče — wounded se dotykem game over nikdy
+          // nezpůsobí (viz zadání).
+          if (
+            game.enemy.alive &&
             game.enemy.mode !== "wounded" &&
             circlesTouch(game.player.x, game.player.y, game.player.radius, game.enemy.x, game.enemy.y, game.enemy.radius)
           ) {
@@ -1027,8 +1056,11 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
 
       {/* Stav dveří kanceláře (viz zadání "diegetická herní informace, ne
           technický cooldown") — nad rámečkem hry, ne skrytý v HUD hintu.
-          Tři stavy: zamčeno + živý odpočet, otevřeno, otevřeno + monstrum
-          zamířilo na kancelář (viz monsterOfficeThreatArmed). Jen během
+          Čtyři stavy: zamčeno + živý odpočet, otevřeno, otevřeno + monstrum
+          ZAČALO cílit na kancelář (monsterOfficeThreatArmed, ale ještě
+          neDORAZILO — hráč ho pořád může vidět/utíkat/zastřelit, viz
+          zadání), a monstrum DORAZILO/zmizelo (officeThreatTriggered) — tenhle
+          poslední text výslovně říká, že zmizení není bug. Jen během
           "playing" — po výhře/prohře už dveře nejsou relevantní info. */}
       {status === "playing" && (
         <div
@@ -1047,7 +1079,19 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
             </>
           )}
           {officeDoorUnlocked && !monsterOfficeThreatArmed && <div>Dveře kanceláře jsou otevřené.</div>}
-          {officeDoorUnlocked && monsterOfficeThreatArmed && <div>Monstrum větří prázdnou kancelář...</div>}
+          {monsterOfficeThreatArmed && !officeThreatTriggered && (
+            <>
+              <div>Siréna přilákala monstrum ke kanceláři.</div>
+              <div>Monstrum míří ke kanceláři.</div>
+              <div>Ještě ho můžeš zastavit.</div>
+            </>
+          )}
+          {officeThreatTriggered && (
+            <>
+              <div>Monstrum zmizelo směrem ke kanceláři.</div>
+              <div>Kancelář je ohrožena.</div>
+            </>
+          )}
         </div>
       )}
 

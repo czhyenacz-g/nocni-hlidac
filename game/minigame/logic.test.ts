@@ -604,6 +604,56 @@ describe("updateEnemyAi", () => {
       expect(result.stuckTotalMs).toBe(9999); // untouched, not evaluated
     });
   });
+
+  // Commitnutý office_bound cíl (viz zadání "monstrum musí fyzicky doběhnout
+  // ke kanceláři, ne teleportovat") — Enemy.officeTarget přebíjí vidění/
+  // honičku hráče úplně, hýbe se stejným stepTowards/moveWithWallSliding
+  // mechanismem jako investigating/chasing výše.
+  describe("office_bound (Enemy.officeTarget)", () => {
+    it("moves toward officeTarget at chaseSpeed, ignoring a player directly in cone/range", () => {
+      const enemy = baseEnemy({ x: 400, y: 400, visionAngle: 0, officeTarget: { x: 400, y: 200 } });
+      // Player would normally trigger "chasing" (in cone, in range, unobstructed).
+      const result = updateEnemyAi({ enemy, player: { x: 450, y: 400 }, walls: [], deltaMs: 16, config });
+      expect(result.mode).toBe("office_bound");
+      // Moved toward officeTarget (straight up), not toward the player (to the right).
+      expect(result.x).toBeCloseTo(400, 5);
+      expect(result.y).toBeLessThan(400);
+      const distanceMoved = 400 - result.y;
+      expect(distanceMoved).toBeCloseTo(config.chaseSpeed, 5);
+    });
+
+    it("stays office_bound even when the player is far away/not visible at all", () => {
+      const enemy = baseEnemy({ x: 400, y: 400, officeTarget: { x: 100, y: 100 } });
+      const result = updateEnemyAi({ enemy, player: { x: 10000, y: 10000 }, walls: [], deltaMs: 16, config });
+      expect(result.mode).toBe("office_bound");
+    });
+
+    it("a shot (wounded) still interrupts office_bound — stunRemainingMs freezes movement", () => {
+      const enemy = baseEnemy({ x: 400, y: 400, mode: "wounded", stunRemainingMs: 5000, officeTarget: { x: 400, y: 200 } });
+      const result = updateEnemyAi({ enemy, player: { x: 450, y: 400 }, walls: [], deltaMs: 500, config });
+      expect(result.mode).toBe("wounded");
+      expect(result.x).toBe(400);
+      expect(result.y).toBe(400);
+    });
+
+    it("after the stun from a shot wears off, resumes office_bound directly — NOT the normal enraged/investigating recovery", () => {
+      const enemy = baseEnemy({ mode: "wounded", stunRemainingMs: 100, officeTarget: { x: 400, y: 200 }, enraged: false });
+      const result = updateEnemyAi({ enemy, player: { x: 700, y: 400 }, walls: [], deltaMs: 200, config, rng: () => 0.5 });
+      expect(result.mode).toBe("office_bound");
+      expect(result.stunRemainingMs).toBe(0);
+      // Did not pick a new investigationTarget near the player (that's the non-officeTarget recovery path).
+      expect(result.investigationTarget).toEqual(enemy.investigationTarget);
+    });
+
+    it("without a shot in between, office_bound keeps moving toward the same officeTarget every tick", () => {
+      let enemy = baseEnemy({ x: 400, y: 400, officeTarget: { x: 400, y: 100 } });
+      enemy = updateEnemyAi({ enemy, player: { x: 10, y: 10 }, walls: [], deltaMs: 16, config });
+      const afterOneTick = enemy.y;
+      enemy = updateEnemyAi({ enemy, player: { x: 10, y: 10 }, walls: [], deltaMs: 16, config });
+      expect(enemy.mode).toBe("office_bound");
+      expect(enemy.y).toBeLessThan(afterOneTick); // kept advancing toward the target
+    });
+  });
 });
 
 // ── Kontrakt pro budoucí spuštění z hlavní hry ─────────────────────────────

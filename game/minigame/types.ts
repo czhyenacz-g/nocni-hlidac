@@ -38,7 +38,13 @@ export interface Player {
 //   blízkém dosahu (shotgunRange) zrychlí o 50 %.
 // "wounded" — dočasně omráčený po zásahu brokovnicí (viz stunRemainingMs);
 //   přebíjí ostatní tři, nehýbe se, nevyhodnocuje vidění.
-export type EnemyMode = "investigating" | "waiting" | "chasing" | "wounded";
+// "office_bound" — monstrum zamířilo na kancelář (viz zadání "zamčené
+//   dveře", Enemy.officeTarget níže, EmergencyMiniGame.tsx#tick) — přebíjí
+//   vidění/honičku hráče (hráč ho STÁLE může vidět/utíkat/střelit, ale
+//   monstrum si ho už nevšímá), dokud fyzicky nedorazí k officeTarget
+//   NEBO dokud ho zásah nepřevede na "wounded" (po odeznění se vrátí zpět
+//   do "office_bound", ne do běžné AI, viz updateEnemyAi v logic.ts).
+export type EnemyMode = "investigating" | "waiting" | "chasing" | "wounded" | "office_bound";
 
 export interface Enemy {
   x: number;
@@ -73,6 +79,18 @@ export interface Enemy {
    * naštvanější, i když zrovna nehoní hráče na dohled.
    */
   enraged: boolean;
+  /**
+   * Nastaví se PŘESNĚ jednou za výpravu, jakmile EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS
+   * uplyne (viz isMonsterOfficeThreatArmed, EmergencyMiniGame.tsx#tick) —
+   * monstrum od teď trvale ignoruje hráče a míří sem (updateEnemyAi
+   * #office_bound), dokud tam fyzicky nedorazí (viz `mode ===
+   * "office_bound"` + kontrola v tick() proti `game.exitZone`) NEBO dokud
+   * minihra neskončí. Zůstává nastavené i přes "wounded" mezistav — po
+   * odeznění omráčení se monstrum vrátí přímo do "office_bound", NE do
+   * běžného investigating/enraged (viz updateEnemyAi). `undefined` =
+   * normální AI, žádný commitnutý cíl.
+   */
+  officeTarget?: Vec2;
 }
 
 export type MiniGameStatus = "playing" | "won" | "gameOver";

@@ -545,6 +545,20 @@ export function updateEnemyAi(input: UpdateEnemyAiInput): Enemy {
     if (stunRemainingMs > 0) {
       return { ...enemy, stunRemainingMs, mode: "wounded" };
     }
+    // Commitnutý office_bound cíl (viz Enemy.officeTarget) přebíjí běžné
+    // zotavení ze zranění — monstrum se NEVRACÍ k "naštvanému" investigating
+    // kolem hráče, pokračuje přímo tam, kam už mířilo před zásahem.
+    if (enemy.officeTarget) {
+      return {
+        ...enemy,
+        stunRemainingMs: 0,
+        mode: "office_bound",
+        waitRemainingMs: 0,
+        stuckCheckPosition: { x: enemy.x, y: enemy.y },
+        stuckCheckElapsedMs: 0,
+        stuckTotalMs: 0,
+      };
+    }
     const distanceToPlayer = distance(enemy.x, enemy.y, player.x, player.y);
     const target = pickInvestigationTarget(enemy, player, distanceToPlayer, walls, config, rng);
     return {
@@ -560,6 +574,28 @@ export function updateEnemyAi(input: UpdateEnemyAiInput): Enemy {
       // types.ts) — "investigating" pohyb od teď poběží na chaseSpeed, i
       // když zrovna nehoní hráče na dohled.
       enraged: true,
+    };
+  }
+
+  // Commitnutý office_bound cíl (viz Enemy.officeTarget, zadání "zamčené
+  // dveře") přebíjí VŠECHNO ostatní kromě wounded výše — monstrum už
+  // nevyhodnocuje vidění/honičku hráče, jen se přesouvá ke svému cíli
+  // stejným pohybovým mechanismem (stepTowards + moveWithWallSliding) jako
+  // investigating/chasing. Kdy přesně "dorazilo" a co se pak stane
+  // (despawn/worldEffect) rozhoduje volající (EmergencyMiniGame.tsx#tick),
+  // ne tahle funkce — updateEnemyAi zůstává čistě pohybová AI.
+  if (enemy.officeTarget) {
+    const target = enemy.officeTarget;
+    const step = stepTowards(enemy.x, enemy.y, target.x, target.y, config.chaseSpeed);
+    const moved = moveWithWallSliding(enemy.x, enemy.y, step.dx, step.dy, enemy.radius, walls, config.mapWidth, config.mapHeight);
+    const visionAngle = angleBetween(enemy.x, enemy.y, target.x, target.y);
+    return {
+      ...enemy,
+      x: moved.x,
+      y: moved.y,
+      mode: "office_bound",
+      visionAngle,
+      waitRemainingMs: 0,
     };
   }
 
@@ -947,11 +983,15 @@ export function msSinceOfficeDoorOpened(elapsedMs: number, doorLockMs: number): 
 }
 
 /**
- * `true`, jakmile monstrum "netrpělivě" zamíří na kancelář/generátor — hráč
- * zůstal venku déle než EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS PO
- * otevření dveří (viz zadání). Monotónní v `elapsedMs` (jednou true, zůstává
- * true) — volající (EmergencyMiniGame.tsx#tick) si samo hlídá, že na tenhle
- * přechod zareaguje jen jednou (viz MiniGameRefState.officeThreatTriggered).
+ * `true`, jakmile hráč zůstal venku déle než EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS
+ * PO otevření dveří (viz zadání) — znamená JEN "monstrum ZAČÍNÁ cílit na
+ * kancelář" (viz Enemy.officeTarget, EmergencyMiniGame.tsx#tick), NIKDY
+ * samo o sobě "monstrum už dorazilo"/"monster_reached_office". Monotónní v
+ * `elapsedMs` (jednou true, zůstává true) — volající si samo hlídá, že na
+ * tenhle přechod zareaguje jen jednou (nastaví `enemy.officeTarget`, ne
+ * `officeThreatTriggered` přímo). Skutečné doražení (a tedy despawn +
+ * worldEffect) se vyhodnocuje samostatně, až podle SKUTEČNÉ pozice monstra
+ * vůči kanceláři, viz EmergencyMiniGame.tsx#tick.
  */
 export function isMonsterOfficeThreatArmed(elapsedMs: number, doorLockMs: number, monsterTargetDelayMs: number): boolean {
   return msSinceOfficeDoorOpened(elapsedMs, doorLockMs) >= monsterTargetDelayMs;
