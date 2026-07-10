@@ -31,6 +31,22 @@ export function computeMiniGameWorldScale(worldWidth: number, worldHeight: numbe
   return Math.min(CANVAS_WIDTH / worldWidth, CANVAS_HEIGHT / worldHeight);
 }
 
+// ── Mobilní/dotyková aréna (viz zadání "roztáhnout arénu na výšku, 16:25,
+// hráč vidí jen výřez kolem sebe, ne celou mapu") — na rozdíl od desktopu
+// (celá mapa zmenšená do CANVAS_WIDTH×CANVAS_HEIGHT) tady canvas backing
+// store i "co se vejde na obrazovku" mají VLASTNÍ portrétní rozměry a
+// EmergencyMiniGame.tsx navíc aplikuje kameru (posun podle pozice hráče,
+// viz draw()), ne jen statické měřítko. Obojí (MOBILE_CANVAS_*,
+// MOBILE_CAMERA_WINDOW_*) má stejný poměr stran 16:25, aby nedocházelo ke
+// zkreslení (žádný nerovnoměrný scale).
+export const MOBILE_CANVAS_WIDTH = 480;
+export const MOBILE_CANVAS_HEIGHT = 750;
+/** Kolik světa (herní jednotky) se vejde do MOBILE_CANVAS_WIDTH×HEIGHT — menší okno než celá mapa, proto "kamera", ne jen jiné měřítko. Beze clampování na okraje mapy (viz zadání "zjednodušit ještě víc") — u okraje hráč prostě uvidí kus prázdného pozadí navíc. */
+export const MOBILE_CAMERA_WINDOW_WIDTH = 320;
+export const MOBILE_CAMERA_WINDOW_HEIGHT = 500;
+/** MOBILE_CANVAS_WIDTH / MOBILE_CAMERA_WINDOW_WIDTH (a stejně pro výšku) — obě dvojice mají stejný poměr, takže vychází jedna konstanta, ne dvě různé. */
+export const MOBILE_CAMERA_SCALE = MOBILE_CANVAS_WIDTH / MOBILE_CAMERA_WINDOW_WIDTH;
+
 export const PLAYER_RADIUS = 14;
 export const ENEMY_RADIUS = 14;
 export const PLAYER_SPEED = 3.2;

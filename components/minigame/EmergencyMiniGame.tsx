@@ -2,8 +2,6 @@
 
 import { CSSProperties, PointerEvent as ReactPointerEvent, MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from "react";
 import {
-  CANVAS_HEIGHT,
-  CANVAS_WIDTH,
   CONE_ANGLE_RAD,
   CONE_RANGE,
   EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS,
@@ -46,6 +44,7 @@ import {
   createInitialEnemy,
   createInitialPlayer,
 } from "@/game/minigame/config";
+import { resolveActiveCanvasSize, resolveActiveScale, resolveCameraOffset } from "@/game/minigame/camera";
 import {
   Direction,
   EmergencyMiniGameInput,
@@ -428,6 +427,7 @@ const MOVE_KEYS: Record<string, { dx: number; dy: number }> = {
   arrowright: { dx: 1, dy: 0 },
 };
 
+
 export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonsterHit }: EmergencyMiniGameProps) {
   // Hráčem nastavitelná délka zamčení dveří (viz LeftWallView.tsx posuvník,
   // GameState.officeDoorLockMs) — `input.officeDoorLockMs` chybí jen u
@@ -488,7 +488,15 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
   const [officeThreatTriggered, setOfficeThreatTriggered] = useState(false);
   // Mobilní/dotykové ovládání (viz zadání, game/minigame/touchControls.ts) —
   // zjišťuje se jednou po mountu (viz effect níže), ne přepočítává za běhu.
+  // Řídí i mobilní kameru/portrétní canvas (viz resolveActiveCanvasSize/Scale/
+  // CameraOffset výše). Ref (ne jen state) je potřeba pro tick()/draw() —
+  // ty žijí uvnitř efektu s deps `[input]`, který se při změně isTouchDevice
+  // sám znovu nespustí, stejný vzor jako isDevOverlayEnabledRef níže.
   const [isTouchDevice, setIsTouchDevice] = useState(false);
+  const isTouchDeviceRef = useRef(isTouchDevice);
+  useEffect(() => {
+    isTouchDeviceRef.current = isTouchDevice;
+  }, [isTouchDevice]);
   // Krátká zpráva "Baterie sebrána."/"Žárovka sebrána."/"Brokovnice sebrána."
   // po sebrání doplňkového lootu (viz zadání "hráč by měl poznat, co
   // sebral") — auto-mizející, stejný vzor jako app/play/page.tsx#emergencyRunMessage.
@@ -600,11 +608,15 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
     const game = gameRef.current;
     if (game.status !== "playing") return;
 
+    const canvasSize = resolveActiveCanvasSize(isTouchDevice);
+    const scale = resolveActiveScale(isTouchDevice, game.scale);
+    const camera = resolveCameraOffset(isTouchDevice, game.player.x, game.player.y);
+
     const rect = event.currentTarget.getBoundingClientRect();
-    const canvasX = ((event.clientX - rect.left) / rect.width) * CANVAS_WIDTH;
-    const canvasY = ((event.clientY - rect.top) / rect.height) * CANVAS_HEIGHT;
-    const worldX = canvasX / game.scale;
-    const worldY = canvasY / game.scale;
+    const canvasX = ((event.clientX - rect.left) / rect.width) * canvasSize.width;
+    const canvasY = ((event.clientY - rect.top) / rect.height) * canvasSize.height;
+    const worldX = canvasX / scale + camera.x;
+    const worldY = canvasY / scale + camera.y;
 
     game.moveTarget = resolveMoveTargetFromWorldPoint(worldX, worldY, game.worldWidth, game.worldHeight);
     game.moveTargetSetAtElapsedMs = game.elapsedMs;
@@ -1112,7 +1124,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
         }
       }
 
-      draw(ctx, game, gridCanvas, fogCanvas, input, isDevOverlayEnabledRef.current);
+      draw(ctx, game, gridCanvas, fogCanvas, input, isDevOverlayEnabledRef.current, isTouchDeviceRef.current);
       animationFrameRef.current = requestAnimationFrame(tick);
     };
 
@@ -1132,46 +1144,76 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
   );
   const showMobileFireButton = canShowMobileFireButton({ isTouchDevice, hasShotgun: gameRef.current.player.hasShotgun });
   const isMobileFireDisabled = isMobileFireButtonDisabled(ammoLeft);
+  // Portrétní canvas na mobilu (viz resolveActiveCanvasSize výše, zadání
+  // "roztáhnout arénu na výšku") — <canvas> width/height JSX atributy jsou
+  // backing store (skutečné rozlišení plátna), ne CSS box; ten se řídí
+  // stejným poměrem stran přes w-full h-auto, žádné zkreslení.
+  const activeCanvasSize = resolveActiveCanvasSize(isTouchDevice);
 
   return (
     <div
       className="flex flex-col gap-3"
       style={{ fontFamily: "'Courier New', monospace", ...NO_TEXT_SELECT_STYLE }}
     >
-      {/* HUD panel — radarový styl: tmavé pozadí, tenké zelené linky, glow. */}
-      <div
-        className="p-3 text-xs flex flex-wrap gap-x-6 gap-y-1"
-        style={{
-          background: "rgba(3, 15, 8, 0.9)",
-          border: "1px solid #1f6b45",
-          boxShadow: "0 0 10px rgba(31,107,69,0.5), inset 0 0 12px rgba(0,0,0,0.6)",
-          color: "#6fe3a0",
-        }}
-      >
-        <div style={{ textShadow: "0 0 4px rgba(111,227,160,0.8)" }}>
-          STAV:{" "}
-          {status === "playing" ? "PROBÍHÁ OBCHŮZKA" : status === "won" ? "SPLNĚNO" : "MONSTRUM TĚ DOSTALO"}
-        </div>
-        <div style={{ textShadow: "0 0 4px rgba(111,227,160,0.8)" }}>
-          {createWeaponHudLabel(gameRef.current.player.hasShotgun, ammoLeft).toUpperCase()}
-        </div>
-        <div style={{ color: "#3f7a58" }}>REŽIM: {MODE_LABELS[enemyMode].toUpperCase()}</div>
-        {status === "playing" && (
-          <div style={{ color: "#5dffa0", textShadow: "0 0 4px rgba(93,255,160,0.6)" }}>
-            {getMissionHint(input.objective, input.itemToCollect, missionPhase, inExitZone, officeDoorUnlocked)}
+      {/* HUD panel — radarový styl: tmavé pozadí, tenké zelené linky, glow.
+          Na mobilu (isTouchDevice) se schovává úplně (viz zadání "zjednodušit
+          HUD pro mobil, jen tenký řádek s odpočtem dveří, nic víc") — jediné,
+          co na mobilu zůstává, je odpočet dveří (samostatný panel níže) a
+          krátká zpráva o sebrané věci (viz mobilní varianta pod tímhle
+          blokem). */}
+      {!isTouchDevice && (
+        <div
+          className="p-3 text-xs flex flex-wrap gap-x-6 gap-y-1"
+          style={{
+            background: "rgba(3, 15, 8, 0.9)",
+            border: "1px solid #1f6b45",
+            boxShadow: "0 0 10px rgba(31,107,69,0.5), inset 0 0 12px rgba(0,0,0,0.6)",
+            color: "#6fe3a0",
+          }}
+        >
+          <div style={{ textShadow: "0 0 4px rgba(111,227,160,0.8)" }}>
+            STAV:{" "}
+            {status === "playing" ? "PROBÍHÁ OBCHŮZKA" : status === "won" ? "SPLNĚNO" : "MONSTRUM TĚ DOSTALO"}
           </div>
-        )}
-        {woundedMsLeft !== null && (
-          <div style={{ color: "#ff5c5c", textShadow: "0 0 4px rgba(255,92,92,0.8)" }}>
-            ZRANĚNÍ: {(woundedMsLeft / 1000).toFixed(1)} s
+          <div style={{ textShadow: "0 0 4px rgba(111,227,160,0.8)" }}>
+            {createWeaponHudLabel(gameRef.current.player.hasShotgun, ammoLeft).toUpperCase()}
           </div>
-        )}
-        {pickupMessage && (
-          <div style={{ color: "#facc15", textShadow: "0 0 4px rgba(250,204,21,0.7)" }}>{pickupMessage}</div>
-        )}
-        <div style={{ color: "#3f7a58" }}>SYSTÉM: AKTIVNÍ · MŘÍŽKA: 1.0m</div>
-        <div style={{ color: "#3f7a58" }}>WASD / šipky / klik do mapy: pohyb · mezerník: výstřel · E: akce · R: restart</div>
-      </div>
+          <div style={{ color: "#3f7a58" }}>REŽIM: {MODE_LABELS[enemyMode].toUpperCase()}</div>
+          {status === "playing" && (
+            <div style={{ color: "#5dffa0", textShadow: "0 0 4px rgba(93,255,160,0.6)" }}>
+              {getMissionHint(input.objective, input.itemToCollect, missionPhase, inExitZone, officeDoorUnlocked)}
+            </div>
+          )}
+          {woundedMsLeft !== null && (
+            <div style={{ color: "#ff5c5c", textShadow: "0 0 4px rgba(255,92,92,0.8)" }}>
+              ZRANĚNÍ: {(woundedMsLeft / 1000).toFixed(1)} s
+            </div>
+          )}
+          {pickupMessage && (
+            <div style={{ color: "#facc15", textShadow: "0 0 4px rgba(250,204,21,0.7)" }}>{pickupMessage}</div>
+          )}
+          <div style={{ color: "#3f7a58" }}>SYSTÉM: AKTIVNÍ · MŘÍŽKA: 1.0m</div>
+          <div style={{ color: "#3f7a58" }}>WASD / šipky / klik do mapy: pohyb · mezerník: výstřel · E: akce · R: restart</div>
+        </div>
+      )}
+
+      {/* Mobilní náhrada za HUD panel výše — jen krátká zpráva "X sebráno.",
+          stejný auto-mizející pickupMessage (viz efekt výše), žádný jiný
+          text (viz zadání "ani info o tom, co jsem sebral" vs. pozdější
+          upřesnění "max. na sekundu název toho, co jsem sebral"). */}
+      {isTouchDevice && pickupMessage && (
+        <div
+          className="p-2 text-xs"
+          style={{
+            background: "rgba(3, 15, 8, 0.9)",
+            border: "1px solid #1f6b45",
+            color: "#facc15",
+            textShadow: "0 0 4px rgba(250,204,21,0.7)",
+          }}
+        >
+          {pickupMessage}
+        </div>
+      )}
 
       {/* Skrytý developer overlay (viz zadání) — NENÍ v běžném HUDu, jen po
           zapnutí (Shift + pravý klik do pravého horního rohu canvasu, viz
@@ -1264,10 +1306,10 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
         <div className="relative">
           <canvas
             ref={canvasRef}
-            width={CANVAS_WIDTH}
-            height={CANVAS_HEIGHT}
+            width={activeCanvasSize.width}
+            height={activeCanvasSize.height}
             className="w-full h-auto block"
-            style={{ maxWidth: `${CANVAS_WIDTH}px`, touchAction: "none", ...NO_TEXT_SELECT_STYLE }}
+            style={{ maxWidth: `${activeCanvasSize.width}px`, touchAction: "none", ...NO_TEXT_SELECT_STYLE }}
             onContextMenu={handleCanvasContextMenu}
             onPointerDown={handleCanvasPointerDown}
           />
@@ -1470,9 +1512,17 @@ function draw(
   fogCanvas: HTMLCanvasElement,
   input: EmergencyMiniGameInput,
   devOverlayEnabled: boolean,
+  isTouchDevice: boolean,
 ) {
   const { player, enemy, status } = game;
   const facing = DIRECTION_ANGLES[player.direction];
+  // Mobilní kamera (viz resolveActiveCanvasSize/Scale/CameraOffset výše,
+  // zadání "roztáhnout arénu na výšku, hráč vidí jen výřez kolem sebe") —
+  // desktop beze změny (canvasSize = CANVAS_WIDTH×HEIGHT, scale = fit celé
+  // mapy, camera = (0,0), přesně jako dřív).
+  const canvasSize = resolveActiveCanvasSize(isTouchDevice);
+  const scale = resolveActiveScale(isTouchDevice, game.scale);
+  const camera = resolveCameraOffset(isTouchDevice, player.x, player.y);
   // Dev overlay ignoruje fog úplně (ladicí režim má vidět celou mapu, viz
   // zadání) — běžný hráč (devOverlayEnabled === false) vidí jen to, co je
   // ve viditelnosti (game.enemyVisibleToPlayer, itemVisible níže).
@@ -1500,20 +1550,25 @@ function draw(
   // markeru — stejný sinusový pulz vzor jako jinde (enemy waiting/wounded).
   const officePulse = 0.5 + 0.5 * Math.sin(performance.now() / 260);
 
-  ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
 
   // Pozadí — velmi tmavá zelenočerná, ne plochá šedá. Vyplňuje se ve fyzickém
   // pixelovém prostoru canvasu (PŘED ctx.scale níže), ať pokryje celou plochu
   // beze zbytku.
   ctx.fillStyle = "#020a05";
-  ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
 
   // Jediné místo, kde se world → screen měřítko aplikuje (viz
-  // computeMiniGameWorldScale v config.ts, game.scale) — od teď je celý
-  // zbytek draw() v souřadnicích herního světa (stejných, v jakých žije
-  // player/enemy/game.walls), canvas je ale fyzicky pořád CANVAS_WIDTH×CANVAS_HEIGHT.
+  // computeMiniGameWorldScale v config.ts, resolveActiveScale výše) — od
+  // teď je celý zbytek draw() v souřadnicích herního světa (stejných, v
+  // jakých žije player/enemy/game.walls), canvas je ale fyzicky pořád
+  // canvasSize.width×height. `ctx.translate` (kamera) NENÍ jen kosmetika —
+  // na mobilu posune "kam se dívá canvas" na hráče, ať aréna vypadá jako
+  // výřez kolem něj, ne jako zmenšenina celé mapy (viz zadání). Na desktopu
+  // je camera vždy (0,0), takže translate je no-op a nic se nemění.
   ctx.save();
-  ctx.scale(game.scale, game.scale);
+  ctx.scale(scale, scale);
+  ctx.translate(-camera.x, -camera.y);
 
   ctx.drawImage(gridCanvas, 0, 0);
 
@@ -1537,7 +1592,10 @@ function draw(
     ctx.lineWidth = 1;
     ctx.strokeRect(x + 0.5, y + 0.5, Math.max(0, width - 1), Math.max(0, height - 1));
 
-    if (shouldShowRoomLabelByDefault(room.kind)) {
+    // Popisky místností vynechané na mobilu (viz zadání "žádné popisky,
+    // zjednodušit arénu pro mobil") — obrys/výplň místnosti zůstává,
+    // vypadává jen text.
+    if (!isTouchDevice && shouldShowRoomLabelByDefault(room.kind)) {
       ctx.fillStyle = "rgba(163, 255, 200, 0.4)";
       ctx.font = "11px monospace";
       ctx.textAlign = "left";
@@ -1944,8 +2002,12 @@ function draw(
   // jedním drawImage přenese na hlavní canvas — nutné, protože kdyby se
   // "destination-out" použilo přímo na už vykreslenou scénu, smazalo by i
   // samotnou scénu pod sebou, ne jen tmavou vrstvu navrch. Dev overlay fog
-  // úplně přeskočí (ladicí režim vidí celou mapu, viz zadání).
-  if (!devOverlayEnabled) {
+  // úplně přeskočí (ladicí režim vidí celou mapu, viz zadání). Na mobilu se
+  // taky vynechává (viz zadání "žádná mlha, zjednodušit arénu pro mobil")
+  // — samotné SKRÝVÁNÍ monstra/itemu mimo viditelnost (enemyVisible/
+  // itemVisible výše) na tom nezávisí, to zůstává v platnosti i tady, jen
+  // bez vizuální tmavé vrstvy navrch.
+  if (!devOverlayEnabled && !isTouchDevice) {
     const fogCtx = fogCanvas.getContext("2d");
     if (fogCtx) {
       fogCtx.clearRect(0, 0, fogCanvas.width, fogCanvas.height);
