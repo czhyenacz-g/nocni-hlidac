@@ -25,7 +25,7 @@ export const LOADING_SCREEN_HINT_COUNT = 1;
 // Krátký "reveal" moment před finalizací smrti "door_open_at_attack" — hráč
 // uvidí monstrum ve dveřích (door_open_death_0), teprve pak DeathScreen. Viz
 // GameState.doorDeathRevealUntilMs, gameReducer.ts ENEMY_ADVANCE/TICK.
-export const DOOR_DEATH_REVEAL_DURATION_MS = 700;
+export const DOOR_DEATH_REVEAL_DURATION_MS = 500;
 
 // Kroky ústupu (monster_retreat_steps) hrají krátce PO řevu (monster_retreat_roar,
 // stejný trigger — monsterRetreatRoarSeq), ne současně — nejdřív leknutí, pak

@@ -71,7 +71,7 @@ export type DeathSequenceConfig = {
 };
 
 export const DEATH_SEQUENCE_DEFAULT_CONFIG: DeathSequenceConfig = {
-  preDeathDelayMs: 1000,
+  preDeathDelayMs: 800,
   silenceMs: 1500,
 
   whiteFlashEnabled: true,
