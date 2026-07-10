@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent, type PointerEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type CSSProperties, type PointerEvent } from "react";
 import { COPY } from "@/content/copy";
 import { EMERGENCY_RUN_WINDUP_DURATION_MS, THINK_IT_OVER_WINDUP_DURATION_MS } from "@/game/balancing/constants";
 import { computeEmergencyRunWindupProgressRatio } from "@/game/core/emergencyRunWindupProgress";
@@ -174,7 +174,14 @@ export default function LeftWallView({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="door-scene-frame">
+      {/* --door-ui-reserved-height (viz styles/pixel.css#.door-scene-frame) —
+          výchozích 180px je odladěno na DoorView (jen tlačítko zpět +
+          přepnutí dveří). LeftWallView má pod rámem mnohem víc: emergency
+          run tlačítko, "otočit se ke dveřím", munice, "Nechat si to projít
+          hlavou" (+ progress bar) a posuvník zámku dveří (+ hint) — beze
+          zvýšené rezervy je rám na mobilu příliš vysoký a spodek stránky
+          (tlačítko/posuvník) zůstane pod viewportem, viditelný jen scrollem. */}
+      <div className="door-scene-frame" style={{ "--door-ui-reserved-height": "420px" } as CSSProperties}>
         {!imageFailed ? (
           <img
             src={wallImageSrc}
@@ -279,41 +286,8 @@ export default function LeftWallView({
           </div>
         )}
 
-        {/* "Nechat si to projít hlavou" (viz zadání) — vedlejší tlačítko
-            vidět jen s brokovnicí, stejný "drž tlačítko" vzor jako emergency
-            run výše, jen delší (THINK_IT_OVER_WINDUP_DURATION_MS) a bez
-            spuštění minihry na konci — jen textová hláška (viz
-            app/play/page.tsx#thinkItOverReadySeq efekt). */}
-        {hasShotgun && (
-          <div className="w-full flex items-center justify-end gap-3">
-            <button
-              type="button"
-              className="pixel-button console-button tap-target flex items-center gap-2 px-3 py-2 text-xs touch-none select-none"
-              onPointerDown={handleThinkItOverPointerDown}
-              onPointerUp={handleThinkItOverPointerUp}
-              onPointerLeave={handleThinkItOverPointerUp}
-              onPointerCancel={handleThinkItOverPointerUp}
-            >
-              <span className="console-icon-block" aria-hidden="true">
-                <ConsoleIcon id="warn" />
-              </span>
-              <span>
-                {thinkItOverWindupActive
-                  ? COPY.game.thinkItOverHoldingLabel.replace("{seconds}", thinkItOverSeconds)
-                  : COPY.game.startThinkItOverLabel}
-              </span>
-            </button>
-          </div>
-        )}
-        {hasShotgun && thinkItOverWindupActive && (
-          <div className="w-32 h-1 bg-gray-800 border border-gray-700 rounded overflow-hidden">
-            <div className="h-full bg-amber-500 transition-all duration-150" style={{ width: `${thinkItOverPercent}%` }} />
-          </div>
-        )}
-
         {/* Posuvník "za jak dlouho se dveře do kanceláře samy odemknou" (viz
-            zadání "kompenzovat horší mobilní ovládání") — jen s brokovnicí,
-            stejná podmínka jako "Nechat si to projít hlavou" výše. */}
+            zadání "kompenzovat horší mobilní ovládání") — jen s brokovnicí. */}
         {hasShotgun && (
           <label className="w-full flex flex-col gap-1 text-[10px] text-gray-400">
             <span className="flex justify-between">
@@ -330,6 +304,39 @@ export default function LeftWallView({
             />
             <span className="text-gray-600">{COPY.game.officeDoorLockSliderHint}</span>
           </label>
+        )}
+
+        {/* "Nechat si to projít hlavou" (viz zadání) — vedlejší tlačítko
+            vidět jen s brokovnicí, stejný "drž tlačítko" vzor jako emergency
+            run výše, jen delší (THINK_IT_OVER_WINDUP_DURATION_MS) a bez
+            spuštění minihry na konci — jen textová hláška (viz
+            app/play/page.tsx#thinkItOverReadySeq efekt). Na výslovnou žádost
+            (viz zadání "ať je tlačítko úplně dole a roztažené stejně jako
+            otočit se ke dveřím") úplně dole, přes celou šířku, stejný
+            "console-button--primary w-full" vzor jako turnToDoor tlačítko výše. */}
+        {hasShotgun && (
+          <button
+            type="button"
+            className="pixel-button console-button console-button--primary tap-target flex items-center gap-2.5 px-3 py-2.5 text-xs touch-none select-none w-full"
+            onPointerDown={handleThinkItOverPointerDown}
+            onPointerUp={handleThinkItOverPointerUp}
+            onPointerLeave={handleThinkItOverPointerUp}
+            onPointerCancel={handleThinkItOverPointerUp}
+          >
+            <span className="console-icon-block console-icon-block--primary" aria-hidden="true">
+              <ConsoleIcon id="warn" />
+            </span>
+            <span className="flex-1 text-left">
+              {thinkItOverWindupActive
+                ? COPY.game.thinkItOverHoldingLabel.replace("{seconds}", thinkItOverSeconds)
+                : COPY.game.startThinkItOverLabel}
+            </span>
+          </button>
+        )}
+        {hasShotgun && thinkItOverWindupActive && (
+          <div className="w-full h-1 bg-gray-800 border border-gray-700 rounded overflow-hidden">
+            <div className="h-full bg-amber-500 transition-all duration-150" style={{ width: `${thinkItOverPercent}%` }} />
+          </div>
         )}
       </div>
     </div>
