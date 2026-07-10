@@ -1,8 +1,7 @@
 // Ladicí konstanty pro první směnu. Držet mimo herní logiku, aby šly snadno měnit.
 
-// Zobrazuje se v patičce hlavního menu (MainMenuScreen.tsx). Ruční verzování,
-// aktualizuj při větších změnách.
-export const GAME_VERSION = "v0.731";
+// Verze v patičce (MainMenuScreen.tsx) je teď plně automatická, viz
+// game/core/buildInfo.ts#APP_VERSION — žádné ruční verzování tady.
 
 export const GAME_TICK_MS = 100;
 
