@@ -112,7 +112,7 @@ export const DEATH_SEQUENCE_DEFAULT_CONFIG: DeathSequenceConfig = {
   deathImageAtMs: 1600,
   deathImageOpacity: 1,
 
-  blackoutDurationMs: 800,
+  blackoutDurationMs: 600,
   blackoutOpacity: 1,
 
   gameOverOverlayEnabled: true,
