@@ -12,6 +12,7 @@ import {
   isShakeActive,
   isSignalLostVisible,
   isWhiteFlashActive,
+  resolveDarknessOpacity,
   resolveDeathSequencePhase,
   resolveRedFlashOpacity,
   resolveShakeIntensity,
@@ -198,6 +199,7 @@ export default function DeathSequenceOverlay({ active, config, variant, onComple
   const deathImageSrc = showDeathImage ? getDeathSequenceImageSrc(config.deathImageId) : null;
   const showSignalLost = isSignalLostVisible(elapsedMs, config);
   const showGameOver = isGameOverOverlayVisible(elapsedMs, config);
+  const darknessOpacity = resolveDarknessOpacity(elapsedMs, config);
 
   return (
     <div
@@ -208,8 +210,13 @@ export default function DeathSequenceOverlay({ active, config, variant, onComple
     >
       {/* Trvalý tmavý podklad po celou sekvenci (POD death image) — ne totéž
           co blackout níže, viz deathSequenceConfig.ts komentář u
-          blackoutDurationMs/blackoutOpacity. */}
-      {sequenceStarted && <div className="absolute inset-0 bg-black" style={{ opacity: config.darknessOpacity }} aria-hidden="true" />}
+          blackoutDurationMs/blackoutOpacity. Opacity se počítá per-frame
+          (viz resolveDarknessOpacity) — PLYNULE naroste na cílovou hodnotu
+          přes blackoutDurationMs, žádný skok na plnou černou hned na
+          začátku (viz zadání "mohla by se plynule zčernat"). Vykresluje se
+          vždy (ne jen když sequenceStarted) — před startem sekvence
+          opacity vychází 0, takže je to beze změny vizuálně neviditelné. */}
+      <div className="absolute inset-0 bg-black" style={{ opacity: darknessOpacity }} aria-hidden="true" />
 
       {/* Death image (viz game/death/deathSequenceImages.ts) — stejná
           technika jako SceneBackground.tsx (CSS background-image), ne

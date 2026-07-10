@@ -97,6 +97,24 @@ export function resolveShakeIntensity(config: DeathSequenceConfig): number {
 }
 
 /**
+ * Plynulé (ne skokové) zčernání obrazovky — `darknessOpacity` vrstva už
+ * NEnaskočí na plnou hodnotu okamžitě, jakmile sekvence opustí "waiting"
+ * (viz zadání "mohla by se plynule zčernat"), ale lineárně naroste z 0 na
+ * `config.darknessOpacity` PŘES `config.blackoutDurationMs` (stejná hodnota,
+ * kterou hráč ladí na /death-test jako "jak dlouho trvá černá obrazovka" —
+ * žádné nové konfigurační pole navíc). Po uplynutí `blackoutDurationMs`
+ * zůstává na plné hodnotě `config.darknessOpacity` po zbytek sekvence.
+ * `blackoutDurationMs <= 0` = beze změny, okamžitě na cílovou hodnotu.
+ */
+export function resolveDarknessOpacity(elapsedMs: number, config: DeathSequenceConfig): number {
+  const t = elapsedMs - config.preDeathDelayMs;
+  if (t <= 0) return 0;
+  if (config.blackoutDurationMs <= 0) return config.darknessOpacity;
+  const rampProgress = Math.min(1, t / config.blackoutDurationMs);
+  return config.darknessOpacity * rampProgress;
+}
+
+/**
  * Samostatná, ČASOVĚ OMEZENÁ černá vrstva NAD death image (`blackoutDurationMs`
  * od začátku sekvence) — na rozdíl od `darknessOpacity` (trvalý tmavý podklad
  * po celou dobu sekvence, vrstvený POD death image) tahle vrstva zaručuje, že
