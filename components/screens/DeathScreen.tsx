@@ -66,7 +66,6 @@ export default function DeathScreen({
   return (
     <main className="relative min-h-screen flex items-center justify-center p-4">
       <SceneBackground scene={scene} />
-      <div className="jumpscare-overlay" />
 
       {/* Stejný "terminál" obal jako MainMenuScreen/BriefingScreen (viz
           zadání "podobným způsobem uprav") — kovový rám + 4 šrouby +

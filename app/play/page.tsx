@@ -8,6 +8,8 @@ import GameScreen from "@/components/screens/GameScreen";
 import DeathScreen from "@/components/screens/DeathScreen";
 import WinScreen from "@/components/screens/WinScreen";
 import MonsterDefeatedScreen from "@/components/screens/MonsterDefeatedScreen";
+import DeathSequenceOverlay from "@/components/death/DeathSequenceOverlay";
+import { getLiveDeathSequenceConfig, isDoorAttackDeath } from "@/game/death/liveDeathSequenceConfig";
 import { NIGHT_01 } from "@/game/nights/night01";
 import { createInitialGameState } from "@/game/core/gameState";
 import { canStartThinkItOverWindup, createGameReducer, willGeneratorRestartSucceed } from "@/game/core/gameReducer";
@@ -247,6 +249,15 @@ export default function PlayPage() {
   // zobrazí, přesně jako dnes.
   const [cinematicPending, setCinematicPending] = useState(false);
   const [activeCinematicSceneId, setActiveCinematicSceneId] = useState<CinematicSceneId | null>(null);
+  // Death sekvence (blackout -> white flash -> monster image -> GAME OVER,
+  // viz components/death/DeathSequenceOverlay.tsx a /death-test, kde se
+  // laděla) — jen pro SKUTEČNOU smrt, ne pro první-noc near-miss (ten dál
+  // jede starým fadeOut+jumpscare flow do CinematicScreen, viz efekt na
+  // state.screen níže). Dokud běží, DeathScreen se vůbec nemountuje (viz
+  // JSX níže), ať hráč nemůže kliknout na neviditelné tlačítko pod
+  // neprůhledným overlayem. `onComplete` ji vrátí na `false`, DeathScreen
+  // se pak zobrazí normálně.
+  const [deathSequenceActive, setDeathSequenceActive] = useState(false);
   // Achievement toast (viz components/game/AchievementToast.tsx) — čistě
   // vizuální, nezávislý na screen flow. `null` = žádný toast aktivní.
   const [activeAchievement, setActiveAchievement] = useState<Achievement | null>(null);
@@ -346,15 +357,19 @@ export default function PlayPage() {
       // směny) už jde normálním death flow stejně jako Noc 2+.
       const isFirstNightNearMiss = nightThatEnded === 1 && !hasUsedFirstNightTechnicianWarning();
 
-      // Útok/smrt má vlastní tříbeatovou sekvenci, ne okamžité zastavení
-      // ambience + hned jumpscare: (1) ambience plynule ztiší přes
-      // AMBIENCE_DEATH_FADE_MS, (2) JUMPSCARE_SILENT_GAP_MS naprostého ticha,
-      // (3) teprve pak jumpscare — ticho těsně před lekačkou je součást
-      // efektu (viz AUDIO_DESIGN.md "Ticho před lekačkou"). Stejné pro
-      // near-miss i skutečnou smrt — jen zvukové "leknutí", ne herní stav.
-      audioManager.fadeOutLoop(AUDIO_EVENTS.ambienceLoop, AMBIENCE_DEATH_FADE_MS);
-
       if (isFirstNightNearMiss) {
+        // Near-miss NENÍ smrt — starý krátký fadeOut+jumpscare "leknutí"
+        // flow zůstává beze změny, vede do CinematicScreen, ne do death
+        // sekvence níže (ta je vyladěná jako delší atmosférická cinematika
+        // přesně pro SKUTEČNOU smrt, viz zadání "chci to i na live, když
+        // někdo zemře"). (1) ambience plynule ztiší přes AMBIENCE_DEATH_FADE_MS,
+        // (2) JUMPSCARE_SILENT_GAP_MS naprostého ticha, (3) teprve pak
+        // jumpscare (viz AUDIO_DESIGN.md "Ticho před lekačkou").
+        audioManager.fadeOutLoop(AUDIO_EVENTS.ambienceLoop, AMBIENCE_DEATH_FADE_MS);
+        jumpscareTimeout = setTimeout(
+          () => audioManager.play(AUDIO_EVENTS.jumpscare),
+          AMBIENCE_DEATH_FADE_MS + JUMPSCARE_SILENT_GAP_MS,
+        );
         // Tohle NENÍ smrt: žádný deathCount, žádný reset survivedNights,
         // žádná perzistence roomBulbs/bulbsRemaining k "death" okamžiku,
         // a hlavně žádné volání /api/player/death — server currentRun se
@@ -451,23 +466,30 @@ export default function PlayPage() {
         }
         // Normal (ať už pokračuje, nebo mu došly životy) na server nikdy
         // nesahá — nesmí ovlivnit Hardcore currentRun/bestRun (viz zadání).
+
+        // Skutečná smrt spouští death sekvenci (blackout -> white flash ->
+        // monster image -> GAME OVER, viz components/death/DeathSequenceOverlay.tsx,
+        // game/death/liveDeathSequenceConfig.ts) místo starého krátkého
+        // fadeOut+jumpscare flow — ten zůstává jen pro near-miss výše.
+        // Ambient/heartbeat hraje dál normálně, dokud sekvence sama
+        // nezačne (cutAmbientInstantly ho tvrdě přeruší přesně v
+        // nakonfigurovaný moment, viz deathSequenceConfig.ts).
+        setDeathSequenceActive(true);
       }
 
       if (state.deathReason === "door_open_at_attack") {
-        // Poslední krok těsně u dveří hraje hned (stihne doznít dávno před
-        // jumpscare, viz gap níže) — zřetelně odděleně, ne zamíchaně přes sebe.
+        // Poslední krok těsně u dveří hraje hned (nezávisle na tom, jestli
+        // jde o near-miss nebo skutečnou smrt) — zřetelně odděleně, ne
+        // zamíchaně přes zbytek sekvence.
         audioManager.play(AUDIO_EVENTS.enemyStep);
       }
-      jumpscareTimeout = setTimeout(
-        () => audioManager.play(AUDIO_EVENTS.jumpscare),
-        AMBIENCE_DEATH_FADE_MS + JUMPSCARE_SILENT_GAP_MS,
-      );
 
       // Cinematic scéna jen pro first-night near-miss (viz výše) — ambience
       // se ztlumuje už nahoře (fadeOutLoop), tahle pauza je navíc krátká
       // tichá prodleva PŘED zobrazením CinematicScreen (viz JSX níže), ať
       // přechod nepůsobí okamžitě. Druhá+ chyba v Noci 1 i Noc 2+ tenhle
-      // blok vůbec nespustí — DeathScreen se zobrazí rovnou jako dnes.
+      // blok vůbec nespustí — DeathScreen (přes death sekvenci) se zobrazí
+      // rovnou jako dnes.
       if (isFirstNightNearMiss) {
         setCinematicPending(true);
         cinematicTimeout = setTimeout(() => {
@@ -1319,7 +1341,22 @@ export default function PlayPage() {
       {state.screen === "death" && !cinematicPending && activeCinematicSceneId && (
         <CinematicScreen sceneId={activeCinematicSceneId} onComplete={handleCinematicComplete} />
       )}
-      {state.screen === "death" && !cinematicPending && !activeCinematicSceneId && (
+      {/* Skutečná smrt (near-miss jede přes cinematicPending/activeCinematicSceneId
+          výše, nikdy sem) — nejdřív death sekvence (blackout -> white flash
+          -> monster image -> GAME OVER, viz DeathSequenceOverlay.tsx,
+          vyladěná na /death-test), DeathScreen se mountuje AŽ PO jejím
+          dokončení, ať hráč nemůže kliknout na tlačítko schované pod
+          neprůhledným overlayem (ten má pointer-events: none, klik by jinak
+          propadl skrz). */}
+      {state.screen === "death" && !cinematicPending && !activeCinematicSceneId && deathSequenceActive && (
+        <DeathSequenceOverlay
+          active={deathSequenceActive}
+          config={getLiveDeathSequenceConfig(state.deathReason)}
+          variant={isDoorAttackDeath(state.deathReason) ? "door" : "default"}
+          onComplete={() => setDeathSequenceActive(false)}
+        />
+      )}
+      {state.screen === "death" && !cinematicPending && !activeCinematicSceneId && !deathSequenceActive && (
         <DeathScreen
           reason={state.deathReason}
           deathCount={deathCount}

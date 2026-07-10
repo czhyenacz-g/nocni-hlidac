@@ -23,21 +23,3 @@
   96% { filter: saturate(var(--atmosphere-saturation)) contrast(var(--atmosphere-contrast)) brightness(0.7); }
 }
 
-.jumpscare-overlay {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  animation: jumpscare-flash 0.6s steps(3) 1 forwards;
-  z-index: 50;
-}
-
-@keyframes jumpscare-flash {
-  0% { background: #000; opacity: 1; }
-  20% { background: #ef4444; opacity: 1; }
-  40% { background: #fff; opacity: 1; }
-  60% { background: #ef4444; opacity: 1; }
-  100% { background: #000; opacity: 0; }
-}
