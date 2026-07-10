@@ -163,9 +163,9 @@ describe("clampDeathSequenceConfig", () => {
     expect(clamped.deathSoundAtMs).toBe(0);
   });
 
-  it("clamps deathSoundPlaybackRate to [0.5, 2]", () => {
+  it("clamps deathSoundPlaybackRate to [0.5, 4]", () => {
     expect(clampDeathSequenceConfig({ ...DEATH_SEQUENCE_DEFAULT_CONFIG, deathSoundPlaybackRate: 0.1 }).deathSoundPlaybackRate).toBe(0.5);
-    expect(clampDeathSequenceConfig({ ...DEATH_SEQUENCE_DEFAULT_CONFIG, deathSoundPlaybackRate: 5 }).deathSoundPlaybackRate).toBe(2);
+    expect(clampDeathSequenceConfig({ ...DEATH_SEQUENCE_DEFAULT_CONFIG, deathSoundPlaybackRate: 10 }).deathSoundPlaybackRate).toBe(4);
     expect(clampDeathSequenceConfig({ ...DEATH_SEQUENCE_DEFAULT_CONFIG, deathSoundPlaybackRate: 1.3 }).deathSoundPlaybackRate).toBe(1.3);
   });
 

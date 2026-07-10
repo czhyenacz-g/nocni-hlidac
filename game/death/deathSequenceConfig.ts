@@ -129,7 +129,7 @@ export const DEATH_SEQUENCE_DEFAULT_CONFIG: DeathSequenceConfig = {
 export function clampDeathSequenceConfig(config: DeathSequenceConfig): DeathSequenceConfig {
   const clampMs = (value: number): number => Math.max(0, Math.round(value));
   const clampUnit = (value: number): number => Math.min(1, Math.max(0, value));
-  const clampPitch = (value: number): number => Math.min(2, Math.max(0.5, value));
+  const clampPitch = (value: number): number => Math.min(4, Math.max(0.5, value));
 
   return {
     ...config,

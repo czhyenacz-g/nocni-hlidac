@@ -299,7 +299,7 @@ export default function DeathTestControls({ config, onChange, onPlayFullscreen, 
           label="deathSoundPlaybackRate"
           value={config.deathSoundPlaybackRate}
           min={0.5}
-          max={2}
+          max={4}
           step={0.05}
           onChange={(v) => update("deathSoundPlaybackRate", v)}
         />
