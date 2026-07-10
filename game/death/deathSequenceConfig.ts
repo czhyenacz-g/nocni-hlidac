@@ -75,7 +75,7 @@ export const DEATH_SEQUENCE_DEFAULT_CONFIG: DeathSequenceConfig = {
   silenceMs: 1500,
 
   whiteFlashEnabled: true,
-  whiteFlashAtMs: 1500,
+  whiteFlashAtMs: 1100,
   whiteFlashDurationMs: 90,
   whiteFlashOpacity: 0.95,
 
@@ -85,17 +85,17 @@ export const DEATH_SEQUENCE_DEFAULT_CONFIG: DeathSequenceConfig = {
   redFlashOpacity: 0,
 
   shakeEnabled: true,
-  shakeAtMs: 1600,
+  shakeAtMs: 1200,
   shakeDurationMs: 550,
   shakeIntensity: 28,
 
-  deathFrameAtMs: 1600,
-  gameOverAtMs: 1600,
+  deathFrameAtMs: 1200,
+  gameOverAtMs: 1200,
 
   darknessOpacity: 1,
   noiseOpacity: 0.25,
 
-  deathSoundAtMs: 1600,
+  deathSoundAtMs: 1200,
   deathSoundPlaybackRate: 1,
   deathVolume: 0.95,
   impactVolume: 0.95,
@@ -109,7 +109,7 @@ export const DEATH_SEQUENCE_DEFAULT_CONFIG: DeathSequenceConfig = {
   deathImageEnabled: true,
   deathImageId: DEFAULT_DEATH_SEQUENCE_IMAGE_ID,
   deathImageFit: "cover",
-  deathImageAtMs: 1600,
+  deathImageAtMs: 1200,
   deathImageOpacity: 1,
 
   blackoutDurationMs: 600,

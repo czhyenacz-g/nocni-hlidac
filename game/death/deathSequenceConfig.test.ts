@@ -55,12 +55,12 @@ describe("DEATH_SEQUENCE_DEFAULT_CONFIG", () => {
     expect(DEATH_SEQUENCE_DEFAULT_CONFIG.blackoutDurationMs).toBe(600);
   });
 
-  it("has whiteFlashAtMs of 1500 by default", () => {
-    expect(DEATH_SEQUENCE_DEFAULT_CONFIG.whiteFlashAtMs).toBe(1500);
+  it("has whiteFlashAtMs of 1100 by default", () => {
+    expect(DEATH_SEQUENCE_DEFAULT_CONFIG.whiteFlashAtMs).toBe(1100);
   });
 
-  it("has deathImageAtMs of 1600 by default", () => {
-    expect(DEATH_SEQUENCE_DEFAULT_CONFIG.deathImageAtMs).toBe(1600);
+  it("has deathImageAtMs of 1200 by default", () => {
+    expect(DEATH_SEQUENCE_DEFAULT_CONFIG.deathImageAtMs).toBe(1200);
   });
 
   it("has signalLostEnabled false by default", () => {

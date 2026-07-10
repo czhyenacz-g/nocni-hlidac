@@ -25,8 +25,10 @@ describe("resolveDeathSequencePhase", () => {
   });
 
   it("returns 'silence' during the silence window right after preDeathDelayMs", () => {
+    // silenceMs itself is unused dead config (no phase logic reads it) — the
+    // real "silence" window runs until whiteFlashAtMs, whatever that's tuned to.
     expect(resolveDeathSequencePhase(CONFIG.preDeathDelayMs, CONFIG)).toBe("silence");
-    expect(resolveDeathSequencePhase(CONFIG.preDeathDelayMs + CONFIG.silenceMs - 1, CONFIG)).toBe("silence");
+    expect(resolveDeathSequencePhase(CONFIG.preDeathDelayMs + CONFIG.whiteFlashAtMs - 1, CONFIG)).toBe("silence");
   });
 
   it("returns 'white_flash' within the expected window", () => {
@@ -73,7 +75,7 @@ describe("resolveDeathSequencePhase", () => {
 
   it("returns 'impact' while shake is active and no later phase has started", () => {
     // With the default config, shakeAtMs === deathFrameAtMs === gameOverAtMs
-    // (all 1600), so "impact" is unreachable by default — push
+    // (all equal), so "impact" is unreachable by default — push
     // deathFrameAtMs/gameOverAtMs well past the shake window to isolate it.
     const config: DeathSequenceConfig = {
       ...CONFIG,
