@@ -344,4 +344,59 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
       waveform: "sine",
     },
   },
+  // ── Death sekvence (viz game/audio/audioEvents.ts pro vysvětlení, proč
+  // vlastní eventy místo sdílení s jumpscare/monsterFinalDeathRoar) —
+  // `volume` tady je jen výchozí/klidový stav; DeathSequenceOverlay.tsx
+  // před každým přehráním nastaví skutečnou hlasitost přes
+  // audioManager.setVolume() podle příslušného posuvníku
+  // (roarVolume/impactVolume/glitchVolume/deathVolume). Žádné reálné
+  // soubory zatím neexistují, všechny čtyři mají jen synth fallback.
+  [AUDIO_EVENTS.deathSequenceRoar]: {
+    src: "/assets/audio/death_sequence_roar.mp3",
+    volume: 0.8,
+    loop: false,
+    fallbackSynth: {
+      notes: [
+        { frequency: 170, durationMs: 220, gapMs: 20 },
+        { frequency: 115, durationMs: 320 },
+      ],
+      volume: 0.55,
+      waveform: "sawtooth",
+    },
+  },
+  [AUDIO_EVENTS.deathSequenceImpact]: {
+    src: "/assets/audio/death_sequence_impact.mp3",
+    volume: 0.8,
+    loop: false,
+    fallbackSynth: {
+      notes: [{ frequency: 80, durationMs: 140 }],
+      volume: 0.6,
+      waveform: "square",
+    },
+  },
+  [AUDIO_EVENTS.deathSequenceGlitch]: {
+    src: "/assets/audio/death_sequence_glitch.mp3",
+    volume: 0.6,
+    loop: false,
+    fallbackSynth: {
+      notes: [
+        { frequency: 220, durationMs: 40, gapMs: 10 },
+        { frequency: 1760, durationMs: 30, gapMs: 10 },
+        { frequency: 180, durationMs: 40, gapMs: 10 },
+        { frequency: 1400, durationMs: 50 },
+      ],
+      volume: 0.35,
+      waveform: "square",
+    },
+  },
+  [AUDIO_EVENTS.deathSequenceFinal]: {
+    src: "/assets/audio/death_sequence_final.mp3",
+    volume: 0.7,
+    loop: false,
+    fallbackSynth: {
+      notes: [{ frequency: 65, durationMs: 900 }],
+      volume: 0.5,
+      waveform: "sawtooth",
+    },
+  },
 };

@@ -4,18 +4,49 @@ import { useRef, useState } from "react";
 import DeathSequenceOverlay from "@/components/death/DeathSequenceOverlay";
 import DeathTestControls from "@/components/death/DeathTestControls";
 import { DEATH_SEQUENCE_DEFAULT_CONFIG, DeathSequenceConfig } from "@/game/death/deathSequenceConfig";
+import { audioManager } from "@/game/audio/audioManager";
+import { AUDIO_EVENTS } from "@/game/audio/audioEvents";
+import { AUDIO_CONFIG } from "@/game/audio/audioConfig";
+import { computeAmbientStressMultiplier, computeHeartbeatVolumes } from "@/game/audio/heartbeatStress";
+
+// Napětí (0..100) simulované PŘED spuštěním death sekvence (viz zadání
+// "co nejvíce jako reálná hra... tlukot srdce na 80 %, stejný ambient") —
+// stejná hodnota, na jaké skutečná hra drží heartbeat, když hráč sleduje
+// monstrum ve dveřích se zavřenými dveřmi (viz
+// game/audio/heartbeatStress.ts#computeHeartbeatTargetStress,
+// enemyStage "door_hallway" + doorClosed). Cíl týhle stránky je vyladit
+// LEPŠÍ death sekvenci pro reálnou hru — testovat střih z tichého/napjatého
+// stavu do smrti má smysl jen s realistickým "před" stavem, ne v tichu.
+const PRE_DEATH_STRESS_PERCENT = 80;
+const BASE_AMBIENT_VOLUME = AUDIO_CONFIG[AUDIO_EVENTS.ambienceLoop].volume;
 
 // Veřejná ladicí stránka pro DeathSequenceOverlay (viz zadání "6. úkol") —
 // NENAPOJENÁ na skutečnou hru: nevyžaduje login, nezapisuje statistiky,
 // nevolá server, nespouští /play. Preview vlevo je jen statický "kontrolní
-// místnost" panel (žádný GameScreen/tick/audio z hlavní hry), vpravo
-// posuvníky měnící DeathSequenceConfig (viz DeathTestControls.tsx).
+// místnost" panel (žádný GameScreen/tick z hlavní hry), vpravo posuvníky
+// měnící DeathSequenceConfig (viz DeathTestControls.tsx). Audio PŘED
+// spuštěním smrti (ambient + heartbeat na PRE_DEATH_STRESS_PERCENT) žije
+// jen tady, ne v DeathSequenceOverlay.tsx — v reálné hře už tohle hraje
+// samo z normálního provozu (viz useHeartbeatStress.ts), overlay tam bude
+// jen napojený na existující loopy, ne je sám spouštět.
 export default function DeathTestPage() {
   const [config, setConfig] = useState<DeathSequenceConfig>(DEATH_SEQUENCE_DEFAULT_CONFIG);
   const [active, setActive] = useState(false);
   const previewRef = useRef<HTMLDivElement | null>(null);
 
+  /** Natvrdo zastaví všechny "před smrtí" loopy — volá se při dokončení sekvence i defenzivně před každým novým přehráním. */
+  function stopPreDeathAudio() {
+    audioManager.stopLoop(AUDIO_EVENTS.ambienceLoop);
+    audioManager.stopLoop(AUDIO_EVENTS.heartbeatStressSlow);
+    audioManager.stopLoop(AUDIO_EVENTS.heartbeatStressFast);
+  }
+
   async function handlePlay(fullscreen: boolean) {
+    // audioManager.init() musí proběhnout po uživatelském gestu (autoplay
+    // policy prohlížečů, viz app/dev-sound/page.tsx#handlePlay stejný vzor)
+    // — klik na "Přehrát" je samo o sobě gesto, bezpečné volat opakovaně
+    // (no-op po prvním init, viz audioManager.ts).
+    audioManager.init();
     if (fullscreen && previewRef.current) {
       try {
         await previewRef.current.requestFullscreen();
@@ -25,11 +56,29 @@ export default function DeathTestPage() {
         // normálně, jen bez fullscreen.
       }
     }
+
+    // Realistický "před smrtí" zvukový podklad — stejný výpočet hlasitosti
+    // jako skutečná hra (viz game/audio/heartbeatStress.ts), jen s pevnou
+    // hodnotou napětí místo odvozené z GameState. DeathSequenceOverlay pak
+    // tohle (viz cutAmbientInstantly) buď tvrdě přeruší, nebo nechá doznít,
+    // podle aktuálního configu — přesně to, co má tahle stránka pomoct vyladit.
+    stopPreDeathAudio();
+    audioManager.setVolume(AUDIO_EVENTS.ambienceLoop, BASE_AMBIENT_VOLUME * computeAmbientStressMultiplier(PRE_DEATH_STRESS_PERCENT / 100));
+    audioManager.startLoop(AUDIO_EVENTS.ambienceLoop);
+    const { slowVolume, fastVolume } = computeHeartbeatVolumes(PRE_DEATH_STRESS_PERCENT);
+    audioManager.setVolume(AUDIO_EVENTS.heartbeatStressSlow, slowVolume);
+    audioManager.setVolume(AUDIO_EVENTS.heartbeatStressFast, fastVolume);
+    audioManager.startLoop(AUDIO_EVENTS.heartbeatStressSlow);
+    audioManager.startLoop(AUDIO_EVENTS.heartbeatStressFast);
+
     setActive(true);
   }
 
   function handleComplete() {
     setActive(false);
+    // Ať cutAmbientInstantly bylo zapnuté nebo ne, po dokončení sekvence už
+    // nemá co dál hrát na pozadí zamrzlé "GAME OVER" obrazovky.
+    stopPreDeathAudio();
     // Necháváme hráče na /death-test (viz zadání "nepřesměrovávej") — jen
     // se vrátíme z fullscreenu, pokud jsme v něm byli.
     if (document.fullscreenElement) {

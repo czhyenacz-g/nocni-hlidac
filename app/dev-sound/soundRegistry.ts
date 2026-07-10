@@ -226,4 +226,32 @@ export const SOUND_REGISTRY: Record<AudioEventId, SoundRegistryEntry> = {
     guess: "Krátké pozitivní vzestupné pípnutí, terminálový confirm zvuk, ne UI click a ne hororový zvuk.",
     usedIn: "components/achievements/AchievementResultPanel.tsx — mount efekt, jen když achievements.length > 0.",
   },
+  [AUDIO_EVENTS.deathSequenceRoar]: {
+    id: AUDIO_EVENTS.deathSequenceRoar,
+    label: "Death sequence — roar",
+    description: 'Death sekvence dosáhne fáze "impact" (shake začíná) — viz roarVolume v DeathTestControls.tsx.',
+    guess: "Krátký sestupný řev monstra, podobný hardcoreSelectRoar, jen výrazně nižší tón.",
+    usedIn: "components/death/DeathSequenceOverlay.tsx — tick() na přechod do fáze impact.",
+  },
+  [AUDIO_EVENTS.deathSequenceImpact]: {
+    id: AUDIO_EVENTS.deathSequenceImpact,
+    label: "Death sequence — impact",
+    description: 'Stejná chvíle jako deathSequenceRoar (fáze "impact") — viz impactVolume v DeathTestControls.tsx.',
+    guess: "Krátký nízký úder/thud, hraje souběžně s roarem, ne samostatně slyšitelný.",
+    usedIn: "components/death/DeathSequenceOverlay.tsx — tick() na přechod do fáze impact.",
+  },
+  [AUDIO_EVENTS.deathSequenceGlitch]: {
+    id: AUDIO_EVENTS.deathSequenceGlitch,
+    label: "Death sequence — glitch",
+    description: 'Death sekvence dosáhne fáze "death_frame" (zobrazí se "SIGNÁL ZTRACEN") — viz glitchVolume.',
+    guess: "Krátké rušení signálu, rychle střídané vysoké/nízké tóny, ne hudební.",
+    usedIn: "components/death/DeathSequenceOverlay.tsx — tick() na přechod do fáze death_frame.",
+  },
+  [AUDIO_EVENTS.deathSequenceFinal]: {
+    id: AUDIO_EVENTS.deathSequenceFinal,
+    label: "Death sequence — final",
+    description: 'Death sekvence dosáhne fáze "game_over" (zobrazí se "GAME OVER") — viz deathVolume.',
+    guess: "Dlouhý nízký ponurý tón, definitivní stinger \"je konec\".",
+    usedIn: "components/death/DeathSequenceOverlay.tsx — tick() na přechod do fáze game_over.",
+  },
 };

@@ -187,7 +187,7 @@ export default function DeathTestControls({ config, onChange, onPlayFullscreen, 
         />
       </Section>
 
-      <Section title="Audio (placeholder)">
+      <Section title="Audio">
         <SliderRow label="deathVolume" value={config.deathVolume} min={0} max={1} step={0.01} onChange={(v) => update("deathVolume", v)} />
         <SliderRow
           label="impactVolume"

@@ -11,6 +11,23 @@ import {
   resolveRedFlashOpacity,
   resolveShakeIntensity,
 } from "@/game/death/deathSequenceTiming";
+import { audioManager } from "@/game/audio/audioManager";
+import { AUDIO_EVENTS, AudioEventId } from "@/game/audio/audioEvents";
+
+/**
+ * Nastaví hlasitost podle příslušného posuvníku (viz DeathTestControls.tsx)
+ * a přehraje — `volume <= 0` se vůbec nepřehraje, ať posuvník "ztlumeno na
+ * nulu" funguje jako skutečné vypnutí, ne jako tiché přehrání. `setVolume`
+ * mění hlasitost TRVALE pro tenhle event (viz game/audio/audioEvents.ts
+ * proč mají death-sekvenční zvuky vlastní eventy, ne sdílené s
+ * jumpscare/monsterFinalDeathRoar) — bezpečné, protože žádný jiný kód v
+ * projektu tyhle čtyři eventy zatím nepoužívá.
+ */
+function playDeathSequenceSound(id: AudioEventId, volume: number): void {
+  if (volume <= 0) return;
+  audioManager.setVolume(id, volume);
+  audioManager.play(id);
+}
 
 export type DeathSequenceOverlayProps = {
   active: boolean;
@@ -24,16 +41,18 @@ const DEATH_FRAME_LABEL = "SIGNÁL ZTRACEN";
 const GAME_OVER_LABEL = "GAME OVER";
 
 /**
- * Sdílený vizuální přehrávač death sekvence (viz zadání "6. úkol") —
- * NENAPOJENÝ na skutečné smrti ve hře, zatím ho používá jen `/death-test`
- * (viz app/death-test/page.tsx). Napojení na `components/screens/DeathScreen.tsx`
- * je samostatný následující úkol.
+ * Sdílený vizuální (a teď i zvukový) přehrávač death sekvence (viz zadání
+ * "6. úkol" + "dodělej zvuky do /death-test") — NENAPOJENÝ na skutečné
+ * smrti ve hře, zatím ho používá jen `/death-test` (viz
+ * app/death-test/page.tsx). Napojení na `components/screens/DeathScreen.tsx`
+ * je samostatný následující úkol — výstup ladění na `/death-test` (config
+ * hodnoty) má posloužit jako podklad pro tohle napojení.
  *
  * Vlastní `requestAnimationFrame` smyčka (stejný vzor jako
  * `EmergencyMiniGame.tsx`) počítá `elapsedMs` od okamžiku, kdy `active`
  * naskočí na `true` — `game/death/deathSequenceTiming.ts` z něj čistě
  * odvozuje fázi a jednotlivé vizuální stavy, tahle komponenta je jen
- * vykresluje.
+ * vykresluje (a případně přehraje zvuk, viz playDeathSequenceSound výše).
  */
 export default function DeathSequenceOverlay({ active, config, variant, onComplete, onPhaseChange }: DeathSequenceOverlayProps) {
   const [elapsedMs, setElapsedMs] = useState(0);
@@ -42,6 +61,11 @@ export default function DeathSequenceOverlay({ active, config, variant, onComple
   const startedAtRef = useRef<number | null>(null);
   const phaseRef = useRef<DeathSequencePhase | null>(null);
   const completedRef = useRef(false);
+  // Ztlumení ambientu má proběhnout PŘESNĚ jednou, hned jak sekvence
+  // opustí "waiting" (viz níže) — samostatný ref místo odvozování z
+  // phaseRef, ať funguje spolehlivě i v edge-case `preDeathDelayMs: 0`
+  // (kdy sekvence "waiting" fázi vůbec neprojde a rovnou začne v "silence").
+  const ambientCutRef = useRef(false);
 
   useEffect(() => {
     if (!active) {
@@ -50,19 +74,13 @@ export default function DeathSequenceOverlay({ active, config, variant, onComple
       startedAtRef.current = null;
       phaseRef.current = null;
       completedRef.current = false;
+      ambientCutRef.current = false;
       setElapsedMs(0);
       setShakeOffset({ x: 0, y: 0 });
       return;
     }
 
     startedAtRef.current = performance.now();
-
-    // TODO (audio, viz task 7 "napojení DeathSequenceOverlay na skutečné
-    // smrti"): sem patří tvrdé ztlumení ambientu/hudby, pokud
-    // config.cutAmbientInstantly (audioManager.setMuted/fadeOutLoop) — pro
-    // /death-test záměrně beze zvuku (viz zadání "stačí vizuální preview +
-    // připravené místo pro audio"), ať tenhle úkol nezasahuje do globálního
-    // audio manageru.
 
     function tick(now: number) {
       const startedAt = startedAtRef.current;
@@ -81,14 +99,36 @@ export default function DeathSequenceOverlay({ active, config, variant, onComple
       }
 
       const phase = resolveDeathSequencePhase(elapsed, config);
+
+      // Tvrdé ztlumení ambientu I heartbeatu (viz zadání "cutAmbientInstantly",
+      // "co nejvíce jako reálná hra") — hned jak sekvence skutečně začne
+      // (opustí "waiting"), ne dřív. stopLoop je OKAMŽITÉ zastavení (ne
+      // fade), přesně "cut", ne "fade out". Heartbeat loopy tady patří
+      // vedle ambientu, ne jen ambient samotný — v reálné hře by jinak
+      // "před smrtí" tlukot srdce dál doznívalo přes celou death sekvenci.
+      if (!ambientCutRef.current && phase !== "waiting" && config.cutAmbientInstantly) {
+        ambientCutRef.current = true;
+        audioManager.stopLoop(AUDIO_EVENTS.ambienceLoop);
+        audioManager.stopLoop(AUDIO_EVENTS.heartbeatStressSlow);
+        audioManager.stopLoop(AUDIO_EVENTS.heartbeatStressFast);
+      }
+
       if (phase !== phaseRef.current) {
         phaseRef.current = phase;
         onPhaseChange?.(phase);
-        // TODO (audio): tady by šlo napojit jednorázové zvuky per fázi
-        // (impact -> config.impactVolume, death_frame -> config.roarVolume
-        // přes AUDIO_EVENTS.monsterFinalDeathRoar, viz game/audio/audioEvents.ts)
-        // — zatím záměrně beze zvuku, žádný event pro deathVolume/glitchVolume
-        // v projektu ještě neexistuje.
+
+        // Jednorázové zvuky podle fáze (viz DeathTestControls.tsx posuvníky
+        // roarVolume/impactVolume/glitchVolume/deathVolume) — vlastní
+        // eventy, ne sdílené s jumpscare/monsterFinalDeathRoar (viz
+        // game/audio/audioEvents.ts).
+        if (phase === "impact") {
+          playDeathSequenceSound(AUDIO_EVENTS.deathSequenceRoar, config.roarVolume);
+          playDeathSequenceSound(AUDIO_EVENTS.deathSequenceImpact, config.impactVolume);
+        } else if (phase === "death_frame") {
+          playDeathSequenceSound(AUDIO_EVENTS.deathSequenceGlitch, config.glitchVolume);
+        } else if (phase === "game_over") {
+          playDeathSequenceSound(AUDIO_EVENTS.deathSequenceFinal, config.deathVolume);
+        }
       }
 
       if (phase === "complete") {

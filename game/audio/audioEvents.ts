@@ -61,6 +61,24 @@ export const AUDIO_EVENTS = {
   // hraje NEJVÝŠ jednou na obrazovku, bez ohledu na to, kolik achievementů
   // se zobrazí najednou. Nikdy během aktivní hry, nikdy na /profile.
   achievementUnlock: "achievement_unlock",
+  // ── Death sekvence (viz zadání "6. úkol" + "dodělej zvuky do /death-test",
+  // components/death/DeathSequenceOverlay.tsx, game/death/deathSequenceConfig.ts) ──
+  // Čtyři samostatné eventy podle čtyř volume posuvníků v DeathTestControls.tsx
+  // (roarVolume/impactVolume/glitchVolume/deathVolume) — VLASTNÍ, ne sdílené s
+  // jumpscare/monsterFinalDeathRoar, ať ladění na /death-test nikdy neovlivní
+  // hlasitost skutečných herních zvuků (audioManager.setVolume mění hlasitost
+  // trvale, ne jen pro jedno přehrání). Zatím používá jen /death-test — napojení
+  // na skutečné smrti (a případné sjednocení s existujícími eventy) je
+  // samostatný budoucí krok.
+  //
+  // Řev monstra na "impact" fázi (shake začíná) — spolu s deathSequenceImpact.
+  deathSequenceRoar: "death_sequence_roar",
+  // Fyzický "úder"/rána na "impact" fázi — nižší, kratší než roar, hraje spolu s ním.
+  deathSequenceImpact: "death_sequence_impact",
+  // Rušení signálu na "death_frame" fázi (kdy se zobrazí "SIGNÁL ZTRACEN").
+  deathSequenceGlitch: "death_sequence_glitch",
+  // Finální "je konec" stinger na "game_over" fázi (kdy se zobrazí "GAME OVER").
+  deathSequenceFinal: "death_sequence_final",
 } as const;
 
 export type AudioEventId = (typeof AUDIO_EVENTS)[keyof typeof AUDIO_EVENTS];
