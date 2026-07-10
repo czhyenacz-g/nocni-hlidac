@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { COPY } from "@/content/copy";
 import { GAME_VERSION } from "@/game/balancing/constants";
+import { BUILD_COMMIT } from "@/game/core/buildInfo";
 
 // Nenápadná patička pro menu/prezentační stránky (MainMenuScreen, /about) —
 // záměrně se nepoužívá na herních obrazovkách (GameScreen/LoadingScreen), aby
@@ -19,7 +20,7 @@ export default function Footer() {
       </p>
       <p className="text-gray-700 italic mb-1">{COPY.footer.tagline}</p>
       <p>
-        {GAME_VERSION} ·{" "}
+        {GAME_VERSION} <span className="text-gray-700">({BUILD_COMMIT})</span> ·{" "}
         <a href={`mailto:${COPY.menu.authorEmail}`} className="hover:text-gray-400">
           {COPY.menu.authorEmail}
         </a>
