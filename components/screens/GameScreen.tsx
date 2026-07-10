@@ -17,6 +17,7 @@ import BlackoutView from "../game/BlackoutView";
 import PowerMeter from "../game/PowerMeter";
 import ShiftTimer from "../game/ShiftTimer";
 import AudioToggle from "../game/AudioToggle";
+import MapButton from "../game/MapButton";
 import DebugPanel from "../game/DebugPanel";
 import OfficeBreachBanner from "../game/OfficeBreachBanner";
 
@@ -50,6 +51,8 @@ interface GameScreenProps {
   /** Zahájí/zruší držení "Nechat si to projít hlavou" (viz app/play/page.tsx#handleStartThinkItOverWindup/handleCancelThinkItOverWindup, GameState.thinkItOverWindup) — jen na left_wall pohledu, jen s brokovnicí. */
   onStartThinkItOverWindup: () => void;
   onCancelThinkItOverWindup: () => void;
+  /** Posuvník na LeftWallView.tsx (jen s brokovnicí) — viz GameState.officeDoorLockMs, game/minigame/config.ts#OFFICE_DOOR_LOCK_MIN_MS/MAX_MS. */
+  onChangeOfficeDoorLockMs: (value: number) => void;
   onRestartGenerator: () => void;
   onDebugToggleDoor: () => void;
   onDebugRestartGenerator: () => void;
@@ -80,6 +83,7 @@ export default function GameScreen({
   onCancelEmergencyRunWindup,
   onStartThinkItOverWindup,
   onCancelThinkItOverWindup,
+  onChangeOfficeDoorLockMs,
   onRestartGenerator,
   onDebugToggleDoor,
   onDebugRestartGenerator,
@@ -165,7 +169,10 @@ export default function GameScreen({
                 nightNumber={nightNumber}
                 onNightLabelContextMenu={handleToggleDebugPanel}
               />
-              <AudioToggle muted={state.audioMuted} onToggle={onToggleAudio} />
+              <div className="flex items-center gap-2">
+                <MapButton onClick={onLookAtMap} />
+                <AudioToggle muted={state.audioMuted} onToggle={onToggleAudio} />
+              </div>
             </div>
 
             <PowerMeter
@@ -192,7 +199,6 @@ export default function GameScreen({
                 onLookAtDoor={onLookAtDoor}
                 onLookAtGenerator={onLookAtGenerator}
                 onLookAtLeftWall={onLookAtLeftWall}
-                onLookAtMap={onLookAtMap}
               />
             )}
             {state.playerView === "door" && (
@@ -240,6 +246,8 @@ export default function GameScreen({
                 thinkItOverWindupActive={state.thinkItOverWindup.active}
                 thinkItOverWindupProgressMs={state.thinkItOverWindup.progressMs}
                 hasWoundedMonsterToday={state.monsterHitsToday > 0}
+                officeDoorLockMs={state.officeDoorLockMs}
+                onChangeOfficeDoorLockMs={onChangeOfficeDoorLockMs}
               />
             )}
             {state.playerView === "object_map" && <ObjectMapView onLookAtDesk={onLookAtDesk} />}

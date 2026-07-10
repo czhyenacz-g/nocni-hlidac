@@ -3,6 +3,7 @@ import { createDefaultRoomBulbs } from "./roomBulbs";
 import { BULBS_CONFIG } from "./bulbsConfig";
 import { DEFAULT_NIGHT_FEATURES, NightFeatureFlags } from "../difficulty/nightConfig";
 import { DEFAULT_GAME_MODE, GAME_MODE_CONFIG, GameMode } from "./gameMode";
+import { EMERGENCY_OFFICE_DOOR_LOCK_MS } from "../minigame/config";
 
 // Vylosuje okamžik (elapsedMs) poruchy generátoru v rámci nastaveného okna —
 // mimo tento modul se nikdy nevolá Math.random() přímo, ať je losování na jednom místě.
@@ -40,6 +41,7 @@ export function createInitialGameState(
   hasShotgunOverride?: boolean,
   shotgunAmmoOverride?: number,
   hasDoubleBarrelShotgunOverride?: boolean,
+  officeDoorLockMsOverride?: number,
 ): GameState {
   const gameMode = gameModeOverride ?? DEFAULT_GAME_MODE;
 
@@ -130,5 +132,6 @@ export function createInitialGameState(
 
     isRunning: false,
     audioMuted: false,
+    officeDoorLockMs: officeDoorLockMsOverride ?? EMERGENCY_OFFICE_DOOR_LOCK_MS,
   };
 }

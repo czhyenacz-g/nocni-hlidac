@@ -209,6 +209,17 @@ export const START_ZONE_LEAVE_RADIUS_PX = 87.5;
 export const EMERGENCY_OFFICE_DOOR_LOCK_MS = 30_000;
 
 /**
+ * Hráčem nastavitelný rozsah pro `GameState.officeDoorLockMs` (viz
+ * LeftWallView.tsx posuvník, zobrazený jen s brokovnicí — zadání "mohlo by
+ * to trochu kompenzovat horší mobilní ovládání"). `EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS`
+ * níže zůstává NEZÁVISLE pevných 5s bez ohledu na tenhle posuvník — kratší
+ * zamčení dveří jen zkrátí, jak dlouho musí hráč čekat, než se smí vrátit,
+ * nemění pravidlo "5s po otevření dveří se monstrum vydá do kanceláře".
+ */
+export const OFFICE_DOOR_LOCK_MIN_MS = 5_000;
+export const OFFICE_DOOR_LOCK_MAX_MS = EMERGENCY_OFFICE_DOOR_LOCK_MS;
+
+/**
  * Kolik ms PO automatickém otevření dveří (EMERGENCY_OFFICE_DOOR_LOCK_MS)
  * smí hráč zůstat venku, než monstrum změní cíl na kancelář/generátor (viz
  * zadání, game/minigame/logic.ts#isMonsterOfficeThreatArmed) — jakmile

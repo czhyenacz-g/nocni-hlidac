@@ -633,6 +633,17 @@ export interface GameState {
 
   isRunning: boolean;
   audioMuted: boolean;
+  /**
+   * Hráčem nastavitelná délka zamčení dveří kanceláře v emergency minihře
+   * (viz game/minigame/config.ts#EMERGENCY_OFFICE_DOOR_LOCK_MS/
+   * OFFICE_DOOR_LOCK_MIN_MS/MAX_MS, LeftWallView.tsx posuvník — zobrazený
+   * jen s brokovnicí, zadání "kompenzovat horší mobilní ovládání").
+   * Perzistuje přes celou session stejně jako `audioMuted` (zachovává se
+   * přes START_LOADING/SHOW_BRIEFING/START_SHIFT/RESTART_SHIFT/GO_TO_MENU
+   * v gameReducer.ts), ne per-night reset. `EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS`
+   * zůstává nezávisle pevných 5s, tímhle polem neovlivněné.
+   */
+  officeDoorLockMs: number;
 }
 
 export interface TensionInput {

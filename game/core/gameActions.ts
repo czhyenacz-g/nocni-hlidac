@@ -59,6 +59,11 @@ export type GameAction =
   | { type: "OPEN_CAMERA"; cameraId: CameraId }
   | { type: "CLOSE_CAMERAS" }
   | { type: "TOGGLE_AUDIO_MUTED" }
+  // Posuvník na LeftWallView.tsx (jen s brokovnicí) — viz
+  // game/minigame/config.ts#OFFICE_DOOR_LOCK_MIN_MS/MAX_MS. Reducer hodnotu
+  // sám neclampuje (viz zadání "posuvník už to hlídá"), ale komponenta i tak
+  // vždy posílá hodnotu v platném rozsahu.
+  | { type: "SET_OFFICE_DOOR_LOCK_MS"; value: number }
   | { type: "START_BULB_REPLACEMENT" }
   // Puštění tlačítka/pointer leave/cancel před dokončením — viz DoorView.tsx.
   // No-op, pokud žádná výměna zrovna neběží.

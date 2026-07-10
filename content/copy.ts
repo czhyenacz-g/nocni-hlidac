@@ -269,6 +269,13 @@ export const COPY = {
     thinkItOverHoldingLabel: "Přemýšlím… {seconds} s",
     // Zobrazí se po doběhnutí držení (viz thinkItOverReadySeq) — přesný text ze zadání.
     thinkItOverResultLabel: "Nevzdávej se a bojuj! To monstrum určitě lze nějak zabít. Potřebuješ možná více ran, nebo větší kalibr.",
+    // Posuvník na LeftWallView.tsx, vidět jen s brokovnicí (stejná podmínka
+    // jako startThinkItOverLabel výše, viz zadání "kompenzovat horší
+    // mobilní ovládání") — nastavuje GameState.officeDoorLockMs (viz
+    // game/minigame/config.ts#OFFICE_DOOR_LOCK_MIN_MS/MAX_MS). {seconds}
+    // nahrazuje LeftWallView.tsx aktuální hodnotou v sekundách.
+    officeDoorLockSliderLabel: "Zamčení dveří kanceláře: {seconds} s",
+    officeDoorLockSliderHint: "Jak dlouho zůstanou dveře do kanceláře při výpravě zamčené, než se samy otevřou.",
     // Skrytý true ending (viz zadání, game/core/monsterEnding.ts) — zobrazí se
     // po KAŽDÉM potvrzeném zásahu (ne jen prvním), záměrně beze čísla/postupu
     // ("X/10"), ať mechanismus zůstane skrytý — proto i "9. zásah" dostává
@@ -486,6 +493,6 @@ export const COPY = {
     // Nadpis sekce nově odemčených achievementů na výsledkových obrazovkách
     // (viz zadání "Napojit achievementy na výsledkové obrazovky",
     // components/achievements/AchievementResultPanel.tsx) — přesný text ze zadání.
-    newResultsHeading: "NOVÁ DOSAŽENÍ",
+    newResultsHeading: "NOVÝ ÚSPĚCH",
   },
 } as const;

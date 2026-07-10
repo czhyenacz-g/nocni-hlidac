@@ -39,6 +39,7 @@ export function createBatteryEmergencyInput(
   extraLootItems: MiniGameItemId[] = [],
   monsterHitsToday?: number,
   monsterHitsRequiredForFinal?: number,
+  officeDoorLockMs?: number,
 ): EmergencyMiniGameInput {
   return {
     objective: "collect_item",
@@ -50,6 +51,7 @@ export function createBatteryEmergencyInput(
     layoutId: DEFAULT_BATTERY_RUN_LAYOUT_ID,
     monsterHitsToday,
     monsterHitsRequiredForFinal,
+    officeDoorLockMs,
   };
 }
 
@@ -67,6 +69,7 @@ export function createShotgunEmergencyInput(
   extraLootItems: MiniGameItemId[] = [],
   monsterHitsToday?: number,
   monsterHitsRequiredForFinal?: number,
+  officeDoorLockMs?: number,
 ): EmergencyMiniGameInput {
   return {
     objective: "collect_item",
@@ -78,6 +81,7 @@ export function createShotgunEmergencyInput(
     layoutId: DEFAULT_BATTERY_RUN_LAYOUT_ID,
     monsterHitsToday,
     monsterHitsRequiredForFinal,
+    officeDoorLockMs,
   };
 }
 

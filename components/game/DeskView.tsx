@@ -16,7 +16,6 @@ interface DeskViewProps {
   onLookAtDoor: () => void;
   onLookAtGenerator: () => void;
   onLookAtLeftWall: () => void;
-  onLookAtMap: () => void;
 }
 
 // Základní pohled hráče: kamerový/stolní panel. Dveře a generátor odsud
@@ -30,7 +29,6 @@ export default function DeskView({
   onLookAtDoor,
   onLookAtGenerator,
   onLookAtLeftWall,
-  onLookAtMap,
 }: DeskViewProps) {
   return (
     <div className="flex flex-col gap-3">
@@ -57,10 +55,13 @@ export default function DeskView({
       <LightControl lightOn={state.lightOn} bulbBroken={state.roomBulbs.nearRoom.broken} onToggle={onToggleLight} />
 
       {/* Spodní navigace jako prostorová orientace v místnosti, ne 2×2 grid
-          stejných boxů: vlevo/vpravo boční pohledy (stěna/generátor), pod
-          nimi samostatná neutrální mapa, úplně dole dominantní otočení ke
-          dveřím — ten je vizuálně nejvýraznější (ViewSwitchArrow
-          variant="primary"), protože je to hlavní směr pohledu control roomu. */}
+          stejných boxů: vlevo/vpravo boční pohledy (stěna/generátor), úplně
+          dole dominantní otočení ke dveřím — ten je vizuálně nejvýraznější
+          (ViewSwitchArrow variant="primary"), protože je to hlavní směr
+          pohledu control roomu. Mapa se odsud přesunula nahoru vedle
+          AudioToggle (viz GameScreen.tsx, MapButton.tsx, zadání "zmenšit
+          spodní akční layout") — handler (onLookAtMap) beze změny, jen
+          jiné tlačítko. */}
       <div className="grid grid-cols-2 gap-3">
         <ViewSwitchArrow label={COPY.game.lookAtLeftWallLabel} onClick={onLookAtLeftWall} align="left" />
         <ViewSwitchArrow
@@ -71,8 +72,6 @@ export default function DeskView({
           urgent={isGeneratorArrowUrgent(state, night.generator)}
         />
       </div>
-
-      <ViewSwitchArrow label={COPY.game.lookAtMapLabel} onClick={onLookAtMap} align="center" />
 
       <ViewSwitchArrow
         label={COPY.game.lookAtDoorLabel}

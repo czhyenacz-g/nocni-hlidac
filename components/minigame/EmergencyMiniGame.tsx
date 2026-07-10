@@ -429,6 +429,11 @@ const MOVE_KEYS: Record<string, { dx: number; dy: number }> = {
 };
 
 export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonsterHit }: EmergencyMiniGameProps) {
+  // Hráčem nastavitelná délka zamčení dveří (viz LeftWallView.tsx posuvník,
+  // GameState.officeDoorLockMs) — `input.officeDoorLockMs` chybí jen u
+  // starších/debug scénářů (game/minigame/debugScenarios.ts), které ho
+  // nenastavují, proto fallback na dosavadní pevnou EMERGENCY_OFFICE_DOOR_LOCK_MS.
+  const officeDoorLockMs = input.officeDoorLockMs ?? EMERGENCY_OFFICE_DOOR_LOCK_MS;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const gameRef = useRef<MiniGameRefState>(createInitialState(input));
   const heldKeysRef = useRef<Set<string>>(new Set());
@@ -478,7 +483,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
   // (monstrum fyzicky dorazilo do kanceláře a zmizelo z mapy, viz tick()) —
   // dvě samostatné React state proměnné pro dvě samostatné fáze hrozby.
   const [officeDoorUnlocked, setOfficeDoorUnlocked] = useState(false);
-  const [doorCountdownMs, setDoorCountdownMs] = useState(EMERGENCY_OFFICE_DOOR_LOCK_MS);
+  const [doorCountdownMs, setDoorCountdownMs] = useState(officeDoorLockMs);
   const [monsterOfficeThreatArmed, setMonsterOfficeThreatArmed] = useState(false);
   const [officeThreatTriggered, setOfficeThreatTriggered] = useState(false);
   // Mobilní/dotykové ovládání (viz zadání, game/minigame/touchControls.ts) —
@@ -546,7 +551,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
     setInExitZone(false);
     setHasLeftStartZone(false);
     setOfficeDoorUnlocked(false);
-    setDoorCountdownMs(EMERGENCY_OFFICE_DOOR_LOCK_MS);
+    setDoorCountdownMs(officeDoorLockMs);
     setMonsterOfficeThreatArmed(false);
     setOfficeThreatTriggered(false);
     setResult(null);
@@ -731,7 +736,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
     const inExitZoneNow = circleIntersectsWall(game.player.x, game.player.y, game.player.radius, game.exitZone);
     if (
       inExitZoneNow &&
-      canReturnToOffice(input.objective, game.hasLeftStartZone, !isOfficeDoorLocked(game.elapsedMs, EMERGENCY_OFFICE_DOOR_LOCK_MS))
+      canReturnToOffice(input.objective, game.hasLeftStartZone, !isOfficeDoorLocked(game.elapsedMs, officeDoorLockMs))
     ) {
       game.mission = updateMissionPhase(game.mission, "completed");
       setMissionPhase(game.mission.phase);
@@ -946,11 +951,11 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
           // canReturnToOffice) — stejný "volej pokaždé, setState bailout na
           // stejné hodnotě" vzor jako setInExitZone níže (tenhle stav nikdy
           // zpátky neklesá, prostý opakovaný zápis je nejjednodušší).
-          const officeDoorUnlockedNow = !isOfficeDoorLocked(game.elapsedMs, EMERGENCY_OFFICE_DOOR_LOCK_MS);
+          const officeDoorUnlockedNow = !isOfficeDoorLocked(game.elapsedMs, officeDoorLockMs);
           setOfficeDoorUnlocked(officeDoorUnlockedNow);
           // Zaokrouhleno na desetiny sekundy — stejný vzor jako woundedMsLeft,
           // ať panel "Automatické otevření za: X.X s" nezpůsobuje re-render 60×/s.
-          setDoorCountdownMs(Math.ceil(msUntilOfficeDoorOpens(game.elapsedMs, EMERGENCY_OFFICE_DOOR_LOCK_MS) / 100) * 100);
+          setDoorCountdownMs(Math.ceil(msUntilOfficeDoorOpens(game.elapsedMs, officeDoorLockMs) / 100) * 100);
 
           // Monstrum zamíří na kancelář, jakmile hráč zůstane venku moc dlouho
           // PO otevření dveří (viz EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS,
@@ -964,7 +969,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
           // sobě NIKDY neznamená "dorazilo" (viz zadání).
           const threatArmedNow = isMonsterOfficeThreatArmed(
             game.elapsedMs,
-            EMERGENCY_OFFICE_DOOR_LOCK_MS,
+            officeDoorLockMs,
             EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS,
           );
           setMonsterOfficeThreatArmed(threatArmedNow);
@@ -1483,7 +1488,7 @@ function draw(
   // Zamčené dveře kanceláře (viz zadání, EMERGENCY_OFFICE_DOOR_LOCK_MS) —
   // draw() čte přímo z gameRef (ne z React state), stejný vzor jako ostatní
   // odvozené hodnoty tady v draw().
-  const officeDoorUnlockedNow = !isOfficeDoorLocked(game.elapsedMs, EMERGENCY_OFFICE_DOOR_LOCK_MS);
+  const officeDoorUnlockedNow = !isOfficeDoorLocked(game.elapsedMs, input.officeDoorLockMs ?? EMERGENCY_OFFICE_DOOR_LOCK_MS);
   // Jestli je kancelářský marker "zvýrazněný" (úkol splněný / return_to_office
   // po opuštění startu, viz shouldHighlightOfficeMarker) — spočítané tady
   // nahoře, ať ho může použít i marker samotný (níže) i "maják přes fog"

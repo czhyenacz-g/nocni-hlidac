@@ -172,6 +172,15 @@ export interface EmergencyMiniGameInput {
    */
   seed?: string;
   /**
+   * Hráčem nastavitelná délka zamčení dveří kanceláře (viz
+   * GameState.officeDoorLockMs, LeftWallView.tsx posuvník,
+   * game/minigame/config.ts#EMERGENCY_OFFICE_DOOR_LOCK_MS/
+   * OFFICE_DOOR_LOCK_MIN_MS/MAX_MS) — chybí-li, EmergencyMiniGame.tsx
+   * spadne na EMERGENCY_OFFICE_DOOR_LOCK_MS (dosavadní pevná hodnota, viz
+   * debugScenarios.ts, které tohle pole zatím nenastavují).
+   */
+  officeDoorLockMs?: number;
+  /**
    * Kolik potvrzených zásahů monstra hráč má PŘED touhle výpravou (viz
    * `GameState.monsterHitsToday`, spočítáno volajícím — app/play/page.tsx).
    * `game/minigame/*` záměrně nezná `MONSTER_TRUE_ENDING_REQUIRED_HITS` ani

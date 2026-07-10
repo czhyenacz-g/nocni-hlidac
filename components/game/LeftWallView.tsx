@@ -1,9 +1,10 @@
-import { useEffect, useState, type PointerEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type PointerEvent } from "react";
 import { COPY } from "@/content/copy";
 import { EMERGENCY_RUN_WINDUP_DURATION_MS, THINK_IT_OVER_WINDUP_DURATION_MS } from "@/game/balancing/constants";
 import { computeEmergencyRunWindupProgressRatio } from "@/game/core/emergencyRunWindupProgress";
 import { computeThinkItOverWindupProgressRatio } from "@/game/core/thinkItOverWindupProgress";
 import { DOUBLE_BARREL_SHOTGUN_MAX_AMMO, SHOTGUN_MAX_AMMO } from "@/game/core/shotgunEquipment";
+import { OFFICE_DOOR_LOCK_MAX_MS, OFFICE_DOOR_LOCK_MIN_MS } from "@/game/minigame/config";
 import ViewSwitchArrow from "./ViewSwitchArrow";
 import ConsoleIcon from "./ConsoleIcon";
 
@@ -73,6 +74,17 @@ interface LeftWallViewProps {
    * mechanika, jen jiný text.
    */
   hasWoundedMonsterToday: boolean;
+  /**
+   * Posuvník "za jak dlouho se dveře do kanceláře samy odemknou" (viz
+   * GameState.officeDoorLockMs, game/minigame/config.ts#OFFICE_DOOR_LOCK_MIN_MS/MAX_MS,
+   * zadání "kompenzovat horší mobilní ovládání") — zobrazí se jen s
+   * brokovnicí (hasShotgun), stejná podmínka jako "Nechat si to projít
+   * hlavou" výše. EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS (5s od odemčení
+   * dveří, kdy se monstrum vydá do kanceláře) tímhle posuvníkem NENÍ
+   * ovlivněné — jen zkracuje/prodlužuje samotné zamčení.
+   */
+  officeDoorLockMs: number;
+  onChangeOfficeDoorLockMs: (value: number) => void;
 }
 
 /** Prázdný stojan na zbraň — beze změny oproti dřívějšku, dokud hráč brokovnici nemá (viz hasShotgun). */
@@ -112,6 +124,8 @@ export default function LeftWallView({
   thinkItOverWindupActive,
   thinkItOverWindupProgressMs,
   hasWoundedMonsterToday,
+  officeDoorLockMs,
+  onChangeOfficeDoorLockMs,
 }: LeftWallViewProps) {
   const [imageFailed, setImageFailed] = useState(false);
   const wallImageSrc = !hasShotgun
@@ -147,6 +161,10 @@ export default function LeftWallView({
 
   function handleThinkItOverPointerUp() {
     onCancelThinkItOverWindup();
+  }
+
+  function handleOfficeDoorLockMsChange(event: ChangeEvent<HTMLInputElement>) {
+    onChangeOfficeDoorLockMs(Number(event.target.value));
   }
 
   const windupSeconds = Math.max(0, (EMERGENCY_RUN_WINDUP_DURATION_MS - emergencyRunWindupProgressMs) / 1000).toFixed(1);
@@ -291,6 +309,27 @@ export default function LeftWallView({
           <div className="w-32 h-1 bg-gray-800 border border-gray-700 rounded overflow-hidden">
             <div className="h-full bg-amber-500 transition-all duration-150" style={{ width: `${thinkItOverPercent}%` }} />
           </div>
+        )}
+
+        {/* Posuvník "za jak dlouho se dveře do kanceláře samy odemknou" (viz
+            zadání "kompenzovat horší mobilní ovládání") — jen s brokovnicí,
+            stejná podmínka jako "Nechat si to projít hlavou" výše. */}
+        {hasShotgun && (
+          <label className="w-full flex flex-col gap-1 text-[10px] text-gray-400">
+            <span className="flex justify-between">
+              <span>{COPY.game.officeDoorLockSliderLabel.replace("{seconds}", String(Math.round(officeDoorLockMs / 1000)))}</span>
+            </span>
+            <input
+              type="range"
+              min={OFFICE_DOOR_LOCK_MIN_MS}
+              max={OFFICE_DOOR_LOCK_MAX_MS}
+              step={1000}
+              value={officeDoorLockMs}
+              onChange={handleOfficeDoorLockMsChange}
+              className="w-full accent-amber-500"
+            />
+            <span className="text-gray-600">{COPY.game.officeDoorLockSliderHint}</span>
+          </label>
         )}
       </div>
     </div>

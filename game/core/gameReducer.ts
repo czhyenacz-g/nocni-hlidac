@@ -509,7 +509,12 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
 
     switch (action.type) {
       case "START_LOADING":
-        return { ...createInitialGameState(night), audioMuted: state.audioMuted, screen: "loading" };
+        return {
+          ...createInitialGameState(night),
+          audioMuted: state.audioMuted,
+          officeDoorLockMs: state.officeDoorLockMs,
+          screen: "loading",
+        };
 
       case "SHOW_BRIEFING":
         // Opravdu "jen přechod na screen, žádná jiná změna stavu" (viz
@@ -537,6 +542,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             state.hasDoubleBarrelShotgun,
           ),
           audioMuted: state.audioMuted,
+          officeDoorLockMs: state.officeDoorLockMs,
           screen: "briefing",
         };
 
@@ -554,6 +560,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             action.hasDoubleBarrelShotgun,
           ),
           audioMuted: state.audioMuted,
+          officeDoorLockMs: state.officeDoorLockMs,
           screen: "playing",
           isRunning: true,
         };
@@ -572,15 +579,24 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             action.hasDoubleBarrelShotgun,
           ),
           audioMuted: state.audioMuted,
+          officeDoorLockMs: state.officeDoorLockMs,
           screen: "playing",
           isRunning: true,
         };
 
       case "GO_TO_MENU":
-        return { ...createInitialGameState(night), audioMuted: state.audioMuted, screen: "menu" };
+        return {
+          ...createInitialGameState(night),
+          audioMuted: state.audioMuted,
+          officeDoorLockMs: state.officeDoorLockMs,
+          screen: "menu",
+        };
 
       case "TOGGLE_AUDIO_MUTED":
         return { ...state, audioMuted: !state.audioMuted };
+
+      case "SET_OFFICE_DOOR_LOCK_MS":
+        return { ...state, officeDoorLockMs: action.value };
 
       case "START_BULB_REPLACEMENT": {
         // Riskantní ruční akce — jde jen z DoorView, jen s otevřenými dveřmi,

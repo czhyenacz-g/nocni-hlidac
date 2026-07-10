@@ -784,6 +784,7 @@ export default function PlayPage() {
             extraLootItems,
             state.monsterHitsToday,
             state.nightFeatures.monsterTrueEndingRequiredHits,
+            state.officeDoorLockMs,
           ),
         });
       } else {
@@ -799,6 +800,7 @@ export default function PlayPage() {
             extraLootItems,
             state.monsterHitsToday,
             state.nightFeatures.monsterTrueEndingRequiredHits,
+            state.officeDoorLockMs,
           ),
         });
       }
@@ -1120,6 +1122,11 @@ export default function PlayPage() {
     dispatch({ type: "CANCEL_THINK_IT_OVER_WINDUP" });
   }
 
+  /** Posuvník na LeftWallView.tsx (jen s brokovnicí) — viz GameState.officeDoorLockMs, game/minigame/config.ts#OFFICE_DOOR_LOCK_MIN_MS/MAX_MS. Perzistuje jako hráčské nastavení, ne per-noc hodnota (viz gameReducer.ts). */
+  function handleChangeOfficeDoorLockMs(value: number) {
+    dispatch({ type: "SET_OFFICE_DOOR_LOCK_MS", value });
+  }
+
   // Jediné místo, které zpracuje EmergencyMiniGameResult (viz
   // EmergencyMiniGame onComplete kontrakt) — vždy zavře minihru, pak podle
   // outcome buď dobije energii (returned + worldEffects), spustí existující
@@ -1350,6 +1357,7 @@ export default function PlayPage() {
           onCancelEmergencyRunWindup={handleCancelEmergencyRunWindup}
           onStartThinkItOverWindup={handleStartThinkItOverWindup}
           onCancelThinkItOverWindup={handleCancelThinkItOverWindup}
+          onChangeOfficeDoorLockMs={handleChangeOfficeDoorLockMs}
         />
       )}
       {/* Nouzová minihra (viz components/minigame/EmergencyMiniGame.tsx) —

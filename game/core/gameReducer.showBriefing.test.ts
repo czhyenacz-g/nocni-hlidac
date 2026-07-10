@@ -158,3 +158,33 @@ describe("RESTART_SHIFT keeps carrying shotgun equipment through explicitly (una
     expect(result.shotgunAmmo).toBe(2);
   });
 });
+
+describe("officeDoorLockMs (player setting, same persistence contract as audioMuted)", () => {
+  it("SET_OFFICE_DOOR_LOCK_MS updates the value", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = createInitialGameState(NIGHT_01);
+
+    const result = reducer(state, { type: "SET_OFFICE_DOOR_LOCK_MS", value: 12_000 });
+
+    expect(result.officeDoorLockMs).toBe(12_000);
+  });
+
+  it("survives SHOW_BRIEFING (same regression class as gameMode/hasShotgun above)", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const withCustomValue = reducer(createInitialGameState(NIGHT_01), { type: "SET_OFFICE_DOOR_LOCK_MS", value: 8_000 });
+
+    const result = reducer({ ...withCustomValue, screen: "win" }, { type: "SHOW_BRIEFING" });
+
+    expect(result.officeDoorLockMs).toBe(8_000);
+  });
+
+  it("survives START_SHIFT/RESTART_SHIFT/GO_TO_MENU/START_LOADING like audioMuted", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const withCustomValue = reducer(createInitialGameState(NIGHT_01), { type: "SET_OFFICE_DOOR_LOCK_MS", value: 20_000 });
+
+    expect(reducer(withCustomValue, { type: "START_SHIFT" }).officeDoorLockMs).toBe(20_000);
+    expect(reducer(withCustomValue, { type: "RESTART_SHIFT" }).officeDoorLockMs).toBe(20_000);
+    expect(reducer(withCustomValue, { type: "GO_TO_MENU" }).officeDoorLockMs).toBe(20_000);
+    expect(reducer(withCustomValue, { type: "START_LOADING" }).officeDoorLockMs).toBe(20_000);
+  });
+});
