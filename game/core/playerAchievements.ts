@@ -13,6 +13,7 @@ import { PlayerProfileStats } from "./playerProfileStats";
 export type PlayerAchievementId =
   | "first_shift"
   | "first_death"
+  | "hynek_encounter"
   | "first_expedition"
   | "first_bulb_replaced"
   | "first_generator_restart"
@@ -21,6 +22,8 @@ export type PlayerAchievementId =
   | "golden_guard"
   | "hardcore_night_5"
   | "hardcore_night_10"
+  | "hardcore_night_20"
+  | "hardcore_night_30"
   | "monster_slayer";
 
 export type PlayerAchievement = {
@@ -54,6 +57,17 @@ const PLAYER_ACHIEVEMENT_DEFINITIONS: PlayerAchievementDefinition[] = [
     isUnlocked: (stats) => stats.totalDeaths >= 1,
   },
   {
+    id: "hynek_encounter",
+    title: "Setkání s Hynkem",
+    description: "Zemřel jsi hned první noc.",
+    // Hardcore-based (viz zadání) — čte se z hardcoreDeathsByNight, které
+    // zapisuje VÝHRADNĚ playerProfileStats.ts#recordHardcoreDeathOnNight
+    // (jen pro gameMode "hardcore", viz app/play/page.tsx). Normal smrt v
+    // první noci ho proto nikdy neodemkne — to řeší jednorázový toast
+    // "meet_hynek" (content/achievements.ts), jiný, nezávislý systém.
+    isUnlocked: (stats) => Number(stats.hardcoreDeathsByNight["1"] ?? 0) >= 1,
+  },
+  {
     id: "first_expedition",
     title: "Ven z kanceláře",
     description: "Poprvé jsi opustil bezpečí kanceláře.",
@@ -85,7 +99,9 @@ const PLAYER_ACHIEVEMENT_DEFINITIONS: PlayerAchievementDefinition[] = [
   },
   {
     id: "golden_guard",
-    title: "Zlatý hlídač",
+    // Přejmenováno (viz zadání "Nemigruj ID, mění se jen text") — ID
+    // zůstává golden_guard beze změny, jen title.
+    title: "Hlídač s dvouhlavňovkou",
     description: "Odemkl jsi dvouhlavňovou brokovnici.",
     isUnlocked: (_stats, reward) => reward.doubleBarrelUnlocked === true,
   },
@@ -97,22 +113,38 @@ const PLAYER_ACHIEVEMENT_DEFINITIONS: PlayerAchievementDefinition[] = [
   },
   {
     id: "hardcore_night_10",
-    title: "Noční veterán",
+    // Přejmenováno (viz zadání) — ID zůstává hardcore_night_10 beze změny.
+    title: "Začni si zvykat",
     description: "Dostal ses v Hardcore režimu alespoň k 10. noci.",
     isUnlocked: (stats) => stats.hardcoreBestNight >= 10,
   },
   {
+    id: "hardcore_night_20",
+    title: "Běžná rutina",
+    description: "Dostal ses v Hardcore režimu alespoň k 20. noci.",
+    isUnlocked: (stats) => stats.hardcoreBestNight >= 20,
+  },
+  {
+    id: "hardcore_night_30",
+    title: "Tvoje první výplata",
+    description: "Dostal ses v Hardcore režimu alespoň k 30. noci.",
+    isUnlocked: (stats) => stats.hardcoreBestNight >= 30,
+  },
+  {
     id: "monster_slayer",
     title: "Lovec bestií",
-    description: "Zabil jsi bestii alespoň jednou.",
-    isUnlocked: (stats) => stats.monsterKills >= 1,
+    // Práh zvýšen na 2 (viz zadání "Důvod: první zabití už pokrývá
+    // not_a_rookie_anymore") — první zabití odemyká "Už nejsi ucho", tenhle
+    // achievement teď odměňuje až DRUHÉ.
+    description: "Zabil jsi bestii podruhé.",
+    isUnlocked: (stats) => stats.monsterKills >= 2,
   },
 ];
 
 /**
  * Čistá funkce — žádný localStorage přístup tady, volající (app/profile/page.tsx)
  * si stats/reward přečte sám (getPlayerProfileStats/getMonsterDefeatReward) a
- * pošle sem jako hotová data. Vrací VŽDY všech 11 achievementů ve stejném
+ * pošle sem jako hotová data. Vrací VŽDY všech 14 achievementů ve stejném
  * pevném pořadí (viz PLAYER_ACHIEVEMENT_DEFINITIONS výše), jen s `unlocked`
  * podle aktuálních stats/reward.
  */

@@ -43,6 +43,7 @@ import {
   recordExpeditionReturned,
   recordExpeditionStarted,
   recordGeneratorRestarted,
+  recordHardcoreDeathOnNight,
   recordMonsterHitsConfirmed,
   recordMonsterKill,
   recordNightSurvived,
@@ -338,6 +339,14 @@ export default function PlayPage() {
         // tahle větev je přesně "jedna skutečná smrt", žádný extra guard
         // navíc potřeba.
         recordDeath();
+        // Hardcore death-by-night histogram (viz zadání "Uzavřít Hardcore
+        // profil a achievementy", game/core/playerProfileStats.ts) — VÝHRADNĚ
+        // Hardcore, stejná podmínka jako serverový Hardcore sync níže.
+        // `nightThatEnded` (ne `currentNight`, ten by po případném resetu
+        // survivedNights níže už neodrážel noc, ve které hráč umřel).
+        if (state.gameMode === "hardcore") {
+          recordHardcoreDeathOnNight(nightThatEnded);
+        }
         // Žárovka je vlastnost OBJEKTU, ne hlídače — smrt ji jen uloží tak, jak
         // byla (žádný denní servis, ten běží jen po přežité směně, viz "win"
         // níže), ať další hlídač pokračuje přesně odtud, kde předchozí skončil.

@@ -72,6 +72,9 @@ export const COPY = {
     statExpeditionsReturned: "Bezpečné návraty",
     statMonsterHitsConfirmed: "Potvrzené zásahy",
     statMonsterKills: "Zabité bestie",
+    // Volitelná dlaždice (viz zadání "Uzavřít Hardcore profil a
+    // achievementy") — jen 1. noc, celý histogram podle noci přijde později.
+    statHardcoreDeathsOnNightOne: "Smrti v 1. noci",
     // Sekce 3: Achievementy.
     achievementsHeading: "Achievementy",
     achievementUnlockedMark: "✓",

@@ -20,7 +20,7 @@ import { PlayerProfileStats } from "./playerProfileStats";
 // Server ukládá VÝHRADNĚ Hardcore hodnoty — žádné Normal pole tenhle soubor
 // vůbec nezná (viz zadání "Normal se na server neukládá").
 //
-// Tvar tady je záměrně JEN těch 9 polí, která project-hub-api skutečně vrací
+// Tvar tady je záměrně JEN těch polí, která project-hub-api skutečně vrací
 // (viz zadání "Srovnat ServerHardcorePlayerProfile typ a client mapping s
 // reálným project-hub-api contractem", project-hub-api
 // src/modules/nocniHlidac/hardcoreProfileService.ts). Dřívější verze tohohle
@@ -30,7 +30,11 @@ import { PlayerProfileStats } from "./playerProfileStats";
 // mode-specific, viz project-hub-api report), takže by tu vždycky skončily
 // jako `undefined` navzdory typu `number`. Až budou tyhle countery na
 // serveru skutečně dostupné, přidat je zpátky sem je jednoduché — do té doby
-// ale typ nesmí slibovat víc, než co endpoint reálně vrací.
+// ale typ nesmí slibovat víc, než co endpoint reálně vrací. `hardcoreDeathsByNight`
+// (viz zadání "Uzavřít Hardcore profil a achievementy") JE bezpečně
+// Hardcore-scoped od začátku (zapisuje se jen z Hardcore smrti, viz
+// playerProfileStats.ts#recordHardcoreDeathOnNight), proto server tenhle
+// histogram na rozdíl od těch pěti výše skutečně ukládá.
 export interface ServerHardcorePlayerProfile {
   discordUserId: string;
   displayName: string | null;
@@ -40,6 +44,7 @@ export interface ServerHardcorePlayerProfile {
   hardcoreDoubleBarrelUnlocked: boolean;
   hardcoreMonsterDefeatsCount: number;
   hardcoreBestNight: number;
+  hardcoreDeathsByNight: Record<string, number>;
 
   createdAt: string;
   updatedAt: string;
@@ -54,7 +59,7 @@ export interface ServerHardcorePlayerProfile {
  */
 export type HardcoreProfileSnapshot = Pick<
   ServerHardcorePlayerProfile,
-  "hardcoreHasDefeatedMonster" | "hardcoreDoubleBarrelUnlocked" | "hardcoreMonsterDefeatsCount" | "hardcoreBestNight"
+  "hardcoreHasDefeatedMonster" | "hardcoreDoubleBarrelUnlocked" | "hardcoreMonsterDefeatsCount" | "hardcoreBestNight" | "hardcoreDeathsByNight"
 >;
 
 export const DEFAULT_HARDCORE_PROFILE_SNAPSHOT: HardcoreProfileSnapshot = {
@@ -62,6 +67,7 @@ export const DEFAULT_HARDCORE_PROFILE_SNAPSHOT: HardcoreProfileSnapshot = {
   hardcoreDoubleBarrelUnlocked: false,
   hardcoreMonsterDefeatsCount: 0,
   hardcoreBestNight: 0,
+  hardcoreDeathsByNight: {},
 };
 
 /** Výchozí profil pro hráče, který na VPS ještě nemá záznam (viz zadání "Pokud profil neexistuje, vytvoří default profil a vrátí ho"). */
@@ -86,6 +92,8 @@ export function createDefaultServerHardcoreProfile(identity: {
 // ── Validace/clamp (viz zadání "Validace"/"Clamp hodnot") ──
 const BEST_NIGHT_MAX = 10_000;
 const MONSTER_DEFEATS_MAX = 100_000;
+const DEATHS_BY_NIGHT_NIGHT_MAX = 10_000;
+const DEATHS_BY_NIGHT_COUNT_MAX = 1_000_000;
 
 /** Trusted numeric input (už víme, že je to number) — jen zaokrouhlí dolů a ořízne do [0, max]. Sdíleno sanitize (netrusted vstup) i merge (defense-in-depth, viz test "clampuje extrémní hodnoty"). */
 function clampInt(value: number, max: number): number {
@@ -99,13 +107,60 @@ function clampFieldFromUnknown(value: unknown, max: number): number {
 }
 
 /**
+ * Whitelist + validace + clamp NEDŮVĚRYHODNÉHO histogramu (viz zadání
+ * "Uzavřít Hardcore profil a achievementy", "Neplatné hodnoty") — klíč musí
+ * být kladný integer (jako string) `1..DEATHS_BY_NIGHT_NIGHT_MAX`, hodnota
+ * nezáporný integer `0..DEATHS_BY_NIGHT_COUNT_MAX`. `null`/pole/string
+ * místo objektu -> `{}`. Neplatné POLOŽKY se tiše zahodí (jeden špatný klíč
+ * nezahodí celý jinak platný histogram) — stejná sanitizace jako
+ * game/core/playerProfileStats.ts#sanitizeHardcoreDeathsByNight (dva různé
+ * moduly, stejné pravidlo, tenhle soubor navíc slouží jako referenční spec
+ * pro VPS stranu).
+ */
+function sanitizeHardcoreDeathsByNight(value: unknown): Record<string, number> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return {};
+  const raw = value as Record<string, unknown>;
+  const result: Record<string, number> = {};
+
+  for (const [key, rawCount] of Object.entries(raw)) {
+    const night = Number(key);
+    if (!Number.isInteger(night) || night < 1 || night > DEATHS_BY_NIGHT_NIGHT_MAX) continue;
+    if (typeof rawCount !== "number" || !Number.isInteger(rawCount) || rawCount < 0) continue;
+    result[String(night)] = Math.min(rawCount, DEATHS_BY_NIGHT_COUNT_MAX);
+  }
+
+  return result;
+}
+
+/**
+ * Merge dvou histogramů po klíči noci — `max(existing, incoming)` pro
+ * KAŽDOU noc zvlášť, nikdy součet (viz zadání "Přesná merge pravidla").
+ * Vstupy jsou očekávané už sanitizované (volající, viz
+ * `mergeHardcoreProfileSnapshot` níže, je pouští přes
+ * `sanitizeHardcoreDeathsByNight` nejdřív) — výsledek se přesto znovu
+ * clampuje (defense-in-depth, stejný vzor jako `clampInt` u ostatních polí).
+ */
+function mergeHardcoreDeathsByNight(
+  existing: Record<string, number>,
+  incoming: Record<string, number>,
+): Record<string, number> {
+  const nights = new Set([...Object.keys(existing), ...Object.keys(incoming)]);
+  const result: Record<string, number> = {};
+  for (const night of nights) {
+    const merged = Math.max(existing[night] ?? 0, incoming[night] ?? 0);
+    result[night] = clampInt(merged, DEATHS_BY_NIGHT_COUNT_MAX);
+  }
+  return result;
+}
+
+/**
  * Whitelist + validace + clamp NEDŮVĚRYHODNÉHO vstupu (viz zadání
  * "Bezpečnost"/"Validace") — volá se v Next.js API route handleru PŘED
  * odesláním na VPS (viz lib/hardcoreProfile/hardcoreProfileRequestHandlers.ts),
  * ať server nikdy nepředá dál nečíselné/záporné/obří/neznámá pole. Neznámá
  * pole (včetně "Normal-like" polí bez "hardcore" prefixu, např. by se
- * omylem poslalo `totalDeaths`) se TIŠE IGNORUJÍ — jen čtyři jmenované
- * `Hardcore*` klíče se vůbec čtou, cokoliv jiného ve vstupu se prostě
+ * omylem poslalo `totalDeaths`) se TIŠE IGNORUJÍ — jen pět jmenovaných
+ * `Hardcore*` klíčů se vůbec čte, cokoliv jiného ve vstupu se prostě
  * nezkopíruje nikam dál.
  */
 export function sanitizeHardcoreProfileSnapshot(raw: unknown): HardcoreProfileSnapshot {
@@ -117,6 +172,7 @@ export function sanitizeHardcoreProfileSnapshot(raw: unknown): HardcoreProfileSn
     hardcoreDoubleBarrelUnlocked: typeof input.hardcoreDoubleBarrelUnlocked === "boolean" ? input.hardcoreDoubleBarrelUnlocked : false,
     hardcoreMonsterDefeatsCount: clampFieldFromUnknown(input.hardcoreMonsterDefeatsCount, MONSTER_DEFEATS_MAX),
     hardcoreBestNight: clampFieldFromUnknown(input.hardcoreBestNight, BEST_NIGHT_MAX),
+    hardcoreDeathsByNight: sanitizeHardcoreDeathsByNight(input.hardcoreDeathsByNight),
   };
 }
 
@@ -151,6 +207,10 @@ export function mergeHardcoreProfileSnapshot(
       MONSTER_DEFEATS_MAX,
     ),
     hardcoreBestNight: clampInt(Math.max(server.hardcoreBestNight, clampInt(local.hardcoreBestNight, BEST_NIGHT_MAX)), BEST_NIGHT_MAX),
+    hardcoreDeathsByNight: mergeHardcoreDeathsByNight(
+      sanitizeHardcoreDeathsByNight(server.hardcoreDeathsByNight),
+      sanitizeHardcoreDeathsByNight(local.hardcoreDeathsByNight),
+    ),
     updatedAt: nowIso,
     lastSeenAt: nowIso,
   };
@@ -168,22 +228,26 @@ export function serverHardcoreProfileToReward(server: ServerHardcorePlayerProfil
 }
 
 /**
- * Server (project-hub-api) dnes vrací JEN `hardcoreBestNight` a
- * `hardcoreMonsterDefeatsCount` (viz `ServerHardcorePlayerProfile` výše) —
- * `totalDeaths`/`totalRunsStarted`/`totalNightsSurvived`/`monsterHitsConfirmed`
- * NEMAJÍ žádný server ekvivalent (zatím nejsou bezpečně mode-specific, viz
- * project-hub-api report), takže se pro ně použije `localStats` beze změny
- * (stejná lokální, mode-agnostic hodnota, jakou by ProfileScreen.tsx
- * zobrazil i bez serveru) — NIKDY `undefined`/natvrdo `0`, jen "server tohle
- * pole nezná, ber lokální". `monsterKills` (stat dlaždice "Zabité bestie")
- * nemá vlastní server pole buď — bezpečně se dá znovupoužít
- * `hardcoreMonsterDefeatsCount` (stejný koncept, "kolikrát jsi porazil
- * bestii", jen jiné jméno pole na dvou různých místech UI). Jediná hodnota,
- * kterou tenhle převod skutečně PŘEPÍŠE oproti `localStats`, je tedy
- * `hardcoreBestNight` a `monsterKills` — zbytek jde beze změny skrz.
- * NEPOUŽÍVAT tenhle výstup jako "kompletní stats hráče" pro obecné UI — jen
- * pro Hardcore/reward achievementy (viz ProfileScreen.tsx, zadání "použij je
- * pouze pro Hardcore/reward achievementy").
+ * Server (project-hub-api) dnes vrací JEN `hardcoreBestNight`,
+ * `hardcoreMonsterDefeatsCount` a `hardcoreDeathsByNight` (viz
+ * `ServerHardcorePlayerProfile` výše) — `totalDeaths`/`totalRunsStarted`/
+ * `totalNightsSurvived`/`monsterHitsConfirmed` NEMAJÍ žádný server
+ * ekvivalent (zatím nejsou bezpečně mode-specific, viz project-hub-api
+ * report), takže se pro ně použije `localStats` beze změny (stejná
+ * lokální, mode-agnostic hodnota, jakou by ProfileScreen.tsx zobrazil i bez
+ * serveru) — NIKDY `undefined`/natvrdo `0`, jen "server tohle pole nezná,
+ * ber lokální". `monsterKills` (stat dlaždice "Zabité bestie") nemá vlastní
+ * server pole buď — bezpečně se dá znovupoužít `hardcoreMonsterDefeatsCount`
+ * (stejný koncept, "kolikrát jsi porazil bestii", jen jiné jméno pole na
+ * dvou různých místech UI). Hodnoty, které tenhle převod skutečně PŘEPÍŠE
+ * oproti `localStats`, jsou tedy `hardcoreBestNight`, `monsterKills` a
+ * `hardcoreDeathsByNight` — zbytek jde beze změny skrz. Pokud server selže
+ * (viz volající, ProfileScreen.tsx), tahle funkce se vůbec nezavolá a
+ * `/profile` zůstane na `localStats`/lokálním `hardcoreDeathsByNight` beze
+ * změny (fallback, ne prázdný objekt). NEPOUŽÍVAT tenhle výstup jako
+ * "kompletní stats hráče" pro obecné UI — jen pro Hardcore/reward
+ * achievementy (viz ProfileScreen.tsx, zadání "použij je pouze pro
+ * Hardcore/reward achievementy").
  */
 export function serverHardcoreProfileToPlayerProfileStats(
   server: ServerHardcorePlayerProfile,
@@ -193,6 +257,7 @@ export function serverHardcoreProfileToPlayerProfileStats(
     ...localStats,
     hardcoreBestNight: server.hardcoreBestNight,
     monsterKills: server.hardcoreMonsterDefeatsCount,
+    hardcoreDeathsByNight: sanitizeHardcoreDeathsByNight(server.hardcoreDeathsByNight),
   };
 }
 
@@ -200,16 +265,20 @@ export function serverHardcoreProfileToPlayerProfileStats(
  * Staví odchozí sync payload z lokálního stavu — volá se VÝHRADNĚ, když
  * `state.gameMode === "hardcore"` (viz zadání "Napojení true-ending reward",
  * app/play/page.tsx#handleMonsterDefeatedCinematicComplete). `stats.hardcoreBestNight`
- * je už dnes bezpečně Hardcore-only (viz playerProfileStats.ts#recordNightSurvived),
- * proto se posílá přímo. `hardcoreMonsterProgress` je izolovaný Hardcore-only
- * lokální počítadlo (viz getLocalHardcoreMonsterProgress níže) — NIKDY
- * game/core/monsterDefeatReward.ts (ten zůstává mode-agnostic napříč Normal
- * i Hardcore, viz zadání "neměň ho na velký mode-specific systém"). Server
- * (project-hub-api) dnes žádné jiné pole nepřijímá/neukládá (viz
- * `HardcoreProfileSnapshot`) — dřívější `hardcoreTotalDeaths`/
+ * a `stats.hardcoreDeathsByNight` jsou už dnes bezpečně Hardcore-only (viz
+ * playerProfileStats.ts#recordNightSurvived/recordHardcoreDeathOnNight —
+ * obě volané jen z volajícího místa s `gameMode === "hardcore"` guardem),
+ * proto se posílají přímo. `hardcoreMonsterProgress` je izolovaný
+ * Hardcore-only lokální počítadlo (viz getLocalHardcoreMonsterProgress
+ * níže) — NIKDY game/core/monsterDefeatReward.ts (ten zůstává mode-agnostic
+ * napříč Normal i Hardcore, viz zadání "neměň ho na velký mode-specific
+ * systém"). Server (project-hub-api) dnes žádné jiné pole nepřijímá/neukládá
+ * (viz `HardcoreProfileSnapshot`) — dřívější `hardcoreTotalDeaths`/
  * `hardcoreTotalRunsStarted`/`hardcoreTotalNightsSurvived`/
  * `hardcoreMonsterHitsConfirmed`/`hardcoreMonsterKills` pole tenhle payload
- * už neposílá vůbec (dřív se posílaly jako `0`, teď na typu ani neexistují).
+ * neposílá vůbec (a `hardcoreTotalDeaths` by navíc byl špatné jméno pro
+ * `hardcoreDeathsByNight` — mode-agnostic `totalDeaths` se sem NIKDY
+ * nekopíruje, viz zadání "neposílej totalDeaths jako Hardcore death count").
  */
 export function createHardcoreProfileSnapshotFromLocalState(
   stats: PlayerProfileStats,
@@ -220,6 +289,7 @@ export function createHardcoreProfileSnapshotFromLocalState(
     hardcoreDoubleBarrelUnlocked: hardcoreMonsterProgress.doubleBarrelUnlocked,
     hardcoreMonsterDefeatsCount: hardcoreMonsterProgress.monsterDefeatsCount,
     hardcoreBestNight: stats.hardcoreBestNight,
+    hardcoreDeathsByNight: stats.hardcoreDeathsByNight,
   };
 }
 

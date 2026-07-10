@@ -14,6 +14,7 @@ const ZERO_STATS: PlayerProfileStats = {
   expeditionsReturned: 0,
   monsterHitsConfirmed: 0,
   monsterKills: 0,
+  hardcoreDeathsByNight: {},
 };
 
 const NO_REWARD: MonsterDefeatReward = {
@@ -30,9 +31,9 @@ function findAchievement(id: PlayerAchievementId, stats: Partial<PlayerProfileSt
 }
 
 describe("resolvePlayerAchievements — everything locked with zero stats/no reward", () => {
-  it("all 11 achievements are locked", () => {
+  it("all 14 achievements are locked", () => {
     const achievements = resolvePlayerAchievements(ZERO_STATS, NO_REWARD);
-    expect(achievements).toHaveLength(11);
+    expect(achievements).toHaveLength(14);
     expect(achievements.every((a) => a.unlocked === false)).toBe(true);
   });
 });
@@ -50,6 +51,24 @@ describe("first_death", () => {
   it("unlocks at totalDeaths >= 1", () => {
     expect(findAchievement("first_death", { totalDeaths: 1 }).unlocked).toBe(true);
     expect(findAchievement("first_death", { totalDeaths: 0 }).unlocked).toBe(false);
+  });
+});
+
+describe("hynek_encounter", () => {
+  it("locked when there is no Hardcore death recorded on night 1", () => {
+    expect(findAchievement("hynek_encounter", { hardcoreDeathsByNight: {} }).unlocked).toBe(false);
+    expect(findAchievement("hynek_encounter", { hardcoreDeathsByNight: { "2": 3 } }).unlocked).toBe(false);
+  });
+
+  it("unlocks when hardcoreDeathsByNight[\"1\"] >= 1", () => {
+    expect(findAchievement("hynek_encounter", { hardcoreDeathsByNight: { "1": 1 } }).unlocked).toBe(true);
+    expect(findAchievement("hynek_encounter", { hardcoreDeathsByNight: { "1": 3 } }).unlocked).toBe(true);
+  });
+
+  it("has the exact title/description from the spec", () => {
+    const achievement = findAchievement("hynek_encounter");
+    expect(achievement.title).toBe("Setkání s Hynkem");
+    expect(achievement.description).toBe("Zemřel jsi hned první noc.");
   });
 });
 
@@ -99,6 +118,12 @@ describe("golden_guard", () => {
     expect(findAchievement("golden_guard", {}, { doubleBarrelUnlocked: true }).unlocked).toBe(true);
     expect(findAchievement("golden_guard", {}, { doubleBarrelUnlocked: false }).unlocked).toBe(false);
   });
+
+  it("has the renamed title \"Hlídač s dvouhlavňovkou\" (ID unchanged)", () => {
+    const achievement = findAchievement("golden_guard");
+    expect(achievement.title).toBe("Hlídač s dvouhlavňovkou");
+    expect(achievement.description).toBe("Odemkl jsi dvouhlavňovou brokovnici.");
+  });
 });
 
 describe("hardcore_night_5", () => {
@@ -119,11 +144,50 @@ describe("hardcore_night_10", () => {
     expect(achievements.find((a) => a.id === "hardcore_night_5")?.unlocked).toBe(true);
     expect(achievements.find((a) => a.id === "hardcore_night_10")?.unlocked).toBe(false);
   });
+
+  it("has the renamed title \"Začni si zvykat\" (ID unchanged)", () => {
+    const achievement = findAchievement("hardcore_night_10");
+    expect(achievement.title).toBe("Začni si zvykat");
+    expect(achievement.description).toBe("Dostal ses v Hardcore režimu alespoň k 10. noci.");
+  });
+});
+
+describe("hardcore_night_20", () => {
+  it("unlocks at hardcoreBestNight >= 20", () => {
+    expect(findAchievement("hardcore_night_20", { hardcoreBestNight: 20 }).unlocked).toBe(true);
+    expect(findAchievement("hardcore_night_20", { hardcoreBestNight: 19 }).unlocked).toBe(false);
+  });
+
+  it("has the exact title/description from the spec", () => {
+    const achievement = findAchievement("hardcore_night_20");
+    expect(achievement.title).toBe("Běžná rutina");
+    expect(achievement.description).toBe("Dostal ses v Hardcore režimu alespoň k 20. noci.");
+  });
+});
+
+describe("hardcore_night_30", () => {
+  it("unlocks at hardcoreBestNight >= 30", () => {
+    expect(findAchievement("hardcore_night_30", { hardcoreBestNight: 30 }).unlocked).toBe(true);
+    expect(findAchievement("hardcore_night_30", { hardcoreBestNight: 29 }).unlocked).toBe(false);
+  });
+
+  it("has the exact title/description from the spec", () => {
+    const achievement = findAchievement("hardcore_night_30");
+    expect(achievement.title).toBe("Tvoje první výplata");
+    expect(achievement.description).toBe("Dostal ses v Hardcore režimu alespoň k 30. noci.");
+  });
 });
 
 describe("monster_slayer", () => {
-  it("unlocks at monsterKills >= 1", () => {
-    expect(findAchievement("monster_slayer", { monsterKills: 1 }).unlocked).toBe(true);
+  it("does NOT unlock at monsterKills === 1 (first kill is covered by not_a_rookie_anymore)", () => {
+    expect(findAchievement("monster_slayer", { monsterKills: 1 }).unlocked).toBe(false);
+  });
+
+  it("unlocks at monsterKills === 2", () => {
+    expect(findAchievement("monster_slayer", { monsterKills: 2 }).unlocked).toBe(true);
+  });
+
+  it("still locked at monsterKills === 0", () => {
     expect(findAchievement("monster_slayer", { monsterKills: 0 }).unlocked).toBe(false);
   });
 });
@@ -133,6 +197,7 @@ describe("resolvePlayerAchievements — stable order", () => {
     const expectedOrder: PlayerAchievementId[] = [
       "first_shift",
       "first_death",
+      "hynek_encounter",
       "first_expedition",
       "first_bulb_replaced",
       "first_generator_restart",
@@ -141,6 +206,8 @@ describe("resolvePlayerAchievements — stable order", () => {
       "golden_guard",
       "hardcore_night_5",
       "hardcore_night_10",
+      "hardcore_night_20",
+      "hardcore_night_30",
       "monster_slayer",
     ];
 
@@ -150,13 +217,14 @@ describe("resolvePlayerAchievements — stable order", () => {
         totalDeaths: 5,
         totalRunsStarted: 5,
         totalNightsSurvived: 5,
-        hardcoreBestNight: 10,
+        hardcoreBestNight: 30,
         bulbsReplaced: 5,
         generatorsRestarted: 5,
         expeditionsStarted: 5,
         expeditionsReturned: 5,
         monsterHitsConfirmed: 10,
-        monsterKills: 1,
+        monsterKills: 2,
+        hardcoreDeathsByNight: { "1": 1 },
       },
       { hasDefeatedMonster: true, doubleBarrelUnlocked: true, monsterDefeatsCount: 1 },
     ).map((a) => a.id);

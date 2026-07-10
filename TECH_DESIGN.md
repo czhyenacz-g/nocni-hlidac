@@ -1494,6 +1494,7 @@ hardcoreHasDefeatedMonster  boolean, default false
 hardcoreDoubleBarrelUnlocked boolean, default false
 hardcoreMonsterDefeatsCount integer, default 0
 hardcoreBestNight           integer, default 0, INDEX
+hardcoreDeathsByNight       json, default {}
 
 createdAt                   timestamp
 updatedAt                   timestamp
@@ -1508,10 +1509,21 @@ counterů (viz "Proč lokální total* countery..." níže), takže by na server
 prázdné, nebo nafouklé o Normal aktivitu. Až vznikne mode-segmentovaný lokální tracking,
 přidat je zpátky je jen rozšíření typu + nová append-only migrace, ne redesign.
 
-Migrace (project-hub-api, `prisma/migrations/20260709214950_add_object13_hardcore_player_profile/`)
-je append-only: `CREATE TABLE` + unikátní index na `discordUserId` + index na
-`hardcoreBestNight`. Žádná změna/DROP existujících tabulek (leaderboard/`guard_runs`/cokoliv
-z jiných projektů na stejném VPS).
+`hardcoreDeathsByNight` (viz zadání "Uzavřít Hardcore profil a achievementy") JE naproti
+tomu bezpečně Hardcore-scoped od začátku — zapisuje se VÝHRADNĚ z
+`game/core/playerProfileStats.ts#recordHardcoreDeathOnNight`, které volající
+(`app/play/page.tsx`) volá jen když `state.gameMode === "hardcore"` (stejný guard jako u
+`recordNightSurvived`/`hardcoreBestNight`). Klíč je noc jako string (`"1"`, `"2"`, ...),
+hodnota počet Hardcore smrtí v týhle noci — **Normal smrt tenhle histogram nikdy
+nezvyšuje**, žádná cesta v kódu ho z Normal běhu nevolá.
+
+Migrace (project-hub-api):
+- `prisma/migrations/20260709214950_add_object13_hardcore_player_profile/` — původní
+  append-only `CREATE TABLE` + indexy.
+- `prisma/migrations/20260710060553_add_hardcore_deaths_by_night/` — append-only `ALTER
+  TABLE "Object13HardcorePlayerProfile" ADD COLUMN "hardcoreDeathsByNight" JSONB NOT NULL
+  DEFAULT '{}'`. Žádný `DROP`, žádná změna existující tabulky/leaderboardu/`guard_runs`/
+  cokoliv z jiných projektů na stejném VPS.
 
 ### Specifikace VPS endpointů (implementováno v project-hub-api)
 
@@ -1521,29 +1533,40 @@ nemá záznam, VPS strana ho založí s výchozími hodnotami (stejný "upsert-o
 princip jako `POST /nocni-hlidac/player/upsert`) a rovnou vrátí — Next.js strana žádný
 "vytvoř default" krok sama nedělá, jen předává, co VPS vrátí. GET request nenese
 `displayName`/`avatarUrl` (jen `discordUserId` v query), takže je server touhle cestou
-neaktualizuje — jen `lastSeenAt`. Vrátí `ServerHardcorePlayerProfile` JSON (flat, bez `{
-ok, ... }` wrapperu — ten přidává až Next.js route níže).
+neaktualizuje — jen `lastSeenAt`. `hardcoreDeathsByNight` se vrací VŽDY jako objekt (`{}`,
+pokud v DB chybí/je `null`/neplatný, nikdy `null`/`undefined`). Vrátí
+`ServerHardcorePlayerProfile` JSON (flat, bez `{ ok, ... }` wrapperu — ten přidává až
+Next.js route níže).
 
 **`POST /nocni-hlidac/hardcore-profile/sync`** — body `{ discordUserId, displayName,
 avatarUrl, hardcoreHasDefeatedMonster, hardcoreDoubleBarrelUnlocked,
-hardcoreMonsterDefeatsCount, hardcoreBestNight }` — `discordUserId` smí posílat JEN
-nocni-hlidac server-side kód po ověření session (nikdy klient napřímo, viz Next.js route
-níže). VPS strana najde/založí hráče a sloučí ho s příchozím snapshotem podle přesné
-referenční specifikace `game/core/hardcorePlayerProfileSnapshot.ts#mergeHardcoreProfileSnapshot`
-(testovaná v tomhle repozitáři, ale sama se tady nevykonává proti žádné databázi — stejný
-vzor jako `guardRunTransitions.ts#applySurviveNight`/`applyDeath` pro leaderboard;
-skutečná implementace je `project-hub-api`
+hardcoreMonsterDefeatsCount, hardcoreBestNight, hardcoreDeathsByNight }` — `discordUserId`
+smí posílat JEN nocni-hlidac server-side kód po ověření session (nikdy klient napřímo, viz
+Next.js route níže). VPS strana najde/založí hráče a sloučí ho s příchozím snapshotem podle
+přesné referenční specifikace
+`game/core/hardcorePlayerProfileSnapshot.ts#mergeHardcoreProfileSnapshot` (testovaná v
+tomhle repozitáři, ale sama se tady nevykonává proti žádné databázi — stejný vzor jako
+`guardRunTransitions.ts#applySurviveNight`/`applyDeath` pro leaderboard; skutečná
+implementace je `project-hub-api`
 `src/modules/nocniHlidac/hardcoreProfileMerge.ts#mergeHardcoreProfileSnapshot`):
 
 - `hardcoreHasDefeatedMonster`/`hardcoreDoubleBarrelUnlocked`: OR (`server || local`).
 - `hardcoreMonsterDefeatsCount`/`hardcoreBestNight`: `max(server, local)`, NIKDY součet —
   opakovaný sync téhož lokálního snapshotu nesmí zdvojovat počítadla.
+- `hardcoreDeathsByNight`: merge PO KLÍČI NOCI, `max(existing[night], incoming[night])` pro
+  KAŽDOU noc zvlášť, nikdy součet. Příklad: `existing { "1": 2, "3": 1 }` + `incoming { "1":
+  1, "2": 4 }` → `{ "1": 2, "2": 4, "3": 1 }`. Neplatný klíč (noc `<= 0`, `> 10000`,
+  nečíselný) se ignoruje; neplatná hodnota (záporná, necelé číslo, `NaN`, ne-`number`) se
+  ignoruje; `null`/pole/string místo objektu se bere jako `{}`. Count se clampuje na
+  1 000 000.
 - `displayName`/`avatarUrl`/`updatedAt`/`lastSeenAt`: vždy přepsány podle requestu/aktuálního
   času.
 - Clamp: `hardcoreBestNight` max 10 000, `hardcoreMonsterDefeatsCount` max 100 000 (stejné
   limity jako `sanitizeHardcoreProfileSnapshot` na Next.js straně — VPS strana je dodržuje
   nezávisle, nespoléhá, že Next.js vždy pošle už čisté hodnoty). Neznámá/Normal-like pole
-  (`totalDeaths`, `monsterKills`, ...) server tiše ignoruje, nikdy je neuloží ani nevrátí.
+  (`totalDeaths`, `monsterKills`, ...) server tiše ignoruje, nikdy je neuloží ani nevrátí —
+  jediný povolený histogram je `hardcoreDeathsByNight`, mode-agnostic `totalDeaths` se do
+  něj nikdy nesmí dostat.
 
 Vrátí výsledný `ServerHardcorePlayerProfile` JSON. Obě volání vyžadují stejnou
 `Authorization: Bearer` autorizaci jako leaderboard endpointy.
@@ -1581,15 +1604,29 @@ Vrátí výsledný `ServerHardcorePlayerProfile` JSON. Obě volání vyžadují 
 Pro `gameMode !== "hardcore"` (Normal true ending) se celý blok od kroku 2 PŘESKOČÍ —
 žádný fetch, žádná serverová Hardcore hodnota se nedotkne.
 
+**`hardcoreDeathsByNight` (viz zadání "Uzavřít Hardcore profil a achievementy") se zapisuje
+LOKÁLNĚ okamžitě při smrti** (`app/play/page.tsx`, stejné místo jako `recordDeath()`, jen
+navíc podmíněné `state.gameMode === "hardcore"`) — **na server se ale nesynchronizuje hned
+při smrti**, žádný nový fetch na death moment tenhle krok nepřidává (mimo rozsah zadání,
+death má už tak vlastní citlivou audio/vizuální sekvenci). Na server doputuje PŘES
+existující sync cesty stejně jako `hardcoreBestNight` dnes: (1) při dalším true endingu
+(`handleMonsterDefeatedCinematicComplete` výše, `createHardcoreProfileSnapshotFromLocalState`
+ho posílá spolu se zbytkem snapshotu), nebo (2) ručním tlačítkem "Synchronizovat Hardcore
+profil" na `/profile`. Stejné omezení jako `hardcoreBestNight` — pokud hráč zemře v Hardcore
+a nikdy pak neudělá true ending ani neklikne na sync, server se o téhle smrti nedozví, dokud
+k jednomu z těch dvou triggerů nedojde.
+
 ### Proč lokální total* countery (deaths/runs/nights/hits) zatím nejdou bezpečně poslat
 
 `game/core/playerProfileStats.ts` dnes NEROZLIŠUJE Normal vs Hardcore u `totalDeaths`/
 `totalRunsStarted`/`totalNightsSurvived`/`monsterHitsConfirmed` (volají se bez ohledu na
 `gameMode`) — server (project-hub-api) proto tahle pole vůbec neukládá (viz
 `ServerHardcorePlayerProfile` výše), `createHardcoreProfileSnapshotFromLocalState` je ani
-neposílá. Jediné dvě bezpečně Hardcore-scoped hodnoty dnes jsou `hardcoreBestNight` (už
-mode-gated v `recordNightSurvived`) a `hardcoreMonsterDefeatsCount` z izolovaného
-`recordLocalHardcoreMonsterDefeat` počítadla. `/profile` (`ProfileScreen.tsx`) zobrazuje
+neposílá. Bezpečně Hardcore-scoped hodnoty dnes jsou `hardcoreBestNight` (mode-gated v
+`recordNightSurvived`), `hardcoreMonsterDefeatsCount` z izolovaného
+`recordLocalHardcoreMonsterDefeat` počítadla, a nově `hardcoreDeathsByNight` (mode-gated v
+`app/play/page.tsx` kolem `recordHardcoreDeathOnNight`, viz výše). `/profile`
+(`ProfileScreen.tsx`) zobrazuje
 zbytek stat dlaždic (`totalDeaths`, `totalRunsStarted`, ...) i pro přihlášeného hráče se
 serverovým profilem dál z lokálního `PlayerProfileStats`
 (`serverHardcoreProfileToPlayerProfileStats(server, localStats)` přebírá `...localStats`

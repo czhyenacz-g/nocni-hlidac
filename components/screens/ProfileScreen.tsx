@@ -124,6 +124,12 @@ export default function ProfileScreen() {
     { label: COPY.profile.statExpeditionsReturned, value: stats.expeditionsReturned },
     { label: COPY.profile.statMonsterHitsConfirmed, value: stats.monsterHitsConfirmed },
     { label: COPY.profile.statMonsterKills, value: effectiveStats.monsterKills },
+    // Volitelná dlaždice (viz zadání) — Hardcore-only, čte z effectiveStats
+    // (server-preferred, stejně jako hardcoreBestNight/monsterKills výše),
+    // ať odráží serverový hardcoreDeathsByNight, když je dostupný, jinak
+    // lokální fallback. Celý histogram podle noci se zobrazí až později
+    // (viz zadání "nepřidávej celý histogram UI").
+    { label: COPY.profile.statHardcoreDeathsOnNightOne, value: Number(effectiveStats.hardcoreDeathsByNight["1"] ?? 0) },
   ];
 
   // Dev/debug nástroj (viz zadání "později schovat za dev mode") — resetuje

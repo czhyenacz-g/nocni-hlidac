@@ -21,7 +21,7 @@ function serverProfile(overrides: Partial<ServerHardcorePlayerProfile> = {}): Se
 }
 
 describe("createDefaultServerHardcoreProfile", () => {
-  it("matches the real project-hub-api contract exactly (9 fields, no more)", () => {
+  it("matches the real project-hub-api contract exactly (10 fields, no more)", () => {
     const profile = serverProfile();
     expect(profile).toEqual({
       discordUserId: "123",
@@ -31,6 +31,7 @@ describe("createDefaultServerHardcoreProfile", () => {
       hardcoreDoubleBarrelUnlocked: false,
       hardcoreMonsterDefeatsCount: 0,
       hardcoreBestNight: 0,
+      hardcoreDeathsByNight: {},
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
       lastSeenAt: "2026-01-01T00:00:00.000Z",
@@ -139,6 +140,7 @@ describe("sanitizeHardcoreProfileSnapshot", () => {
       hardcoreDoubleBarrelUnlocked: true,
       hardcoreMonsterDefeatsCount: 3,
       hardcoreBestNight: 7,
+      hardcoreDeathsByNight: { "1": 2, "5": 1 },
     };
     expect(sanitizeHardcoreProfileSnapshot(valid)).toEqual(valid);
   });
@@ -222,17 +224,19 @@ describe("serverHardcoreProfileToPlayerProfileStats", () => {
     expeditionsReturned: 77,
     monsterHitsConfirmed: 88,
     monsterKills: 99, // stale local value — must be overridden by the server value below
+    hardcoreDeathsByNight: { "1": 5 }, // stale local value — must be overridden by the server value below
   };
 
-  it("overrides only hardcoreBestNight and monsterKills (from hardcoreMonsterDefeatsCount), never undefined", () => {
-    const profile = serverProfile({ hardcoreBestNight: 6, hardcoreMonsterDefeatsCount: 2 });
+  it("overrides hardcoreBestNight, monsterKills (from hardcoreMonsterDefeatsCount), and hardcoreDeathsByNight, never undefined", () => {
+    const profile = serverProfile({ hardcoreBestNight: 6, hardcoreMonsterDefeatsCount: 2, hardcoreDeathsByNight: { "1": 2, "2": 1 } });
     const stats = serverHardcoreProfileToPlayerProfileStats(profile, LOCAL_STATS);
 
     expect(stats.hardcoreBestNight).toBe(6);
     expect(stats.monsterKills).toBe(2);
-    for (const value of Object.values(stats)) {
+    expect(stats.hardcoreDeathsByNight).toEqual({ "1": 2, "2": 1 });
+    for (const [key, value] of Object.entries(stats)) {
       expect(value).not.toBeUndefined();
-      expect(Number.isFinite(value)).toBe(true);
+      if (key !== "hardcoreDeathsByNight") expect(Number.isFinite(value)).toBe(true);
     }
   });
 
@@ -249,6 +253,12 @@ describe("serverHardcoreProfileToPlayerProfileStats", () => {
     expect(stats.expeditionsReturned).toBe(LOCAL_STATS.expeditionsReturned);
     expect(stats.monsterHitsConfirmed).toBe(LOCAL_STATS.monsterHitsConfirmed);
   });
+
+  it("never leaves hardcoreDeathsByNight undefined even when the server's is missing/invalid", () => {
+    const profile = { ...serverProfile(), hardcoreDeathsByNight: null as unknown as Record<string, number> };
+    const stats = serverHardcoreProfileToPlayerProfileStats(profile, LOCAL_STATS);
+    expect(stats.hardcoreDeathsByNight).toEqual({});
+  });
 });
 
 describe("createHardcoreProfileSnapshotFromLocalState", () => {
@@ -263,6 +273,7 @@ describe("createHardcoreProfileSnapshotFromLocalState", () => {
     expeditionsReturned: 0,
     monsterHitsConfirmed: 0,
     monsterKills: 0,
+    hardcoreDeathsByNight: {},
   };
 
   it("uses stats.hardcoreBestNight directly (already mode-safe)", () => {
@@ -271,6 +282,14 @@ describe("createHardcoreProfileSnapshotFromLocalState", () => {
       { hasDefeatedMonster: false, doubleBarrelUnlocked: false, monsterDefeatsCount: 0 },
     );
     expect(snapshot.hardcoreBestNight).toBe(6);
+  });
+
+  it("uses stats.hardcoreDeathsByNight directly (already mode-safe)", () => {
+    const snapshot = createHardcoreProfileSnapshotFromLocalState(
+      { ...ZERO_STATS, hardcoreDeathsByNight: { "1": 2, "5": 1 } },
+      { hasDefeatedMonster: false, doubleBarrelUnlocked: false, monsterDefeatsCount: 0 },
+    );
+    expect(snapshot.hardcoreDeathsByNight).toEqual({ "1": 2, "5": 1 });
   });
 
   it("uses the isolated hardcore monster progress for reward fields, not the mode-agnostic local reward", () => {
@@ -284,14 +303,75 @@ describe("createHardcoreProfileSnapshotFromLocalState", () => {
     expect(snapshot.hardcoreMonsterDefeatsCount).toBe(2);
   });
 
-  it("only ever produces the four fields the server contract accepts", () => {
+  it("only ever produces the five fields the server contract accepts", () => {
     const snapshot = createHardcoreProfileSnapshotFromLocalState(
       { ...ZERO_STATS, totalDeaths: 50, totalRunsStarted: 20, totalNightsSurvived: 30, monsterHitsConfirmed: 40 },
       { hasDefeatedMonster: false, doubleBarrelUnlocked: false, monsterDefeatsCount: 0 },
     );
     expect(Object.keys(snapshot).sort()).toEqual(
-      ["hardcoreBestNight", "hardcoreDoubleBarrelUnlocked", "hardcoreHasDefeatedMonster", "hardcoreMonsterDefeatsCount"].sort(),
+      [
+        "hardcoreBestNight",
+        "hardcoreDeathsByNight",
+        "hardcoreDoubleBarrelUnlocked",
+        "hardcoreHasDefeatedMonster",
+        "hardcoreMonsterDefeatsCount",
+      ].sort(),
     );
+  });
+});
+
+describe("hardcoreDeathsByNight: sanitize + merge", () => {
+  it("sanitizes an invalid raw value (non-object) to {} inside sanitizeHardcoreProfileSnapshot", () => {
+    const result = sanitizeHardcoreProfileSnapshot({ hardcoreDeathsByNight: "nope" });
+    expect(result.hardcoreDeathsByNight).toEqual({});
+  });
+
+  it("sanitizes null/array to {}", () => {
+    expect(sanitizeHardcoreProfileSnapshot({ hardcoreDeathsByNight: null }).hardcoreDeathsByNight).toEqual({});
+    expect(sanitizeHardcoreProfileSnapshot({ hardcoreDeathsByNight: [1, 2, 3] }).hardcoreDeathsByNight).toEqual({});
+  });
+
+  it("keeps only valid night keys and non-negative integer counts", () => {
+    const result = sanitizeHardcoreProfileSnapshot({
+      hardcoreDeathsByNight: { "1": 3, "0": 5, "-1": 2, abc: 1, "2": -4, "3": 1.5 },
+    });
+    expect(result.hardcoreDeathsByNight).toEqual({ "1": 3 });
+  });
+
+  it("merge combines per-night keys via max, keeping keys unique to either side (example from the spec)", () => {
+    const server = serverProfile({ hardcoreDeathsByNight: { "1": 2, "3": 1 } });
+    const merged = mergeHardcoreProfileSnapshot(server, {
+      ...DEFAULT_HARDCORE_PROFILE_SNAPSHOT,
+      hardcoreDeathsByNight: { "1": 1, "2": 4 },
+    });
+    expect(merged.hardcoreDeathsByNight).toEqual({ "1": 2, "2": 4, "3": 1 });
+  });
+
+  it("merge never lowers an existing per-night count", () => {
+    const server = serverProfile({ hardcoreDeathsByNight: { "1": 10 } });
+    const merged = mergeHardcoreProfileSnapshot(server, {
+      ...DEFAULT_HARDCORE_PROFILE_SNAPSHOT,
+      hardcoreDeathsByNight: { "1": 2 },
+    });
+    expect(merged.hardcoreDeathsByNight).toEqual({ "1": 10 });
+  });
+
+  it("merge ignores invalid incoming night keys", () => {
+    const server = serverProfile({ hardcoreDeathsByNight: { "1": 1 } });
+    const merged = mergeHardcoreProfileSnapshot(server, {
+      ...DEFAULT_HARDCORE_PROFILE_SNAPSHOT,
+      hardcoreDeathsByNight: { "0": 99, "-5": 99, abc: 99 },
+    });
+    expect(merged.hardcoreDeathsByNight).toEqual({ "1": 1 });
+  });
+
+  it("merge clamps an extreme count to the documented maximum", () => {
+    const server = serverProfile({ hardcoreDeathsByNight: {} });
+    const merged = mergeHardcoreProfileSnapshot(server, {
+      ...DEFAULT_HARDCORE_PROFILE_SNAPSHOT,
+      hardcoreDeathsByNight: { "1": 999_999_999 },
+    });
+    expect(merged.hardcoreDeathsByNight).toEqual({ "1": 1_000_000 });
   });
 });
 

@@ -23,6 +23,7 @@ const DEFAULTS = {
   expeditionsReturned: 0,
   monsterHitsConfirmed: 0,
   monsterKills: 0,
+  hardcoreDeathsByNight: {},
 };
 
 describe("playerProfileStats", () => {
@@ -54,6 +55,40 @@ describe("playerProfileStats", () => {
     expect(getPlayerProfileStats()).toEqual({ ...DEFAULTS, totalDeaths: 4, bulbsReplaced: 2 });
   });
 
+  // Zadání "Doplň migraci starých localStorage profilů" — starý profil bez
+  // hardcoreDeathsByNight klíče vůbec musí doplnit {}, ne undefined/crash.
+  it("old localStorage profile without hardcoreDeathsByNight fills in {}", async () => {
+    window.localStorage.setItem(
+      "nocni-hlidac:object13:player-profile-stats",
+      JSON.stringify({ totalDeaths: 4, hardcoreBestNight: 6 }),
+    );
+    const { getPlayerProfileStats } = await import("./playerProfileStats");
+    expect(getPlayerProfileStats().hardcoreDeathsByNight).toEqual({});
+  });
+
+  it("corrupted hardcoreDeathsByNight (wrong shape) sanitizes to {}", async () => {
+    window.localStorage.setItem(
+      "nocni-hlidac:object13:player-profile-stats",
+      JSON.stringify({ ...DEFAULTS, hardcoreDeathsByNight: "not an object" }),
+    );
+    const { getPlayerProfileStats } = await import("./playerProfileStats");
+    expect(getPlayerProfileStats().hardcoreDeathsByNight).toEqual({});
+  });
+
+  it("hardcoreDeathsByNight with invalid entries keeps only the valid ones", async () => {
+    window.localStorage.setItem(
+      "nocni-hlidac:object13:player-profile-stats",
+      JSON.stringify({
+        ...DEFAULTS,
+        hardcoreDeathsByNight: { "1": 3, "0": 5, "-1": 2, abc: 1, "2": -4, "3": 1.5, "4": 999_999_999 },
+      }),
+    );
+    const { getPlayerProfileStats } = await import("./playerProfileStats");
+    // "0"/"-1"/"abc"/"2" (negative count)/"3" (non-integer count) all dropped;
+    // "4" survives but clamps to the documented max.
+    expect(getPlayerProfileStats().hardcoreDeathsByNight).toEqual({ "1": 3, "4": 1_000_000 });
+  });
+
   it("save/get roundtrip", async () => {
     const { getPlayerProfileStats, savePlayerProfileStats } = await import("./playerProfileStats");
     const stats = { ...DEFAULTS, totalDeaths: 7, monsterKills: 2 };
@@ -79,6 +114,38 @@ describe("playerProfileStats", () => {
     const { recordDeath } = await import("./playerProfileStats");
     expect(recordDeath().totalDeaths).toBe(1);
     expect(recordDeath().totalDeaths).toBe(2);
+  });
+
+  it("recordHardcoreDeathOnNight(1) sets { \"1\": 1 }", async () => {
+    const { recordHardcoreDeathOnNight } = await import("./playerProfileStats");
+    expect(recordHardcoreDeathOnNight(1).hardcoreDeathsByNight).toEqual({ "1": 1 });
+  });
+
+  it("repeated recordHardcoreDeathOnNight(1) increases to { \"1\": 2 }", async () => {
+    const { recordHardcoreDeathOnNight } = await import("./playerProfileStats");
+    recordHardcoreDeathOnNight(1);
+    expect(recordHardcoreDeathOnNight(1).hardcoreDeathsByNight).toEqual({ "1": 2 });
+  });
+
+  it("recordHardcoreDeathOnNight(3) adds a separate { \"3\": 1 } entry alongside night 1", async () => {
+    const { recordHardcoreDeathOnNight } = await import("./playerProfileStats");
+    recordHardcoreDeathOnNight(1);
+    expect(recordHardcoreDeathOnNight(3).hardcoreDeathsByNight).toEqual({ "1": 1, "3": 1 });
+  });
+
+  it("recordHardcoreDeathOnNight ignores an invalid night (0, negative, non-integer) — no-op", async () => {
+    const { recordHardcoreDeathOnNight, getPlayerProfileStats } = await import("./playerProfileStats");
+    recordHardcoreDeathOnNight(0);
+    recordHardcoreDeathOnNight(-1);
+    recordHardcoreDeathOnNight(1.5);
+    recordHardcoreDeathOnNight(NaN);
+    expect(getPlayerProfileStats().hardcoreDeathsByNight).toEqual({});
+  });
+
+  it("recordHardcoreDeathOnNight clamps the count at the documented maximum", async () => {
+    const { savePlayerProfileStats, recordHardcoreDeathOnNight } = await import("./playerProfileStats");
+    savePlayerProfileStats({ ...DEFAULTS, hardcoreDeathsByNight: { "1": 1_000_000 } });
+    expect(recordHardcoreDeathOnNight(1).hardcoreDeathsByNight).toEqual({ "1": 1_000_000 });
   });
 
   it("recordNightSurvived for normal increases totalNightsSurvived but never touches hardcoreBestNight", async () => {
