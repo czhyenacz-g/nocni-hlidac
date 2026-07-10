@@ -4,6 +4,8 @@
 // `DeathSequenceOverlay`/`DeathTestControls`/`/death-test` čtou/mění jen
 // tenhle konfigurační tvar, žádná herní logika smrti tady nežije.
 
+import { DEFAULT_DEATH_SEQUENCE_IMAGE_ID } from "./deathSequenceImages";
+
 /**
  * `"door"` je připravené pro pozdější vizuální odlišení smrti u dveří (viz
  * `GameState.doorDeathRevealUntilMs`, TECH_DESIGN.md "Útok u dveří má krátký
@@ -12,6 +14,8 @@
  * smrti je samostatný následující úkol).
  */
 export type DeathSequenceVariant = "default" | "door";
+
+export type DeathSequenceImageFit = "cover" | "contain";
 
 export type DeathSequenceConfig = {
   preDeathDelayMs: number;
@@ -46,32 +50,46 @@ export type DeathSequenceConfig = {
   cutAmbientInstantly: boolean;
   reducedFlashes: boolean;
   showPhaseDebug: boolean;
+
+  /** Viz game/death/deathSequenceImages.ts — id vybraného death image assetu. */
+  deathImageEnabled: boolean;
+  deathImageId: string;
+  deathImageFit: DeathSequenceImageFit;
+  deathImageAtMs: number;
+  deathImageOpacity: number;
+
+  /** Samostatná, časově omezená černá vrstva NAD death image (viz resolveDeathSequencePhase komentář "blackout vs darknessOpacity"). */
+  blackoutDurationMs: number;
+  blackoutOpacity: number;
+
+  gameOverOverlayEnabled: boolean;
+  signalLostEnabled: boolean;
 };
 
 export const DEATH_SEQUENCE_DEFAULT_CONFIG: DeathSequenceConfig = {
-  preDeathDelayMs: 3000,
-  silenceMs: 180,
+  preDeathDelayMs: 1000,
+  silenceMs: 1500,
 
   whiteFlashEnabled: true,
-  whiteFlashAtMs: 180,
+  whiteFlashAtMs: 1500,
   whiteFlashDurationMs: 90,
   whiteFlashOpacity: 0.95,
 
-  redFlashEnabled: true,
-  redFlashAtMs: 300,
-  redFlashDurationMs: 420,
-  redFlashOpacity: 0.75,
+  redFlashEnabled: false,
+  redFlashAtMs: 0,
+  redFlashDurationMs: 0,
+  redFlashOpacity: 0,
 
   shakeEnabled: true,
-  shakeAtMs: 260,
-  shakeDurationMs: 650,
-  shakeIntensity: 34,
+  shakeAtMs: 1600,
+  shakeDurationMs: 550,
+  shakeIntensity: 28,
 
-  deathFrameAtMs: 650,
-  gameOverAtMs: 1900,
+  deathFrameAtMs: 1600,
+  gameOverAtMs: 1600,
 
-  darknessOpacity: 0.65,
-  noiseOpacity: 0.45,
+  darknessOpacity: 1,
+  noiseOpacity: 0.25,
 
   deathVolume: 0.95,
   impactVolume: 0.95,
@@ -81,6 +99,18 @@ export const DEATH_SEQUENCE_DEFAULT_CONFIG: DeathSequenceConfig = {
   cutAmbientInstantly: true,
   reducedFlashes: false,
   showPhaseDebug: false,
+
+  deathImageEnabled: true,
+  deathImageId: DEFAULT_DEATH_SEQUENCE_IMAGE_ID,
+  deathImageFit: "cover",
+  deathImageAtMs: 1600,
+  deathImageOpacity: 1,
+
+  blackoutDurationMs: 1500,
+  blackoutOpacity: 1,
+
+  gameOverOverlayEnabled: true,
+  signalLostEnabled: false,
 };
 
 /**
@@ -121,5 +151,12 @@ export function clampDeathSequenceConfig(config: DeathSequenceConfig): DeathSequ
     impactVolume: clampUnit(config.impactVolume),
     roarVolume: clampUnit(config.roarVolume),
     glitchVolume: clampUnit(config.glitchVolume),
+
+    deathImageFit: config.deathImageFit === "contain" ? "contain" : "cover",
+    deathImageAtMs: clampMs(config.deathImageAtMs),
+    deathImageOpacity: clampUnit(config.deathImageOpacity),
+
+    blackoutDurationMs: clampMs(config.blackoutDurationMs),
+    blackoutOpacity: clampUnit(config.blackoutOpacity),
   };
 }

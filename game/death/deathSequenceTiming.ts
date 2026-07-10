@@ -28,6 +28,17 @@ export const DEATH_SEQUENCE_COMPLETE_AFTER_MS = 1500;
  * Všechny `*AtMs` hodnoty KROMĚ `preDeathDelayMs` jsou relativní k okamžiku,
  * kdy začíná samotná death sekvence (`t = elapsedMs - preDeathDelayMs`), ne
  * k mountu komponenty/první frame.
+ *
+ * Poznámka k novému blackout→flash→death image flow: v DEFAULT configu
+ * (viz deathSequenceConfig.ts) jsou `shakeAtMs`/`deathFrameAtMs`/`gameOverAtMs`
+ * shodně 1600 a `redFlashEnabled` je `false` — fáze `"impact"`/`"red_flash"`/
+ * `"death_frame"` tak z defaultní konfigurace nejsou dosažitelné (`"game_over"`
+ * v pořadí kontrol vždy vyhraje), a to je v pořádku: skutečné vizuální vrstvy
+ * (shake, death image, GAME OVER, "SIGNÁL ZTRACEN") se v `DeathSequenceOverlay`
+ * neřídí touhle hrubou `phase` fází, ale přímými pomocníky níže
+ * (`isBlackoutActive`, `isDeathImageVisible`, `isGameOverOverlayVisible`,
+ * `isSignalLostVisible`), které porovnávají `t` přímo proti jednotlivým
+ * konfiguračním polím. `phase` string slouží hlavně pro `showPhaseDebug`.
  */
 export function resolveDeathSequencePhase(elapsedMs: number, config: DeathSequenceConfig): DeathSequencePhase {
   if (elapsedMs < config.preDeathDelayMs) return "waiting";
@@ -83,4 +94,44 @@ export function resolveRedFlashOpacity(config: DeathSequenceConfig): number {
 export function resolveShakeIntensity(config: DeathSequenceConfig): number {
   if (!config.shakeEnabled) return 0;
   return config.reducedFlashes ? Math.min(config.shakeIntensity, 12) : config.shakeIntensity;
+}
+
+/**
+ * Samostatná, ČASOVĚ OMEZENÁ černá vrstva NAD death image (`blackoutDurationMs`
+ * od začátku sekvence) — na rozdíl od `darknessOpacity` (trvalý tmavý podklad
+ * po celou dobu sekvence, vrstvený POD death image) tahle vrstva zaručuje, že
+ * death image je skrytý až do konce blackoutu i při neobvyklém configu, kde by
+ * `deathImageAtMs` byl nižší než `blackoutDurationMs`.
+ */
+export function isBlackoutActive(elapsedMs: number, config: DeathSequenceConfig): boolean {
+  const t = elapsedMs - config.preDeathDelayMs;
+  return t >= 0 && t < config.blackoutDurationMs;
+}
+
+/** Death image se zobrazuje od `deathImageAtMs` dál (bez horní meze) — pokud `deathImageEnabled` je `false`, nezobrazí se nikdy. */
+export function isDeathImageVisible(elapsedMs: number, config: DeathSequenceConfig): boolean {
+  if (!config.deathImageEnabled) return false;
+  const t = elapsedMs - config.preDeathDelayMs;
+  return t >= config.deathImageAtMs;
+}
+
+/**
+ * "SIGNÁL ZTRACEN" mezitext — volitelná vrstva (viz zadání "defaultně
+ * vypnutý nebo méně dominantní"), zobrazuje se od `deathFrameAtMs` dál,
+ * NEZÁVISLE na `resolveDeathSequencePhase`u (ten při defaultním configu, kde
+ * `deathFrameAtMs === gameOverAtMs`, fázi `"death_frame"` vůbec neprojde —
+ * viz komentář u resolveDeathSequencePhase). Může se tak zobrazit SOUČASNĚ s
+ * death image + GAME OVER, ne jako vlastní exkluzivní fáze.
+ */
+export function isSignalLostVisible(elapsedMs: number, config: DeathSequenceConfig): boolean {
+  if (!config.signalLostEnabled) return false;
+  const t = elapsedMs - config.preDeathDelayMs;
+  return t >= config.deathFrameAtMs;
+}
+
+/** GAME OVER overlay (nad death image, ne místo něj) se zobrazuje od `gameOverAtMs` dál, dokud je `gameOverOverlayEnabled`. */
+export function isGameOverOverlayVisible(elapsedMs: number, config: DeathSequenceConfig): boolean {
+  if (!config.gameOverOverlayEnabled) return false;
+  const t = elapsedMs - config.preDeathDelayMs;
+  return t >= config.gameOverAtMs;
 }

@@ -12,6 +12,8 @@ describe("DEATH_SEQUENCE_DEFAULT_CONFIG", () => {
       "impactVolume",
       "roarVolume",
       "glitchVolume",
+      "blackoutOpacity",
+      "deathImageOpacity",
     ];
     for (const field of unitFields) {
       const value = DEATH_SEQUENCE_DEFAULT_CONFIG[field] as number;
@@ -32,6 +34,8 @@ describe("DEATH_SEQUENCE_DEFAULT_CONFIG", () => {
       "shakeDurationMs",
       "deathFrameAtMs",
       "gameOverAtMs",
+      "blackoutDurationMs",
+      "deathImageAtMs",
     ];
     for (const field of msFields) {
       expect(DEATH_SEQUENCE_DEFAULT_CONFIG[field] as number).toBeGreaterThanOrEqual(0);
@@ -40,6 +44,38 @@ describe("DEATH_SEQUENCE_DEFAULT_CONFIG", () => {
 
   it("is unchanged (not mutated) by clampDeathSequenceConfig — it's already valid", () => {
     expect(clampDeathSequenceConfig(DEATH_SEQUENCE_DEFAULT_CONFIG)).toEqual(DEATH_SEQUENCE_DEFAULT_CONFIG);
+  });
+
+  it("has deathImageEnabled true by default", () => {
+    expect(DEATH_SEQUENCE_DEFAULT_CONFIG.deathImageEnabled).toBe(true);
+  });
+
+  it("has blackoutDurationMs of 1500 by default", () => {
+    expect(DEATH_SEQUENCE_DEFAULT_CONFIG.blackoutDurationMs).toBe(1500);
+  });
+
+  it("has whiteFlashAtMs of 1500 by default", () => {
+    expect(DEATH_SEQUENCE_DEFAULT_CONFIG.whiteFlashAtMs).toBe(1500);
+  });
+
+  it("has deathImageAtMs of 1600 by default", () => {
+    expect(DEATH_SEQUENCE_DEFAULT_CONFIG.deathImageAtMs).toBe(1600);
+  });
+
+  it("has signalLostEnabled false by default", () => {
+    expect(DEATH_SEQUENCE_DEFAULT_CONFIG.signalLostEnabled).toBe(false);
+  });
+
+  it("has gameOverOverlayEnabled true by default", () => {
+    expect(DEATH_SEQUENCE_DEFAULT_CONFIG.gameOverOverlayEnabled).toBe(true);
+  });
+
+  it("has a non-empty deathImageId that resolves to a real registered image", () => {
+    expect(DEATH_SEQUENCE_DEFAULT_CONFIG.deathImageId.length).toBeGreaterThan(0);
+  });
+
+  it("has redFlashEnabled false by default (red flash kept but off)", () => {
+    expect(DEATH_SEQUENCE_DEFAULT_CONFIG.redFlashEnabled).toBe(false);
   });
 });
 
@@ -98,5 +134,34 @@ describe("clampDeathSequenceConfig", () => {
     expect(clamped.whiteFlashEnabled).toBe(false);
     expect(clamped.reducedFlashes).toBe(true);
     expect(clamped.showPhaseDebug).toBe(true);
+  });
+
+  it("clamps new opacity fields (blackoutOpacity, deathImageOpacity) to [0, 1]", () => {
+    const clamped = clampDeathSequenceConfig({
+      ...DEATH_SEQUENCE_DEFAULT_CONFIG,
+      blackoutOpacity: 1.5,
+      deathImageOpacity: -0.3,
+    });
+    expect(clamped.blackoutOpacity).toBe(1);
+    expect(clamped.deathImageOpacity).toBe(0);
+  });
+
+  it("clamps new ms fields (blackoutDurationMs, deathImageAtMs) to non-negative", () => {
+    const clamped = clampDeathSequenceConfig({
+      ...DEATH_SEQUENCE_DEFAULT_CONFIG,
+      blackoutDurationMs: -100,
+      deathImageAtMs: -1,
+    });
+    expect(clamped.blackoutDurationMs).toBe(0);
+    expect(clamped.deathImageAtMs).toBe(0);
+  });
+
+  it("normalizes deathImageFit to 'cover' or 'contain', falling back to 'cover' for anything else", () => {
+    expect(clampDeathSequenceConfig({ ...DEATH_SEQUENCE_DEFAULT_CONFIG, deathImageFit: "contain" }).deathImageFit).toBe("contain");
+    expect(clampDeathSequenceConfig({ ...DEATH_SEQUENCE_DEFAULT_CONFIG, deathImageFit: "cover" }).deathImageFit).toBe("cover");
+    expect(
+      clampDeathSequenceConfig({ ...DEATH_SEQUENCE_DEFAULT_CONFIG, deathImageFit: "bogus" as DeathSequenceConfig["deathImageFit"] })
+        .deathImageFit,
+    ).toBe("cover");
   });
 });

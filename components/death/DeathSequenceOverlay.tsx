@@ -4,13 +4,18 @@ import { useEffect, useRef, useState } from "react";
 import { DeathSequenceConfig, DeathSequenceVariant } from "@/game/death/deathSequenceConfig";
 import {
   DeathSequencePhase,
+  isBlackoutActive,
+  isDeathImageVisible,
+  isGameOverOverlayVisible,
   isRedFlashActive,
   isShakeActive,
+  isSignalLostVisible,
   isWhiteFlashActive,
   resolveDeathSequencePhase,
   resolveRedFlashOpacity,
   resolveShakeIntensity,
 } from "@/game/death/deathSequenceTiming";
+import { getDeathSequenceImageSrc } from "@/game/death/deathSequenceImages";
 import { audioManager } from "@/game/audio/audioManager";
 import { AUDIO_EVENTS, AudioEventId } from "@/game/audio/audioEvents";
 
@@ -108,9 +113,14 @@ export default function DeathSequenceOverlay({ active, config, variant, onComple
       // "před smrtí" tlukot srdce dál doznívalo přes celou death sekvenci.
       if (!ambientCutRef.current && phase !== "waiting" && config.cutAmbientInstantly) {
         ambientCutRef.current = true;
+        // TODO(audio): cut ambient immediately
         audioManager.stopLoop(AUDIO_EVENTS.ambienceLoop);
+        // TODO(audio): cut heartbeat immediately
         audioManager.stopLoop(AUDIO_EVENTS.heartbeatStressSlow);
         audioManager.stopLoop(AUDIO_EVENTS.heartbeatStressFast);
+        // TODO(audio): wait during blackout/silence — zatím žádný zvuk mezi
+        // cutem ambientu/heartbeatu a white flashem, viz zadání "1.5 s
+        // absolutní ticho".
       }
 
       if (phase !== phaseRef.current) {
@@ -121,6 +131,14 @@ export default function DeathSequenceOverlay({ active, config, variant, onComple
         // roarVolume/impactVolume/glitchVolume/deathVolume) — vlastní
         // eventy, ne sdílené s jumpscare/monsterFinalDeathRoar (viz
         // game/audio/audioEvents.ts).
+        // TODO(audio): play death impact sound at deathImageAtMs
+        // TODO(audio): play monster/death sound at deathImageAtMs
+        // Zatím zůstávají navázané na `phase` (viz starší sub-úkol) — s
+        // defaultním configem `shakeAtMs`/`deathFrameAtMs`/`gameOverAtMs`
+        // splývají do 1600ms, takže fáze "impact"/"death_frame" nemusí být
+        // vždy dosažené (viz deathSequenceTiming.ts). Budoucí napojení má
+        // tyhle zvuky spouštět přímo z `isDeathImageVisible`/`deathImageAtMs`
+        // hranice, ne z `phase` stringu.
         if (phase === "impact") {
           playDeathSequenceSound(AUDIO_EVENTS.deathSequenceRoar, config.roarVolume);
           playDeathSequenceSound(AUDIO_EVENTS.deathSequenceImpact, config.impactVolume);
@@ -161,8 +179,11 @@ export default function DeathSequenceOverlay({ active, config, variant, onComple
   const showWhiteFlash = isWhiteFlashActive(elapsedMs, config);
   const showRedFlash = isRedFlashActive(elapsedMs, config);
   const redFlashOpacity = resolveRedFlashOpacity(config);
-  const showDeathFrame = phase === "death_frame";
-  const showGameOver = phase === "game_over" || phase === "complete";
+  const showBlackout = isBlackoutActive(elapsedMs, config);
+  const showDeathImage = isDeathImageVisible(elapsedMs, config);
+  const deathImageSrc = showDeathImage ? getDeathSequenceImageSrc(config.deathImageId) : null;
+  const showSignalLost = isSignalLostVisible(elapsedMs, config);
+  const showGameOver = isGameOverOverlayVisible(elapsedMs, config);
 
   return (
     <div
@@ -171,24 +192,58 @@ export default function DeathSequenceOverlay({ active, config, variant, onComple
       data-death-sequence-variant={variant}
       data-death-sequence-phase={phase}
     >
+      {/* Trvalý tmavý podklad po celou sekvenci (POD death image) — ne totéž
+          co blackout níže, viz deathSequenceConfig.ts komentář u
+          blackoutDurationMs/blackoutOpacity. */}
       {sequenceStarted && <div className="absolute inset-0 bg-black" style={{ opacity: config.darknessOpacity }} aria-hidden="true" />}
+
+      {/* Death image (viz game/death/deathSequenceImages.ts) — stejná
+          technika jako SceneBackground.tsx (CSS background-image), ne
+          next/image ani <img>, ať odpovídá zavedené konvenci projektu a
+          cover/contain se řeší jedinou CSS vlastností. */}
+      {deathImageSrc && (
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `url(${deathImageSrc})`,
+            backgroundSize: config.deathImageFit,
+            backgroundPosition: "center",
+            backgroundRepeat: "no-repeat",
+            backgroundColor: "#000",
+            opacity: config.deathImageOpacity,
+          }}
+          aria-hidden="true"
+        />
+      )}
+
       {sequenceStarted && (
         <div className="absolute inset-0 pixel-screen-static" style={{ opacity: config.noiseOpacity }} aria-hidden="true" />
       )}
+
+      {/* Časově omezená černá vrstva NAD death image — kryje ho, dokud
+          blackout neskončí, i kdyby deathImageAtMs bylo dřív než
+          blackoutDurationMs (viz komentář u isBlackoutActive). */}
+      {showBlackout && <div className="absolute inset-0 bg-black" style={{ opacity: config.blackoutOpacity }} aria-hidden="true" />}
+
       {showWhiteFlash && <div className="absolute inset-0 bg-white" style={{ opacity: config.whiteFlashOpacity }} aria-hidden="true" />}
       {showRedFlash && redFlashOpacity > 0 && (
         <div className="absolute inset-0 bg-red-600" style={{ opacity: redFlashOpacity }} aria-hidden="true" />
       )}
-      {showDeathFrame && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <p className="text-red-500 text-2xl font-bold tracking-widest uppercase text-center px-4">{DEATH_FRAME_LABEL}</p>
+
+      {showSignalLost && (
+        <div className="absolute inset-x-0 top-6 flex items-center justify-center">
+          <p className="text-red-500 text-sm font-bold tracking-widest uppercase text-center px-4">{DEATH_FRAME_LABEL}</p>
         </div>
       )}
+
+      {/* GAME OVER je overlay NAD death image, ne náhrada za černou plochu —
+          proto žádné vlastní bg-black tady, jen jemný scrim za textem kvůli čitelnosti. */}
       {showGameOver && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black">
-          <p className="text-gray-200 text-3xl font-bold tracking-widest uppercase">{GAME_OVER_LABEL}</p>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <p className="text-gray-100 text-3xl font-bold tracking-widest uppercase px-6 py-2 bg-black/40">{GAME_OVER_LABEL}</p>
         </div>
       )}
+
       {config.showPhaseDebug && (
         <div className="absolute bottom-2 left-2 text-xs text-amber-400 font-mono bg-black/70 px-2 py-1">
           fáze: {phase} · t: {Math.round(elapsedMs)}ms

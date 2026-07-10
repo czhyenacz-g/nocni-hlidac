@@ -2,8 +2,12 @@ import { describe, expect, it } from "vitest";
 import { DEATH_SEQUENCE_DEFAULT_CONFIG, DeathSequenceConfig } from "./deathSequenceConfig";
 import {
   DEATH_SEQUENCE_COMPLETE_AFTER_MS,
+  isBlackoutActive,
+  isDeathImageVisible,
+  isGameOverOverlayVisible,
   isRedFlashActive,
   isShakeActive,
+  isSignalLostVisible,
   isWhiteFlashActive,
   resolveDeathSequencePhase,
   resolveRedFlashOpacity,
@@ -28,14 +32,28 @@ describe("resolveDeathSequencePhase", () => {
     expect(resolveDeathSequencePhase(CONFIG.preDeathDelayMs + t, CONFIG)).toBe("white_flash");
   });
 
-  it("returns 'red_flash' within the expected window", () => {
-    const t = CONFIG.redFlashAtMs + 10;
-    expect(resolveDeathSequencePhase(CONFIG.preDeathDelayMs + t, CONFIG)).toBe("red_flash");
+  it("returns 'red_flash' within the expected window (when explicitly enabled — off by default)", () => {
+    // redFlashEnabled is false by default (see DEATH_SEQUENCE_DEFAULT_CONFIG) —
+    // enable it explicitly with a window that doesn't collide with
+    // deathFrameAtMs/gameOverAtMs to isolate the phase.
+    const config: DeathSequenceConfig = {
+      ...CONFIG,
+      redFlashEnabled: true,
+      redFlashAtMs: 300,
+      redFlashDurationMs: 200,
+      deathFrameAtMs: 3000,
+      gameOverAtMs: 3000,
+    };
+    expect(resolveDeathSequencePhase(config.preDeathDelayMs + 310, config)).toBe("red_flash");
   });
 
   it("returns 'death_frame' from deathFrameAtMs, before gameOverAtMs", () => {
-    expect(resolveDeathSequencePhase(CONFIG.preDeathDelayMs + CONFIG.deathFrameAtMs, CONFIG)).toBe("death_frame");
-    expect(resolveDeathSequencePhase(CONFIG.preDeathDelayMs + CONFIG.gameOverAtMs - 1, CONFIG)).toBe("death_frame");
+    // With the default config, deathFrameAtMs === gameOverAtMs, so the
+    // "death_frame" window is empty by default — use an explicit override
+    // with distinct values to exercise the phase itself.
+    const config: DeathSequenceConfig = { ...CONFIG, deathFrameAtMs: 1600, gameOverAtMs: 2200 };
+    expect(resolveDeathSequencePhase(config.preDeathDelayMs + config.deathFrameAtMs, config)).toBe("death_frame");
+    expect(resolveDeathSequencePhase(config.preDeathDelayMs + config.gameOverAtMs - 1, config)).toBe("death_frame");
   });
 
   it("returns 'game_over' from gameOverAtMs onward (until complete)", () => {
@@ -52,23 +70,99 @@ describe("resolveDeathSequencePhase", () => {
   });
 
   it("returns 'impact' while shake is active and no later phase has started", () => {
-    // shakeAtMs=260, redFlashAtMs=300 with the default config — a moment in
-    // between (before red_flash starts) should read as "impact".
-    const config: DeathSequenceConfig = { ...CONFIG, redFlashEnabled: false, whiteFlashEnabled: false };
+    // With the default config, shakeAtMs === deathFrameAtMs === gameOverAtMs
+    // (all 1600), so "impact" is unreachable by default — push
+    // deathFrameAtMs/gameOverAtMs well past the shake window to isolate it.
+    const config: DeathSequenceConfig = {
+      ...CONFIG,
+      redFlashEnabled: false,
+      whiteFlashEnabled: false,
+      deathFrameAtMs: 5000,
+      gameOverAtMs: 5000,
+    };
     expect(resolveDeathSequencePhase(config.preDeathDelayMs + config.shakeAtMs + 5, config)).toBe("impact");
   });
 
   it("a later phase always wins over an overlapping earlier effect window", () => {
-    // At deathFrameAtMs (650), the default redFlash window ([300,720)) and
-    // shake window ([260,910)) are still technically active — death_frame
-    // must win regardless.
-    expect(resolveDeathSequencePhase(CONFIG.preDeathDelayMs + CONFIG.deathFrameAtMs, CONFIG)).toBe("death_frame");
+    // deathFrameAtMs occurs while the redFlash/shake windows are still
+    // technically active — death_frame must win regardless.
+    const config: DeathSequenceConfig = {
+      ...CONFIG,
+      redFlashEnabled: true,
+      redFlashAtMs: 300,
+      redFlashDurationMs: 1000,
+      shakeAtMs: 260,
+      shakeDurationMs: 1000,
+      deathFrameAtMs: 650,
+      gameOverAtMs: 2000,
+    };
+    expect(resolveDeathSequencePhase(config.preDeathDelayMs + config.deathFrameAtMs, config)).toBe("death_frame");
   });
 
   it("skips a disabled effect's phase entirely", () => {
     const config: DeathSequenceConfig = { ...CONFIG, whiteFlashEnabled: false };
     const t = CONFIG.whiteFlashAtMs + 10;
     expect(resolveDeathSequencePhase(config.preDeathDelayMs + t, config)).not.toBe("white_flash");
+  });
+
+  it("returns 'silence' during the default blackout window (before the white flash)", () => {
+    const t = CONFIG.preDeathDelayMs + 200;
+    expect(resolveDeathSequencePhase(t, CONFIG)).toBe("silence");
+    expect(isBlackoutActive(t, CONFIG)).toBe(true);
+  });
+
+  it("activates 'white_flash' after the blackout window ends, at whiteFlashAtMs", () => {
+    expect(isBlackoutActive(CONFIG.preDeathDelayMs + CONFIG.whiteFlashAtMs, CONFIG)).toBe(false);
+    expect(resolveDeathSequencePhase(CONFIG.preDeathDelayMs + CONFIG.whiteFlashAtMs + 1, CONFIG)).toBe("white_flash");
+  });
+});
+
+describe("isBlackoutActive", () => {
+  it("is active from the start of the sequence until blackoutDurationMs", () => {
+    expect(isBlackoutActive(CONFIG.preDeathDelayMs, CONFIG)).toBe(true);
+    expect(isBlackoutActive(CONFIG.preDeathDelayMs + CONFIG.blackoutDurationMs - 1, CONFIG)).toBe(true);
+    expect(isBlackoutActive(CONFIG.preDeathDelayMs + CONFIG.blackoutDurationMs, CONFIG)).toBe(false);
+  });
+
+  it("is false before preDeathDelayMs (still waiting)", () => {
+    expect(isBlackoutActive(0, CONFIG)).toBe(false);
+  });
+});
+
+describe("isDeathImageVisible / isGameOverOverlayVisible", () => {
+  it("death image becomes visible from deathImageAtMs onward", () => {
+    const t = CONFIG.preDeathDelayMs + CONFIG.deathImageAtMs;
+    expect(isDeathImageVisible(t - 1, CONFIG)).toBe(false);
+    expect(isDeathImageVisible(t, CONFIG)).toBe(true);
+  });
+
+  it("death image never shows when deathImageEnabled is false", () => {
+    const config: DeathSequenceConfig = { ...CONFIG, deathImageEnabled: false };
+    expect(isDeathImageVisible(config.preDeathDelayMs + config.deathImageAtMs + 1000, config)).toBe(false);
+  });
+
+  it("GAME OVER overlay becomes visible from gameOverAtMs onward", () => {
+    const t = CONFIG.preDeathDelayMs + CONFIG.gameOverAtMs;
+    expect(isGameOverOverlayVisible(t - 1, CONFIG)).toBe(false);
+    expect(isGameOverOverlayVisible(t, CONFIG)).toBe(true);
+  });
+
+  it("GAME OVER overlay never shows when gameOverOverlayEnabled is false", () => {
+    const config: DeathSequenceConfig = { ...CONFIG, gameOverOverlayEnabled: false };
+    expect(isGameOverOverlayVisible(config.preDeathDelayMs + config.gameOverAtMs + 1000, config)).toBe(false);
+  });
+});
+
+describe("isSignalLostVisible", () => {
+  it("is false by default (signalLostEnabled is off by default)", () => {
+    expect(isSignalLostVisible(CONFIG.preDeathDelayMs + CONFIG.deathFrameAtMs + 100, CONFIG)).toBe(false);
+  });
+
+  it("becomes visible from deathFrameAtMs onward once enabled", () => {
+    const config: DeathSequenceConfig = { ...CONFIG, signalLostEnabled: true };
+    const t = config.preDeathDelayMs + config.deathFrameAtMs;
+    expect(isSignalLostVisible(t - 1, config)).toBe(false);
+    expect(isSignalLostVisible(t, config)).toBe(true);
   });
 });
 
@@ -81,12 +175,14 @@ describe("reducedFlashes", () => {
   });
 
   it("caps red flash opacity at 0.35", () => {
-    const config: DeathSequenceConfig = { ...CONFIG, reducedFlashes: true, redFlashOpacity: 0.75 };
+    // redFlashEnabled is off by default — enable it explicitly, since
+    // resolveRedFlashOpacity returns 0 whenever the effect itself is disabled.
+    const config: DeathSequenceConfig = { ...CONFIG, redFlashEnabled: true, reducedFlashes: true, redFlashOpacity: 0.75 };
     expect(resolveRedFlashOpacity(config)).toBe(0.35);
   });
 
   it("leaves red flash opacity unchanged when it's already below the reduced cap", () => {
-    const config: DeathSequenceConfig = { ...CONFIG, reducedFlashes: true, redFlashOpacity: 0.2 };
+    const config: DeathSequenceConfig = { ...CONFIG, redFlashEnabled: true, reducedFlashes: true, redFlashOpacity: 0.2 };
     expect(resolveRedFlashOpacity(config)).toBe(0.2);
   });
 

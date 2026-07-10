@@ -1,7 +1,8 @@
 "use client";
 
 import { ReactNode, useState } from "react";
-import { DeathSequenceConfig } from "@/game/death/deathSequenceConfig";
+import { DeathSequenceConfig, DeathSequenceImageFit } from "@/game/death/deathSequenceConfig";
+import { DEATH_SEQUENCE_IMAGE_OPTIONS } from "@/game/death/deathSequenceImages";
 
 export type DeathTestControlsProps = {
   config: DeathSequenceConfig;
@@ -41,6 +42,35 @@ function SliderRow({
         onChange={(event) => onChange(Number(event.target.value))}
         className="w-full accent-amber-500"
       />
+    </label>
+  );
+}
+
+function SelectRow<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: T;
+  options: { value: T; label: string }[];
+  onChange: (value: T) => void;
+}) {
+  return (
+    <label className="flex flex-col gap-1 text-xs text-gray-300">
+      <span>{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value as T)}
+        className="pixel-panel bg-gray-900 text-gray-200 text-xs px-2 py-1"
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
     </label>
   );
 }
@@ -116,6 +146,11 @@ export default function DeathTestControls({ config, onChange, onPlayFullscreen, 
         </button>
       </div>
 
+      <p className="text-[11px] text-gray-500 leading-snug">
+        Nový výchozí flow: <span className="text-amber-400">blackout → white flash → monster image</span> (+ GAME OVER nad
+        obrázkem). „SIGNÁL ZTRACEN“ je jen volitelná mezivrstva, defaultně vypnutá.
+      </p>
+
       {copyFeedback && <p className="text-xs text-green-400">{copyFeedback}</p>}
       {showCopyFallback && (
         <textarea
@@ -128,8 +163,8 @@ export default function DeathTestControls({ config, onChange, onPlayFullscreen, 
 
       <Section title="Timing">
         <SliderRow label="preDeathDelayMs" value={config.preDeathDelayMs} min={0} max={5000} onChange={(v) => update("preDeathDelayMs", v)} />
-        <SliderRow label="silenceMs" value={config.silenceMs} min={0} max={1000} onChange={(v) => update("silenceMs", v)} />
-        <SliderRow label="whiteFlashAtMs" value={config.whiteFlashAtMs} min={0} max={1000} onChange={(v) => update("whiteFlashAtMs", v)} />
+        <SliderRow label="silenceMs" value={config.silenceMs} min={0} max={3000} onChange={(v) => update("silenceMs", v)} />
+        <SliderRow label="whiteFlashAtMs" value={config.whiteFlashAtMs} min={0} max={3000} onChange={(v) => update("whiteFlashAtMs", v)} />
         <SliderRow
           label="whiteFlashDurationMs"
           value={config.whiteFlashDurationMs}
@@ -145,7 +180,7 @@ export default function DeathTestControls({ config, onChange, onPlayFullscreen, 
           max={1500}
           onChange={(v) => update("redFlashDurationMs", v)}
         />
-        <SliderRow label="shakeAtMs" value={config.shakeAtMs} min={0} max={1500} onChange={(v) => update("shakeAtMs", v)} />
+        <SliderRow label="shakeAtMs" value={config.shakeAtMs} min={0} max={3000} onChange={(v) => update("shakeAtMs", v)} />
         <SliderRow label="shakeDurationMs" value={config.shakeDurationMs} min={0} max={2000} onChange={(v) => update("shakeDurationMs", v)} />
         <SliderRow label="deathFrameAtMs" value={config.deathFrameAtMs} min={0} max={3000} onChange={(v) => update("deathFrameAtMs", v)} />
         <SliderRow label="gameOverAtMs" value={config.gameOverAtMs} min={500} max={5000} onChange={(v) => update("gameOverAtMs", v)} />
@@ -185,6 +220,70 @@ export default function DeathTestControls({ config, onChange, onPlayFullscreen, 
           step={0.01}
           onChange={(v) => update("noiseOpacity", v)}
         />
+      </Section>
+
+      <Section title="Death image">
+        <SelectRow
+          label="deathImageId"
+          value={config.deathImageId}
+          options={DEATH_SEQUENCE_IMAGE_OPTIONS.map((option) => ({ value: option.id, label: option.label }))}
+          onChange={(v) => update("deathImageId", v)}
+        />
+        <SelectRow<DeathSequenceImageFit>
+          label="deathImageFit"
+          value={config.deathImageFit}
+          options={[
+            { value: "cover", label: "cover" },
+            { value: "contain", label: "contain" },
+          ]}
+          onChange={(v) => update("deathImageFit", v)}
+        />
+        <ToggleRow label="deathImageEnabled" checked={config.deathImageEnabled} onChange={(v) => update("deathImageEnabled", v)} />
+        <SliderRow
+          label="deathImageAtMs"
+          value={config.deathImageAtMs}
+          min={0}
+          max={4000}
+          onChange={(v) => update("deathImageAtMs", v)}
+        />
+        <SliderRow
+          label="deathImageOpacity"
+          value={config.deathImageOpacity}
+          min={0}
+          max={1}
+          step={0.01}
+          onChange={(v) => update("deathImageOpacity", v)}
+        />
+      </Section>
+
+      <Section title="Blackout">
+        <SliderRow
+          label="blackoutDurationMs"
+          value={config.blackoutDurationMs}
+          min={0}
+          max={3000}
+          onChange={(v) => update("blackoutDurationMs", v)}
+        />
+        <SliderRow
+          label="blackoutOpacity"
+          value={config.blackoutOpacity}
+          min={0}
+          max={1}
+          step={0.01}
+          onChange={(v) => update("blackoutOpacity", v)}
+        />
+      </Section>
+
+      <Section title="Game over">
+        <ToggleRow
+          label="gameOverOverlayEnabled"
+          checked={config.gameOverOverlayEnabled}
+          onChange={(v) => update("gameOverOverlayEnabled", v)}
+        />
+      </Section>
+
+      <Section title="Signal lost">
+        <ToggleRow label="signalLostEnabled" checked={config.signalLostEnabled} onChange={(v) => update("signalLostEnabled", v)} />
       </Section>
 
       <Section title="Audio">
