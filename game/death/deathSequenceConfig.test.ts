@@ -36,6 +36,7 @@ describe("DEATH_SEQUENCE_DEFAULT_CONFIG", () => {
       "gameOverAtMs",
       "blackoutDurationMs",
       "deathImageAtMs",
+      "deathSoundAtMs",
     ];
     for (const field of msFields) {
       expect(DEATH_SEQUENCE_DEFAULT_CONFIG[field] as number).toBeGreaterThanOrEqual(0);
@@ -146,14 +147,16 @@ describe("clampDeathSequenceConfig", () => {
     expect(clamped.deathImageOpacity).toBe(0);
   });
 
-  it("clamps new ms fields (blackoutDurationMs, deathImageAtMs) to non-negative", () => {
+  it("clamps new ms fields (blackoutDurationMs, deathImageAtMs, deathSoundAtMs) to non-negative", () => {
     const clamped = clampDeathSequenceConfig({
       ...DEATH_SEQUENCE_DEFAULT_CONFIG,
       blackoutDurationMs: -100,
       deathImageAtMs: -1,
+      deathSoundAtMs: -1,
     });
     expect(clamped.blackoutDurationMs).toBe(0);
     expect(clamped.deathImageAtMs).toBe(0);
+    expect(clamped.deathSoundAtMs).toBe(0);
   });
 
   it("normalizes deathImageFit to 'cover' or 'contain', falling back to 'cover' for anything else", () => {

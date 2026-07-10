@@ -6,6 +6,7 @@ import {
   DeathSequencePhase,
   isBlackoutActive,
   isDeathImageVisible,
+  isDeathSoundDue,
   isGameOverOverlayVisible,
   isRedFlashActive,
   isShakeActive,
@@ -71,6 +72,10 @@ export default function DeathSequenceOverlay({ active, config, variant, onComple
   // phaseRef, ať funguje spolehlivě i v edge-case `preDeathDelayMs: 0`
   // (kdy sekvence "waiting" fázi vůbec neprojde a rovnou začne v "silence").
   const ambientCutRef = useRef(false);
+  // Zvuk smrti (deathVolume) je časovaný samostatně přes deathSoundAtMs, ne
+  // odvozený z phase přechodu (viz isDeathSoundDue) — potřebuje vlastní
+  // "už jsem hrál" ref, stejný vzor jako ambientCutRef.
+  const deathSoundPlayedRef = useRef(false);
 
   useEffect(() => {
     if (!active) {
@@ -80,6 +85,7 @@ export default function DeathSequenceOverlay({ active, config, variant, onComple
       phaseRef.current = null;
       completedRef.current = false;
       ambientCutRef.current = false;
+      deathSoundPlayedRef.current = false;
       setElapsedMs(0);
       setShakeOffset({ x: 0, y: 0 });
       return;
@@ -128,28 +134,32 @@ export default function DeathSequenceOverlay({ active, config, variant, onComple
         onPhaseChange?.(phase);
 
         // Jednorázové zvuky podle fáze (viz DeathTestControls.tsx posuvníky
-        // roarVolume/impactVolume/glitchVolume/deathVolume) — vlastní
-        // eventy, ne sdílené s jumpscare/monsterFinalDeathRoar (viz
-        // game/audio/audioEvents.ts).
+        // roarVolume/impactVolume/glitchVolume) — vlastní eventy, ne sdílené
+        // s jumpscare/monsterFinalDeathRoar (viz game/audio/audioEvents.ts).
         // TODO(audio): play death impact sound at deathImageAtMs
         // TODO(audio): play monster/death sound at deathImageAtMs
         // Zatím zůstávají navázané na `phase` (viz starší sub-úkol) — s
-        // defaultním configem `shakeAtMs`/`deathFrameAtMs`/`gameOverAtMs`
-        // splývají do 1600ms, takže fáze "impact"/"death_frame" nemusí být
-        // vždy dosažené (viz deathSequenceTiming.ts). Budoucí napojení má
-        // tyhle zvuky spouštět přímo z `isDeathImageVisible`/`deathImageAtMs`
+        // defaultním configem `shakeAtMs`/`deathFrameAtMs` splývají do
+        // 1600ms, takže fáze "impact"/"death_frame" nemusí být vždy
+        // dosažené (viz deathSequenceTiming.ts). Budoucí napojení má tyhle
+        // zvuky spouštět přímo z `isDeathImageVisible`/`deathImageAtMs`
         // hranice, ne z `phase` stringu.
         if (phase === "impact") {
           playDeathSequenceSound(AUDIO_EVENTS.deathSequenceRoar, config.roarVolume);
           playDeathSequenceSound(AUDIO_EVENTS.deathSequenceImpact, config.impactVolume);
         } else if (phase === "death_frame") {
           playDeathSequenceSound(AUDIO_EVENTS.deathSequenceGlitch, config.glitchVolume);
-        } else if (phase === "game_over") {
-          // deathVolume hraje deathSequenceFinal — vlastní event mapovaný na
-          // stejný soubor jako hardcoreSelectRoar ("řev monstra #3", viz
-          // game/audio/audioConfig.ts), ne sdílený event samotný.
-          playDeathSequenceSound(AUDIO_EVENTS.deathSequenceFinal, config.deathVolume);
         }
+      }
+
+      // Zvuk smrti (deathVolume → deathSequenceFinal, "řev monstra #3", viz
+      // game/audio/audioConfig.ts) — samostatně časovaný přes
+      // deathSoundAtMs (viz DeathTestControls.tsx "Audio" sekce), NE
+      // odvozený od gameOverAtMs/fáze "game_over", ať jde zvuk vyladit
+      // nezávisle na vizuálu.
+      if (!deathSoundPlayedRef.current && isDeathSoundDue(elapsed, config)) {
+        deathSoundPlayedRef.current = true;
+        playDeathSequenceSound(AUDIO_EVENTS.deathSequenceFinal, config.deathVolume);
       }
 
       if (phase === "complete") {

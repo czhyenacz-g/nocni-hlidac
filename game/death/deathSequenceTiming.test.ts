@@ -4,6 +4,7 @@ import {
   DEATH_SEQUENCE_COMPLETE_AFTER_MS,
   isBlackoutActive,
   isDeathImageVisible,
+  isDeathSoundDue,
   isGameOverOverlayVisible,
   isRedFlashActive,
   isShakeActive,
@@ -163,6 +164,21 @@ describe("isSignalLostVisible", () => {
     const t = config.preDeathDelayMs + config.deathFrameAtMs;
     expect(isSignalLostVisible(t - 1, config)).toBe(false);
     expect(isSignalLostVisible(t, config)).toBe(true);
+  });
+});
+
+describe("isDeathSoundDue", () => {
+  it("is due from deathSoundAtMs onward, independent of gameOverAtMs", () => {
+    const t = CONFIG.preDeathDelayMs + CONFIG.deathSoundAtMs;
+    expect(isDeathSoundDue(t - 1, CONFIG)).toBe(false);
+    expect(isDeathSoundDue(t, CONFIG)).toBe(true);
+  });
+
+  it("can be tuned independently of gameOverAtMs (e.g. sound earlier than the visual)", () => {
+    const config: DeathSequenceConfig = { ...CONFIG, deathSoundAtMs: 500, gameOverAtMs: 3000 };
+    const t = config.preDeathDelayMs + config.deathSoundAtMs;
+    expect(isDeathSoundDue(t, config)).toBe(true);
+    expect(isGameOverOverlayVisible(t, config)).toBe(false);
   });
 });
 

@@ -116,6 +116,19 @@ export function isDeathImageVisible(elapsedMs: number, config: DeathSequenceConf
 }
 
 /**
+ * Jednorázový spouštěč finálního "zvuku smrti" (`deathVolume` v
+ * DeathTestControls.tsx) — NEZÁVISLE na `gameOverAtMs`/fázi `"game_over"`,
+ * ať jde zvuk vyladit odděleně od GAME OVER overlaye (viz zadání "chybí mi
+ * tam možnost nastavení, kdy se přehraje zvuk smrti"). Volající
+ * (DeathSequenceOverlay.tsx) si sám hlídá jednorázovost přes ref, tahle
+ * funkce jen říká "už bychom měli/neměli hrát", ne "právě teď hraj".
+ */
+export function isDeathSoundDue(elapsedMs: number, config: DeathSequenceConfig): boolean {
+  const t = elapsedMs - config.preDeathDelayMs;
+  return t >= config.deathSoundAtMs;
+}
+
+/**
  * "SIGNÁL ZTRACEN" mezitext — volitelná vrstva (viz zadání "defaultně
  * vypnutý nebo méně dominantní"), zobrazuje se od `deathFrameAtMs` dál,
  * NEZÁVISLE na `resolveDeathSequencePhase`u (ten při defaultním configu, kde
