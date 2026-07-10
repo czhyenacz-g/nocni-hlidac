@@ -23,10 +23,14 @@ import { AUDIO_EVENTS, AudioEventId } from "@/game/audio/audioEvents";
  * Nastaví hlasitost podle příslušného posuvníku (viz DeathTestControls.tsx)
  * a přehraje — `volume <= 0` se vůbec nepřehraje, ať posuvník "ztlumeno na
  * nulu" funguje jako skutečné vypnutí, ne jako tiché přehrání. `setVolume`
- * mění hlasitost TRVALE pro tenhle event (viz game/audio/audioEvents.ts
- * proč mají death-sekvenční zvuky vlastní eventy, ne sdílené s
- * jumpscare/monsterFinalDeathRoar) — bezpečné, protože žádný jiný kód v
- * projektu tyhle čtyři eventy zatím nepoužívá.
+ * mění hlasitost TRVALE pro tenhle event (viz game/audio/audioEvents.ts).
+ *
+ * POZOR: `deathVolume` teď cíleně hraje `AUDIO_EVENTS.hardcoreSelectRoar`
+ * (na výslovnou žádost — "řev monstra #3" z /dev-sound), což je SDÍLENÝ
+ * event s obrazovkou výběru hardcore obtížnosti — na rozdíl od
+ * `deathSequenceRoar`/`Impact`/`Glitch` (vlastní, nesdílené eventy) tenhle
+ * `setVolume` volání z /death-test TRVALE změní hlasitost i pro hardcore
+ * select, dokud ji něco jiného zase nenastaví.
  */
 function playDeathSequenceSound(id: AudioEventId, volume: number): void {
   if (volume <= 0) return;
@@ -145,7 +149,7 @@ export default function DeathSequenceOverlay({ active, config, variant, onComple
         } else if (phase === "death_frame") {
           playDeathSequenceSound(AUDIO_EVENTS.deathSequenceGlitch, config.glitchVolume);
         } else if (phase === "game_over") {
-          playDeathSequenceSound(AUDIO_EVENTS.deathSequenceFinal, config.deathVolume);
+          playDeathSequenceSound(AUDIO_EVENTS.hardcoreSelectRoar, config.deathVolume);
         }
       }
 
