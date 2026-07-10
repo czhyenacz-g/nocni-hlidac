@@ -456,7 +456,14 @@ export default function PlayPage() {
         // konec runu, viz gameMode.ts.
         const isNormalContinuing = state.gameMode === "normal" && state.livesRemaining > 0;
 
-        if (!isNormalContinuing) {
+        // survivedNights je VÝHRADNĚ Normal counter (viz currentNight výše —
+        // Hardcore vždy počítá z serverRunState.currentRun, nikdy odsud) —
+        // proto se resetuje jen při skutečném konci NORMAL runu. Bez
+        // `state.gameMode === "normal"` by smrt v Hardcore vynulovala i
+        // rozehranou Normal šňůru, i když s ní vůbec nesouvisí (viz zadání
+        // "ujisti se... normal 6 nocí, přepnu na hardcore, umřu — normal
+        // streak nemá zmizet").
+        if (state.gameMode === "normal" && !isNormalContinuing) {
           // Aktuální hlídač skončil — survival streak jde na 0 (viz
           // game/core/survivedNights.ts), death counter nahoře tím není dotčený.
           setSurvivedNights(resetSurvivedNights());
@@ -532,8 +539,13 @@ export default function PlayPage() {
       audioManager.stopLoop(AUDIO_EVENTS.ambienceLoop);
       audioManager.play(AUDIO_EVENTS.shiftWin);
       // Stejný "zvyš přesně jednou při přechodu" vzor jako deathCount výše —
-      // ne při kliknutí na tlačítko, ne opakovaně při rerenderu.
-      setSurvivedNights(incrementSurvivedNights());
+      // ne při kliknutí na tlačítko, ne opakovaně při rerenderu. Jen Normal
+      // (viz stejná podmínka u resetu výše) — Hardcore výhra nesmí navyšovat
+      // tenhle čistě Normal counter, i když se stejnou nocí zrovna náhodou
+      // sedí currentNight.
+      if (state.gameMode === "normal") {
+        setSurvivedNights(incrementSurvivedNights());
+      }
       // Profil hlídače (viz zadání, game/core/playerProfileStats.ts) —
       // currentNight je noc, kterou hráč PRÁVĚ přežil (stejná hodnota jako
       // nightThatEnded v "death" větvi výše), ne noc PO přechodu. hardcoreBestNight
