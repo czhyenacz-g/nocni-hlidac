@@ -9,6 +9,11 @@ export const COPY = {
     // dvouhlavňovku (viz game/core/monsterDefeatReward.ts, MainMenuScreen.tsx)
     // — stejná akce (onStart), jen jiný text pro veterána.
     startButtonVeteran: "Nastoupit na veteránskou směnu",
+    // Připojeno za startButton/startButtonVeteran mezerou, jen když má hráč
+    // rozehranou Hardcore šňůru (viz MainMenuScreen.tsx#hasActiveHardcoreRun,
+    // zadání "hráč hraje hardcore, přežije 4 noci, chce v tlačítku vidět
+    // noc, na kterou nastupuje"). {night} nahrazuje MainMenuScreen.tsx.
+    startButtonNightSuffix: "(noc {night}.)",
     termsLinkLabel: "Podmínky noční služby",
     // Přejmenováno ze "Žebříček hlídačů" na žádost — route/link (/leaderboard)
     // zůstává beze změny, mění se jen viditelný text.
@@ -112,6 +117,11 @@ export const COPY = {
     // dokud se nepřihlásí.
     hardcoreLoginPromptText: "Hardcore režim se zapisuje do Síně slávy, proto vyžaduje přihlášení přes Discord.",
     hardcoreLoginPromptStayNormalLabel: "Zůstat v Normal",
+    // Zobrazí se místo normalTooltip, dokud má hráč rozehranou Hardcore
+    // šňůru (currentRun > 0, viz MainMenuScreen.tsx#hasActiveHardcoreRun) —
+    // Normal je v tu chvíli uzamčený, tenhle text vysvětluje proč (viz
+    // zadání "kdyby na něj namířil, ať je vidět popisek").
+    normalLockedTooltip: "Tohle není pro tebe, už jsi si vybral cestu drsňáka.",
   },
   // Nenápadný login box v hlavním menu (viz components/auth/AuthStatus.tsx,
   // lib/auth/session.ts) — základ identity hráče pro budoucí žebříček, hra

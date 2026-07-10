@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { COPY } from "@/content/copy";
 import Footer from "@/components/Footer";
@@ -26,6 +26,23 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
   // nepřihlásí (a klikne znovu), gameMode zůstává "normal".
   const [showHardcoreLoginPrompt, setShowHardcoreLoginPrompt] = useState(false);
   const authStatus = useAuthStatus();
+  // Rozehraná Hardcore šňůra (viz zadání "poznat rozehranou hru... hardcore
+  // hráč přežije 4 noci, zavře PC, druhý den chce pokračovat") — `currentRun`
+  // je počet po sobě dokončených nocí ze serveru (viz useAuthStatus.ts,
+  // lib/leaderboard/types.ts#GuardRunState), `0` znamená "naposledy umřel /
+  // ještě nezačal", ne "rozehráno". `null` (hub API nedostupné) se počítá
+  // jako "žádná rozehraná hra", ne jako falešné uzamčení Normal.
+  const currentHardcoreRun = authStatus.status === "authenticated" ? authStatus.player.currentRun : null;
+  const hasActiveHardcoreRun = typeof currentHardcoreRun === "number" && currentHardcoreRun > 0;
+  const upcomingHardcoreNight = typeof currentHardcoreRun === "number" && currentHardcoreRun > 0 ? currentHardcoreRun + 1 : null;
+
+  // Jakmile se potvrdí rozehraná Hardcore šňůra, mód se sám přepne na
+  // Hardcore (viz zadání "hardcore tlačítko/mod nastaven jako aktivní") —
+  // Normal je v tu chvíli stejně uzamčený (viz handleSelectNormal/JSX níže),
+  // takže se tenhle efekt nemá s čím prát o uživatelovu volbu.
+  useEffect(() => {
+    if (hasActiveHardcoreRun) setGameMode("hardcore");
+  }, [hasActiveHardcoreRun]);
   // True ending odměna (viz zadání, game/core/monsterDefeatReward.ts) — čte se
   // jednou při mountu, stejný vzor jako survivedNights/deathCount v
   // app/play/page.tsx. MainMenuScreen se znovu mountuje pokaždé, když
@@ -42,6 +59,10 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
   // úplně první interakce hráče se stránkou, ještě před "NASTOUPIT NA
   // SMĚNU" (ten init() volá taky, viz handleStart v app/play/page.tsx).
   function handleSelectNormal() {
+    // Uzamčeno, dokud běží Hardcore šňůra (viz hasActiveHardcoreRun výše,
+    // zadání "na normal nepůjde kliknout") — žádný zvuk ani změna gameMode,
+    // jen tooltip (viz JSX níže) vysvětlí proč.
+    if (hasActiveHardcoreRun) return;
     audioManager.init();
     audioManager.play(AUDIO_EVENTS.uiClick);
     setGameMode("normal");
@@ -123,24 +144,34 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
               onClick={() => onStart(gameMode)}
             >
               {reward.doubleBarrelUnlocked ? COPY.menu.startButtonVeteran : COPY.menu.startButton}
+              {upcomingHardcoreNight !== null &&
+                ` ${COPY.menu.startButtonNightSuffix.replace("{night}", String(upcomingHardcoreNight))}`}
             </button>
 
             {/* Výběr režimu — výraznější než spodní odkazy, ale menší než
                 hlavní tlačítko (viz zadání). Vybraný režim čte existující
                 .pixel-button data-active stav (stejný "červený zvýrazněný"
                 vzor jako jinde v projektu — ikonový blok ho teď taky
-                odráží, viz styles/pixel.css #console-icon-block[data-active]). */}
+                odráží, viz styles/pixel.css #console-icon-block[data-active]).
+                Normal je uzamčený, dokud běží Hardcore šňůra (viz
+                hasActiveHardcoreRun) — aria-disabled + ztlumený vzhled, ale
+                POŘÁD skutečné tlačítko (ne `disabled` atribut), ať tooltip i
+                tap-to-focus fungují stejně jako u ostatních (group-focus-within
+                níže pokrývá i dotykové zařízení bez hoveru). */}
             <div className="flex gap-2 mt-4">
               <div className="group relative flex-1">
                 <button
-                  className="pixel-button console-button tap-target px-3 py-1.5 text-xs w-full"
+                  className={`pixel-button console-button tap-target px-3 py-1.5 text-xs w-full ${
+                    hasActiveHardcoreRun ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
                   data-active={gameMode === "normal"}
+                  aria-disabled={hasActiveHardcoreRun}
                   onClick={handleSelectNormal}
                 >
                   {COPY.gameMode.normalLabel}
                 </button>
-                <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-1.5 w-56 -translate-x-1/2 rounded-none border border-gray-600 bg-gray-900/95 p-2 text-[10px] text-gray-300 opacity-0 shadow-lg transition-opacity duration-100 group-hover:opacity-100 whitespace-pre-line">
-                  {COPY.gameMode.normalTooltip}
+                <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-1.5 w-56 -translate-x-1/2 rounded-none border border-gray-600 bg-gray-900/95 p-2 text-[10px] text-gray-300 opacity-0 shadow-lg transition-opacity duration-100 group-hover:opacity-100 group-focus-within:opacity-100 whitespace-pre-line">
+                  {hasActiveHardcoreRun ? COPY.gameMode.normalLockedTooltip : COPY.gameMode.normalTooltip}
                 </div>
               </div>
               <div className="group relative flex-1">
@@ -154,7 +185,7 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
                   </span>
                   <span>{COPY.gameMode.hardcoreLabel}</span>
                 </button>
-                <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-1.5 w-56 -translate-x-1/2 rounded-none border border-gray-600 bg-gray-900/95 p-2 text-[10px] text-gray-300 opacity-0 shadow-lg transition-opacity duration-100 group-hover:opacity-100 whitespace-pre-line">
+                <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-1.5 w-56 -translate-x-1/2 rounded-none border border-gray-600 bg-gray-900/95 p-2 text-[10px] text-gray-300 opacity-0 shadow-lg transition-opacity duration-100 group-hover:opacity-100 group-focus-within:opacity-100 whitespace-pre-line">
                   {COPY.gameMode.hardcoreTooltip}
                 </div>
               </div>
