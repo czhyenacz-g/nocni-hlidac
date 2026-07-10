@@ -51,8 +51,8 @@ describe("DEATH_SEQUENCE_DEFAULT_CONFIG", () => {
     expect(DEATH_SEQUENCE_DEFAULT_CONFIG.deathImageEnabled).toBe(true);
   });
 
-  it("has blackoutDurationMs of 1500 by default", () => {
-    expect(DEATH_SEQUENCE_DEFAULT_CONFIG.blackoutDurationMs).toBe(1500);
+  it("has blackoutDurationMs of 800 by default", () => {
+    expect(DEATH_SEQUENCE_DEFAULT_CONFIG.blackoutDurationMs).toBe(800);
   });
 
   it("has whiteFlashAtMs of 1500 by default", () => {

@@ -1371,21 +1371,6 @@ export default function PlayPage() {
       {state.screen === "death" && !cinematicPending && activeCinematicSceneId && (
         <CinematicScreen sceneId={activeCinematicSceneId} onComplete={handleCinematicComplete} />
       )}
-      {/* Skutečná smrt (near-miss jede přes cinematicPending/activeCinematicSceneId
-          výše, nikdy sem) — nejdřív death sekvence (blackout -> white flash
-          -> monster image -> GAME OVER, viz DeathSequenceOverlay.tsx,
-          vyladěná na /death-test), DeathScreen se mountuje AŽ PO jejím
-          dokončení, ať hráč nemůže kliknout na tlačítko schované pod
-          neprůhledným overlayem (ten má pointer-events: none, klik by jinak
-          propadl skrz). */}
-      {state.screen === "death" && !cinematicPending && !activeCinematicSceneId && deathSequenceActive && (
-        <DeathSequenceOverlay
-          active={deathSequenceActive}
-          config={getLiveDeathSequenceConfig(state.deathReason)}
-          variant={isDoorAttackDeath(state.deathReason) ? "door" : "default"}
-          onComplete={handleDeathSequenceComplete}
-        />
-      )}
       {state.screen === "death" && !cinematicPending && !activeCinematicSceneId && !deathSequenceActive && (
         <DeathScreen
           reason={state.deathReason}
@@ -1416,6 +1401,25 @@ export default function PlayPage() {
         />
       )}
     </div>
+    {/* Skutečná smrt (near-miss jede přes cinematicPending/activeCinematicSceneId
+        výše, nikdy sem) — nejdřív death sekvence (blackout -> white flash ->
+        monster image -> GAME OVER, viz DeathSequenceOverlay.tsx, vyladěná na
+        /death-test), DeathScreen se mountuje AŽ PO jejím dokončení, ať hráč
+        nemůže kliknout na tlačítko schované pod neprůhledným overlayem (ten
+        má pointer-events: none, klik by jinak propadl skrz).
+        SOUROZENEC .atmosphere-root, ne jeho potomek — stejný gotcha jako u
+        AchievementToast níže (fixed inset-0 uvnitř filtrovaného rodiče by se
+        nepřichytil k viewportu, ale ke zborcenému nulovému boxu .atmosphere-root,
+        když je overlay jediné dítě). Byl původně omylem uvnitř .atmosphere-root,
+        proto se vizuálně vůbec nezobrazoval, i když časování běželo správně. */}
+    {state.screen === "death" && !cinematicPending && !activeCinematicSceneId && deathSequenceActive && (
+      <DeathSequenceOverlay
+        active={deathSequenceActive}
+        config={getLiveDeathSequenceConfig(state.deathReason)}
+        variant={isDoorAttackDeath(state.deathReason) ? "door" : "default"}
+        onComplete={handleDeathSequenceComplete}
+      />
+    )}
     {/* Achievement toast (viz components/game/AchievementToast.tsx) je záměrně
         SOUROZENEC .atmosphere-root, ne jeho potomek — .atmosphere-root má
         trvalý CSS filter (styles/atmosphere.css), který by jinak z něj
