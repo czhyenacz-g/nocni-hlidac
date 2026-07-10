@@ -183,6 +183,15 @@ export const JUMPSCARE_SILENT_GAP_MS = 200;
 // doztichne úplně, ať hráč čeká na smrt potichu, ne s dalším efektem.
 export const BLACKOUT_FINAL_AMBIENCE_FADE_MS = 600;
 
+// Jak dlouho po dokončení death sekvence (viz components/death/DeathSequenceOverlay.tsx,
+// game/death/liveDeathSequenceConfig.ts) zůstane naposledy zobrazený frame
+// (monster image + GAME OVER, zamrzlý po fázi "complete") vidět, než se
+// namountuje DeathScreen s dialogem "Předčasný konec směny" (viz
+// app/play/page.tsx, zadání "ať hráč nejdřív vidí obrázek s monstrem"). Jen
+// pro živou hru — /death-test svůj vlastní DEATH_SEQUENCE_COMPLETE_AFTER_MS
+// timing (viz deathSequenceTiming.ts) tímhle neovlivňuje.
+export const DEATH_SCREEN_REVEAL_DELAY_MS = 2000;
+
 // Krátká tichá pauza mezi smrtí v Noci 1 a zobrazením cinematic scény (viz
 // content/cinematics.ts, app/play/page.tsx) — ambience se ztlumí (sdílené s
 // AMBIENCE_DEATH_FADE_MS výše), pak tahle pauza, teprve pak CinematicScreen.

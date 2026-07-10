@@ -24,6 +24,7 @@ import {
   AMBIENCE_DEATH_FADE_MS,
   BLACKOUT_FINAL_AMBIENCE_FADE_MS,
   CINEMATIC_PRE_DELAY_MS,
+  DEATH_SCREEN_REVEAL_DELAY_MS,
   JUMPSCARE_SILENT_GAP_MS,
   LOADING_SCREEN_DURATION_MS,
   MONSTER_DOOR_BANG_COOLDOWN_MS,
@@ -258,6 +259,27 @@ export default function PlayPage() {
   // neprůhledným overlayem. `onComplete` ji vrátí na `false`, DeathScreen
   // se pak zobrazí normálně.
   const [deathSequenceActive, setDeathSequenceActive] = useState(false);
+  // Poslední frame sekvence (monster image + GAME OVER) zůstává zamrzlý na
+  // obrazovce ještě DEATH_SCREEN_REVEAL_DELAY_MS po jejím dokončení, než se
+  // teprve namountuje DeathScreen s dialogem "Předčasný konec směny" (viz
+  // zadání "ať hráč nejdřív vidí obrázek s monstrem, jak ho jde zabít") —
+  // DeathSequenceOverlay sám po fázi "complete" žádnou další animaci
+  // nespouští, jen zůstává vykreslený, dokud `active` neklesne na `false`.
+  const deathScreenRevealTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function handleDeathSequenceComplete() {
+    if (deathScreenRevealTimeoutRef.current !== null) clearTimeout(deathScreenRevealTimeoutRef.current);
+    deathScreenRevealTimeoutRef.current = setTimeout(() => {
+      deathScreenRevealTimeoutRef.current = null;
+      setDeathSequenceActive(false);
+    }, DEATH_SCREEN_REVEAL_DELAY_MS);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (deathScreenRevealTimeoutRef.current !== null) clearTimeout(deathScreenRevealTimeoutRef.current);
+    };
+  }, []);
   // Achievement toast (viz components/game/AchievementToast.tsx) — čistě
   // vizuální, nezávislý na screen flow. `null` = žádný toast aktivní.
   const [activeAchievement, setActiveAchievement] = useState<Achievement | null>(null);
@@ -474,6 +496,14 @@ export default function PlayPage() {
         // Ambient/heartbeat hraje dál normálně, dokud sekvence sama
         // nezačne (cutAmbientInstantly ho tvrdě přeruší přesně v
         // nakonfigurovaný moment, viz deathSequenceConfig.ts).
+        // Defenzivně zruš případný "reveal DeathScreen" timeout z PŘEDCHOZÍ
+        // smrti (viz handleDeathSequenceComplete výše) — bez tohohle by ho
+        // teoreticky mohl doběhnout starý timer a schovat čerstvě spuštěnou
+        // sekvenci hned po jejím startu.
+        if (deathScreenRevealTimeoutRef.current !== null) {
+          clearTimeout(deathScreenRevealTimeoutRef.current);
+          deathScreenRevealTimeoutRef.current = null;
+        }
         setDeathSequenceActive(true);
       }
 
@@ -1353,7 +1383,7 @@ export default function PlayPage() {
           active={deathSequenceActive}
           config={getLiveDeathSequenceConfig(state.deathReason)}
           variant={isDoorAttackDeath(state.deathReason) ? "door" : "default"}
-          onComplete={() => setDeathSequenceActive(false)}
+          onComplete={handleDeathSequenceComplete}
         />
       )}
       {state.screen === "death" && !cinematicPending && !activeCinematicSceneId && !deathSequenceActive && (
