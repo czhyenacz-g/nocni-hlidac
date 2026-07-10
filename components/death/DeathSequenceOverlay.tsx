@@ -29,9 +29,10 @@ import { AUDIO_EVENTS, AudioEventId } from "@/game/audio/audioEvents";
  * jumpscare/monsterFinalDeathRoar/hardcoreSelectRoar) — bezpečné, protože
  * žádný jiný kód v projektu tyhle čtyři eventy zatím nepoužívá.
  */
-function playDeathSequenceSound(id: AudioEventId, volume: number): void {
+function playDeathSequenceSound(id: AudioEventId, volume: number, pitch?: number): void {
   if (volume <= 0) return;
   audioManager.setVolume(id, volume);
+  if (pitch !== undefined) audioManager.setPlaybackRate(id, pitch);
   audioManager.play(id);
 }
 
@@ -159,7 +160,7 @@ export default function DeathSequenceOverlay({ active, config, variant, onComple
       // nezávisle na vizuálu.
       if (!deathSoundPlayedRef.current && isDeathSoundDue(elapsed, config)) {
         deathSoundPlayedRef.current = true;
-        playDeathSequenceSound(AUDIO_EVENTS.deathSequenceFinal, config.deathVolume);
+        playDeathSequenceSound(AUDIO_EVENTS.deathSequenceFinal, config.deathVolume, config.deathSoundPlaybackRate);
       }
 
       if (phase === "complete") {

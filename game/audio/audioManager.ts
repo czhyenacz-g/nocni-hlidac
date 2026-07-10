@@ -133,6 +133,34 @@ class AudioManager {
     audio.volume = Math.max(0, Math.min(1, volume));
   }
 
+  /**
+   * Mění výšku tónu PŘES rychlost přehrávání (`HTMLAudioElement.playbackRate`)
+   * — bez skutečného Web Audio API pitch-shifteru (detune na
+   * AudioBufferSourceNode) je tohle nejjednodušší cesta, jak jde vůbec
+   * výšku měnit z obyčejného `<audio>` tagu, ale POZOR: mění i tempo
+   * (`rate: 1.3` = o 30 % vyšší tón A zároveň o 30 % rychlejší přehrání,
+   * neoddělitelně). `preservesPitch = false` (+ vendor prefixy pro starší
+   * Safari/Firefox) je nutné vypnout, jinak prohlížeč pitch sám narovná
+   * zpátky a zůstane slyšet jen změna rychlosti. Používá se jen na
+   * /death-test (viz DeathTestControls.tsx "deathSoundPlaybackRate"), rate 1 =
+   * beze změny.
+   */
+  setPlaybackRate(id: AudioEventId, rate: number): void {
+    const audio = this.elements.get(id);
+    if (!audio) return;
+    const clamped = Math.max(0.1, Math.min(4, rate));
+    audio.playbackRate = clamped;
+    // `false` = NENAROVNÁVAT pitch zpátky, ať je změna vůbec slyšet.
+    const el = audio as HTMLAudioElement & {
+      preservesPitch?: boolean;
+      mozPreservesPitch?: boolean;
+      webkitPreservesPitch?: boolean;
+    };
+    el.preservesPitch = false;
+    el.mozPreservesPitch = false;
+    el.webkitPreservesPitch = false;
+  }
+
   stopLoop(id: AudioEventId): void {
     this.activeLoops.delete(id);
     const audio = this.elements.get(id);

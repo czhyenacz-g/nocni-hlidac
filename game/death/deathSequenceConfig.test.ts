@@ -78,6 +78,10 @@ describe("DEATH_SEQUENCE_DEFAULT_CONFIG", () => {
   it("has redFlashEnabled false by default (red flash kept but off)", () => {
     expect(DEATH_SEQUENCE_DEFAULT_CONFIG.redFlashEnabled).toBe(false);
   });
+
+  it("has deathSoundPlaybackRate of 1 by default (no pitch change)", () => {
+    expect(DEATH_SEQUENCE_DEFAULT_CONFIG.deathSoundPlaybackRate).toBe(1);
+  });
 });
 
 describe("clampDeathSequenceConfig", () => {
@@ -157,6 +161,12 @@ describe("clampDeathSequenceConfig", () => {
     expect(clamped.blackoutDurationMs).toBe(0);
     expect(clamped.deathImageAtMs).toBe(0);
     expect(clamped.deathSoundAtMs).toBe(0);
+  });
+
+  it("clamps deathSoundPlaybackRate to [0.5, 2]", () => {
+    expect(clampDeathSequenceConfig({ ...DEATH_SEQUENCE_DEFAULT_CONFIG, deathSoundPlaybackRate: 0.1 }).deathSoundPlaybackRate).toBe(0.5);
+    expect(clampDeathSequenceConfig({ ...DEATH_SEQUENCE_DEFAULT_CONFIG, deathSoundPlaybackRate: 5 }).deathSoundPlaybackRate).toBe(2);
+    expect(clampDeathSequenceConfig({ ...DEATH_SEQUENCE_DEFAULT_CONFIG, deathSoundPlaybackRate: 1.3 }).deathSoundPlaybackRate).toBe(1.3);
   });
 
   it("normalizes deathImageFit to 'cover' or 'contain', falling back to 'cover' for anything else", () => {

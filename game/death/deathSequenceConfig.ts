@@ -44,6 +44,8 @@ export type DeathSequenceConfig = {
 
   /** Kdy (ms od začátku sekvence) se přehraje finální "zvuk smrti" (deathVolume) — NEZÁVISLE na gameOverAtMs, ať jde zvuk oddělit od vizuálu. */
   deathSoundAtMs: number;
+  /** Výška/tón zvuku smrti přes playbackRate (viz audioManager.setPlaybackRate) — 1 = beze změny, mění NEODDĚLITELNĚ i tempo přehrávání. */
+  deathSoundPlaybackRate: number;
   deathVolume: number;
   impactVolume: number;
   roarVolume: number;
@@ -94,6 +96,7 @@ export const DEATH_SEQUENCE_DEFAULT_CONFIG: DeathSequenceConfig = {
   noiseOpacity: 0.25,
 
   deathSoundAtMs: 1600,
+  deathSoundPlaybackRate: 1,
   deathVolume: 0.95,
   impactVolume: 0.95,
   roarVolume: 0.9,
@@ -126,6 +129,7 @@ export const DEATH_SEQUENCE_DEFAULT_CONFIG: DeathSequenceConfig = {
 export function clampDeathSequenceConfig(config: DeathSequenceConfig): DeathSequenceConfig {
   const clampMs = (value: number): number => Math.max(0, Math.round(value));
   const clampUnit = (value: number): number => Math.min(1, Math.max(0, value));
+  const clampPitch = (value: number): number => Math.min(2, Math.max(0.5, value));
 
   return {
     ...config,
@@ -151,6 +155,7 @@ export function clampDeathSequenceConfig(config: DeathSequenceConfig): DeathSequ
     noiseOpacity: clampUnit(config.noiseOpacity),
 
     deathSoundAtMs: clampMs(config.deathSoundAtMs),
+    deathSoundPlaybackRate: clampPitch(config.deathSoundPlaybackRate),
     deathVolume: clampUnit(config.deathVolume),
     impactVolume: clampUnit(config.impactVolume),
     roarVolume: clampUnit(config.roarVolume),
