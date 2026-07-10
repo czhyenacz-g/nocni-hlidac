@@ -5,6 +5,7 @@ import { COPY } from "@/content/copy";
 import { DeathReason } from "@/game/core/types";
 import { GameMode } from "@/game/core/gameMode";
 import { PlayerAchievement } from "@/game/core/playerAchievements";
+import { resolveDeathScreenStatus } from "@/game/core/deathScreenStatus";
 import SceneBackground from "@/components/SceneBackground";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 import AchievementResultPanel from "@/components/achievements/AchievementResultPanel";
@@ -40,9 +41,11 @@ export default function DeathScreen({
   onRetry,
 }: DeathScreenProps) {
   // Normal se zbývajícím životem pokračuje stejnou nocí ("POKRAČOVAT"),
-  // cokoliv jiné (Normal bez životů, nebo Hardcore — ten vždy) run
-  // definitivně ukončí ("NOVÁ HRA"), viz zadání.
-  const isNormalContinuing = gameMode === "normal" && livesRemaining > 0;
+  // cokoliv jiné (Normal bez životů, nebo Hardcore — ten vždy, bez ohledu na
+  // livesRemaining) run definitivně ukončí ("NOVÁ HRA") — viz
+  // game/core/deathScreenStatus.ts, vytažené sem, ať se dá otestovat bez
+  // React infra.
+  const status = resolveDeathScreenStatus(gameMode, livesRemaining, nightNumber);
   // door_open_at_attack nemá samostatnou "útok probíhá" fázi (reducer
   // přepíná enemyStage na "attack" a screen na "death" ve stejném dispatchi,
   // viz gameReducer.ts ENEMY_ADVANCE) — deathDoorAttack je proto pozadí
@@ -84,18 +87,20 @@ export default function DeathScreen({
             {COPY.death.previousGuardsLabel.replace("{count}", String(deathCount))}
           </p>
 
-          {isNormalContinuing ? (
+          {status.kind === "normal_continue" ? (
             <p className="text-sm text-amber-400 mb-6">
-              {COPY.death.normalContinueLivesLabel.replace("{lives}", String(livesRemaining))}
+              {COPY.death.normalContinueLivesLabel.replace("{lives}", String(status.livesRemaining))}
               <br />
-              {COPY.death.normalContinueNightLabel.replace("{night}", String(nightNumber))}
+              {COPY.death.normalContinueNightLabel.replace("{night}", String(status.nightNumber))}
             </p>
           ) : (
             <div className="mb-6">
               <p className="text-sm text-red-400">
-                {gameMode === "hardcore" ? COPY.death.hardcoreGameOverLabel : COPY.death.normalGameOverLabel}
+                {status.kind === "hardcore_game_over" ? COPY.death.hardcoreGameOverLabel : COPY.death.normalGameOverLabel}
               </p>
-              {gameMode === "normal" && <p className="text-[11px] text-gray-500 mt-2">{COPY.death.normalLeaderboardNote}</p>}
+              {status.kind === "normal_game_over" && (
+                <p className="text-[11px] text-gray-500 mt-2">{COPY.death.normalLeaderboardNote}</p>
+              )}
             </div>
           )}
 
@@ -105,9 +110,9 @@ export default function DeathScreen({
             className="pixel-button console-button console-button--primary tap-target px-6 py-3 text-sm w-full"
             onClick={onRetry}
           >
-            {isNormalContinuing
+            {status.kind === "normal_continue"
               ? COPY.death.normalContinueButton
-              : gameMode === "hardcore"
+              : status.kind === "hardcore_game_over"
                 ? COPY.death.hardcoreGameOverButton
                 : COPY.death.normalGameOverButton}
           </button>

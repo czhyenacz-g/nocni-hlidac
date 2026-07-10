@@ -512,7 +512,33 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         return { ...createInitialGameState(night), audioMuted: state.audioMuted, screen: "loading" };
 
       case "SHOW_BRIEFING":
-        return { ...createInitialGameState(night), audioMuted: state.audioMuted, screen: "briefing" };
+        // Opravdu "jen přechod na screen, žádná jiná změna stavu" (viz
+        // gameActions.ts komentář u SHOW_BRIEFING) — dřív se sem volalo
+        // createInitialGameState(night) BEZ argumentů, což ticho přepsalo
+        // gameMode zpátky na "normal", livesRemaining na 3 a brokovnici na
+        // "žádná". app/play/page.tsx#handleBeginShift (větev "restart", volaná
+        // z handleRestart/handleCinematicComplete) pak čte přesně TENHLE
+        // vymazaný state jako "předchozí run" — v Hardcore to tiše převedlo
+        // run na Normal (proto text "Zbývající životy: 2" po druhé smrti) a
+        // při přechodu do další noci to smazalo admin/test brokovnici (viz
+        // regresní bugreport). Zachování těchhle polí přes SHOW_BRIEFING
+        // opravuje obojí v jednom místě, beze změny START_SHIFT/RESTART_SHIFT
+        // (ty už svoje argumenty dostávaly správně).
+        return {
+          ...createInitialGameState(
+            night,
+            undefined,
+            undefined,
+            undefined,
+            state.gameMode,
+            state.livesRemaining,
+            state.hasShotgun,
+            state.shotgunAmmo,
+            state.hasDoubleBarrelShotgun,
+          ),
+          audioMuted: state.audioMuted,
+          screen: "briefing",
+        };
 
       case "START_SHIFT":
         return {
