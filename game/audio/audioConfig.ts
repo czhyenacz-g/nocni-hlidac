@@ -390,7 +390,10 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
     },
   },
   [AUDIO_EVENTS.deathSequenceFinal]: {
-    src: "/assets/audio/death_sequence_final.mp3",
+    // Stejný zvukový soubor jako hardcoreSelectRoar ("řev monstra #3" z
+    // /dev-sound), ale VLASTNÍ dedikovaný event — setVolume z /death-test
+    // tak nemění hlasitost na obrazovce výběru hardcore obtížnosti.
+    src: "/assets/audio/hardcore_select_roar.mp3",
     volume: 0.7,
     loop: false,
     fallbackSynth: {
