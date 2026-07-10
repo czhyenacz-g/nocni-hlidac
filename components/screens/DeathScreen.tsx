@@ -4,8 +4,10 @@ import { useMemo } from "react";
 import { COPY } from "@/content/copy";
 import { DeathReason } from "@/game/core/types";
 import { GameMode } from "@/game/core/gameMode";
+import { PlayerAchievement } from "@/game/core/playerAchievements";
 import SceneBackground from "@/components/SceneBackground";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
+import AchievementResultPanel from "@/components/achievements/AchievementResultPanel";
 
 interface DeathScreenProps {
   reason: DeathReason | null;
@@ -17,10 +19,26 @@ interface DeathScreenProps {
   livesRemaining: number;
   /** Noc, kterou hráč právě dohrál — pro Normal-continue text "Opakovat noc X.". */
   nightNumber: number;
+  /**
+   * Achievementy nově odemčené TOUHLE smrtí (viz zadání "Napojit
+   * achievementy na výsledkové obrazovky", game/core/achievementResultUnlocks.ts).
+   * Sem patří i "Setkání s Hynkem" — zobrazí se tady, ne jako toast během
+   * hraní. Chybí/prázdné = nic nového, panel se nevykreslí (viz
+   * AchievementResultPanel.tsx).
+   */
+  newlyUnlockedAchievements?: PlayerAchievement[];
   onRetry: () => void;
 }
 
-export default function DeathScreen({ reason, deathCount, gameMode, livesRemaining, nightNumber, onRetry }: DeathScreenProps) {
+export default function DeathScreen({
+  reason,
+  deathCount,
+  gameMode,
+  livesRemaining,
+  nightNumber,
+  newlyUnlockedAchievements = [],
+  onRetry,
+}: DeathScreenProps) {
   // Normal se zbývajícím životem pokračuje stejnou nocí ("POKRAČOVAT"),
   // cokoliv jiné (Normal bez životů, nebo Hardcore — ten vždy) run
   // definitivně ukončí ("NOVÁ HRA"), viz zadání.
@@ -81,6 +99,8 @@ export default function DeathScreen({ reason, deathCount, gameMode, livesRemaini
               {gameMode === "normal" && <p className="text-[11px] text-gray-500 mt-2">{COPY.death.normalLeaderboardNote}</p>}
             </div>
           )}
+
+          <AchievementResultPanel achievements={newlyUnlockedAchievements} />
 
           <button
             className="pixel-button console-button console-button--primary tap-target px-6 py-3 text-sm w-full"

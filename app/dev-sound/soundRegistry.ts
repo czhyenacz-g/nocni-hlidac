@@ -180,7 +180,7 @@ export const SOUND_REGISTRY: Record<AudioEventId, SoundRegistryEntry> = {
   [AUDIO_EVENTS.bulbReplaceSuccess]: {
     id: AUDIO_EVENTS.bulbReplaceSuccess,
     label: "Bulb replace success",
-    description: "Hráč úspěšně dokončil ruční výměnu prasklé žárovky (DoorView, hold 10 s).",
+    description: "Hráč úspěšně dokončil ruční výměnu prasklé žárovky (DoorView, hold 7 s).",
     guess: "Krátké, pozitivní elektrické „vzum“/naskočení světla, ne UI beep, ne hororový zvuk.",
     usedIn: "app/play/page.tsx — efekt na state.bulbReplaceSuccessSeq (viz gameReducer.ts#updateBulbReplacement).",
   },
@@ -218,5 +218,12 @@ export const SOUND_REGISTRY: Record<AudioEventId, SoundRegistryEntry> = {
     description: "Hráč dá monstru 10. (finální) potvrzený zásah — hidden true ending, znamená smrt, ne ústup.",
     guess: "Krátký (3.8s) hlubší/ostřejší řev než hardcoreSelectRoar — poslední, definitivní.",
     usedIn: "components/minigame/EmergencyMiniGame.tsx — fireShot() při isMonsterHitFinal.",
+  },
+  [AUDIO_EVENTS.achievementUnlock]: {
+    id: AUDIO_EVENTS.achievementUnlock,
+    label: "Achievement unlock",
+    description: "Výsledková obrazovka (přežitá noc/smrt/true ending) zobrazuje aspoň jedno nově odemčené dosažení.",
+    guess: "Krátké pozitivní vzestupné pípnutí, terminálový confirm zvuk, ne UI click a ne hororový zvuk.",
+    usedIn: "components/achievements/AchievementResultPanel.tsx — mount efekt, jen když achievements.length > 0.",
   },
 };

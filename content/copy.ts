@@ -473,5 +473,9 @@ export const COPY = {
   // v game/cameras/ — obsahová data, ne UI text).
   achievements: {
     unlockedLabel: "Achievement odemčen",
+    // Nadpis sekce nově odemčených achievementů na výsledkových obrazovkách
+    // (viz zadání "Napojit achievementy na výsledkové obrazovky",
+    // components/achievements/AchievementResultPanel.tsx) — přesný text ze zadání.
+    newResultsHeading: "NOVÁ DOSAŽENÍ",
   },
 } as const;

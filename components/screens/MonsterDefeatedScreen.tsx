@@ -5,6 +5,8 @@ import { COPY } from "@/content/copy";
 import SceneBackground from "@/components/SceneBackground";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 import { audioManager } from "@/game/audio/audioManager";
+import { PlayerAchievement } from "@/game/core/playerAchievements";
+import AchievementResultPanel from "@/components/achievements/AchievementResultPanel";
 import {
   MONSTER_DEFEATED_CINEMATIC_AUDIO_SRC,
   MONSTER_DEFEATED_CINEMATIC_CAPTIONS,
@@ -22,6 +24,15 @@ interface MonsterDefeatedScreenProps {
    * po skutečně dokončeném/potvrzeném zážitku.
    */
   onCinematicComplete?: () => void;
+  /**
+   * Achievementy nově odemčené touhle výhrou (viz zadání "Napojit
+   * achievementy na výsledkové obrazovky", game/core/achievementResultUnlocks.ts)
+   * — vyhodnocené app/play/page.tsx#handleMonsterDefeatedCinematicComplete
+   * PŘED prvním renderem téhle obrazovky, takže tenhle prop je od začátku
+   * hotový. Zobrazí se AŽ VE VÝSLEDKOVÉ ČÁSTI (po `cinematicDone`), nikdy
+   * přes timed captions cinematicu.
+   */
+  newlyUnlockedAchievements?: PlayerAchievement[];
 }
 
 // Skrytý true ending (viz zadání, game/core/monsterEnding.ts) — 10
@@ -41,7 +52,11 @@ interface MonsterDefeatedScreenProps {
 // směnu. Bezpečnější a architektonicky čistší než nechat den doběhnout na
 // pozadí (žádné riziko, že by "vypnutý" monster loop omylem zůstal
 // vyhodnocovaný a hráče po vítězství zabil).
-export default function MonsterDefeatedScreen({ onGoToMenu, onCinematicComplete }: MonsterDefeatedScreenProps) {
+export default function MonsterDefeatedScreen({
+  onGoToMenu,
+  onCinematicComplete,
+  newlyUnlockedAchievements = [],
+}: MonsterDefeatedScreenProps) {
   const [cinematicDone, setCinematicDone] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -135,7 +150,8 @@ export default function MonsterDefeatedScreen({ onGoToMenu, onCinematicComplete 
           <h1 className="text-3xl font-bold mb-1 text-red-500">{COPY.monsterDefeated.title}</h1>
           <p className="text-sm text-gray-400 mb-6">{COPY.monsterDefeated.subtitle}</p>
           <p className="text-sm text-gray-200 whitespace-pre-line mb-8">{COPY.monsterDefeated.body}</p>
-          <button className="pixel-button tap-target px-6 py-3 text-sm w-full" onClick={onGoToMenu}>
+          <AchievementResultPanel achievements={newlyUnlockedAchievements} />
+          <button className="pixel-button tap-target px-6 py-3 text-sm w-full mt-6" onClick={onGoToMenu}>
             {COPY.monsterDefeated.backToMenuButton}
           </button>
         </div>

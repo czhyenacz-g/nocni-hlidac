@@ -1,9 +1,17 @@
 import { COPY } from "@/content/copy";
 import SceneBackground from "@/components/SceneBackground";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
+import { PlayerAchievement } from "@/game/core/playerAchievements";
+import AchievementResultPanel from "@/components/achievements/AchievementResultPanel";
 
 interface WinScreenProps {
   survivedNights: number;
+  /**
+   * Achievementy nově odemčené touhle přežitou nocí (viz zadání "Napojit
+   * achievementy na výsledkové obrazovky", game/core/achievementResultUnlocks.ts).
+   * Chybí/prázdné = nic nového, panel se nevykreslí.
+   */
+  newlyUnlockedAchievements?: PlayerAchievement[];
   onRetry: () => void;
   onGoToMenu: () => void;
 }
@@ -15,7 +23,7 @@ function formatSurvivedNights(count: number): string {
   return label.replace("{count}", String(count));
 }
 
-export default function WinScreen({ survivedNights, onRetry, onGoToMenu }: WinScreenProps) {
+export default function WinScreen({ survivedNights, newlyUnlockedAchievements = [], onRetry, onGoToMenu }: WinScreenProps) {
   // Bez bg-* na <main> — viz stejná poznámka v MainMenuScreen.tsx (main by
   // jinak vlastním pozadím zakryl SceneBackground potomka s -z-10).
   return (
@@ -35,8 +43,11 @@ export default function WinScreen({ survivedNights, onRetry, onGoToMenu }: WinSc
           <h1 className="text-2xl font-bold mb-2 text-green-400">{COPY.win.title}</h1>
           <p className="text-sm text-gray-400 mb-2">{COPY.win.subtitle}</p>
           <p className="text-xs text-gray-500 mb-8">{formatSurvivedNights(survivedNights)}</p>
+
+          <AchievementResultPanel achievements={newlyUnlockedAchievements} />
+
           <button
-            className="pixel-button console-button console-button--primary tap-target px-6 py-3 text-sm w-full"
+            className="pixel-button console-button console-button--primary tap-target px-6 py-3 text-sm w-full mt-6"
             onClick={onRetry}
           >
             {COPY.win.retryButton}

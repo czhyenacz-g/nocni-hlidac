@@ -142,6 +142,18 @@ const PLAYER_ACHIEVEMENT_DEFINITIONS: PlayerAchievementDefinition[] = [
 ];
 
 /**
+ * Nezbytný export navíc (viz zadání "Napojit achievementy na výsledkové
+ * obrazovky" — "Neměň profilový resolver kromě nezbytných exportů/
+ * helperů") — jen seznam ID ve stabilním pořadí, žádná nová logika.
+ * `game/core/achievementResultStorage.ts` ho potřebuje k validaci/řazení
+ * uložených "už zobrazeno" ID, ať tenhle soubor zůstává jediné místo, které
+ * definuje množinu i pořadí achievementů.
+ */
+export const ALL_PLAYER_ACHIEVEMENT_IDS: PlayerAchievementId[] = PLAYER_ACHIEVEMENT_DEFINITIONS.map(
+  (definition) => definition.id,
+);
+
+/**
  * Čistá funkce — žádný localStorage přístup tady, volající (app/profile/page.tsx)
  * si stats/reward přečte sám (getPlayerProfileStats/getMonsterDefeatReward) a
  * pošle sem jako hotová data. Vrací VŽDY všech 14 achievementů ve stejném

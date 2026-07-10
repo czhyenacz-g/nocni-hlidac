@@ -35,8 +35,9 @@ import AdminBadge from "@/components/game/AdminBadge";
 import { Achievement, getAchievement } from "@/content/achievements";
 import { unlockAchievement } from "@/game/core/achievementStorage";
 import { getDeathCount, incrementDeathCount } from "@/game/core/deathCount";
-import { getMonsterDefeatReward, recordMonsterDefeat } from "@/game/core/monsterDefeatReward";
+import { MonsterDefeatReward, getMonsterDefeatReward, recordMonsterDefeat } from "@/game/core/monsterDefeatReward";
 import {
+  PlayerProfileStats,
   getPlayerProfileStats,
   recordBulbReplaced,
   recordDeath,
@@ -53,6 +54,9 @@ import {
   createHardcoreProfileSnapshotFromLocalState,
   recordLocalHardcoreMonsterDefeat,
 } from "@/game/core/hardcorePlayerProfileSnapshot";
+import { PlayerAchievement } from "@/game/core/playerAchievements";
+import { resolveAchievementResultUnlocks } from "@/game/core/achievementResultUnlocks";
+import { getShownResultAchievementIds, markResultAchievementsAsShown } from "@/game/core/achievementResultStorage";
 import { hasUsedFirstNightTechnicianWarning, markFirstNightTechnicianWarningUsed } from "@/game/core/firstNightWarning";
 import { getSurvivedNights, incrementSurvivedNights, resetSurvivedNights } from "@/game/core/survivedNights";
 import { getBulbsRemaining, setBulbsRemaining } from "@/game/core/bulbInventory";
@@ -246,6 +250,51 @@ export default function PlayPage() {
   // Achievement toast (viz components/game/AchievementToast.tsx) — čistě
   // vizuální, nezávislý na screen flow. `null` = žádný toast aktivní.
   const [activeAchievement, setActiveAchievement] = useState<Achievement | null>(null);
+  // Profil achievementy na výsledkových obrazovkách (viz zadání "Napojit
+  // achievementy na výsledkové obrazovky", game/core/achievementResultUnlocks.ts)
+  // — NEZAMĚŇOVAT s activeAchievement výše (starý toast systém, jen
+  // "meet_hynek", zobrazuje se BĚHEM hraní). Tenhle "baseline" ref si
+  // pamatuje poslední stats/reward, proti kterým se porovnává — aktualizuje
+  // se PO KAŽDÉM vyhodnocení (viz evaluateResultAchievements níže), ne při
+  // každém renderu, ať se mid-run odemčení (žárovka/generátor/výprava/zásah)
+  // nikdy neztratí — zachytí ho nejbližší další death/win/monsterDefeated
+  // vyhodnocení, i kdyby proběhlo o několik směn později.
+  const achievementBaselineRef = useRef<{ stats: PlayerProfileStats; reward: MonsterDefeatReward } | null>(null);
+  if (achievementBaselineRef.current === null) {
+    achievementBaselineRef.current = { stats: getPlayerProfileStats(), reward: getMonsterDefeatReward() };
+  }
+  const [deathNewlyUnlockedAchievements, setDeathNewlyUnlockedAchievements] = useState<PlayerAchievement[]>([]);
+  const [winNewlyUnlockedAchievements, setWinNewlyUnlockedAchievements] = useState<PlayerAchievement[]>([]);
+  const [monsterDefeatedNewlyUnlockedAchievements, setMonsterDefeatedNewlyUnlockedAchievements] = useState<PlayerAchievement[]>(
+    [],
+  );
+
+  /**
+   * Porovná aktuální stats/reward proti poslednímu baseline (viz
+   * achievementBaselineRef výše), vrátí nově odemčené achievementy (které
+   * ještě nebyly zobrazené), rovnou je označí jako zobrazené
+   * (markResultAchievementsAsShown) a posune baseline na aktuální stav.
+   * Volat PŘESNĚ jednou na death/win/monsterDefeated přechod, VŽDY po
+   * příslušných record*() voláních (ne dřív), ať baseline zachytí i tuhle
+   * poslední událost.
+   */
+  function evaluateResultAchievements(): PlayerAchievement[] {
+    const previous = achievementBaselineRef.current ?? { stats: getPlayerProfileStats(), reward: getMonsterDefeatReward() };
+    const nextStats = getPlayerProfileStats();
+    const nextReward = getMonsterDefeatReward();
+    const { newlyUnlocked } = resolveAchievementResultUnlocks({
+      previousStats: previous.stats,
+      previousReward: previous.reward,
+      nextStats,
+      nextReward,
+      alreadyShownAchievementIds: getShownResultAchievementIds(),
+    });
+    achievementBaselineRef.current = { stats: nextStats, reward: nextReward };
+    if (newlyUnlocked.length > 0) {
+      markResultAchievementsAsShown(newlyUnlocked.map((achievement) => achievement.id));
+    }
+    return newlyUnlocked;
+  }
   // Krátká textová zpráva po návratu z nouzové minihry (viz
   // handleEmergencyMiniGameComplete) — záměrně bez nového toast systému,
   // jen jednoduchý auto-mizející text (stejný "sourozenec .atmosphere-root"
@@ -347,6 +396,12 @@ export default function PlayPage() {
         if (state.gameMode === "hardcore") {
           recordHardcoreDeathOnNight(nightThatEnded);
         }
+        // Achievementy pro DeathScreen (viz zadání "Napojit achievementy na
+        // výsledkové obrazovky") — AŽ TEĎ, po recordDeath/recordHardcoreDeathOnNight
+        // výše, ať "Setkání s Hynkem" i "První konec služby" mají šanci se v
+        // tomhle vyhodnocení objevit. Nikdy toast, jen připraveno pro
+        // DeathScreen render níže.
+        setDeathNewlyUnlockedAchievements(evaluateResultAchievements());
         // Žárovka je vlastnost OBJEKTU, ne hlídače — smrt ji jen uloží tak, jak
         // byla (žádný denní servis, ten běží jen po přežité směně, viz "win"
         // níže), ať další hlídač pokračuje přesně odtud, kde předchozí skončil.
@@ -433,6 +488,9 @@ export default function PlayPage() {
       // se aktualizuje jen pro gameMode "hardcore", jen směrem nahoru (viz
       // recordNightSurvived).
       recordNightSurvived(state.gameMode, currentNight);
+      // Achievementy pro WinScreen (viz zadání "Napojit achievementy na
+      // výsledkové obrazovky") — AŽ TEĎ, po recordNightSurvived výše.
+      setWinNewlyUnlockedAchievements(evaluateResultAchievements());
       // Denní servis: jen SKUTEČNĚ prasklé žárovky se vymění za náhradní kus
       // ze skladu (viz game/core/roomBulbs.ts#applyDailyBulbService) — slabá,
       // ale neprasklá žárovka se nedotkne. Běží jen tady (přežitá směna),
@@ -878,6 +936,13 @@ export default function PlayPage() {
     // MonsterDefeatedScreen.tsx sám hlídá, že onCinematicComplete nevystřelí
     // dvakrát za jedno mountnutí (viz jeho doneRef guard).
     recordMonsterKill();
+    // Achievementy pro MonsterDefeatedScreen (viz zadání "Napojit
+    // achievementy na výsledkové obrazovky") — AŽ TEĎ, po recordMonsterDefeat/
+    // recordMonsterKill výše, PŘED případným early return pro Normal (obě
+    // strany gameMode mají mít šanci na "Už nejsi ucho"/"Lovec bestií").
+    // MonsterDefeatedScreen.tsx zobrazí panel až ve výsledkové části (po
+    // cinematicu), tenhle state je jen "co ukázat, až tam hráč dojde".
+    setMonsterDefeatedNewlyUnlockedAchievements(evaluateResultAchievements());
 
     // Serverový Hardcore profil (viz zadání "serverové ukládání profilu
     // hlídače jen pro Hardcore") — VÝHRADNĚ Hardcore. Normal true ending se
@@ -1261,17 +1326,27 @@ export default function PlayPage() {
           gameMode={state.gameMode}
           livesRemaining={state.livesRemaining}
           nightNumber={currentNight}
+          newlyUnlockedAchievements={deathNewlyUnlockedAchievements}
           onRetry={handleRestart}
         />
       )}
       {state.screen === "win" && (
-        <WinScreen survivedNights={survivedNights} onRetry={handleRestart} onGoToMenu={handleGoToMenu} />
+        <WinScreen
+          survivedNights={survivedNights}
+          newlyUnlockedAchievements={winNewlyUnlockedAchievements}
+          onRetry={handleRestart}
+          onGoToMenu={handleGoToMenu}
+        />
       )}
       {/* Skrytý true ending (viz zadání, game/core/monsterEnding.ts) — má
           přednost před běžným win/death flow (gameReducer.ts#CONFIRM_MONSTER_HIT
           nastaví screen "monsterDefeated" přímo, ne přes TICK/ENEMY_ADVANCE). */}
       {state.screen === "monsterDefeated" && (
-        <MonsterDefeatedScreen onGoToMenu={handleGoToMenu} onCinematicComplete={handleMonsterDefeatedCinematicComplete} />
+        <MonsterDefeatedScreen
+          onGoToMenu={handleGoToMenu}
+          onCinematicComplete={handleMonsterDefeatedCinematicComplete}
+          newlyUnlockedAchievements={monsterDefeatedNewlyUnlockedAchievements}
+        />
       )}
     </div>
     {/* Achievement toast (viz components/game/AchievementToast.tsx) je záměrně

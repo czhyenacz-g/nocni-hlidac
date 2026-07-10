@@ -10,6 +10,7 @@ import { isAdminUsername } from "@/lib/auth/adminUsers";
 import { getMonsterDefeatReward, resetMonsterDefeatReward, MonsterDefeatReward } from "@/game/core/monsterDefeatReward";
 import { getPlayerProfileStats, resetPlayerProfileStats, PlayerProfileStats } from "@/game/core/playerProfileStats";
 import { resolvePlayerAchievements } from "@/game/core/playerAchievements";
+import { resetShownResultAchievements } from "@/game/core/achievementResultStorage";
 import {
   ServerHardcorePlayerProfile,
   createHardcoreProfileSnapshotFromLocalState,
@@ -137,10 +138,15 @@ export default function ProfileScreen() {
   // stránky, ať se nemusí ručně synchronizovat lokální React state s nově
   // vynulovanými daty. Resetuje jen lokální data — serverový Hardcore profil
   // se odsud NEMAŽE (viz zadání "Nevytvářej: serverový reset profilu").
+  // resetShownResultAchievements (viz zadání "Napojit achievementy na
+  // výsledkové obrazovky", game/core/achievementResultStorage.ts) čistí jen
+  // "už zobrazeno na výsledkové obrazovce" seznam, ať po resetu profilu
+  // znovu-odemčené achievementy zase vypadají jako nové.
   function handleResetLocalProfile() {
     if (!window.confirm(COPY.profile.resetConfirmLabel)) return;
     resetPlayerProfileStats();
     resetMonsterDefeatReward();
+    resetShownResultAchievements();
     window.location.reload();
   }
 

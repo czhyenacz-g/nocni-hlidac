@@ -56,6 +56,11 @@ export const AUDIO_EVENTS = {
   // isMonsterHitFinal). Znamená SMRT, ne ústup — NIKDY nezaměňovat s
   // monsterRetreatRoar (to je jen dočasné odehnání, monstrum se vrací).
   monsterFinalDeathRoar: "monster_final_death_roar",
+  // Nová dosažení na výsledkové obrazovce (viz zadání "Napojit achievementy
+  // na výsledkové obrazovky", components/achievements/AchievementResultPanel.tsx) —
+  // hraje NEJVÝŠ jednou na obrazovku, bez ohledu na to, kolik achievementů
+  // se zobrazí najednou. Nikdy během aktivní hry, nikdy na /profile.
+  achievementUnlock: "achievement_unlock",
 } as const;
 
 export type AudioEventId = (typeof AUDIO_EVENTS)[keyof typeof AUDIO_EVENTS];

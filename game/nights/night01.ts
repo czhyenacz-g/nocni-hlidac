@@ -9,9 +9,11 @@ export const NIGHT_01: NightDefinition = {
   durationMs: 150_000, // 2:30
   startPower: 100,
   powerDrainPerSecond: {
-    doorClosed: 1.4,
-    lightOn: 1.0,
-    cameraOpen: 0.2,
+    // Sazby přeladěné na žádost: doorClosed 1.4 -> 1, lightOn 1.0 -> 1.4,
+    // cameraOpen 0.2 -> 0.1 (kamery citelně levnější na sledování).
+    doorClosed: 1,
+    lightOn: 1.4,
+    cameraOpen: 0.1,
     idle: 0.15,
   },
   // 1 % za 12 s = 1/12 % za sekundu (čtvrtina původní rychlosti 1/3) —

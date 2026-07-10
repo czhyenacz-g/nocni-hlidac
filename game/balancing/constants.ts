@@ -132,7 +132,8 @@ export const MAX_STRESS_TIME_SLOWDOWN = 0.5;
 
 // Ruční výměna prasklé žárovky (viz game/core/types.ts BulbReplacementState,
 // gameReducer.ts, DoorView.tsx) — jak dlouho (ms) trvá, než se žárovka opraví.
-export const BULB_REPLACE_DURATION_MS = 10_000;
+// Zkráceno na žádost z 10 s na 7 s.
+export const BULB_REPLACE_DURATION_MS = 7_000;
 // Jak dlouho (ms) po úspěšném dokončení výměny zůstane v DoorView vidět
 // krátká potvrzovací hláška ("Žárovka vyměněna.", viz DoorView.tsx,
 // bulbReplaceSuccessSeq) — čistě kosmetický, lokální React timeout v

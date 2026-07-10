@@ -325,4 +325,23 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
       waveform: "sawtooth",
     },
   },
+  // Nová dosažení na výsledkové obrazovce (viz zadání "Napojit achievementy
+  // na výsledkové obrazovky", AchievementResultPanel.tsx) — krátké, pozitivní
+  // "confirm/terminal" pípnutí, ne hororový zvuk. Žádný reálný soubor zatím
+  // neexistuje, fallback je krátká vzestupná dvoutónová sekvence (podobná
+  // bulbReplaceSuccess, ale vyšší/kratší — jednoznačně "úspěch", ne "světlo
+  // naskočilo").
+  [AUDIO_EVENTS.achievementUnlock]: {
+    src: "/assets/audio/achievement_unlock.mp3",
+    volume: 0.5,
+    loop: false,
+    fallbackSynth: {
+      notes: [
+        { frequency: 660, durationMs: 90, gapMs: 15 },
+        { frequency: 990, durationMs: 160 },
+      ],
+      volume: 0.4,
+      waveform: "sine",
+    },
+  },
 };
