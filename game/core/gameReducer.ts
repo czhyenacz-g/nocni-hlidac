@@ -1076,7 +1076,17 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         // blackoutElapsedMs v TICKu, ne další postup po trase. Během
         // doorDeathReveal je útok už rozhodnutý (viz níže) — žádný další
         // postup/rozhodnutí nepřítele už nemá smysl počítat.
-        if (!state.isRunning || state.gameStatus === "blackout" || state.doorDeathRevealUntilMs !== null)
+        // monsterDefeated (viz CONFIRM_MONSTER_HIT níže) zamrzne postup na
+        // zbytek noci JEN pro opakovanou porážku (první životní výhra run
+        // rovnou ukončí přes screen "monsterDefeated"/isRunning: false, takže
+        // by se sem stejně nikdy nedostala) — bestie zadání "je mrtvá, ale
+        // nebyla poslední" zůstává mimo hru, dokud noc neskončí.
+        if (
+          !state.isRunning ||
+          state.gameStatus === "blackout" ||
+          state.doorDeathRevealUntilMs !== null ||
+          state.monsterDefeated
+        )
           return state;
 
         const route = state.enemyRoute;
@@ -1348,7 +1358,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           state.nightFeatures.monsterTrueEndingRequiredHits,
         );
 
-        if (result.monsterDefeated) {
+        if (result.monsterDefeated && !action.alreadyDefeatedBefore) {
           // Poslední (10.) zásah rovnou končí hru MonsterDefeatedScreenem —
           // žádný "stažení ven" reset kanceláře už nemá smysl (hra už
           // nepokračuje běžným loopem), viz zadání.
@@ -1359,6 +1369,34 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             monsterDefeated: true,
             isRunning: false,
             screen: "monsterDefeated",
+          };
+        }
+
+        if (result.monsterDefeated) {
+          // Opakovaná porážka (viz zadání "bestie je mrtvá, ale nebyla
+          // poslední", gameActions.ts#alreadyDefeatedBefore) — na rozdíl od
+          // první životní výhry výše NEkončí run: hra pokračuje běžně dál,
+          // jen se nepřítel stáhne a na zbytek noci zůstane mimo hru
+          // (monsterDefeated: true zamrzne ENEMY_ADVANCE, viz výše). Trvalé
+          // statistiky/odměny (recordMonsterDefeat/recordMonsterKill,
+          // hardcore-profile sync) se zapisují v app/play/page.tsx přímo u
+          // tohohle dispatche, ne přes MonsterDefeatedScreen — ten se tu
+          // nezobrazuje.
+          return {
+            ...state,
+            monsterHitsToday: result.monsterHitsToday,
+            pendingMonsterHits: 0,
+            monsterDefeated: true,
+            enemyStage: night.enemy.monsterRetreatStage,
+            lastEnemyDecision: "monster_hit_confirmed",
+            enemyAtDoorSinceMs: null,
+            enemyDoorHoldTargetMs: null,
+            enemyDoorHoldProgressMs: 0,
+            doorLightRepelMs: 0,
+            doorHallwayUvRepelMs: 0,
+            enemyDoorAttackGraceUntilMs: null,
+            monsterRetreatedTo: null,
+            monsterRetreatVerified: false,
           };
         }
 

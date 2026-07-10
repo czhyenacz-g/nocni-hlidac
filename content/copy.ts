@@ -285,6 +285,13 @@ export const COPY = {
     // stane (viz gameReducer.ts#CONFIRM_MONSTER_HIT) — monstrum se po
     // potvrzení stáhne zpátky ven, ne jen "zařve někde ve skladu".
     monsterHitConfirmedLabel: "Zásah potvrzen. Bestie ustoupila do tmy.",
+    // Opakovaná porážka bestie (viz zadání "bestie je mrtvá, ale nebyla
+    // poslední", gameReducer.ts#CONFIRM_MONSTER_HIT) — 10. potvrzený zásah v
+    // noci, kdy hráč už bestii porazil dřív (jindy). Na rozdíl od
+    // finalMonsterHitLabel/screen "monsterDefeated" (první životní výhra)
+    // tahle hláška jen doplňuje monsterHitConfirmedLabel v emergencyRunMessage
+    // panelu — směna dál pokračuje, nepřítel je na zbytek noci pryč.
+    monsterDefeatedRepeatLabel: "Bestie je mrtvá. Ale nebyla poslední.",
     // 10. (finální) zásah — zobrazí se PŘÍMO v EmergencyMiniGame jako overlay
     // po dobu MONSTER_FINAL_DEATH_SCREEN_DELAY_MS (viz
     // EmergencyMiniGame.tsx#fireShot/tick, game/minigame/config.ts). Na

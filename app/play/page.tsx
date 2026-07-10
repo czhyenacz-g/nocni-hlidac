@@ -596,6 +596,20 @@ export default function PlayPage() {
           });
       }
     }
+    if (state.screen === "monsterDefeated") {
+      // Skrytý true ending (viz zadání "GAME OVER pro monstrum, ale ambient/
+      // heartbeat hraje dál přes dialog") — na rozdíl od "win"/"death" výše
+      // useHeartbeatStress.ts při !isRunning (CONFIRM_MONSTER_HIT ho nastaví
+      // rovnou s přechodem na "monsterDefeated") jen ZTLUMÍ heartbeat na 0 a
+      // vrátí ambientu PLNOU hlasitost zpátky, ale loop samotný nikdy
+      // nezastaví (žádné stopLoop tam není) — bez tohohle bloku by tak
+      // ambient dál slyšitelně hrál přes celé MonsterDefeatedScreen.tsx
+      // cinematic (timed captions + vlastní namluvený zvuk), viz
+      // MONSTER_DEFEATED_CINEMATIC_AUDIO_SRC.
+      audioManager.stopLoop(AUDIO_EVENTS.ambienceLoop);
+      audioManager.stopLoop(AUDIO_EVENTS.heartbeatStressSlow);
+      audioManager.stopLoop(AUDIO_EVENTS.heartbeatStressFast);
+    }
     prevScreenRef.current = state.screen;
 
     return () => {
@@ -1010,6 +1024,16 @@ export default function PlayPage() {
     // cinematicu), tenhle state je jen "co ukázat, až tam hráč dojde".
     setMonsterDefeatedNewlyUnlockedAchievements(evaluateResultAchievements());
 
+    // Noc, na které hráč monstrum porazil, se dřív NIKDE nezapočítala jako
+    // přežitá (viz zadání "nestalo se, že se resetoval počet dní" — ne,
+    // neresetoval, ale taky se nezvyšoval — screen "monsterDefeated" jde
+    // úplně mimo normální "win" flow, které jinak survivedNights/currentRun
+    // navyšuje). Stejná podmínka/vzor jako `state.screen === "win"` výše
+    // (jen Normal navyšuje lokální survivedNights, žádný fetch).
+    if (state.gameMode === "normal") {
+      setSurvivedNights(incrementSurvivedNights());
+    }
+
     // Serverový Hardcore profil (viz zadání "serverové ukládání profilu
     // hlídače jen pro Hardcore") — VÝHRADNĚ Hardcore. Normal true ending se
     // zastaví přesně tady: lokální reward/stats výše se zapíšou beze změny
@@ -1018,6 +1042,22 @@ export default function PlayPage() {
     // "Normal true ending NESMÍ odemknout serverovou dvouhlavňovku/zvýšit
     // hardcoreMonsterDefeatsCount").
     if (state.gameMode !== "hardcore") return;
+
+    // Stejný survive-night zápis jako běžná výhra (viz `state.screen ===
+    // "win"` výše, stejný TODO ohledně dvouhlavňovky v currentRun/bestRun
+    // žebříčku platí i tady) — bez tohohle currentRun pro tuhle noc nikdy
+    // nenavýší a příští Hardcore run tak nesmyslně začíná zase na noci 1
+    // (viz zadání "zase začínám ode dne 1").
+    fetch("/api/player/survive-night", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ gameMode: "hardcore" }),
+    })
+      .then((res) => res.json())
+      .then((body: GuardRunResponse["body"]) => applyGuardRunResponse(body, "survive-night"))
+      .catch((err) => {
+        console.warn("[nocni-hlidac] survive-night request failed after monster defeat — server currentRun may not have advanced", err);
+      });
 
     // Izolovaný Hardcore-only lokální counter (viz
     // game/core/hardcorePlayerProfileSnapshot.ts) — NIKDY
@@ -1226,8 +1266,45 @@ export default function PlayPage() {
         // (stejná, kterou CONFIRM_MONSTER_HIT níže právě potvrdí) — přesně
         // "skutečný počet potvrzených zásahů", ne pevná +1.
         recordMonsterHitsConfirmed(state.pendingMonsterHits);
-        dispatch({ type: "CONFIRM_MONSTER_HIT" });
-        messages.push(COPY.game.monsterHitConfirmedLabel);
+
+        // "alreadyDefeatedBefore" = hráč porazil bestii už NĚKDY dřív (jiná
+        // noc/run) — monsterDefeatsCount > 0 PŘED touhle výhrou. Počítá se
+        // tady (ne v reduceru, ten localStorage nečte) stejným výpočtem jako
+        // confirmMonsterHit v gameReducer.ts, ať víme PŘED dispatchem, jestli
+        // tenhle zásah spustí opakovanou porážku (viz zadání "bestie je
+        // mrtvá, ale nebyla poslední").
+        const willDefeatMonster =
+          state.monsterHitsToday + state.pendingMonsterHits >= state.nightFeatures.monsterTrueEndingRequiredHits;
+        const alreadyDefeatedBefore = getMonsterDefeatReward().monsterDefeatsCount > 0;
+
+        dispatch({ type: "CONFIRM_MONSTER_HIT", alreadyDefeatedBefore });
+
+        if (willDefeatMonster && alreadyDefeatedBefore) {
+          // Opakovaná porážka nejde přes MonsterDefeatedScreen/
+          // handleMonsterDefeatedCinematicComplete (run nekončí) — trvalé
+          // statistiky/odměny se tedy musí zapsat přímo tady, jinak by
+          // monsterDefeatsCount/monsterKills u opakovaných výher tiše
+          // přestaly růst. Achievementy záměrně NEvyhodnocujeme tady
+          // (evaluateResultAchievements by je rovnou označila za "zobrazené"
+          // bez skutečného zobrazení) — přirozeně se odhalí při nejbližším
+          // dalším win/death vyhodnocení v týhle směně.
+          recordMonsterDefeat();
+          recordMonsterKill();
+          if (state.gameMode === "hardcore") {
+            const hardcoreProgress = recordLocalHardcoreMonsterDefeat();
+            const snapshot = createHardcoreProfileSnapshotFromLocalState(getPlayerProfileStats(), hardcoreProgress);
+            fetch("/api/player/hardcore-profile/sync", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(snapshot),
+            }).catch((err) => {
+              console.warn("[nocni-hlidac] hardcore-profile sync request failed (repeat monster defeat)", err);
+            });
+          }
+          messages.push(COPY.game.monsterDefeatedRepeatLabel);
+        } else {
+          messages.push(COPY.game.monsterHitConfirmedLabel);
+        }
       }
 
       if (messages.length > 0) setEmergencyRunMessage(messages.join("\n"));

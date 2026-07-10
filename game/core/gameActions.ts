@@ -135,7 +135,14 @@ export type GameAction =
   // zvýší. Smrt venku (EMERGENCY_MINIGAME_DIED) pending zásah jen zahodí,
   // CONFIRM_MONSTER_HIT se pro ni nikdy nedispatchne.
   | { type: "MARK_PENDING_MONSTER_HIT" }
-  | { type: "CONFIRM_MONSTER_HIT" }
+  // `alreadyDefeatedBefore` = monsterDefeatsCount > 0 SPOČÍTANÉ PŘED touhle
+  // výhrou (viz game/core/monsterDefeatReward.ts), zjištěné volajícím
+  // (app/play/page.tsx) při dispatchi — reducer sám žádný localStorage
+  // nečte. Rozhoduje, jestli 10. zásah v týhle noci je úplně první životní
+  // výhra (celý dosavadní flow, screen "monsterDefeated") nebo opakovaná
+  // (zadání "bestie je mrtvá, ale nebyla poslední" — hra pokračuje, jen se
+  // nepřítel na zbytek noci zastaví, viz CONFIRM_MONSTER_HIT case).
+  | { type: "CONFIRM_MONSTER_HIT"; alreadyDefeatedBefore: boolean }
   // Sebraná žárovka v emergency výpravě, potvrzená bezpečným návratem (viz
   // game/core/emergencyMiniGameIntegration.ts#resolveBulbsGainedFromWorldEffects,
   // app/play/page.tsx#handleEmergencyMiniGameComplete) — přičte se do

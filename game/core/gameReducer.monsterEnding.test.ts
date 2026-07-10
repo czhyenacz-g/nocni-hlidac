@@ -104,7 +104,7 @@ describe("CONFIRM_MONSTER_HIT", () => {
       pendingMonsterHits: 1,
     };
 
-    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT" });
+    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT", alreadyDefeatedBefore: false });
 
     expect(result.monsterHitsToday).toBe(4);
     expect(result.pendingMonsterHits).toBe(0);
@@ -122,7 +122,7 @@ describe("CONFIRM_MONSTER_HIT", () => {
       pendingMonsterHits: 0,
     };
 
-    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT" });
+    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT", alreadyDefeatedBefore: false });
 
     expect(result.monsterHitsToday).toBe(3);
     expect(result.monsterDefeated).toBe(false);
@@ -138,7 +138,7 @@ describe("CONFIRM_MONSTER_HIT", () => {
       pendingMonsterHits: 1,
     };
 
-    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT" });
+    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT", alreadyDefeatedBefore: false });
 
     expect(result.monsterHitsToday).toBe(9);
     expect(result.monsterDefeated).toBe(false);
@@ -156,12 +156,47 @@ describe("CONFIRM_MONSTER_HIT", () => {
       pendingMonsterHits: 1,
     };
 
-    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT" });
+    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT", alreadyDefeatedBefore: false });
 
     expect(result.monsterHitsToday).toBe(10);
     expect(result.monsterDefeated).toBe(true);
     expect(result.screen).toBe("monsterDefeated");
     expect(result.isRunning).toBe(false);
+  });
+
+  it("a REPEAT true ending (alreadyDefeatedBefore: true) keeps the run going instead of ending it", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = {
+      ...createInitialGameState(NIGHT_01),
+      isRunning: true,
+      screen: "playing" as const,
+      monsterHitsToday: 9,
+      pendingMonsterHits: 1,
+      enemyStage: "at_door" as const,
+    };
+
+    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT", alreadyDefeatedBefore: true });
+
+    expect(result.monsterHitsToday).toBe(10);
+    expect(result.monsterDefeated).toBe(true);
+    expect(result.screen).toBe("playing");
+    expect(result.isRunning).toBe(true);
+    expect(result.enemyStage).toBe(NIGHT_01.enemy.monsterRetreatStage);
+  });
+
+  it("ENEMY_ADVANCE is frozen for the rest of the night after a repeat defeat", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = {
+      ...createInitialGameState(NIGHT_01),
+      isRunning: true,
+      screen: "playing" as const,
+      monsterHitsToday: 10,
+      monsterDefeated: true,
+    };
+
+    const result = reducer(state, { type: "ENEMY_ADVANCE" });
+
+    expect(result).toBe(state);
   });
 
   // Dvouhlavňovka (viz zadání, part F "pozor na finální zásah") — 2 pending
@@ -176,7 +211,7 @@ describe("CONFIRM_MONSTER_HIT", () => {
       pendingMonsterHits: 2,
     };
 
-    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT" });
+    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT", alreadyDefeatedBefore: false });
 
     expect(result.monsterHitsToday).toBe(10);
     expect(result.monsterDefeated).toBe(true);
@@ -193,7 +228,7 @@ describe("CONFIRM_MONSTER_HIT", () => {
       pendingMonsterHits: 2,
     };
 
-    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT" });
+    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT", alreadyDefeatedBefore: false });
 
     expect(result.monsterHitsToday).toBe(9);
     expect(result.monsterDefeated).toBe(false);
@@ -204,7 +239,7 @@ describe("CONFIRM_MONSTER_HIT", () => {
     const reducer = createGameReducer(NIGHT_01);
     const state = { ...createInitialGameState(NIGHT_01), isRunning: false };
 
-    expect(reducer(state, { type: "CONFIRM_MONSTER_HIT" })).toBe(state);
+    expect(reducer(state, { type: "CONFIRM_MONSTER_HIT", alreadyDefeatedBefore: false })).toBe(state);
   });
 
   // Admin zkrácený práh (viz zadání "for admin reduce necessary monster
@@ -221,7 +256,7 @@ describe("CONFIRM_MONSTER_HIT", () => {
       nightFeatures: { ...createInitialGameState(NIGHT_01).nightFeatures, monsterTrueEndingRequiredHits: 2 },
     };
 
-    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT" });
+    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT", alreadyDefeatedBefore: false });
 
     expect(result.monsterHitsToday).toBe(2);
     expect(result.monsterDefeated).toBe(true);
@@ -245,7 +280,7 @@ describe("CONFIRM_MONSTER_HIT — resets the office monster to a safe stage (hit
       enemyStage: "at_door" as const,
     };
 
-    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT" });
+    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT", alreadyDefeatedBefore: false });
 
     expect(result.enemyStage).toBe(NIGHT_01.enemy.monsterRetreatStage);
     expect(result.lastEnemyDecision).toBe("monster_hit_confirmed");
@@ -270,7 +305,7 @@ describe("CONFIRM_MONSTER_HIT — resets the office monster to a safe stage (hit
       monsterRetreatVerified: false,
     };
 
-    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT" });
+    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT", alreadyDefeatedBefore: false });
 
     expect(result.enemyAtDoorSinceMs).toBeNull();
     expect(result.enemyDoorHoldTargetMs).toBeNull();
@@ -293,7 +328,7 @@ describe("CONFIRM_MONSTER_HIT — resets the office monster to a safe stage (hit
       enemyStage: "at_door" as const,
     };
 
-    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT" });
+    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT", alreadyDefeatedBefore: false });
 
     expect(result.monsterHitsToday).toBe(9);
     expect(result.monsterDefeated).toBe(false);
@@ -313,7 +348,7 @@ describe("CONFIRM_MONSTER_HIT — resets the office monster to a safe stage (hit
       enemyDoorHoldProgressMs: 2000,
     };
 
-    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT" });
+    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT", alreadyDefeatedBefore: false });
 
     expect(result.monsterDefeated).toBe(true);
     expect(result.screen).toBe("monsterDefeated");
@@ -337,7 +372,7 @@ describe("CONFIRM_MONSTER_HIT — resets the office monster to a safe stage (hit
       livesRemaining: 1,
     };
 
-    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT" });
+    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT", alreadyDefeatedBefore: false });
 
     expect(result.hasShotgun).toBe(true);
     expect(result.shotgunAmmo).toBe(2);
