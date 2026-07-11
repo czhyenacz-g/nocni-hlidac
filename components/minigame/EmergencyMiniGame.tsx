@@ -985,11 +985,14 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
           // chasing (mode "office_bound", viz updateEnemyAi v logic.ts).
           // Samotné zmizení z mapy + worldEffect "monster_reached_office" se
           // řeší až níže, PO skutečném doražení do kanceláře — armed samo o
-          // sobě NIKDY neznamená "dorazilo" (viz zadání).
+          // sobě NIKDY neznamená "dorazilo" (viz zadání). Poslední argument
+          // (`game.enemy.alive`) viz isMonsterOfficeThreatArmed doc — bez něj
+          // by HUD hlásil hrozbu i pro monstrum poražené dřív tuhle noc.
           const threatArmedNow = isMonsterOfficeThreatArmed(
             game.elapsedMs,
             officeDoorLockMs,
             EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS,
+            game.enemy.alive,
           );
           setMonsterOfficeThreatArmed(threatArmedNow);
           if (threatArmedNow && !game.enemy.officeTarget) {

@@ -1045,9 +1045,20 @@ export function msSinceOfficeDoorOpened(elapsedMs: number, doorLockMs: number): 
  * `officeThreatTriggered` přímo). Skutečné doražení (a tedy despawn +
  * worldEffect) se vyhodnocuje samostatně, až podle SKUTEČNÉ pozice monstra
  * vůči kanceláři, viz EmergencyMiniGame.tsx#tick.
+ *
+ * `enemyAlive` musí být `false`, když monstrum bylo tuhle noc už poražené
+ * (viz EmergencyMiniGameInput.monsterAlreadyDefeatedTonight, createInitialState
+ * v EmergencyMiniGame.tsx) — bez týhle podmínky je funkce čistě časová a
+ * vrátí `true`, i když mrtvé monstrum nemůže nikam běžet, což v HUDu
+ * zbytečně hlásí "Siréna přilákala monstrum ke kanceláři" (nahlášený bug).
  */
-export function isMonsterOfficeThreatArmed(elapsedMs: number, doorLockMs: number, monsterTargetDelayMs: number): boolean {
-  return msSinceOfficeDoorOpened(elapsedMs, doorLockMs) >= monsterTargetDelayMs;
+export function isMonsterOfficeThreatArmed(
+  elapsedMs: number,
+  doorLockMs: number,
+  monsterTargetDelayMs: number,
+  enemyAlive: boolean,
+): boolean {
+  return enemyAlive && msSinceOfficeDoorOpened(elapsedMs, doorLockMs) >= monsterTargetDelayMs;
 }
 
 /**

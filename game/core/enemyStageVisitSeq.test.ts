@@ -32,7 +32,7 @@ describe("GameState.enemyStageVisitSeq", () => {
     // awkward here (that decreases stage) — instead just assert the general
     // invariant using a direct action that changes enemyStage: CONFIRM_MONSTER_HIT
     // moves enemyStage to night.enemy.monsterRetreatStage ("outside").
-    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT" });
+    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT", alreadyDefeatedBefore: false });
 
     expect(result.enemyStage).not.toBe(state.enemyStage);
     expect(result.enemyStageVisitSeq).toBe(6);

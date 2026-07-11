@@ -1256,12 +1256,22 @@ describe("office door lock — isOfficeDoorLocked / msUntilOfficeDoorOpens / msS
     expect(msSinceOfficeDoorOpened(25_000, DOOR_LOCK_MS)).toBe(5_000);
   });
 
-  it("isMonsterOfficeThreatArmed: false while locked, false right after unlocking, true once the target delay elapses", () => {
-    expect(isMonsterOfficeThreatArmed(10_000, DOOR_LOCK_MS, THREAT_DELAY_MS)).toBe(false);
-    expect(isMonsterOfficeThreatArmed(20_000, DOOR_LOCK_MS, THREAT_DELAY_MS)).toBe(false);
-    expect(isMonsterOfficeThreatArmed(24_999, DOOR_LOCK_MS, THREAT_DELAY_MS)).toBe(false);
-    expect(isMonsterOfficeThreatArmed(25_000, DOOR_LOCK_MS, THREAT_DELAY_MS)).toBe(true);
-    expect(isMonsterOfficeThreatArmed(60_000, DOOR_LOCK_MS, THREAT_DELAY_MS)).toBe(true);
+  it("isMonsterOfficeThreatArmed: false while locked, false right after unlocking, true once the target delay elapses (enemy alive)", () => {
+    expect(isMonsterOfficeThreatArmed(10_000, DOOR_LOCK_MS, THREAT_DELAY_MS, true)).toBe(false);
+    expect(isMonsterOfficeThreatArmed(20_000, DOOR_LOCK_MS, THREAT_DELAY_MS, true)).toBe(false);
+    expect(isMonsterOfficeThreatArmed(24_999, DOOR_LOCK_MS, THREAT_DELAY_MS, true)).toBe(false);
+    expect(isMonsterOfficeThreatArmed(25_000, DOOR_LOCK_MS, THREAT_DELAY_MS, true)).toBe(true);
+    expect(isMonsterOfficeThreatArmed(60_000, DOOR_LOCK_MS, THREAT_DELAY_MS, true)).toBe(true);
+  });
+
+  // Nahlášený bug (viz zadání): hráč zabil monstrum, vrátil se do minihry
+  // znovu a po uplynutí stejného časového okna se přesto zobrazila hláška
+  // "Siréna přilákala monstrum ke kanceláři" — isMonsterOfficeThreatArmed
+  // byla čistě časová a enemy.alive vůbec nezohledňovala.
+  it("isMonsterOfficeThreatArmed: always false when the enemy is not alive (already defeated tonight), regardless of elapsed time", () => {
+    expect(isMonsterOfficeThreatArmed(10_000, DOOR_LOCK_MS, THREAT_DELAY_MS, false)).toBe(false);
+    expect(isMonsterOfficeThreatArmed(25_000, DOOR_LOCK_MS, THREAT_DELAY_MS, false)).toBe(false);
+    expect(isMonsterOfficeThreatArmed(60_000, DOOR_LOCK_MS, THREAT_DELAY_MS, false)).toBe(false);
   });
 });
 
