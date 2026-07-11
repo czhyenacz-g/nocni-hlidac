@@ -390,6 +390,46 @@ export const COPY = {
       many: "Aktuální hlídač vydržel: {count} nocí",
     },
   },
+  // Hardcore Noc 30 má dvě alternativní ending větve (viz zadání,
+  // game/core/night30Ending.ts#resolveNight30Ending,
+  // components/screens/Night30EndingScreen.tsx) — obě nahrazují WinScreen
+  // jen pro tenhle jeden přechod. Sdílená struktura (intro + volitelný
+  // epilog + úmrtní záznam), texty přesně/téměř podle zadání,
+  // whitespace-pre-line (stejný vzor jako monsterDefeated.body níže) —
+  // prázdné řádky mezi odstavci jsou záměrné.
+  night30Ending: {
+    noKill: {
+      title: "PRVNÍ VÝPLATA",
+      introText:
+        "Třicátý den.\n\nHynek se objevil ve dveřích dřív, než stačil vyjít úsvit.\n\nChvíli si tě jen prohlížel.\n\n„Třicet nocí.\nBez útěku.\nBez hrdinství.\nBez zbytečných otázek.“\n\nPodal ti obálku.\n\n„Byl jsi dobrý hlídač.“\n\nČekal jsi vysvětlení.\nČekal jsi pravdu.\nČekal jsi, že po třiceti nocích něco skončí.\n\nHynek si jen zapálil cigaretu.\n\n„Tak se uvidíme zase za měsíc.“",
+      // Bez extra epilogu před úmrtním záznamem (na rozdíl od warrior níže).
+      epilogueText: null as string | null,
+      recordNoteValue: "Na stole měl pořád první výplatní obálku. Nikdy ji nevyhodil.",
+    },
+    warrior: {
+      title: "POSLEDNÍ SMĚNA",
+      introText:
+        "Třicátý den.\n\nHynek stál uprostřed místnosti a usmíval se víc než obvykle.\n\n„Tak jo.\nTohle už nebyla jen dobrá hlídka.“\n\nPodíval se na tebe a přikývl.\n\n„Stal se z tebe válečník.“\n\nZa jeho zády se ozýval kov, kroky a tlumené hlasy mužů v ochranných oblecích.\n\n„A hlavně — děkuju ti.\nPomohl jsi mi otestovat vábničku na monstra.“\n\nUkázal ke generátoru.\n\n„Jo.\nPřesně tuhle.\nTvůj generátor.“\n\nChvíli tě nechal pochopit, co právě řekl.\n\n„Popravdě…\nnebyl jsem mimo město.“\n\n„Ty jsi mi jen dal čas.\nČas dokončit přípravy.“\n\nZa Hynkem se rozsvítily kontrolky.\n\n„Za chvíli to zapneme na maximum.\nA připravíme opravdu velký ohňostroj.“\n\nPodal ti otevřený kufřík s penězi.\n\n„Tohle je tvoje výplata.\nA něco navíc za mlčenlivost.“\n\nPak zvážněl.\n\n„Musíme pryč.\nAž to spustíme, přiláká to možná tisíc monster.“\n\nUdělá krok ke dveřím.\n\n„Celý projekt tímhle končí.\nTy jsi svoji práci odvedl.“\n\nJeště se otočil.\n\n„Přeju ti všechno nejlepší v nové práci.\nA díky, válečníku.“",
+      epilogueText:
+        "O několik dní později\n\nDoma jsi otevřel kufřík znovu.\n\nBylo tam víc peněz, než jsi kdy viděl pohromadě.\n\nNa chvíli tě napadlo, že už nikdy nebudeš muset pracovat.\nMožná deset let.\nMožná víc.\n\nPrvní měsíce byly tiché.\nBez kamer.\nBez dveří.\nBez UV světel.\nBez generátoru.\n\nPak přišla nuda.\n\nA potom obyčejná práce." as string | null,
+      recordNoteValue: "V oficiálních záznamech Objekt 13 nikdy neexistoval.\nStejně jako tvoje zásluhy.",
+    },
+    continueLabel: "Pokračovat",
+    recordHeading: "O 15 let později",
+    recordTitle: "ÚMRTNÍ ZÁZNAM",
+    recordCauseLabel: "Příčina úmrtí:",
+    recordCauseValue: "srdeční selhání",
+    recordFactorsLabel: "Přidružené faktory:",
+    recordFactors: ["obezita", "sedavé zaměstnání", "dlouhodobý nedostatek pohybu"] as const,
+    recordWeightLabel: "Hmotnost při úmrtí:",
+    recordWeightValue: "178 kg",
+    recordTimeLabel: "Čas úmrtí:",
+    recordTimeValue: "14:07",
+    recordDescendantsLabel: "Potomci:",
+    recordDescendantsValue: "žádní",
+    recordNoteLabel: "Poznámka:",
+    backToMenuLabel: "Zpět do menu",
+  },
   // Skrytý true ending (viz zadání, game/core/monsterEnding.ts,
   // components/screens/MonsterDefeatedScreen.tsx) — 10 potvrzených zásahů
   // monstra brokovnicí za jednu noc. Texty přesně podle zadání.

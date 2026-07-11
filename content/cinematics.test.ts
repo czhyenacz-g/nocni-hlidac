@@ -83,3 +83,38 @@ describe("think_it_over_warning cinematic", () => {
     expect(scene?.segments.every((segment) => segment.audioSrc === undefined)).toBe(true);
   });
 });
+
+describe("valhala_ending cinematic", () => {
+  it("uses the exact wallhala_ending.png asset, unrenamed", () => {
+    const scene = getCinematicScene("valhala_ending");
+    expect(scene?.imageSrc).toBe("/object_13/story/wallhala_ending.png");
+  });
+
+  it("has the UI title VALHALA", () => {
+    const scene = getCinematicScene("valhala_ending");
+    expect(scene?.title).toBe("VALHALA");
+  });
+
+  it("the first segment is 'Ticho.'", () => {
+    const scene = getCinematicScene("valhala_ending");
+    expect(scene?.segments[0].text).toBe("Ticho.");
+  });
+
+  it("includes the thirty-night-or-valhalla line", () => {
+    const scene = getCinematicScene("valhala_ending");
+    expect(
+      scene?.segments.some((segment) => segment.text.includes("třicátou noc") && segment.text.includes("Valhale")),
+    ).toBe(true);
+  });
+
+  it("the last segment's responseLabel is 'Napiju se.'", () => {
+    const scene = getCinematicScene("valhala_ending");
+    expect(scene?.segments.at(-1)?.responseLabel).toBe("Napiju se.");
+  });
+
+  it("every segment has a responseLabel (no audioSrc required — audio TODO)", () => {
+    const scene = getCinematicScene("valhala_ending");
+    expect(scene?.segments.every((segment) => Boolean(segment.responseLabel))).toBe(true);
+    expect(scene?.segments.every((segment) => segment.audioSrc === undefined)).toBe(true);
+  });
+});

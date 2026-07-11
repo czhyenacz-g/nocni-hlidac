@@ -36,6 +36,10 @@ export type GameAction =
       hasShotgun?: boolean;
       shotgunAmmo?: number;
       hasDoubleBarrelShotgun?: boolean;
+      // Přenáší se přes restart/další noc stejně jako hasShotgun výše (viz
+      // GameState.monsterKilledThisRun, game/core/night30Ending.ts) — chybí-li,
+      // createInitialGameState spadne na `false` (nový run).
+      monsterKilledThisRun?: boolean;
     }
   | {
       type: "RESTART_SHIFT";
@@ -47,6 +51,7 @@ export type GameAction =
       hasShotgun?: boolean;
       shotgunAmmo?: number;
       hasDoubleBarrelShotgun?: boolean;
+      monsterKilledThisRun?: boolean;
     }
   | { type: "TOGGLE_DOOR" }
   | { type: "TOGGLE_LIGHT" }

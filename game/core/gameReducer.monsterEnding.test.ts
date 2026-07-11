@@ -445,3 +445,103 @@ describe("After the true ending (monsterDefeated, isRunning false), the office m
     expect(result.deathReason).toBeNull();
   });
 });
+
+// monsterKilledThisRun (viz zadání "no-kill ending noci 30",
+// game/core/night30Ending.ts) — persists across nights within one run,
+// unlike monsterDefeated (per-night) — same "fresh run resets, restart
+// preserves" convention as hasShotgun.
+describe("monsterKilledThisRun", () => {
+  it("a fresh GameState starts with monsterKilledThisRun false", () => {
+    const state = createInitialGameState(NIGHT_01);
+    expect(state.monsterKilledThisRun).toBe(false);
+  });
+
+  it("CONFIRM_MONSTER_HIT that defeats the monster for the first time sets monsterKilledThisRun true", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = {
+      ...createInitialGameState(NIGHT_01),
+      isRunning: true,
+      screen: "playing" as const,
+      monsterHitsToday: 9,
+      pendingMonsterHits: 1,
+    };
+
+    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT", alreadyDefeatedBefore: false });
+
+    expect(result.monsterKilledThisRun).toBe(true);
+  });
+
+  it("a REPEAT defeat (alreadyDefeatedBefore: true) also sets monsterKilledThisRun true", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = {
+      ...createInitialGameState(NIGHT_01),
+      isRunning: true,
+      screen: "playing" as const,
+      monsterHitsToday: 9,
+      pendingMonsterHits: 1,
+    };
+
+    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT", alreadyDefeatedBefore: true });
+
+    expect(result.monsterKilledThisRun).toBe(true);
+  });
+
+  it("a confirmed hit that does NOT defeat the monster leaves monsterKilledThisRun unchanged", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = {
+      ...createInitialGameState(NIGHT_01),
+      isRunning: true,
+      screen: "playing" as const,
+      monsterHitsToday: 3,
+      pendingMonsterHits: 1,
+      monsterKilledThisRun: false,
+    };
+
+    const result = reducer(state, { type: "CONFIRM_MONSTER_HIT", alreadyDefeatedBefore: false });
+
+    expect(result.monsterKilledThisRun).toBe(false);
+  });
+
+  it("RESTART_SHIFT preserves monsterKilledThisRun when explicitly passed (continuing the same run into the next night)", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = { ...createInitialGameState(NIGHT_01), monsterKilledThisRun: true };
+
+    const result = reducer(state, { type: "RESTART_SHIFT", monsterKilledThisRun: true });
+
+    expect(result.monsterKilledThisRun).toBe(true);
+  });
+
+  it("RESTART_SHIFT resets monsterKilledThisRun back to false when a fresh run is signaled (field omitted)", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = { ...createInitialGameState(NIGHT_01), monsterKilledThisRun: true };
+
+    const result = reducer(state, { type: "RESTART_SHIFT" });
+
+    expect(result.monsterKilledThisRun).toBe(false);
+  });
+
+  it("START_SHIFT always starts fresh (false), even if somehow passed true by mistake it's the caller's job — but omitted defaults false", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = { ...createInitialGameState(NIGHT_01), monsterKilledThisRun: true };
+
+    const result = reducer(state, { type: "START_SHIFT" });
+
+    expect(result.monsterKilledThisRun).toBe(false);
+  });
+
+  // Regresní bug stejné třídy jako gameMode/lives/shotgun (viz komentář u
+  // SHOW_BRIEFING v gameReducer.ts) — handleRestart/handleCinematicComplete
+  // v app/play/page.tsx dispatchují SHOW_BRIEFING PŘED RESTART_SHIFT na
+  // každém přechodu do další noci, i uprostřed jednoho nepřerušeného
+  // Hardcore runu. Kdyby SHOW_BRIEFING monsterKilledThisRun nezachovalo,
+  // handleBeginShift by ho vždycky přečetlo jako `false`.
+  it("SHOW_BRIEFING preserves monsterKilledThisRun (mid-run night transition, not a fresh run)", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = { ...createInitialGameState(NIGHT_01), monsterKilledThisRun: true };
+
+    const result = reducer(state, { type: "SHOW_BRIEFING" });
+
+    expect(result.monsterKilledThisRun).toBe(true);
+    expect(result.screen).toBe("briefing");
+  });
+});

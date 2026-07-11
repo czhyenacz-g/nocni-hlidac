@@ -7,6 +7,7 @@ import BriefingScreen from "@/components/screens/BriefingScreen";
 import GameScreen from "@/components/screens/GameScreen";
 import DeathScreen from "@/components/screens/DeathScreen";
 import WinScreen from "@/components/screens/WinScreen";
+import Night30EndingScreen from "@/components/screens/Night30EndingScreen";
 import MonsterDefeatedScreen from "@/components/screens/MonsterDefeatedScreen";
 import DeathSequenceOverlay from "@/components/death/DeathSequenceOverlay";
 import { getLiveDeathSequenceConfig, isDoorAttackDeath } from "@/game/death/liveDeathSequenceConfig";
@@ -61,6 +62,8 @@ import { PlayerAchievement } from "@/game/core/playerAchievements";
 import { resolveAchievementResultUnlocks } from "@/game/core/achievementResultUnlocks";
 import { getShownResultAchievementIds, markResultAchievementsAsShown } from "@/game/core/achievementResultStorage";
 import { hasUsedFirstNightTechnicianWarning, markFirstNightTechnicianWarningUsed } from "@/game/core/firstNightWarning";
+import { shouldShowValhalaEndingCinematic } from "@/game/core/valhalaEnding";
+import { Night30EndingKind, resolveNight30Ending } from "@/game/core/night30Ending";
 import { getSurvivedNights, incrementSurvivedNights, resetSurvivedNights } from "@/game/core/survivedNights";
 import { getBulbsRemaining, setBulbsRemaining } from "@/game/core/bulbInventory";
 import { applyDailyBulbService, getRoomBulbs, setRoomBulbs } from "@/game/core/roomBulbs";
@@ -267,6 +270,18 @@ export default function PlayPage() {
   // neprůhledným overlayem. `onComplete` ji vrátí na `false`, DeathScreen
   // se pak zobrazí normálně.
   const [deathSequenceActive, setDeathSequenceActive] = useState(false);
+  // Valhala cinematic (viz zadání, content/cinematics.ts#valhala_ending,
+  // game/core/valhalaEnding.ts#shouldShowValhalaEndingCinematic) — meziscéna
+  // PŘED death sekvencí výše, jen pro Hardcore smrt v noci 20–30 včetně.
+  // Vlastní boolean (stejný vzor jako thinkItOverCinematicActive), NE
+  // znovupoužití cinematicPending/activeCinematicSceneId výše — ty patří
+  // výhradně k first-night near-miss flow (onComplete tam vede zpátky do
+  // briefingu/restartu, ne do normálního death flow, viz handleCinematicComplete).
+  // Dokud je `true`, ani DeathSequenceOverlay ani DeathScreen se nemountují
+  // (viz JSX níže) — po dokončení scény (handleValhalaCinematicComplete) se
+  // vrátí na `false` a rovnou spustí normální deathSequenceActive, přesně
+  // jako by Valhala nikdy neproběhla.
+  const [valhalaCinematicActive, setValhalaCinematicActive] = useState(false);
   // Poslední frame sekvence (monster image + GAME OVER) zůstává zamrzlý na
   // obrazovce ještě DEATH_SCREEN_REVEAL_DELAY_MS po jejím dokončení, než se
   // teprve namountuje DeathScreen s dialogem "Předčasný konec směny" (viz
@@ -309,6 +324,14 @@ export default function PlayPage() {
   const [monsterDefeatedNewlyUnlockedAchievements, setMonsterDefeatedNewlyUnlockedAchievements] = useState<PlayerAchievement[]>(
     [],
   );
+  // Hardcore Noc 30 ending (viz zadání, game/core/night30Ending.ts) —
+  // rozhoduje, jestli se na přechodu do "win" zobrazí Night30EndingScreen
+  // (varianta "no_kill"/"warrior") MÍSTO WinScreen. Přepočítává se znovu při
+  // KAŽDÉM přechodu na "win" (viz efekt níže), ne jen nastavuje na
+  // "no_kill"/"warrior" — "none" case se musí taky explicitně zapsat, jinak
+  // by hodnota z jednoho runu mohla přežít do dalšího "win" v témže
+  // page.tsx mountu.
+  const [night30Ending, setNight30Ending] = useState<Night30EndingKind>("none");
 
   /**
    * Porovná aktuální stats/reward proti poslednímu baseline (viz
@@ -519,7 +542,25 @@ export default function PlayPage() {
           clearTimeout(deathScreenRevealTimeoutRef.current);
           deathScreenRevealTimeoutRef.current = null;
         }
-        setDeathSequenceActive(true);
+        // Valhala meziscéna (viz zadání, game/core/valhalaEnding.ts) — jen
+        // Hardcore smrt v noci 20–30 včetně. `nightThatEnded`, ne
+        // `currentNight` (stejný důvod jako recordHardcoreDeathOnNight výše).
+        // Vůbec neovlivňuje bookkeeping nad touhle větví (recordDeath/
+        // recordHardcoreDeathOnNight/achievementy/roomBulbs/server fetch) —
+        // ten proběhl už výše, přesně jednou, bez ohledu na Valhalu. Jen
+        // odloží START death sekvence, dokud scéna neskončí.
+        if (
+          shouldShowValhalaEndingCinematic({
+            gameMode: state.gameMode,
+            nightNumber: nightThatEnded,
+            isFirstNightNearMiss: false,
+            isRealDeath: true,
+          })
+        ) {
+          setValhalaCinematicActive(true);
+        } else {
+          setDeathSequenceActive(true);
+        }
       }
 
       if (state.deathReason === "door_open_at_attack") {
@@ -603,6 +644,21 @@ export default function PlayPage() {
             console.warn("[nocni-hlidac] survive-night request failed — server currentRun may not have advanced", err);
           });
       }
+      // Hardcore Noc 30 ending (viz zadání, game/core/night30Ending.ts) —
+      // rozhoduje se AŽ TEĎ, PO recordNightSurvived/achievementy/survive-night
+      // fetch výše, ale NEMĚNÍ nic z toho — jen řídí, jestli JSX níže vykreslí
+      // Night30EndingScreen (varianta "no_kill"/"warrior") místo WinScreen
+      // pro tenhle jeden přechod. `currentNight` je stejná hodnota, kterou
+      // recordNightSurvived výše právě zapsal jako přežitou noc (viz
+      // komentář nad ním).
+      setNight30Ending(
+        resolveNight30Ending({
+          gameMode: state.gameMode,
+          nightNumber: currentNight,
+          survivedNight: true,
+          hasKilledMonsterThisRun: state.monsterKilledThisRun,
+        }),
+      );
     }
     if (state.screen === "monsterDefeated") {
       // Skrytý true ending (viz zadání "GAME OVER pro monstrum, ale ambient/
@@ -970,6 +1026,11 @@ export default function PlayPage() {
         hasShotgun: shotgunEquipment.hasShotgun,
         hasDoubleBarrelShotgun: shotgunEquipment.hasDoubleBarrelShotgun,
         shotgunAmmo: shotgunEquipment.shotgunAmmo,
+        // Stejná "fresh run resetuje, pokračování zachová" konvence jako
+        // hasShotgun výše (viz GameState.monsterKilledThisRun,
+        // game/core/noKillEnding.ts) — na rozdíl od brokovnice tu není
+        // žádná trvalá odměna, co by fresh run mohla nastartovat rovnou na `true`.
+        monsterKilledThisRun: isFreshRun ? false : state.monsterKilledThisRun,
       });
     } else {
       const gameMode = selectedGameModeRef.current;
@@ -988,6 +1049,8 @@ export default function PlayPage() {
         hasShotgun: shotgunEquipment.hasShotgun,
         hasDoubleBarrelShotgun: shotgunEquipment.hasDoubleBarrelShotgun,
         shotgunAmmo: shotgunEquipment.shotgunAmmo,
+        // Vždy skutečně nový run (navigace z menu) — vždy `false`.
+        monsterKilledThisRun: false,
       });
     }
   }
@@ -1010,8 +1073,25 @@ export default function PlayPage() {
     dispatch({ type: "SHOW_BRIEFING" });
   }
 
+  // Dokončení Valhala cinematic (viz zadání, efekt na state.screen ===
+  // "death" výše) — NA ROZDÍL OD handleCinematicComplete výše pokračuje do
+  // normálního death flow (death sekvence -> DeathScreen), ne do
+  // briefingu/restartu — tohle JE skutečná smrt, jen s meziscénou navíc.
+  // Žádný dispatch, žádné další recordDeath/achievementy — ty proběhly už
+  // jednou v efektu výše, dřív, než se Valhala vůbec rozhodla spustit.
+  function handleValhalaCinematicComplete() {
+    setValhalaCinematicActive(false);
+    setDeathSequenceActive(true);
+  }
+
   function handleGoToMenu() {
     audioManager.play(AUDIO_EVENTS.uiClick);
+    // Defenzivní reset (viz zadání "run je považovaný za ukončený") — GO_TO_MENU
+    // stejně vždy vede pryč z "win", takže na JSX podmínku dole nemá vliv, ale
+    // ať night30Ending nikdy nezůstane nesprávně "no_kill"/"warrior" pro
+    // příští win v téže session, kdyby se sem někdy dostalo dřív, než efekt
+    // výše stihne přepočítat.
+    setNight30Ending("none");
     dispatch({ type: "GO_TO_MENU" });
   }
 
@@ -1486,7 +1566,20 @@ export default function PlayPage() {
       {state.screen === "death" && !cinematicPending && activeCinematicSceneId && (
         <CinematicScreen sceneId={activeCinematicSceneId} onComplete={handleCinematicComplete} />
       )}
-      {state.screen === "death" && !cinematicPending && !activeCinematicSceneId && !deathSequenceActive && (
+      {/* Valhala meziscéna (viz zadání, efekt výše, game/core/valhalaEnding.ts) —
+          jen Hardcore smrt v noci 20–30 včetně. Nezávislá na cinematicPending/
+          activeCinematicSceneId (ty patří výhradně first-night near-miss flow
+          výše) — vlastní boolean, vlastní onComplete, který na rozdíl od
+          handleCinematicComplete pokračuje do normální death sekvence, ne do
+          briefingu. */}
+      {state.screen === "death" && valhalaCinematicActive && (
+        <CinematicScreen sceneId="valhala_ending" onComplete={handleValhalaCinematicComplete} />
+      )}
+      {state.screen === "death" &&
+        !cinematicPending &&
+        !activeCinematicSceneId &&
+        !valhalaCinematicActive &&
+        !deathSequenceActive && (
         <DeathScreen
           reason={state.deathReason}
           deathCount={deathCount}
@@ -1497,7 +1590,19 @@ export default function PlayPage() {
           onRetry={handleRestart}
         />
       )}
-      {state.screen === "win" && (
+      {/* Hardcore Noc 30 ending (viz zadání, game/core/night30Ending.ts) —
+          NAHRAZUJE WinScreen pro tenhle jeden přechod, ne doplňuje ho.
+          recordNightSurvived/achievementy/survive-night fetch proběhly už v
+          efektu výše, stejně jako pro běžnou výhru — night30Ending jen řídí,
+          KTERÁ obrazovka (a případně KTERÁ varianta) se zobrazí. */}
+      {state.screen === "win" && night30Ending !== "none" && (
+        <Night30EndingScreen
+          kind={night30Ending}
+          newlyUnlockedAchievements={winNewlyUnlockedAchievements}
+          onGoToMenu={handleGoToMenu}
+        />
+      )}
+      {state.screen === "win" && night30Ending === "none" && (
         <WinScreen
           survivedNights={survivedNights}
           newlyUnlockedAchievements={winNewlyUnlockedAchievements}
@@ -1527,7 +1632,11 @@ export default function PlayPage() {
         nepřichytil k viewportu, ale ke zborcenému nulovému boxu .atmosphere-root,
         když je overlay jediné dítě). Byl původně omylem uvnitř .atmosphere-root,
         proto se vizuálně vůbec nezobrazoval, i když časování běželo správně. */}
-    {state.screen === "death" && !cinematicPending && !activeCinematicSceneId && deathSequenceActive && (
+    {state.screen === "death" &&
+      !cinematicPending &&
+      !activeCinematicSceneId &&
+      !valhalaCinematicActive &&
+      deathSequenceActive && (
       <DeathSequenceOverlay
         active={deathSequenceActive}
         config={getLiveDeathSequenceConfig(state.deathReason)}

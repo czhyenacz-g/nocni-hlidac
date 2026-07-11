@@ -540,6 +540,14 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             state.hasShotgun,
             state.shotgunAmmo,
             state.hasDoubleBarrelShotgun,
+            undefined,
+            // Stejný regresní bug jako gameMode/lives/shotgun výše (viz
+            // komentář nahoře) — bez tohohle by SHOW_BRIEFING tiše vynuloval
+            // GameState.monsterKilledThisRun na KAŽDÉM přechodu do další noci
+            // (i uprostřed jednoho Hardcore runu), než ho handleBeginShift
+            // vůbec stihne přečíst pro RESTART_SHIFT (viz
+            // app/play/page.tsx#handleBeginShift, game/core/night30Ending.ts).
+            state.monsterKilledThisRun,
           ),
           audioMuted: state.audioMuted,
           officeDoorLockMs: state.officeDoorLockMs,
@@ -558,6 +566,8 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             action.hasShotgun,
             action.shotgunAmmo,
             action.hasDoubleBarrelShotgun,
+            undefined,
+            action.monsterKilledThisRun,
           ),
           audioMuted: state.audioMuted,
           officeDoorLockMs: state.officeDoorLockMs,
@@ -577,6 +587,8 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             action.hasShotgun,
             action.shotgunAmmo,
             action.hasDoubleBarrelShotgun,
+            undefined,
+            action.monsterKilledThisRun,
           ),
           audioMuted: state.audioMuted,
           officeDoorLockMs: state.officeDoorLockMs,
@@ -1367,6 +1379,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             monsterHitsToday: result.monsterHitsToday,
             pendingMonsterHits: 0,
             monsterDefeated: true,
+            monsterKilledThisRun: true,
             isRunning: false,
             screen: "monsterDefeated",
           };
@@ -1387,6 +1400,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             monsterHitsToday: result.monsterHitsToday,
             pendingMonsterHits: 0,
             monsterDefeated: true,
+            monsterKilledThisRun: true,
             enemyStage: night.enemy.monsterRetreatStage,
             lastEnemyDecision: "monster_hit_confirmed",
             enemyAtDoorSinceMs: null,

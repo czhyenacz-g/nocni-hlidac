@@ -2,7 +2,7 @@
 // components/screens/CinematicScreen.tsx). Připraveno na to, aby později
 // přibyly další scény/segmenty/audio, beze změny CinematicScreen.tsx.
 
-export type CinematicSceneId = "old_guard_first_death_warning" | "think_it_over_warning";
+export type CinematicSceneId = "old_guard_first_death_warning" | "think_it_over_warning" | "valhala_ending";
 
 export interface CinematicSegment {
   id: string;
@@ -149,6 +149,41 @@ export const CINEMATIC_SCENES: Record<CinematicSceneId, CinematicScene> = {
         id: "ten_hits",
         text: "…ale desetkrát se postavit strachu a znovu zmáčknout spoušť? To už může být dost na to, aby padla i bestie.",
         responseLabel: "Zpátky ke stolu.",
+      },
+    ],
+  },
+  // Hardcore smrt "uprostřed" dlouhé šňůry (noc 20–30 včetně, viz zadání,
+  // game/core/valhalaEnding.ts#shouldShowValhalaEndingCinematic) —
+  // meziscéna PŘED normálním DeathScreenem, splácí slib z
+  // content/monsterDefeatedCinematic.ts ("Potkáme se až nastane 30. den...
+  // nebo ve Valhale."). imageSrc záměrně ukazuje na `wallhala_ending.png`
+  // (ne `.webp`, ne přejmenované/opravené na "valhalla") — přesný existující
+  // asset dodaný v zadání, beze změny názvu. Audio zatím TODO, žádný
+  // segment nemá audioSrc (CinematicScreen.tsx to zvládá beze změny).
+  valhala_ending: {
+    id: "valhala_ending",
+    imageSrc: "/object_13/story/wallhala_ending.png",
+    title: "VALHALA",
+    segments: [
+      { id: "silence", text: "Ticho.", responseLabel: "..." },
+      {
+        id: "wood_creaked",
+        text: "Pak dřevo zavrzalo pod tvýma rukama. Seděl jsi u dlouhého stolu.",
+        responseLabel: "Rozhlížím se.",
+      },
+      { id: "hynek_raises_mug", text: "Naproti tobě Hynek zvedl půllitr.", responseLabel: "..." },
+      { id: "close_call", text: "„Byl jsi blízko.“", responseLabel: "Mlčím." },
+      { id: "smiled", text: "Chvíli se usmál.", responseLabel: "..." },
+      {
+        id: "thirty_or_valhalla",
+        text: "„Nakonec jsem měl pravdu. Buď se potkáme třicátou noc… nebo ve Valhale.“",
+        responseLabel: "Poslouchám.",
+      },
+      { id: "pushed_beer", text: "Přisunul ti pivo.", responseLabel: "..." },
+      {
+        id: "not_bad_guard",
+        text: "„A víš co? Na hlídače sis nevedl špatně.“",
+        responseLabel: "Napiju se.",
       },
     ],
   },

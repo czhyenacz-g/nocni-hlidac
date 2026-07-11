@@ -630,6 +630,19 @@ export interface GameState {
    * ho vždy vynuluje zpátky na `false`.
    */
   monsterDefeated: boolean;
+  /**
+   * `true`, jakmile hráč BĚHEM AKTUÁLNÍHO RUNU aspoň jednou potvrdil zásah,
+   * který porazil monstrum (viz CONFIRM_MONSTER_HIT, `result.monsterDefeated`
+   * — první i opakovaná porážka, `monsterDefeated` výše se na rozdíl od
+   * tohohle pole resetuje KAŽDOU noc). Stejná "přenáší se přes
+   * restart/další noc, resetuje na nový run" konvence jako `hasShotgun`
+   * výše (viz app/play/page.tsx#handleBeginShift) — NENÍ to totéž jako
+   * `game/core/monsterDefeatReward.ts#monsterDefeatsCount` (ten je
+   * celoživotní přes všechny runy). Používá se pro rozlišení Hardcore
+   * "no-kill" endingu noci 30 (viz game/core/night30Ending.ts) od běžné
+   * výhry — hráč mohl bestii porazit v MINULÉM runu, na tomhle poli nezáleží.
+   */
+  monsterKilledThisRun: boolean;
 
   isRunning: boolean;
   audioMuted: boolean;

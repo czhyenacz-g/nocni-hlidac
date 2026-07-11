@@ -42,6 +42,7 @@ export function createInitialGameState(
   shotgunAmmoOverride?: number,
   hasDoubleBarrelShotgunOverride?: boolean,
   officeDoorLockMsOverride?: number,
+  monsterKilledThisRunOverride?: boolean,
 ): GameState {
   const gameMode = gameModeOverride ?? DEFAULT_GAME_MODE;
 
@@ -129,6 +130,9 @@ export function createInitialGameState(
     monsterHitsToday: 0,
     pendingMonsterHits: 0,
     monsterDefeated: false,
+    // Přenáší se přes restart/další noc stejně jako hasShotgun výše (viz
+    // app/play/page.tsx#handleBeginShift) — nový run vždy začíná `false`.
+    monsterKilledThisRun: monsterKilledThisRunOverride ?? false,
 
     isRunning: false,
     audioMuted: false,
