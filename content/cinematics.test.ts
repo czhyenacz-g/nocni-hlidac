@@ -112,10 +112,16 @@ describe("valhala_ending cinematic", () => {
     expect(scene?.segments.at(-1)?.responseLabel).toBe("Napiju se.");
   });
 
-  it("every segment has a responseLabel (no audioSrc required — audio TODO)", () => {
+  it("every segment has a responseLabel", () => {
     const scene = getCinematicScene("valhala_ending");
     expect(scene?.segments.every((segment) => Boolean(segment.responseLabel))).toBe(true);
-    expect(scene?.segments.every((segment) => segment.audioSrc === undefined)).toBe(true);
+  });
+
+  it("the three Hynek quote segments have audioSrc pointing into public/object_13/story/segments/", () => {
+    const scene = getCinematicScene("valhala_ending");
+    const withAudio = scene?.segments.filter((segment) => segment.audioSrc !== undefined) ?? [];
+    expect(withAudio).toHaveLength(3);
+    expect(withAudio.every((segment) => segment.audioSrc?.startsWith("/object_13/story/segments/valhala_"))).toBe(true);
   });
 });
 
@@ -140,10 +146,18 @@ describe("warrior_ending cinematic", () => {
     expect(scene?.segments.some((segment) => segment.text.includes("válečník"))).toBe(true);
   });
 
-  it("every segment has a responseLabel (no audioSrc required — audio TODO)", () => {
+  it("every segment has a responseLabel", () => {
     const scene = getCinematicScene("warrior_ending");
     expect(scene?.segments.every((segment) => Boolean(segment.responseLabel))).toBe(true);
-    expect(scene?.segments.every((segment) => segment.audioSrc === undefined)).toBe(true);
+  });
+
+  it("the eleven Hynek quote segments have audioSrc pointing into public/object_13/story/segments/", () => {
+    const scene = getCinematicScene("warrior_ending");
+    const withAudio = scene?.segments.filter((segment) => segment.audioSrc !== undefined) ?? [];
+    expect(withAudio).toHaveLength(11);
+    expect(
+      withAudio.every((segment) => segment.audioSrc?.startsWith("/object_13/story/segments/posledni_smena_")),
+    ).toBe(true);
   });
 });
 
@@ -168,9 +182,17 @@ describe("no_kill_ending cinematic", () => {
     expect(scene?.segments.at(-1)?.responseLabel).toBe("Zpátky ke stolu.");
   });
 
-  it("every segment has a responseLabel (no audioSrc required — audio TODO)", () => {
+  it("every segment has a responseLabel", () => {
     const scene = getCinematicScene("no_kill_ending");
     expect(scene?.segments.every((segment) => Boolean(segment.responseLabel))).toBe(true);
-    expect(scene?.segments.every((segment) => segment.audioSrc === undefined)).toBe(true);
+  });
+
+  it("the three Hynek quote segments have audioSrc pointing into public/object_13/story/segments/", () => {
+    const scene = getCinematicScene("no_kill_ending");
+    const withAudio = scene?.segments.filter((segment) => segment.audioSrc !== undefined) ?? [];
+    expect(withAudio).toHaveLength(3);
+    expect(
+      withAudio.every((segment) => segment.audioSrc?.startsWith("/object_13/story/segments/prvni_vyplata_")),
+    ).toBe(true);
   });
 });

@@ -40,6 +40,7 @@ export function createBatteryEmergencyInput(
   monsterHitsToday?: number,
   monsterHitsRequiredForFinal?: number,
   officeDoorLockMs?: number,
+  monsterAlreadyDefeatedTonight?: boolean,
 ): EmergencyMiniGameInput {
   return {
     objective: "collect_item",
@@ -52,6 +53,7 @@ export function createBatteryEmergencyInput(
     monsterHitsToday,
     monsterHitsRequiredForFinal,
     officeDoorLockMs,
+    monsterAlreadyDefeatedTonight,
   };
 }
 
@@ -70,6 +72,7 @@ export function createShotgunEmergencyInput(
   monsterHitsToday?: number,
   monsterHitsRequiredForFinal?: number,
   officeDoorLockMs?: number,
+  monsterAlreadyDefeatedTonight?: boolean,
 ): EmergencyMiniGameInput {
   return {
     objective: "collect_item",
@@ -82,6 +85,7 @@ export function createShotgunEmergencyInput(
     monsterHitsToday,
     monsterHitsRequiredForFinal,
     officeDoorLockMs,
+    monsterAlreadyDefeatedTonight,
   };
 }
 

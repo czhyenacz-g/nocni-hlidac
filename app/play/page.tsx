@@ -868,6 +868,7 @@ export default function PlayPage() {
             state.monsterHitsToday,
             state.nightFeatures.monsterTrueEndingRequiredHits,
             state.officeDoorLockMs,
+            state.monsterDefeated,
           ),
         });
       } else {
@@ -884,6 +885,7 @@ export default function PlayPage() {
             state.monsterHitsToday,
             state.nightFeatures.monsterTrueEndingRequiredHits,
             state.officeDoorLockMs,
+            state.monsterDefeated,
           ),
         });
       }

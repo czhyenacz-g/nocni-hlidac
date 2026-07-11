@@ -266,6 +266,13 @@ function createInitialState(input: EmergencyMiniGameInput): MiniGameRefState {
   const equipment = resolveEquipmentFromInput(input);
   const player = createInitialPlayer(equipment, placement.playerStart);
   const enemy = createInitialEnemy(player, placement.monsterSpawn, layout.walls, layout.world.width, layout.world.height);
+  // Monstrum už tuhle noc bylo poraženo (viz input.monsterAlreadyDefeatedTonight,
+  // GameState.monsterDefeated) — bez AI/viditelnosti/ohrožení pro celou
+  // výpravu, žádná zvláštní větev navíc potřeba (enemy.alive gate v tick()/
+  // draw() to obojí už sám pokrývá).
+  if (input.monsterAlreadyDefeatedTonight) {
+    enemy.alive = false;
+  }
   const exitZone = getRoomBoundsForSlot(layout, placement.playerExitSlotId);
 
   return {

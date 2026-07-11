@@ -55,6 +55,15 @@ describe("createBatteryEmergencyInput", () => {
     expect(input.monsterHitsToday).toBe(8);
     expect(input.monsterHitsRequiredForFinal).toBe(10);
   });
+
+  it("monsterAlreadyDefeatedTonight defaults to undefined when not passed", () => {
+    expect(createBatteryEmergencyInput({ hasShotgun: false, ammo: 0 }).monsterAlreadyDefeatedTonight).toBeUndefined();
+  });
+
+  it("passes monsterAlreadyDefeatedTonight through unchanged when provided (GameState.monsterDefeated)", () => {
+    const input = createBatteryEmergencyInput({ hasShotgun: true, ammo: 1 }, [], 10, 10, undefined, true);
+    expect(input.monsterAlreadyDefeatedTonight).toBe(true);
+  });
 });
 
 describe("createShotgunEmergencyInput", () => {
@@ -93,6 +102,15 @@ describe("createShotgunEmergencyInput", () => {
     const input = createShotgunEmergencyInput({ hasShotgun: false, ammo: 0 }, [], 9, 10);
     expect(input.monsterHitsToday).toBe(9);
     expect(input.monsterHitsRequiredForFinal).toBe(10);
+  });
+
+  it("monsterAlreadyDefeatedTonight defaults to undefined when not passed", () => {
+    expect(createShotgunEmergencyInput({ hasShotgun: false, ammo: 0 }).monsterAlreadyDefeatedTonight).toBeUndefined();
+  });
+
+  it("passes monsterAlreadyDefeatedTonight through unchanged when provided (GameState.monsterDefeated)", () => {
+    const input = createShotgunEmergencyInput({ hasShotgun: true, ammo: 1 }, [], 10, 10, undefined, true);
+    expect(input.monsterAlreadyDefeatedTonight).toBe(true);
   });
 });
 

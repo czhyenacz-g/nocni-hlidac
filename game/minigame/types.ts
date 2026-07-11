@@ -201,6 +201,20 @@ export interface EmergencyMiniGameInput {
    * v týhle výpravě nikdy nespustí (viz `isMonsterHitFinal`).
    */
   monsterHitsRequiredForFinal?: number;
+  /**
+   * `true`, pokud hráč BĚHEM AKTUÁLNÍ NOCI monstrum už porazil (viz
+   * `GameState.monsterDefeated` — na rozdíl od `monsterKilledThisRun` se
+   * tohle pole resetuje každou noc, přesně "platí jen pro tuhle jednu noc",
+   * viz zadání bugreportu "po zabití by se už neměla spawnovat"). Monstrum
+   * je pro zbytek noci stažené/frozen (viz gameReducer.ts ENEMY_ADVANCE
+   * guard) — bez tohohle pole ale EmergencyMiniGame.tsx spouští VLASTNÍ
+   * nezávislou simulaci nepřítele na každé výpravě, takže by šlo monstrum
+   * "zabít" znovu (a znovu, `monsterHitsToday` je už za prahem, takže by
+   * umřelo na první zásah) i tu samou noc. `true` = EmergencyMiniGame.tsx
+   * vytvoří nepřítele rovnou `alive: false` (žádná AI, žádná viditelnost,
+   * žádné ohrožení, viz createInitialState). Chybí/`false` = normální chování.
+   */
+  monsterAlreadyDefeatedTonight?: boolean;
 }
 
 // ── Efekty pro hlavní hru (viz

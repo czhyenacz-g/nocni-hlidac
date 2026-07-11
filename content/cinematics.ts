@@ -163,8 +163,11 @@ export const CINEMATIC_SCENES: Record<CinematicSceneId, CinematicScene> = {
   // content/monsterDefeatedCinematic.ts ("Potkáme se až nastane 30. den...
   // nebo ve Valhale."). imageSrc záměrně ukazuje na `wallhala_ending.png`
   // (ne `.webp`, ne přejmenované/opravené na "valhalla") — přesný existující
-  // asset dodaný v zadání, beze změny názvu. Audio zatím TODO, žádný
-  // segment nemá audioSrc (CinematicScreen.tsx to zvládá beze změny).
+  // asset dodaný v zadání, beze změny názvu. Namluvené jen Hynkovy repliky
+  // (ne popisné věty) — jeden souvislý diktafonový záznam (valhala.m4a)
+  // rozstřižený podle ticha (ffmpeg silencedetect) a ověřený přepisem
+  // (Whisper, stejný postup jako u story_1_*.m4a segmentů), jeden klip na
+  // segment, stejný vzor jako old_guard_first_death_warning.
   valhala_ending: {
     id: "valhala_ending",
     imageSrc: "/object_13/story/wallhala_ending.png",
@@ -177,17 +180,24 @@ export const CINEMATIC_SCENES: Record<CinematicSceneId, CinematicScene> = {
         responseLabel: "Rozhlížím se.",
       },
       { id: "hynek_raises_mug", text: "Naproti tobě Hynek zvedl půllitr.", responseLabel: "..." },
-      { id: "close_call", text: "„Byl jsi blízko.“", responseLabel: "Mlčím." },
+      {
+        id: "close_call",
+        text: "„Byl jsi blízko.“",
+        audioSrc: "/object_13/story/segments/valhala_close_call.m4a",
+        responseLabel: "Mlčím.",
+      },
       { id: "smiled", text: "Chvíli se usmál.", responseLabel: "..." },
       {
         id: "thirty_or_valhalla",
         text: "„Nakonec jsem měl pravdu. Buď se potkáme třicátou noc… nebo ve Valhale.“",
+        audioSrc: "/object_13/story/segments/valhala_thirty_or_valhalla.m4a",
         responseLabel: "Poslouchám.",
       },
       { id: "pushed_beer", text: "Přisunul ti pivo.", responseLabel: "..." },
       {
         id: "not_bad_guard",
         text: "„A víš co? Na hlídače sis nevedl špatně.“",
+        audioSrc: "/object_13/story/segments/valhala_not_bad_guard.m4a",
         responseLabel: "Napiju se.",
       },
     ],
@@ -200,7 +210,9 @@ export const CINEMATIC_SCENES: Record<CinematicSceneId, CinematicScene> = {
   // druhou fázi (ztemnělá obrazovka, epilog + úmrtní záznam), NE do menu
   // (na rozdíl od handleValhalaCinematicComplete) — tahle scéna sama o sobě
   // ending nekončí. imageSrc přesně `warior_ending.png` (překlep záměrný,
-  // beze změny názvu). Audio zatím TODO, žádný segment nemá audioSrc.
+  // beze změny názvu). Namluvené jen Hynkovy repliky — jeden souvislý
+  // diktafonový záznam (posledni_smena.m4a) rozstřižený a ověřený stejně
+  // jako valhala_ending výše.
   warrior_ending: {
     id: "warrior_ending",
     imageSrc: "/object_13/story/warior_ending.png",
@@ -215,10 +227,16 @@ export const CINEMATIC_SCENES: Record<CinematicSceneId, CinematicScene> = {
       {
         id: "not_just_good_watch",
         text: "„Tak jo. Tohle už nebyla jen dobrá hlídka.“",
+        audioSrc: "/object_13/story/segments/posledni_smena_not_just_good_watch.m4a",
         responseLabel: "...",
       },
       { id: "nodded", text: "Podíval se na tebe a přikývl.", responseLabel: "..." },
-      { id: "you_became_warrior", text: "„Stal se z tebe válečník.“", responseLabel: "Mlčím." },
+      {
+        id: "you_became_warrior",
+        text: "„Stal se z tebe válečník.“",
+        audioSrc: "/object_13/story/segments/posledni_smena_you_became_warrior.m4a",
+        responseLabel: "Mlčím.",
+      },
       {
         id: "men_in_suits",
         text: "Za jeho zády se ozýval kov, kroky a tlumené hlasy mužů v ochranných oblecích.",
@@ -227,49 +245,62 @@ export const CINEMATIC_SCENES: Record<CinematicSceneId, CinematicScene> = {
       {
         id: "thank_you_bait",
         text: "„A hlavně — děkuju ti. Pomohl jsi mi otestovat vábničku na monstra.“",
+        audioSrc: "/object_13/story/segments/posledni_smena_thank_you_bait.m4a",
         responseLabel: "Cože?",
       },
       { id: "points_at_generator", text: "Ukázal ke generátoru.", responseLabel: "..." },
-      { id: "your_generator", text: "„Jo. Přesně tuhle. Tvůj generátor.“", responseLabel: "..." },
+      {
+        id: "your_generator",
+        text: "„Jo. Přesně tuhle. Tvůj generátor.“",
+        audioSrc: "/object_13/story/segments/posledni_smena_your_generator.m4a",
+        responseLabel: "...",
+      },
       { id: "let_it_sink_in", text: "Chvíli tě nechal pochopit, co právě řekl.", responseLabel: "..." },
       {
         id: "not_out_of_town",
         text: "„Popravdě… nebyl jsem mimo město.“",
+        audioSrc: "/object_13/story/segments/posledni_smena_not_out_of_town.m4a",
         responseLabel: "...",
       },
       {
         id: "you_bought_time",
         text: "„Ty jsi mi jen dal čas. Čas dokončit přípravy.“",
+        audioSrc: "/object_13/story/segments/posledni_smena_you_bought_time.m4a",
         responseLabel: "Chápu.",
       },
       { id: "lights_on", text: "Za Hynkem se rozsvítily kontrolky.", responseLabel: "..." },
       {
         id: "maximum_fireworks",
         text: "„Za chvíli to zapneme na maximum. A připravíme opravdu velký ohňostroj.“",
+        audioSrc: "/object_13/story/segments/posledni_smena_maximum_fireworks.m4a",
         responseLabel: "...",
       },
       { id: "opened_briefcase", text: "Podal ti otevřený kufřík s penězi.", responseLabel: "..." },
       {
         id: "your_pay_plus_bonus",
         text: "„Tohle je tvoje výplata. A něco navíc za mlčenlivost.“",
+        audioSrc: "/object_13/story/segments/posledni_smena_your_pay_plus_bonus.m4a",
         responseLabel: "Beru.",
       },
       { id: "grew_serious", text: "Pak zvážněl.", responseLabel: "..." },
       {
         id: "thousand_monsters",
         text: "„Musíme pryč. Až to spustíme, přiláká to možná tisíc monster.“",
+        audioSrc: "/object_13/story/segments/posledni_smena_thousand_monsters.m4a",
         responseLabel: "Utíkám.",
       },
       { id: "step_to_door", text: "Udělá krok ke dveřím.", responseLabel: "..." },
       {
         id: "project_ends",
         text: "„Celý projekt tímhle končí. Ty jsi svoji práci odvedl.“",
+        audioSrc: "/object_13/story/segments/posledni_smena_project_ends.m4a",
         responseLabel: "...",
       },
       { id: "turned_back", text: "Ještě se otočil.", responseLabel: "..." },
       {
         id: "good_luck_warrior",
         text: "„Přeju ti všechno nejlepší v nové práci. A díky, válečníku.“",
+        audioSrc: "/object_13/story/segments/posledni_smena_good_luck_warrior.m4a",
         responseLabel: "Sbohem.",
       },
     ],
@@ -279,7 +310,9 @@ export const CINEMATIC_SCENES: Record<CinematicSceneId, CinematicScene> = {
   // VÝPLATA", stejný klikací styl jako warrior_ending/valhala_ending výše
   // (na výslovnou žádost "a to druhý závěrečný taky"). Po dokončení
   // Night30EndingScreen.tsx přepne na druhou fázi (ztemnělá obrazovka,
-  // úmrtní záznam), NE do menu. Audio zatím TODO.
+  // úmrtní záznam), NE do menu. Namluvené jen Hynkovy repliky jako JEDEN
+  // souvislý klip s mezerami mezi částmi (stejný vzor jako valhala_ending
+  // výše — audioSrc jen na prvním segmentu).
   no_kill_ending: {
     id: "no_kill_ending",
     imageSrc: "/object_13/story/no_kill_ending.png",
@@ -295,10 +328,16 @@ export const CINEMATIC_SCENES: Record<CinematicSceneId, CinematicScene> = {
       {
         id: "thirty_nights",
         text: "„Třicet nocí. Bez útěku. Bez hrdinství. Bez zbytečných otázek.“",
+        audioSrc: "/object_13/story/segments/prvni_vyplata_thirty_nights.m4a",
         responseLabel: "...",
       },
       { id: "handed_envelope", text: "Podal ti obálku.", responseLabel: "..." },
-      { id: "good_guard", text: "„Byl jsi dobrý hlídač.“", responseLabel: "Díky." },
+      {
+        id: "good_guard",
+        text: "„Byl jsi dobrý hlídač.“",
+        audioSrc: "/object_13/story/segments/prvni_vyplata_good_guard.m4a",
+        responseLabel: "Díky.",
+      },
       {
         id: "waited_for_truth",
         text: "Čekal jsi vysvětlení. Čekal jsi pravdu. Čekal jsi, že po třiceti nocích něco skončí.",
@@ -308,6 +347,7 @@ export const CINEMATIC_SCENES: Record<CinematicSceneId, CinematicScene> = {
       {
         id: "see_you_in_a_month",
         text: "„Tak se uvidíme zase za měsíc.“",
+        audioSrc: "/object_13/story/segments/prvni_vyplata_see_you_in_a_month.m4a",
         responseLabel: "Zpátky ke stolu.",
       },
     ],
