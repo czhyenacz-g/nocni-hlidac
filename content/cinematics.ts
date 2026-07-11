@@ -2,7 +2,12 @@
 // components/screens/CinematicScreen.tsx). Připraveno na to, aby později
 // přibyly další scény/segmenty/audio, beze změny CinematicScreen.tsx.
 
-export type CinematicSceneId = "old_guard_first_death_warning" | "think_it_over_warning" | "valhala_ending";
+export type CinematicSceneId =
+  | "old_guard_first_death_warning"
+  | "think_it_over_warning"
+  | "valhala_ending"
+  | "warrior_ending"
+  | "no_kill_ending";
 
 export interface CinematicSegment {
   id: string;
@@ -184,6 +189,126 @@ export const CINEMATIC_SCENES: Record<CinematicSceneId, CinematicScene> = {
         id: "not_bad_guard",
         text: "„A víš co? Na hlídače sis nevedl špatně.“",
         responseLabel: "Napiju se.",
+      },
+    ],
+  },
+  // Hardcore Noc 30 s aspoň jedním zabitím bestie v aktuálním runu (viz
+  // zadání "Night 30 warrior ending", game/core/night30Ending.ts) — úvodní
+  // část "POSLEDNÍ SMĚNA", zobrazená stejně jako Valhala výše (klikací
+  // segmenty v rámovaném okně), na výslovnou žádost "podobně jako Valhala".
+  // components/screens/Night30EndingScreen.tsx po dokončení přepne na
+  // druhou fázi (ztemnělá obrazovka, epilog + úmrtní záznam), NE do menu
+  // (na rozdíl od handleValhalaCinematicComplete) — tahle scéna sama o sobě
+  // ending nekončí. imageSrc přesně `warior_ending.png` (překlep záměrný,
+  // beze změny názvu). Audio zatím TODO, žádný segment nemá audioSrc.
+  warrior_ending: {
+    id: "warrior_ending",
+    imageSrc: "/object_13/story/warior_ending.png",
+    title: "POSLEDNÍ SMĚNA",
+    segments: [
+      { id: "thirtieth_day", text: "Třicátý den.", responseLabel: "..." },
+      {
+        id: "hynek_smiling",
+        text: "Hynek stál uprostřed místnosti a usmíval se víc než obvykle.",
+        responseLabel: "Sleduju ho.",
+      },
+      {
+        id: "not_just_good_watch",
+        text: "„Tak jo. Tohle už nebyla jen dobrá hlídka.“",
+        responseLabel: "...",
+      },
+      { id: "nodded", text: "Podíval se na tebe a přikývl.", responseLabel: "..." },
+      { id: "you_became_warrior", text: "„Stal se z tebe válečník.“", responseLabel: "Mlčím." },
+      {
+        id: "men_in_suits",
+        text: "Za jeho zády se ozýval kov, kroky a tlumené hlasy mužů v ochranných oblecích.",
+        responseLabel: "Poslouchám.",
+      },
+      {
+        id: "thank_you_bait",
+        text: "„A hlavně — děkuju ti. Pomohl jsi mi otestovat vábničku na monstra.“",
+        responseLabel: "Cože?",
+      },
+      { id: "points_at_generator", text: "Ukázal ke generátoru.", responseLabel: "..." },
+      { id: "your_generator", text: "„Jo. Přesně tuhle. Tvůj generátor.“", responseLabel: "..." },
+      { id: "let_it_sink_in", text: "Chvíli tě nechal pochopit, co právě řekl.", responseLabel: "..." },
+      {
+        id: "not_out_of_town",
+        text: "„Popravdě… nebyl jsem mimo město.“",
+        responseLabel: "...",
+      },
+      {
+        id: "you_bought_time",
+        text: "„Ty jsi mi jen dal čas. Čas dokončit přípravy.“",
+        responseLabel: "Chápu.",
+      },
+      { id: "lights_on", text: "Za Hynkem se rozsvítily kontrolky.", responseLabel: "..." },
+      {
+        id: "maximum_fireworks",
+        text: "„Za chvíli to zapneme na maximum. A připravíme opravdu velký ohňostroj.“",
+        responseLabel: "...",
+      },
+      { id: "opened_briefcase", text: "Podal ti otevřený kufřík s penězi.", responseLabel: "..." },
+      {
+        id: "your_pay_plus_bonus",
+        text: "„Tohle je tvoje výplata. A něco navíc za mlčenlivost.“",
+        responseLabel: "Beru.",
+      },
+      { id: "grew_serious", text: "Pak zvážněl.", responseLabel: "..." },
+      {
+        id: "thousand_monsters",
+        text: "„Musíme pryč. Až to spustíme, přiláká to možná tisíc monster.“",
+        responseLabel: "Utíkám.",
+      },
+      { id: "step_to_door", text: "Udělá krok ke dveřím.", responseLabel: "..." },
+      {
+        id: "project_ends",
+        text: "„Celý projekt tímhle končí. Ty jsi svoji práci odvedl.“",
+        responseLabel: "...",
+      },
+      { id: "turned_back", text: "Ještě se otočil.", responseLabel: "..." },
+      {
+        id: "good_luck_warrior",
+        text: "„Přeju ti všechno nejlepší v nové práci. A díky, válečníku.“",
+        responseLabel: "Sbohem.",
+      },
+    ],
+  },
+  // Hardcore Noc 30 BEZ zabití bestie v aktuálním runu (viz zadání "Night 30
+  // no-kill ending", game/core/night30Ending.ts) — úvodní část "PRVNÍ
+  // VÝPLATA", stejný klikací styl jako warrior_ending/valhala_ending výše
+  // (na výslovnou žádost "a to druhý závěrečný taky"). Po dokončení
+  // Night30EndingScreen.tsx přepne na druhou fázi (ztemnělá obrazovka,
+  // úmrtní záznam), NE do menu. Audio zatím TODO.
+  no_kill_ending: {
+    id: "no_kill_ending",
+    imageSrc: "/object_13/story/no_kill_ending.png",
+    title: "PRVNÍ VÝPLATA",
+    segments: [
+      { id: "thirtieth_day", text: "Třicátý den.", responseLabel: "..." },
+      {
+        id: "hynek_before_dawn",
+        text: "Hynek se objevil ve dveřích dřív, než stačil vyjít úsvit.",
+        responseLabel: "...",
+      },
+      { id: "looked_you_over", text: "Chvíli si tě jen prohlížel.", responseLabel: "Čekám." },
+      {
+        id: "thirty_nights",
+        text: "„Třicet nocí. Bez útěku. Bez hrdinství. Bez zbytečných otázek.“",
+        responseLabel: "...",
+      },
+      { id: "handed_envelope", text: "Podal ti obálku.", responseLabel: "..." },
+      { id: "good_guard", text: "„Byl jsi dobrý hlídač.“", responseLabel: "Díky." },
+      {
+        id: "waited_for_truth",
+        text: "Čekal jsi vysvětlení. Čekal jsi pravdu. Čekal jsi, že po třiceti nocích něco skončí.",
+        responseLabel: "...",
+      },
+      { id: "lit_cigarette", text: "Hynek si jen zapálil cigaretu.", responseLabel: "..." },
+      {
+        id: "see_you_in_a_month",
+        text: "„Tak se uvidíme zase za měsíc.“",
+        responseLabel: "Zpátky ke stolu.",
       },
     ],
   },

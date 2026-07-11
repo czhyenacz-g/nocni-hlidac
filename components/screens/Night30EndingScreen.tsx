@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { COPY } from "@/content/copy";
+import { CinematicSceneId } from "@/content/cinematics";
 import { PlayerAchievement } from "@/game/core/playerAchievements";
 import AchievementResultPanel from "@/components/achievements/AchievementResultPanel";
+import CinematicScreen from "@/components/screens/CinematicScreen";
 
 interface Night30EndingScreenProps {
   /** "no_kill" (PRVNÍ VÝPLATA) nebo "warrior" (POSLEDNÍ SMĚNA) — nikdy "none", volající (app/play/page.tsx) tenhle screen pro "none" vůbec nemountuje. */
@@ -13,44 +15,45 @@ interface Night30EndingScreenProps {
   onGoToMenu: () => void;
 }
 
-const BACKGROUND_SRC_BY_KIND: Record<Night30EndingScreenProps["kind"], string> = {
-  no_kill: "/object_13/story/no_kill_ending.png",
-  // Přesný existující asset ze zadání — NEOPRAVOVAT na "warrior_ending.png".
-  warrior: "/object_13/story/warior_ending.png",
+const INTRO_SCENE_ID_BY_KIND: Record<Night30EndingScreenProps["kind"], CinematicSceneId> = {
+  no_kill: "no_kill_ending",
+  warrior: "warrior_ending",
 };
+
+type Phase = "intro" | "epilogue" | "record";
 
 // Hardcore Noc 30 ending — dvě varianty ("no_kill"/PRVNÍ VÝPLATA, "warrior"/
 // POSLEDNÍ SMĚNA, viz game/core/night30Ending.ts#resolveNight30Ending) sdílí
-// stejnou dvoufázovou strukturu, jen jiný obrázek/text/volitelný epilog
-// navíc — proto jedna komponenta s `kind` propem, ne dvě skoro identické.
-// NE CinematicScreen.tsx — ten je letterboxovaný/object-contain se stejným
-// rámovaným obrázkem po celou dobu, zadání tady výslovně chce full-bleed
-// "object-fit: cover" pozadí + tmavý overlay, jiný vizuální jazyk. Dvě
-// fáze, obě s jedním tlačítkem (na výslovnou žádost "jednoduché ovládání",
-// ne segment-po-segmentu jako u CinematicScreen): "intro" (dopis od Hynka
-// přes celý obrázek), "record" (ztemnělá obrazovka, volitelný epilog +
-// bílý úmrtní záznam). Po "record" run končí — návrat do menu, žádné
-// pokračování na noc 31 (viz app/play/page.tsx).
+// stejnou třífázovou strukturu, ne dvě skoro identické komponenty:
+// "intro" — klikací CinematicScreen scéna (content/cinematics.ts
+//   no_kill_ending/warrior_ending), na výslovnou žádost "mělo by být v okně
+//   a s postupným přehráváním zprávy, podobně jako Valhala".
+// "epilogue" — jen warrior (copy.epilogueText), na výslovnou žádost "epilog
+//   udělat stejným způsobem — akorát místo obrázku černá obrazovka s
+//   textem" — samostatná obrazovka s jedním "Pokračovat" tlačítkem, no_kill
+//   variantu úplně přeskočí (nemá epilog), rovnou na "record".
+// "record" — ztemnělá obrazovka, úmrtní záznam + achievementy + návrat do
+//   menu. Po ní run končí, žádné pokračování na noc 31 (viz app/play/page.tsx).
 export default function Night30EndingScreen({ kind, newlyUnlockedAchievements = [], onGoToMenu }: Night30EndingScreenProps) {
-  const [phase, setPhase] = useState<"intro" | "record">("intro");
+  const [phase, setPhase] = useState<Phase>("intro");
   const copy = kind === "no_kill" ? COPY.night30Ending.noKill : COPY.night30Ending.warrior;
 
   if (phase === "intro") {
     return (
-      <main className="relative min-h-screen w-full flex items-center justify-center p-4">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${BACKGROUND_SRC_BY_KIND[kind]})` }}
-          aria-hidden="true"
-        />
-        {/* Jemný tmavý overlay jen kvůli čitelnosti textu (viz zadání) — sám obrázek zůstává beze změny. */}
-        <div className="absolute inset-0 bg-black/60" aria-hidden="true" />
+      <CinematicScreen
+        sceneId={INTRO_SCENE_ID_BY_KIND[kind]}
+        onComplete={() => setPhase(copy.epilogueText ? "epilogue" : "record")}
+      />
+    );
+  }
 
-        <div className="relative z-10 w-full max-w-xl pixel-panel bg-black/50 p-6">
-          <h1 className="text-sm font-bold tracking-widest text-amber-300 mb-4">{copy.title}</h1>
-          <p className="text-sm text-gray-100 whitespace-pre-line leading-relaxed mb-6">{copy.introText}</p>
+  if (phase === "epilogue" && copy.epilogueText) {
+    return (
+      <main className="relative min-h-screen w-full bg-black flex flex-col items-center justify-center p-4 gap-4">
+        <div className="w-full max-w-2xl pixel-panel p-4">
+          <p className="text-sm text-gray-100 whitespace-pre-line leading-relaxed mb-4">{copy.epilogueText}</p>
           <button
-            className="pixel-button console-button console-button--primary tap-target px-6 py-3 text-sm w-full"
+            className="pixel-button tap-target px-4 py-2 text-xs w-full"
             onClick={() => setPhase("record")}
           >
             {COPY.night30Ending.continueLabel}
@@ -63,13 +66,6 @@ export default function Night30EndingScreen({ kind, newlyUnlockedAchievements = 
   return (
     <main className="relative min-h-screen w-full flex items-center justify-center p-4 bg-black">
       <div className="relative z-10 w-full max-w-lg text-center">
-        {/* Volitelný narativní epilog PŘED úmrtním záznamem (jen warrior — viz
-            zadání "epilog po penězích") — no_kill kind ho nemá, rovnou
-            přechází na záznam. */}
-        {copy.epilogueText && (
-          <p className="text-left text-xs text-gray-300 whitespace-pre-line leading-relaxed mb-6">{copy.epilogueText}</p>
-        )}
-
         <p className="text-xs text-gray-500 mb-1">{COPY.night30Ending.recordHeading}</p>
         <h1 className="text-lg font-bold text-white tracking-widest mb-6">{COPY.night30Ending.recordTitle}</h1>
 

@@ -118,3 +118,59 @@ describe("valhala_ending cinematic", () => {
     expect(scene?.segments.every((segment) => segment.audioSrc === undefined)).toBe(true);
   });
 });
+
+describe("warrior_ending cinematic", () => {
+  it("uses the exact warior_ending.png asset, unrenamed", () => {
+    const scene = getCinematicScene("warrior_ending");
+    expect(scene?.imageSrc).toBe("/object_13/story/warior_ending.png");
+  });
+
+  it("has the UI title POSLEDNÍ SMĚNA", () => {
+    const scene = getCinematicScene("warrior_ending");
+    expect(scene?.title).toBe("POSLEDNÍ SMĚNA");
+  });
+
+  it("the first segment is 'Třicátý den.'", () => {
+    const scene = getCinematicScene("warrior_ending");
+    expect(scene?.segments[0].text).toBe("Třicátý den.");
+  });
+
+  it("includes the 'you became a warrior' line", () => {
+    const scene = getCinematicScene("warrior_ending");
+    expect(scene?.segments.some((segment) => segment.text.includes("válečník"))).toBe(true);
+  });
+
+  it("every segment has a responseLabel (no audioSrc required — audio TODO)", () => {
+    const scene = getCinematicScene("warrior_ending");
+    expect(scene?.segments.every((segment) => Boolean(segment.responseLabel))).toBe(true);
+    expect(scene?.segments.every((segment) => segment.audioSrc === undefined)).toBe(true);
+  });
+});
+
+describe("no_kill_ending cinematic", () => {
+  it("uses the exact no_kill_ending.png asset", () => {
+    const scene = getCinematicScene("no_kill_ending");
+    expect(scene?.imageSrc).toBe("/object_13/story/no_kill_ending.png");
+  });
+
+  it("has the UI title PRVNÍ VÝPLATA", () => {
+    const scene = getCinematicScene("no_kill_ending");
+    expect(scene?.title).toBe("PRVNÍ VÝPLATA");
+  });
+
+  it("the first segment is 'Třicátý den.'", () => {
+    const scene = getCinematicScene("no_kill_ending");
+    expect(scene?.segments[0].text).toBe("Třicátý den.");
+  });
+
+  it("the last segment's responseLabel is 'Zpátky ke stolu.'", () => {
+    const scene = getCinematicScene("no_kill_ending");
+    expect(scene?.segments.at(-1)?.responseLabel).toBe("Zpátky ke stolu.");
+  });
+
+  it("every segment has a responseLabel (no audioSrc required — audio TODO)", () => {
+    const scene = getCinematicScene("no_kill_ending");
+    expect(scene?.segments.every((segment) => Boolean(segment.responseLabel))).toBe(true);
+    expect(scene?.segments.every((segment) => segment.audioSrc === undefined)).toBe(true);
+  });
+});
