@@ -50,6 +50,14 @@ describe("COPY.menu.leaderboardLinkLabel", () => {
   });
 });
 
+// Servisní terminál na LoadingScreen — první řádek pro gameMode "normal"
+// (viz zadání, components/screens/LoadingScreen.tsx).
+describe("COPY.loading.difficultyNormalLabel", () => {
+  it("is the exact required text", () => {
+    expect(COPY.loading.difficultyNormalLabel).toBe("Obtížnost NORMAL");
+  });
+});
+
 // Úvodní věta hlavního menu — "Zlatý hlídač" (hasDefeatedMonster nebo
 // doubleBarrelUnlocked, viz MainMenuScreen.tsx#isGoldenGuard) dostává jinou
 // větu MÍSTO dřívějšího samostatného veteranStatus panelu (ten byl

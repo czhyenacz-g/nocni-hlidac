@@ -7,6 +7,17 @@ import { LOADING_SCREEN_DURATION_MS, LOADING_SCREEN_HINT_COUNT } from "@/game/ba
 import { preloadBackgroundImages, BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 import { preloadCameraImages } from "@/game/cameras/cameraAssets.object13";
 import SceneBackground from "@/components/SceneBackground";
+import { GameMode } from "@/game/core/gameMode";
+
+interface LoadingScreenProps {
+  /**
+   * Zvolený režim (viz app/play/page.tsx#selectedGameModeRef — NE
+   * state.gameMode, ten se zapisuje až v START_SHIFT, po loading obrazovce).
+   * Jen pro "normal" se vypíše první řádek "Obtížnost NORMAL" (viz zadání) —
+   * Hardcore zatím žádnou obdobu nemá.
+   */
+  gameMode: GameMode;
+}
 
 // Rozdělí hint na věty (podle .!? následovaného mezerou/koncem) — LoadingScreen
 // ukazuje vždy jen JEDEN hint, ne víc různých najednou, ale pokud má dvě věty,
@@ -22,7 +33,7 @@ function splitSentences(text: string): string[] {
 // snímky do cache prohlížeče (viz preloadBackgroundImages, preloadCameraImages),
 // ať se pak zobrazí okamžitě i při zhoršeném připojení později ve směně.
 // Atmosférický servisní terminál Objektu 13 zatím nejde přeskočit (viz TODO.md).
-export default function LoadingScreen() {
+export default function LoadingScreen({ gameMode }: LoadingScreenProps) {
   const [hint] = useState(() => selectLoadingHints(LOADING_SCREEN_HINT_COUNT)[0]);
   const sentences = useMemo(() => (hint ? splitSentences(hint.text) : []), [hint]);
   const [visibleCount, setVisibleCount] = useState(0);
@@ -64,6 +75,12 @@ export default function LoadingScreen() {
           <p className="text-[10px] text-gray-500 mb-4">{COPY.loading.subtitle}</p>
 
           <div className="flex flex-col gap-1.5 text-xs text-gray-400 min-h-32">
+            {gameMode === "normal" && (
+              <p>
+                <span className="text-green-500">{"> "}</span>
+                {COPY.loading.difficultyNormalLabel}
+              </p>
+            )}
             <p>
               <span className="text-green-500">{"> "}</span>
               {sentences.slice(0, visibleCount).join(" ")}

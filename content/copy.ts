@@ -442,6 +442,10 @@ export const COPY = {
   loading: {
     title: "OBJEKT 13 — SERVISNÍ TERMINÁL",
     subtitle: "Spouštím systémy směny...",
+    // První řádek servisního výpisu, jen pro gameMode "normal" (viz zadání,
+    // LoadingScreen.tsx) — Hardcore zatím žádnou obdobu nemá, nebyla
+    // vyžádaná.
+    difficultyNormalLabel: "Obtížnost NORMAL",
   },
   footer: {
     projectName: "Noční hlídač",

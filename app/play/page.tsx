@@ -1510,7 +1510,7 @@ export default function PlayPage() {
       style={atmosphereVars as React.CSSProperties}
     >
       {state.screen === "menu" && <MainMenuScreen onStart={handleStart} />}
-      {state.screen === "loading" && <LoadingScreen />}
+      {state.screen === "loading" && <LoadingScreen gameMode={selectedGameModeRef.current} />}
       {state.screen === "briefing" && <BriefingScreen nightNumber={currentNight} onStartShift={handleBeginShift} />}
       {state.screen === "playing" && thinkItOverCinematicActive && (
         <CinematicScreen sceneId="think_it_over_warning" onComplete={handleThinkItOverCinematicComplete} />
