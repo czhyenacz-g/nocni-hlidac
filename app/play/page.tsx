@@ -270,20 +270,17 @@ export default function PlayPage() {
   // neprůhledným overlayem. `onComplete` ji vrátí na `false`, DeathScreen
   // se pak zobrazí normálně.
   const [deathSequenceActive, setDeathSequenceActive] = useState(false);
-  // Valhala cinematic (viz zadání "speciální Game Over pro pozdní smrt",
-  // content/cinematics.ts#valhala_ending,
-  // game/core/valhalaEnding.ts#shouldShowValhalaEndingCinematic) — speciální
-  // FINÁLNÍ obrazovka pro Hardcore smrt v noci 20–30 včetně, ne meziscéna
-  // před běžným Game Over flow (na rozdíl od dřívější verze). Vlastní
-  // boolean (stejný vzor jako thinkItOverCinematicActive), NE znovupoužití
-  // cinematicPending/activeCinematicSceneId výše — ty patří výhradně k
-  // first-night near-miss flow (onComplete tam vede zpátky do
-  // briefingu/restartu, ne do menu, viz handleCinematicComplete). Dokud je
-  // `true`, ani DeathSequenceOverlay ani DeathScreen se nemountují (viz JSX
-  // níže) — po dokončení scény (handleValhalaCinematicComplete) se rovnou
-  // jde do menu (GO_TO_MENU), NIKDY do DeathSequenceOverlay/DeathScreen —
-  // recordDeath/recordHardcoreDeathOnNight/achievementy/server death sync
-  // už proběhly dřív ve stejném "death" efektu, beze změny.
+  // Valhala cinematic (viz zadání, content/cinematics.ts#valhala_ending,
+  // game/core/valhalaEnding.ts#shouldShowValhalaEndingCinematic) — meziscéna
+  // PŘED death sekvencí výše, jen pro Hardcore smrt v noci 20–30 včetně.
+  // Vlastní boolean (stejný vzor jako thinkItOverCinematicActive), NE
+  // znovupoužití cinematicPending/activeCinematicSceneId výše — ty patří
+  // výhradně k first-night near-miss flow (onComplete tam vede zpátky do
+  // briefingu/restartu, ne do normálního death flow, viz handleCinematicComplete).
+  // Dokud je `true`, ani DeathSequenceOverlay ani DeathScreen se nemountují
+  // (viz JSX níže) — po dokončení scény (handleValhalaCinematicComplete) se
+  // vrátí na `false` a rovnou spustí normální deathSequenceActive, přesně
+  // jako by Valhala nikdy neproběhla.
   const [valhalaCinematicActive, setValhalaCinematicActive] = useState(false);
   // Poslední frame sekvence (monster image + GAME OVER) zůstává zamrzlý na
   // obrazovce ještě DEATH_SCREEN_REVEAL_DELAY_MS po jejím dokončení, než se
@@ -1076,23 +1073,15 @@ export default function PlayPage() {
     dispatch({ type: "SHOW_BRIEFING" });
   }
 
-  // Dokončení Valhala cinematic (viz zadání "vede přímo do menu, žádný
-  // navazující DeathSequenceOverlay/DeathScreen") — na rozdíl od dřívější
-  // verze NEpokračuje do normální death sekvence, jde rovnou do menu, stejně
-  // jako handleGoToMenu. Žádný další dispatch/recordDeath/achievementy — ty
-  // proběhly už jednou v efektu výše, dřív, než se Valhala vůbec rozhodla
-  // spustit; nová achievementa se navíc zobrazí přímo na posledním segmentu
-  // cinematicu (viz newlyUnlockedAchievements prop u <CinematicScreen> níže).
-  // Ambient/heartbeat by jinak hrály dál do menu — normálně je zastaví
-  // DeathSequenceOverlay/deathSequenceConfig.ts (cutAmbientInstantly), ten
-  // se ale pro Valhalu vůbec nespustí, stejný důvod jako u "monsterDefeated"
-  // výše (žádné stopLoop tam bez tohohle bloku).
+  // Dokončení Valhala cinematic (viz zadání, efekt na state.screen ===
+  // "death" výše) — NA ROZDÍL OD handleCinematicComplete výše pokračuje do
+  // normálního death flow (death sekvence -> DeathScreen), ne do
+  // briefingu/restartu — tohle JE skutečná smrt, jen s meziscénou navíc.
+  // Žádný dispatch, žádné další recordDeath/achievementy — ty proběhly už
+  // jednou v efektu výše, dřív, než se Valhala vůbec rozhodla spustit.
   function handleValhalaCinematicComplete() {
     setValhalaCinematicActive(false);
-    audioManager.stopLoop(AUDIO_EVENTS.ambienceLoop);
-    audioManager.stopLoop(AUDIO_EVENTS.heartbeatStressSlow);
-    audioManager.stopLoop(AUDIO_EVENTS.heartbeatStressFast);
-    dispatch({ type: "GO_TO_MENU" });
+    setDeathSequenceActive(true);
   }
 
   function handleGoToMenu() {
@@ -1577,22 +1566,14 @@ export default function PlayPage() {
       {state.screen === "death" && !cinematicPending && activeCinematicSceneId && (
         <CinematicScreen sceneId={activeCinematicSceneId} onComplete={handleCinematicComplete} />
       )}
-      {/* Valhala — speciální finální Game Over obrazovka (viz zadání, efekt
-          výše, game/core/valhalaEnding.ts) — jen Hardcore smrt v noci 20–30
-          včetně. Nezávislá na cinematicPending/activeCinematicSceneId (ty
-          patří výhradně first-night near-miss flow výše) — vlastní boolean,
-          vlastní onComplete, který na rozdíl od handleCinematicComplete jde
-          rovnou do menu, NIKDY do normální death sekvence/DeathScreen (viz
-          JSX guard na obou níže). Achievementy odemčené touhle smrtí (stejný
-          deathNewlyUnlockedAchievements state jako DeathScreen jinak dostává)
-          se zobrazí přímo na posledním segmentu cinematicu — DeathScreen se
-          po Valhale už nikdy nezobrazí. */}
+      {/* Valhala meziscéna (viz zadání, efekt výše, game/core/valhalaEnding.ts) —
+          jen Hardcore smrt v noci 20–30 včetně. Nezávislá na cinematicPending/
+          activeCinematicSceneId (ty patří výhradně first-night near-miss flow
+          výše) — vlastní boolean, vlastní onComplete, který na rozdíl od
+          handleCinematicComplete pokračuje do normální death sekvence, ne do
+          briefingu. */}
       {state.screen === "death" && valhalaCinematicActive && (
-        <CinematicScreen
-          sceneId="valhala_ending"
-          onComplete={handleValhalaCinematicComplete}
-          newlyUnlockedAchievements={deathNewlyUnlockedAchievements}
-        />
+        <CinematicScreen sceneId="valhala_ending" onComplete={handleValhalaCinematicComplete} />
       )}
       {state.screen === "death" &&
         !cinematicPending &&
