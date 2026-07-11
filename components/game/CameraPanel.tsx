@@ -11,7 +11,8 @@ interface CameraPanelProps {
   lightOn: boolean;
   elapsedMs: number;
   monsterRetreatedTo: EnemyStage | null;
-  monsterRetreatVerified: boolean;
+  /** Admin-only rychlá testovací pomůcka (viz zadání "rychlejší testování", game/cameras/cameraDoorAlert.ts) — jen v overview (CameraMonitorGrid), detail už skutečný obsah ukazuje sám. */
+  showAdminDoorAlerts: boolean;
   onSelectCamera: (id: CameraId) => void;
   onCloseCameras: () => void;
 }
@@ -28,7 +29,7 @@ export default function CameraPanel({
   lightOn,
   elapsedMs,
   monsterRetreatedTo,
-  monsterRetreatVerified,
+  showAdminDoorAlerts,
   onSelectCamera,
   onCloseCameras,
 }: CameraPanelProps) {
@@ -42,11 +43,17 @@ export default function CameraPanel({
         lightOn={lightOn}
         elapsedMs={elapsedMs}
         monsterRetreatedTo={monsterRetreatedTo}
-        monsterRetreatVerified={monsterRetreatVerified}
         onBack={onCloseCameras}
       />
     );
   }
 
-  return <CameraMonitorGrid cameras={cameras} onSelectCamera={onSelectCamera} />;
+  return (
+    <CameraMonitorGrid
+      cameras={cameras}
+      enemyStage={enemyStage}
+      showAdminDoorAlerts={showAdminDoorAlerts}
+      onSelectCamera={onSelectCamera}
+    />
+  );
 }

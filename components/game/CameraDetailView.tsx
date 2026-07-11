@@ -10,7 +10,6 @@ interface CameraDetailViewProps {
   lightOn: boolean;
   elapsedMs: number;
   monsterRetreatedTo: EnemyStage | null;
-  monsterRetreatVerified: boolean;
   onBack: () => void;
 }
 
@@ -24,7 +23,6 @@ export default function CameraDetailView({
   lightOn,
   elapsedMs,
   monsterRetreatedTo,
-  monsterRetreatVerified,
   onBack,
 }: CameraDetailViewProps) {
   return (
@@ -36,7 +34,6 @@ export default function CameraDetailView({
         lightOn={lightOn}
         elapsedMs={elapsedMs}
         monsterRetreatedTo={monsterRetreatedTo}
-        monsterRetreatVerified={monsterRetreatVerified}
       />
       <ViewSwitchArrow label={COPY.game.backToOverviewLabel} onClick={onBack} align="left" />
     </div>

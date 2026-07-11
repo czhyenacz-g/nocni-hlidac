@@ -1,10 +1,14 @@
 import { COPY } from "@/content/copy";
-import { CameraDefinition, CameraId } from "@/game/core/types";
+import { CameraDefinition, CameraId, EnemyStage } from "@/game/core/types";
+import { isCameraDoorAlertActive } from "@/game/cameras/cameraDoorAlert";
 import CameraMonitorTile from "./CameraMonitorTile";
 import CameraMonitorRackTile from "./CameraMonitorRackTile";
 
 interface CameraMonitorGridProps {
   cameras: CameraDefinition[];
+  enemyStage: EnemyStage;
+  /** Admin-only rychlá testovací pomůcka (viz zadání "rychlejší testování", game/cameras/cameraDoorAlert.ts) — normální hráč tohle nikdy nedostane, overview nesmí prozrazovat živou polohu nepřítele. */
+  showAdminDoorAlerts: boolean;
   onSelectCamera: (id: CameraId) => void;
 }
 
@@ -23,7 +27,7 @@ const UPPER_TILT_SEQUENCE = ["-rotate-1", "rotate-1", "-rotate-2", "rotate-2"];
 // "2+2". Klik na monitor v OBOU variantách otevře detail dané kamery
 // (OPEN_CAMERA -> cameraViewMode: "detail") — vizuální varianta nemění nic
 // na tom, co se stane po kliknutí.
-export default function CameraMonitorGrid({ cameras, onSelectCamera }: CameraMonitorGridProps) {
+export default function CameraMonitorGrid({ cameras, enemyStage, showAdminDoorAlerts, onSelectCamera }: CameraMonitorGridProps) {
   // Pořadí podle order (kamery bez order jdou na konec) — stejné řazení jako
   // dřív u tlačítek, teď jen bez levo/pravo zarovnání podle position (mřížka
   // monitorů je jednotná 2×2, ne diagram fyzického rozložení chodeb).
@@ -54,6 +58,7 @@ export default function CameraMonitorGrid({ cameras, onSelectCamera }: CameraMon
               camIndex={index + 1}
               size="upper"
               tiltClassName={UPPER_TILT_SEQUENCE[index % UPPER_TILT_SEQUENCE.length]}
+              alertActive={showAdminDoorAlerts && isCameraDoorAlertActive(camera, enemyStage)}
               onClick={() => onSelectCamera(camera.id)}
             />
           ))}
@@ -65,6 +70,7 @@ export default function CameraMonitorGrid({ cameras, onSelectCamera }: CameraMon
               camera={camera}
               camIndex={upperRow.length + index + 1}
               size="lower"
+              alertActive={showAdminDoorAlerts && isCameraDoorAlertActive(camera, enemyStage)}
               onClick={() => onSelectCamera(camera.id)}
             />
           ))}

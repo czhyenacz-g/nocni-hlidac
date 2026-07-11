@@ -10,6 +10,8 @@ import ViewSwitchArrow from "./ViewSwitchArrow";
 interface DeskViewProps {
   state: GameState;
   night: NightDefinition;
+  /** Admin-only rychlá testovací pomůcka (viz zadání "rychlejší testování") — rozsvítí LED kamerového monitoru v overview, viz CameraPanel.tsx/CameraMonitorGrid.tsx. */
+  isAdmin: boolean;
   onToggleLight: () => void;
   onSelectCamera: (id: CameraId) => void;
   onCloseCameras: () => void;
@@ -23,6 +25,7 @@ interface DeskViewProps {
 export default function DeskView({
   state,
   night,
+  isAdmin,
   onToggleLight,
   onSelectCamera,
   onCloseCameras,
@@ -46,7 +49,7 @@ export default function DeskView({
           lightOn={isNearRoomLightActive(state)}
           elapsedMs={state.elapsedMs}
           monsterRetreatedTo={state.monsterRetreatedTo}
-          monsterRetreatVerified={state.monsterRetreatVerified}
+          showAdminDoorAlerts={isAdmin}
           onSelectCamera={onSelectCamera}
           onCloseCameras={onCloseCameras}
         />

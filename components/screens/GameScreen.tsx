@@ -35,6 +35,8 @@ interface GameScreenProps {
   localSurvivedNights: number;
   /** Campaign hodnota z GameState.bulbsRemaining (viz game/core/bulbInventory.ts pro persistenci) — snižuje se v reduceru při dokončené ruční výměně. */
   bulbsRemaining: number;
+  /** Přihlášený admin (viz lib/auth/adminUsers.ts) — jen pro admin-only rychlé testovací pomůcky (viz DeskView.tsx#CameraPanel door alert LED), žádná herní pravidla na tom nestaví. */
+  isAdmin: boolean;
   onToggleDoor: () => void;
   onToggleLight: () => void;
   onSelectCamera: (id: CameraId) => void;
@@ -69,6 +71,7 @@ export default function GameScreen({
   serverCurrentRun,
   localSurvivedNights,
   bulbsRemaining,
+  isAdmin,
   onToggleDoor,
   onToggleLight,
   onSelectCamera,
@@ -128,10 +131,18 @@ export default function GameScreen({
   }
   // Dev debug text pro PowerMeter — přesný údaj v sekundách, ne finální
   // atmosférický text (viz game/core/roomBulbs.ts, content/copy.ts).
+  // `undefined`, dokud nightFeatures.bulbLifetimeEnabled je false (Noc 1–3,
+  // viz game/difficulty/nightConfig.ts) — bez tyhle podmínky by řádek pořád
+  // ukazoval nehybné "30 s" (BULBS_CONFIG.defaultLifetimeMs), protože
+  // updateRoomBulbs v gameReducer.ts tenhle týden vůbec neodečítá životnost;
+  // vypadá to jako zaseknutý counter, přitom je to jen mechanika, co se na
+  // tuhle noc ještě nepoužívá (viz zadání "bug: počítadlo zaseknuté na 30s").
   const nearRoomBulb = state.roomBulbs.nearRoom;
-  const nearRoomBulbLabel = nearRoomBulb.broken
-    ? COPY.game.bulbBrokenLabel
-    : `${Math.ceil(nearRoomBulb.remainingMs / 1000)} s`;
+  const nearRoomBulbLabel = state.nightFeatures.bulbLifetimeEnabled
+    ? nearRoomBulb.broken
+      ? COPY.game.bulbBrokenLabel
+      : `${Math.ceil(nearRoomBulb.remainingMs / 1000)} s`
+    : undefined;
 
   return (
     // <main> je bez bg-* třídy a bez max-w-md — SceneBackground (potomek s
@@ -193,6 +204,7 @@ export default function GameScreen({
               <DeskView
                 state={state}
                 night={night}
+                isAdmin={isAdmin}
                 onToggleLight={onToggleLight}
                 onSelectCamera={onSelectCamera}
                 onCloseCameras={onCloseCameras}

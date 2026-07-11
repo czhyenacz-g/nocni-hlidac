@@ -1415,6 +1415,7 @@ export default function PlayPage() {
           serverCurrentRun={serverRunState?.currentRun ?? null}
           localSurvivedNights={survivedNights}
           bulbsRemaining={state.bulbsRemaining}
+          isAdmin={isAdmin}
           onToggleDoor={handleToggleDoor}
           onToggleLight={handleToggleLight}
           onSelectCamera={handleSelectCamera}

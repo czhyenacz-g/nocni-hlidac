@@ -205,15 +205,20 @@ function pickCycling(list: string[], elapsedMs: number): string | null {
  * 1. `monster_at_door` — `door_hallway` + `enemyStage === "at_door"`
  *    (monstrum je fyzicky u dveří, ne jen v chodbě před nimi) — přednost
  *    před vším ostatním, viz `DOOR_HALLWAY_AT_DOOR_ASSET` výše.
- * 2. `fleeing_monster` — monstrum "vzdalo" čekání u dveří
- *    (`monsterRetreatedTo`) a hráč to ještě neověřil kamerou
- *    (`!monsterRetreatVerified`), a tahle kamera je zrovna ta, kam odešlo
- *    (`hasMonster` — což už samo o sobě znamená `camera.enemyVisibleAtStage
- *    === enemyStage` — a navíc `enemyStage === monsterRetreatedTo`). Otevření
- *    téhle kamery zároveň potvrzuje ústup stejně jako dřív (viz
- *    `gameReducer.ts` OPEN_CAMERA — beze změny, `hasMonster` je stejná
- *    podmínka, kterou si OPEN_CAMERA přepočítává samo). Chybí-li `fleeing`
- *    asset pro danou kameru, spadne zpět na běžný `monster` snímek.
+ * 2. `fleeing_monster` — monstrum "vzdalo" čekání u dveří (`monsterRetreatedTo`)
+ *    a pořád sedí na místě, kam odešlo (`enemyStage === monsterRetreatedTo`),
+ *    a tahle kamera je zrovna ta (`hasMonster` — což už samo o sobě znamená
+ *    `camera.enemyVisibleAtStage === enemyStage`). NEZÁVISÍ na
+ *    `monsterRetreatVerified`/`monsterRetreatVerificationEnabled` (viz
+ *    zadání "ad2) fleeing monster i bez confirm loginu") — na nocích, kde
+ *    ověření kamerou vůbec není vyžadované (Noc 1–3), by jinak "fleeing"
+ *    snímek nikdy nešel vidět, protože `monsterRetreatVerified` se tam
+ *    nastaví na `true` hned při ústupu (viz `gameReducer.ts`). Bezpečnost
+ *    otevření dveří (`monsterRetreatVerified`) zůstává úplně nezávislá — jen
+ *    přestala řídit i tenhle obrázek. Zobrazuje se tedy, dokud monstrum
+ *    příští `ENEMY_ADVANCE` neodejde jinam, ne dokud ho hráč "neověří".
+ *    Chybí-li `fleeing` asset pro danou kameru, spadne zpět na běžný
+ *    `monster` snímek.
  * 3. běžný `monster` — `hasMonster` bez podmínek výše (skutečné nebezpečí).
  * 4. `normal` — pomalé cyklování, žádné relevantní monstrum na kameře.
  *
@@ -228,7 +233,6 @@ export function getCameraImageSrc(
   elapsedMs: number,
   enemyStage?: EnemyStage,
   monsterRetreatedTo?: EnemyStage | null,
-  monsterRetreatVerified?: boolean,
 ): string | null {
   const assets = CAMERA_ASSETS[cameraId];
   if (!assets) return null;
@@ -239,13 +243,9 @@ export function getCameraImageSrc(
 
   const set = resolveAssetSet(cameraId, lightOn);
 
-  const isPendingFleeingRetreat =
-    hasMonster &&
-    monsterRetreatedTo != null &&
-    enemyStage === monsterRetreatedTo &&
-    monsterRetreatVerified === false;
+  const isFleeingRetreat = hasMonster && monsterRetreatedTo != null && enemyStage === monsterRetreatedTo;
 
-  if (isPendingFleeingRetreat) {
+  if (isFleeingRetreat) {
     const fleeing = pickDeterministic(set.fleeing, `${cameraId}:fleeing`);
     if (fleeing) return fleeing;
     // Chybějící fleeing asset pro tuhle kameru — fallback na běžný monster

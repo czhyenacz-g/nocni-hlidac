@@ -14,8 +14,6 @@ interface CameraViewProps {
   elapsedMs: number;
   /** Kam monstrum odešlo po "gave_up" standoffu u dveří — viz getCameraImageSrc (fleeing_monster). */
   monsterRetreatedTo: EnemyStage | null;
-  /** Jestli hráč už ústup ověřil kamerou — viz getCameraImageSrc (fleeing_monster). */
-  monsterRetreatVerified: boolean;
 }
 
 export default function CameraView({
@@ -25,7 +23,6 @@ export default function CameraView({
   lightOn,
   elapsedMs,
   monsterRetreatedTo,
-  monsterRetreatVerified,
 }: CameraViewProps) {
   if (!camera) {
     return (
@@ -49,15 +46,7 @@ export default function CameraView({
   // sama žádné názvy souborů nezná, jen zobrazí, co vrátí getCameraImageSrc.
   // null (kamera bez assetů, nebo prázdné pole pro danou situaci) = dosavadní
   // textový/placeholder vzhled beze změny.
-  const imageSrc = getCameraImageSrc(
-    camera.id,
-    enemyVisible,
-    lightOn,
-    elapsedMs,
-    enemyStage,
-    monsterRetreatedTo,
-    monsterRetreatVerified,
-  );
+  const imageSrc = getCameraImageSrc(camera.id, enemyVisible, lightOn, elapsedMs, enemyStage, monsterRetreatedTo);
   const motion = resolveCameraMotionConfig(camera.id);
 
   return (
