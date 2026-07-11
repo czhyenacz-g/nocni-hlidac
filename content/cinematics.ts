@@ -142,17 +142,17 @@ export const CINEMATIC_SCENES: Record<CinematicSceneId, CinematicScene> = {
       { id: "heals", text: "Ale pamatuj: s ránem se znovu zahojí.", responseLabel: "Chápu." },
       {
         id: "one_night",
-        text: "Jestli ji chceš položit, musíš to dokázat během jediné noci.",
+        text: "Jestli ho chceš položit, musíš to dokázat během jediné noci.",
         responseLabel: "Dobře.",
       },
       {
         id: "one_two_hits",
-        text: "Jedna rána nic neukončí, dvě tě jen uklidní…",
+        text: "Jedna rána ji jen rozzuří, dvě ji možná rozhodí…",
         responseLabel: "A dál?",
       },
       {
         id: "ten_hits",
-        text: "…ale desetkrát se postavit strachu a znovu zmáčknout spoušť? To už může být dost na to, aby padla i bestie.",
+        text: "…ale DESETKRÁT se postavit strachu a znovu zmáčknout spoušť? To už může být dost na to, aby padla i tahle bestie.",
         responseLabel: "Zpátky ke stolu.",
       },
     ],

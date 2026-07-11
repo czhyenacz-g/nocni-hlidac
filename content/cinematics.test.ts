@@ -73,7 +73,7 @@ describe("think_it_over_warning cinematic", () => {
   it("the last segment mentions ten hits and its responseLabel is 'Zpátky ke stolu.'", () => {
     const scene = getCinematicScene("think_it_over_warning");
     const last = scene?.segments.at(-1);
-    expect(last?.text).toContain("desetkrát");
+    expect(last?.text).toContain("DESETKRÁT");
     expect(last?.responseLabel).toBe("Zpátky ke stolu.");
   });
 
