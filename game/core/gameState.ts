@@ -94,6 +94,7 @@ export function createInitialGameState(
     monsterRetreatVerified: false,
     enemyForcedRetreatUntilMs: null,
     enemyForcedRetreatChance: null,
+    enemyForcedRetreatNextStepAtMs: null,
 
     deathReason: null,
     doorDeathRevealUntilMs: null,

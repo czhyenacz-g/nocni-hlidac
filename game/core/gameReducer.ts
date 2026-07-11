@@ -191,6 +191,7 @@ type DoorLightRepelResult = Pick<
   | "enemyDoorHoldProgressMs"
   | "enemyForcedRetreatUntilMs"
   | "enemyForcedRetreatChance"
+  | "enemyForcedRetreatNextStepAtMs"
 >;
 
 // Jemný časovač pro kombinaci dveře zavřené + světlo zapnuté + nepřítel u dveří
@@ -210,6 +211,7 @@ function updateDoorLightRepel(state: GameState, night: NightDefinition, deltaMs:
     enemyDoorHoldProgressMs: state.enemyDoorHoldProgressMs,
     enemyForcedRetreatUntilMs: state.enemyForcedRetreatUntilMs,
     enemyForcedRetreatChance: state.enemyForcedRetreatChance,
+    enemyForcedRetreatNextStepAtMs: state.enemyForcedRetreatNextStepAtMs,
   };
 
   const conditionsMet = shouldDoorLightForceRetreat(state);
@@ -237,6 +239,10 @@ function updateDoorLightRepel(state: GameState, night: NightDefinition, deltaMs:
     enemyDoorHoldProgressMs: 0,
     enemyForcedRetreatUntilMs: state.elapsedMs + night.enemy.forcedRetreatAfterLightRepel.durationMs,
     enemyForcedRetreatChance: night.enemy.forcedRetreatAfterLightRepel.chance,
+    // První krok teprve za celou enemyTickMs periodu (viz zadání "moc rychle
+    // uteklo") — bez tohohle by mohl ENEMY_ADVANCE tik náhodou přijít skoro
+    // hned po repelu, ať hráč nestihne monstrum na kameře vůbec zahlédnout.
+    enemyForcedRetreatNextStepAtMs: state.elapsedMs + night.enemyTickMs,
   };
 }
 
@@ -261,6 +267,7 @@ type DoorHallwayUvRepelResult = { doorHallwayUvRepelMs: number } & Partial<
     | "monsterRetreatVerified"
     | "enemyForcedRetreatUntilMs"
     | "enemyForcedRetreatChance"
+    | "enemyForcedRetreatNextStepAtMs"
   >
 >;
 
@@ -304,6 +311,7 @@ function updateDoorHallwayUvRepel(
     monsterRetreatVerified: !requireMonsterRetreatVerification,
     enemyForcedRetreatUntilMs: state.elapsedMs + night.enemy.forcedRetreatAfterUvRepel.durationMs,
     enemyForcedRetreatChance: night.enemy.forcedRetreatAfterUvRepel.chance,
+    enemyForcedRetreatNextStepAtMs: state.elapsedMs + night.enemyTickMs,
   };
 }
 
@@ -1169,6 +1177,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
                 doorBangSeq: state.doorBangSeq + 1,
                 enemyForcedRetreatUntilMs: state.elapsedMs + night.enemy.forcedRetreatAfterGaveUp.durationMs,
                 enemyForcedRetreatChance: night.enemy.forcedRetreatAfterGaveUp.chance,
+                enemyForcedRetreatNextStepAtMs: state.elapsedMs + night.enemyTickMs,
               };
             }
             return {
@@ -1230,10 +1239,33 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         // ať nezůstane navěky "aktivní" v DebugPanelu/testech.
         const forcedRetreatActive =
           state.enemyForcedRetreatUntilMs !== null && state.elapsedMs < state.enemyForcedRetreatUntilMs;
-        const forcedRetreatFieldsUpdate: Pick<GameState, "enemyForcedRetreatUntilMs" | "enemyForcedRetreatChance"> =
-          forcedRetreatActive
-            ? { enemyForcedRetreatUntilMs: state.enemyForcedRetreatUntilMs, enemyForcedRetreatChance: state.enemyForcedRetreatChance }
-            : { enemyForcedRetreatUntilMs: null, enemyForcedRetreatChance: null };
+        // ENEMY_ADVANCE běží na vlastním intervalu nezávislém na tom, kdy
+        // repel doopravdy proběhl (viz gameLoop.ts) — bez tohohle gate by
+        // první krok po repelu mohl přijít skoro okamžitě, místo aby hráč
+        // měl jistou celou enemyTickMs periodu monstrum na kameře vidět
+        // (viz zadání "uteklo moc rychle"). Dokud další krok "není due",
+        // ENEMY_ADVANCE jen čeká — žádný roll, žádný pohyb.
+        const forcedRetreatStepDue =
+          !forcedRetreatActive ||
+          state.enemyForcedRetreatNextStepAtMs === null ||
+          state.elapsedMs >= state.enemyForcedRetreatNextStepAtMs;
+
+        if (forcedRetreatActive && !forcedRetreatStepDue) {
+          return { ...state, lastEnemyDecision: "stay" };
+        }
+
+        const forcedRetreatFieldsUpdate: Pick<
+          GameState,
+          "enemyForcedRetreatUntilMs" | "enemyForcedRetreatChance" | "enemyForcedRetreatNextStepAtMs"
+        > = forcedRetreatActive
+          ? {
+              enemyForcedRetreatUntilMs: state.enemyForcedRetreatUntilMs,
+              enemyForcedRetreatChance: state.enemyForcedRetreatChance,
+              // Tenhle krok se právě "spotřebovává" — další smí přijít
+              // nejdřív za další celou enemyTickMs periodu.
+              enemyForcedRetreatNextStepAtMs: state.elapsedMs + night.enemyTickMs,
+            }
+          : { enemyForcedRetreatUntilMs: null, enemyForcedRetreatChance: null, enemyForcedRetreatNextStepAtMs: null };
 
         // Postup/setrvání/ústup — nezávislé pravděpodobnosti, zbytek (1 - advance - retreat)
         // znamená setrvání. Sledování na kameře jen zpomaluje postup, ústup neovlivňuje.

@@ -500,6 +500,20 @@ export interface GameState {
   enemyForcedRetreatUntilMs: number | null;
   /** Viz `enemyForcedRetreatUntilMs` — `null`, dokud okno neběží. */
   enemyForcedRetreatChance: number | null;
+  /**
+   * Nejbližší `elapsedMs`, kdy smí proběhnout DALŠÍ krok vynuceného ústupu
+   * (viz `enemyForcedRetreatUntilMs` výše) — `ENEMY_ADVANCE` běží na
+   * vlastním, na repelu NEZÁVISLÉM intervalu (`NightDefinition.enemyTickMs`,
+   * viz gameLoop.ts), takže první tik po repelu mohl dřív přijít skoro
+   * okamžitě (fáze časovače náhodou "due"), místo aby hráč měl jistou celou
+   * `enemyTickMs` periodu vidět monstrum na jedné kameře. Dokud
+   * `elapsedMs < enemyForcedRetreatNextStepAtMs`, `ENEMY_ADVANCE` v tomhle
+   * okně jen "čeká" (`lastEnemyDecision: "stay"`, žádný roll) — jakmile se
+   * krok skutečně vyhodnotí (ať už couvne, nebo díky šanci < 100 % zůstane
+   * stát), posune se o další `enemyTickMs` dopředu. `null`, dokud okno
+   * neběží.
+   */
+  enemyForcedRetreatNextStepAtMs: number | null;
 
   deathReason: DeathReason | null;
   /**
