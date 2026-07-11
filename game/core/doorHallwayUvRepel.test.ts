@@ -90,16 +90,26 @@ describe("door-hallway UV repel — triggers only with door closed + UV really o
 });
 
 describe("door-hallway UV repel — completion moves the monster away and marks the retreat pending verification", () => {
-  it("once the duration is reached: enemyStage moves to one of the retreat candidates on the active route (not door_hallway itself), and monsterRetreatedTo/lastEnemyDecision reflect it", () => {
+  it("once the duration is reached: enemyStage steps back ONE stage on the active route (the hallway right before door_hallway, not a random/far pick), and monsterRetreatedTo/lastEnemyDecision reflect it", () => {
     const reducer = createGameReducer(NIGHT_01);
     const state = stateInHallway({ doorClosed: true, lightOn: true, doorHallwayUvRepelMs: REQUIRED_MS - 50 });
 
     const result = reducer(state, { type: "TICK", deltaMs: 100 });
     expect(result.doorHallwayUvRepelMs).toBe(0);
     expect(result.lastEnemyDecision).toBe("hallway_light_repelled");
-    expect(["outer_yard", "right_hallway", "left_hallway", "outside"]).toContain(result.enemyStage);
-    expect(result.enemyStage).not.toBe("door_hallway");
-    expect(result.monsterRetreatedTo).toBe(result.enemyStage);
+    // stateInHallway's route is [..., "right_hallway", "door_hallway", "at_door", "attack"] — one step back from door_hallway is deterministically right_hallway.
+    expect(result.enemyStage).toBe("right_hallway");
+    expect(result.monsterRetreatedTo).toBe("right_hallway");
+  });
+
+  it("opens the forced-retreat window with the configured (weaker) duration/chance", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = stateInHallway({ doorClosed: true, lightOn: true, doorHallwayUvRepelMs: REQUIRED_MS - 50, elapsedMs: 30_000 });
+
+    const result = reducer(state, { type: "TICK", deltaMs: 100 });
+    const forced = NIGHT_01.enemy.forcedRetreatAfterUvRepel;
+    expect(result.enemyForcedRetreatChance).toBe(forced.chance);
+    expect(result.enemyForcedRetreatUntilMs).toBe(30_000 + forced.durationMs);
   });
 
   it("on medium/hard (verification enabled): retreat starts unverified, same as a standoff give-up", () => {
@@ -136,7 +146,7 @@ describe("door-hallway UV repel — does not interfere with the at_door repel or
       ...createInitialGameState(NIGHT_01),
       isRunning: true,
       screen: "playing",
-      enemyRoute: ["at_door", "attack"],
+      enemyRoute: ["door_hallway", "at_door", "attack"],
       enemyStage: "at_door",
       doorClosed: true,
       lightOn: true,
@@ -146,7 +156,8 @@ describe("door-hallway UV repel — does not interfere with the at_door repel or
 
     const result = reducer(state, { type: "TICK", deltaMs: 100 });
     expect(result.lastEnemyDecision).toBe("light_repelled");
-    expect(result.enemyStage).toBe(NIGHT_01.enemy.monsterRetreatStage);
+    // One step back from at_door, not a teleport to monsterRetreatStage.
+    expect(result.enemyStage).toBe("door_hallway");
     // The at_door repel is the fast, unverified one — unchanged behavior.
     expect(result.monsterRetreatedTo).toBeNull();
   });
@@ -157,7 +168,7 @@ describe("door-hallway UV repel — does not interfere with the at_door repel or
       ...createInitialGameState(NIGHT_01),
       isRunning: true,
       screen: "playing",
-      enemyRoute: ["at_door", "attack"],
+      enemyRoute: ["door_hallway", "at_door", "attack"],
       enemyStage: "at_door",
       doorClosed: true,
       lightOn: true,
@@ -186,7 +197,11 @@ describe("door-hallway UV repel — does not interfere with the at_door repel or
 
     const result = reducer(state, { type: "ENEMY_ADVANCE" });
     expect(result.lastEnemyDecision).toBe("gave_up");
-    expect(result.enemyStage).not.toBe("at_door");
-    expect(result.monsterRetreatedTo).not.toBeNull();
+    // One step back on the route, not a teleport.
+    expect(result.enemyStage).toBe("right_hallway");
+    expect(result.monsterRetreatedTo).toBe("right_hallway");
+    // Weakest of the three forced-retreat windows (viz zadání).
+    const forced = NIGHT_01.enemy.forcedRetreatAfterGaveUp;
+    expect(result.enemyForcedRetreatChance).toBe(forced.chance);
   });
 });

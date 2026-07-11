@@ -51,16 +51,14 @@ function rollDoorHoldTargetMs(enemy: EnemyDefinition): number {
   return min + Math.random() * (max - min);
 }
 
-// Kam nepřítel odejde, když se u zavřených dveří "vzdá" čekání (viz
-// ENEMY_ADVANCE "gave_up") — vybírá jen z lokací, které jsou skutečně v
-// aktivní trase dané směny (routeVariants má vždy jen JEDNU z left_hallway/
-// right_hallway), ať pozdější route.indexOf(...) nikdy nedostane -1.
-const MONSTER_RETREAT_CANDIDATES: EnemyStage[] = ["outer_yard", "left_hallway", "right_hallway"];
-
-function pickMonsterRetreatLocation(route: EnemyStage[]): EnemyStage {
-  const candidates = MONSTER_RETREAT_CANDIDATES.filter((stage) => route.includes(stage));
-  if (candidates.length === 0) return "outside";
-  return candidates[Math.floor(Math.random() * candidates.length)];
+// Jeden krok zpátky na trase z `currentStage` (viz zadání "ať hráč vidí
+// bestii utíkat, ne teleport") — sdílené mezi ENEMY_ADVANCE (normální 10%
+// ústup, "vzdání se" u dveří) i TICKových repelů (světlo, UV). Na začátku
+// trasy (`outside`, index 0) není kam couvat dál — vrátí stejnou stage.
+function stepBackOneStage(route: EnemyStage[], currentStage: EnemyStage): EnemyStage {
+  const currentIndex = route.indexOf(currentStage);
+  const previousIndex = Math.max(currentIndex - 1, 0);
+  return route[previousIndex] ?? currentStage;
 }
 
 // Kam se monstrum posune jako hrozba přenesená z EmergencyMiniGame (viz
@@ -191,6 +189,8 @@ type DoorLightRepelResult = Pick<
   | "enemyAtDoorSinceMs"
   | "enemyDoorHoldTargetMs"
   | "enemyDoorHoldProgressMs"
+  | "enemyForcedRetreatUntilMs"
+  | "enemyForcedRetreatChance"
 >;
 
 // Jemný časovač pro kombinaci dveře zavřené + světlo zapnuté + nepřítel u dveří
@@ -208,6 +208,8 @@ function updateDoorLightRepel(state: GameState, night: NightDefinition, deltaMs:
     enemyAtDoorSinceMs: state.enemyAtDoorSinceMs,
     enemyDoorHoldTargetMs: state.enemyDoorHoldTargetMs,
     enemyDoorHoldProgressMs: state.enemyDoorHoldProgressMs,
+    enemyForcedRetreatUntilMs: state.enemyForcedRetreatUntilMs,
+    enemyForcedRetreatChance: state.enemyForcedRetreatChance,
   };
 
   const conditionsMet = shouldDoorLightForceRetreat(state);
@@ -220,16 +222,21 @@ function updateDoorLightRepel(state: GameState, night: NightDefinition, deltaMs:
     return { ...unchanged, doorLightRepelMs };
   }
 
-  // Repel: silný, rychlý ústup — žádné audio tady, jen sekvenční čítač (viz
-  // app/play/page.tsx, stejný vzor jako generatorBeepSeq).
+  // Repel: o jeden krok zpět (ne teleport na monsterRetreatStage) + dočasné
+  // okno zvýšené šance na další ústup (viz zadání "ať hráč vidí bestii
+  // utíkat", night.enemy.forcedRetreatAfterLightRepel — nejsilnější/
+  // nejjistější ze tří spouštěčů). Žádné audio tady, jen sekvenční čítač
+  // (viz app/play/page.tsx, stejný vzor jako generatorBeepSeq).
   return {
     doorLightRepelMs: 0,
     monsterRetreatRoarSeq: state.monsterRetreatRoarSeq + 1,
-    enemyStage: night.enemy.monsterRetreatStage,
+    enemyStage: stepBackOneStage(state.enemyRoute, state.enemyStage),
     lastEnemyDecision: "light_repelled",
     enemyAtDoorSinceMs: null,
     enemyDoorHoldTargetMs: null,
     enemyDoorHoldProgressMs: 0,
+    enemyForcedRetreatUntilMs: state.elapsedMs + night.enemy.forcedRetreatAfterLightRepel.durationMs,
+    enemyForcedRetreatChance: night.enemy.forcedRetreatAfterLightRepel.chance,
   };
 }
 
@@ -245,7 +252,16 @@ function updateDoorLightRepel(state: GameState, night: NightDefinition, deltaMs:
 // smí v daném tiku cokoliv měnit — ten druhý musí ve svém "no-op" výsledku
 // tahle pole úplně VYNECHAT, ne vracet stejné/staré hodnoty).
 type DoorHallwayUvRepelResult = { doorHallwayUvRepelMs: number } & Partial<
-  Pick<GameState, "monsterRetreatRoarSeq" | "enemyStage" | "lastEnemyDecision" | "monsterRetreatedTo" | "monsterRetreatVerified">
+  Pick<
+    GameState,
+    | "monsterRetreatRoarSeq"
+    | "enemyStage"
+    | "lastEnemyDecision"
+    | "monsterRetreatedTo"
+    | "monsterRetreatVerified"
+    | "enemyForcedRetreatUntilMs"
+    | "enemyForcedRetreatChance"
+  >
 >;
 
 // Stejný princip jako updateDoorLightRepel výše, ale pro nepřítele v
@@ -253,12 +269,11 @@ type DoorHallwayUvRepelResult = { doorHallwayUvRepelMs: number } & Partial<
 // shouldDoorHallwayUvForceRetreat) po night.enemy.doorHallwayUvRepelRequiredMs
 // (výchozí ~7 s, výrazně pomalejší než 1.5 s u dveří — UV je tu slabší/
 // pomalejší varovný nástroj, ne náhrada za stejně rychlý at_door repel).
-// Na rozdíl od updateDoorLightRepel tenhle repel NEteleportuje rovnou na
-// night.enemy.monsterRetreatStage bez potvrzení — prochází stejným "vzdání
-// se" flow jako standoff u dveří (viz ENEMY_ADVANCE "gave_up"):
-// monsterRetreatedTo/monsterRetreatVerified se nastaví stejně, takže hráč
-// útěk musí/může potvrdit kamerou (viz OPEN_CAMERA), přesně jako u give_up.
-// Roar/kroky ústupu hrají stejně jako u at_door repelu (sdílený
+// O jeden krok zpět (ne teleport na náhodný bod jako dřív) + dočasné okno
+// slabší zvýšené šance na ústup (viz night.enemy.forcedRetreatAfterUvRepel).
+// monsterRetreatedTo/monsterRetreatVerified se nastaví stejně jako dřív —
+// hráč útěk musí/může potvrdit kamerou (viz OPEN_CAMERA), přesně jako u
+// give_up. Roar/kroky ústupu hrají stejně jako u at_door repelu (sdílený
 // monsterRetreatRoarSeq, viz app/play/page.tsx) — žádný nový audio event.
 function updateDoorHallwayUvRepel(
   state: GameState,
@@ -276,7 +291,7 @@ function updateDoorHallwayUvRepel(
     return { doorHallwayUvRepelMs };
   }
 
-  const retreatedTo = pickMonsterRetreatLocation(state.enemyRoute);
+  const retreatedTo = stepBackOneStage(state.enemyRoute, state.enemyStage);
   return {
     doorHallwayUvRepelMs: 0,
     monsterRetreatRoarSeq: state.monsterRetreatRoarSeq + 1,
@@ -287,6 +302,8 @@ function updateDoorHallwayUvRepel(
     // monsterRetreatVerificationEnabled tuhle noc) rovnou "ověřeno" — stejná
     // konvence jako gave_up v ENEMY_ADVANCE.
     monsterRetreatVerified: !requireMonsterRetreatVerification,
+    enemyForcedRetreatUntilMs: state.elapsedMs + night.enemy.forcedRetreatAfterUvRepel.durationMs,
+    enemyForcedRetreatChance: night.enemy.forcedRetreatAfterUvRepel.chance,
   };
 }
 
@@ -1129,7 +1146,11 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             const progress = state.enemyDoorHoldProgressMs + night.enemyTickMs;
 
             if (progress >= target) {
-              const retreatedTo = pickMonsterRetreatLocation(route);
+              // O jeden krok zpět (ne teleport na náhodný bod jako dřív) +
+              // dočasné okno nejslabší ze tří zvýšené šance na ústup (viz
+              // zadání "ať hráč vidí bestii utíkat", night.enemy.forcedRetreatAfterGaveUp
+              // — vzdání se timeoutem bez světla je nejméně přesvědčivé).
+              const retreatedTo = stepBackOneStage(route, state.enemyStage);
               return {
                 ...state,
                 enemyStage: retreatedTo,
@@ -1146,6 +1167,8 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
                 // I tenhle poslední, "vzdávající se" tik byl pořád zablokovaný
                 // útok (dveře ho zachránily naposledy, než se monstrum stáhlo).
                 doorBangSeq: state.doorBangSeq + 1,
+                enemyForcedRetreatUntilMs: state.elapsedMs + night.enemy.forcedRetreatAfterGaveUp.durationMs,
+                enemyForcedRetreatChance: night.enemy.forcedRetreatAfterGaveUp.chance,
               };
             }
             return {
@@ -1199,11 +1222,26 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           };
         }
 
+        // Viditelný útěk po odražení (viz GameState.enemyForcedRetreatUntilMs,
+        // zadání "ať hráč vidí bestii utíkat, ne teleport") — dokud okno
+        // běží, monstrum se nemůže přiblížit (advanceChance 0) a má
+        // vynucenou/zvýšenou šanci na další ústup (enemyForcedRetreatChance)
+        // místo běžných hodnot noci. Vypršené okno se tady vyčistí (jednou),
+        // ať nezůstane navěky "aktivní" v DebugPanelu/testech.
+        const forcedRetreatActive =
+          state.enemyForcedRetreatUntilMs !== null && state.elapsedMs < state.enemyForcedRetreatUntilMs;
+        const forcedRetreatFieldsUpdate: Pick<GameState, "enemyForcedRetreatUntilMs" | "enemyForcedRetreatChance"> =
+          forcedRetreatActive
+            ? { enemyForcedRetreatUntilMs: state.enemyForcedRetreatUntilMs, enemyForcedRetreatChance: state.enemyForcedRetreatChance }
+            : { enemyForcedRetreatUntilMs: null, enemyForcedRetreatChance: null };
+
         // Postup/setrvání/ústup — nezávislé pravděpodobnosti, zbytek (1 - advance - retreat)
         // znamená setrvání. Sledování na kameře jen zpomaluje postup, ústup neovlivňuje.
         const watched = isEnemyBeingWatched(state, night);
-        const advanceChance = night.enemy.advanceChance * (watched ? night.enemy.watchedAdvanceMultiplier : 1);
-        const retreatChance = night.enemy.retreatChance;
+        const advanceChance = forcedRetreatActive
+          ? 0
+          : night.enemy.advanceChance * (watched ? night.enemy.watchedAdvanceMultiplier : 1);
+        const retreatChance = forcedRetreatActive ? (state.enemyForcedRetreatChance ?? night.enemy.retreatChance) : night.enemy.retreatChance;
         const roll = Math.random();
 
         let nextIndex = currentIndex;
@@ -1219,7 +1257,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         }
 
         if (nextIndex === currentIndex) {
-          return { ...state, lastEnemyDecision: decision };
+          return { ...state, ...forcedRetreatFieldsUpdate, lastEnemyDecision: decision };
         }
 
         const nextStage = route[nextIndex];
@@ -1227,6 +1265,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
 
         return {
           ...state,
+          ...forcedRetreatFieldsUpdate,
           enemyStage: nextStage,
           lastEnemyDecision: decision,
           enemyAtDoorSinceMs: nextIsAtDoor ? state.elapsedMs : null,

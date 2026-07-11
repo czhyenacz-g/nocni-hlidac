@@ -23,5 +23,15 @@ export const BASIC_INTRUDER: EnemyDefinition = {
   // pomalejší (~7 s) — slabší/pomalejší varovný nástroj, ne náhrada za
   // stejně rychlý at_door repel (viz doorHallwayUvRepelRequiredMs v types.ts).
   doorHallwayUvRepelRequiredMs: 7000,
+  // Viditelný útěk po odražení (viz zadání "ať hráč vidí bestii utíkat, ne
+  // teleport") — konkrétní čísla: světlo u dveří je nejsilnější a nejjistější
+  // (100 % po ~11 s — dost na to, aby stihlo dojít celou trasou až na
+  // "outside", 4 kroky po enemyTickMs 2 s, s rezervou), UV v door_hallway o
+  // krok dřív je slabší (60 % po ~6.5 s), vzdání se timeoutem bez světla
+  // (gave_up) nejslabší (40 % po ~10 s). Všechna okna jsou navíc dost dlouhá,
+  // ať hráč stihne mezitím třeba vyměnit žárovku.
+  forcedRetreatAfterLightRepel: { durationMs: 11_000, chance: 1 },
+  forcedRetreatAfterUvRepel: { durationMs: 6_500, chance: 0.6 },
+  forcedRetreatAfterGaveUp: { durationMs: 10_000, chance: 0.4 },
   monsterRetreatStage: "outside",
 };

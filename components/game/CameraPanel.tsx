@@ -1,4 +1,4 @@
-import { CameraDefinition, CameraId, CameraViewMode, EnemyStage } from "@/game/core/types";
+import { CameraDefinition, CameraId, CameraViewMode, EnemyMoveDecision, EnemyStage } from "@/game/core/types";
 import CameraMonitorGrid from "./CameraMonitorGrid";
 import CameraDetailView from "./CameraDetailView";
 
@@ -10,7 +10,7 @@ interface CameraPanelProps {
   focused: boolean;
   lightOn: boolean;
   elapsedMs: number;
-  monsterRetreatedTo: EnemyStage | null;
+  lastEnemyDecision: EnemyMoveDecision;
   /** Admin-only rychlá testovací pomůcka (viz zadání "rychlejší testování", game/cameras/cameraDoorAlert.ts) — jen v overview (CameraMonitorGrid), detail už skutečný obsah ukazuje sám. */
   showAdminDoorAlerts: boolean;
   onSelectCamera: (id: CameraId) => void;
@@ -28,7 +28,7 @@ export default function CameraPanel({
   focused,
   lightOn,
   elapsedMs,
-  monsterRetreatedTo,
+  lastEnemyDecision,
   showAdminDoorAlerts,
   onSelectCamera,
   onCloseCameras,
@@ -42,7 +42,7 @@ export default function CameraPanel({
         focused={focused}
         lightOn={lightOn}
         elapsedMs={elapsedMs}
-        monsterRetreatedTo={monsterRetreatedTo}
+        lastEnemyDecision={lastEnemyDecision}
         onBack={onCloseCameras}
       />
     );

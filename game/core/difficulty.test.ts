@@ -5,16 +5,14 @@ import { DEFAULT_DIFFICULTY, DIFFICULTY_RULES } from "../difficulty/difficultyCo
 import { NIGHT_01 } from "../nights/night01";
 import { GameState } from "./types";
 
-// Standoff u dveří s vynuceným, konkrétním ústupovým místem (right_hallway) —
-// obchází Math.random() jak u výběru trasy, tak u výběru ústupového místa,
-// ať jsou testy deterministické.
+// Standoff u dveří — ústup je teď VŽDY o jeden krok zpět na trase
+// (stepBackOneStage, ne náhodný pick), takže je deterministický i bez
+// mockování Math.random: z "at_door" na téhle trase je to vždy "door_hallway".
 function stateAtGaveUp(): GameState {
   const base = createInitialGameState(NIGHT_01);
   return {
     ...base,
     isRunning: true,
-    // Jen right_hallway je kandidát na ústup (outer_yard záměrně mimo trasu),
-    // ať je pickMonsterRetreatLocation deterministický i bez mockování Math.random.
     enemyRoute: ["right_hallway", "door_hallway", "at_door", "attack"],
     enemyStage: "at_door",
     doorClosed: true,
@@ -62,9 +60,9 @@ describe("monster_check_or_return rule", () => {
     const gaveUp = reducer(stateAtGaveUp(), { type: "ENEMY_ADVANCE" });
 
     expect(gaveUp.monsterRetreatVerified).toBe(false);
-    expect(gaveUp.monsterRetreatedTo).toBe("right_hallway");
+    expect(gaveUp.monsterRetreatedTo).toBe("door_hallway");
 
-    const verified = reducer(gaveUp, { type: "OPEN_CAMERA", cameraId: "right_hallway" });
+    const verified = reducer(gaveUp, { type: "OPEN_CAMERA", cameraId: "door_hallway" });
     expect(verified.monsterRetreatVerified).toBe(true);
   });
 
@@ -83,7 +81,7 @@ describe("monster_check_or_return rule", () => {
   it("medium/hard: after verifying with the correct camera, opening the door is safe", () => {
     const reducer = createGameReducer(NIGHT_01, "medium");
     const gaveUp = reducer(stateAtGaveUp(), { type: "ENEMY_ADVANCE" });
-    const verified = reducer(gaveUp, { type: "OPEN_CAMERA", cameraId: "right_hallway" });
+    const verified = reducer(gaveUp, { type: "OPEN_CAMERA", cameraId: "door_hallway" });
 
     const opened = reducer(verified, { type: "TOGGLE_DOOR" });
     expect(opened.doorClosed).toBe(false);

@@ -40,34 +40,42 @@ describe("getCameraImageSrc — door_hallway at_door special case", () => {
 });
 
 describe("getCameraImageSrc — fleeing_monster (retreat)", () => {
-  // Záměrně NEZÁVISÍ na monsterRetreatVerified/monsterRetreatVerificationEnabled
-  // (viz zadání "ad2) fleeing monster i bez confirm loginu") — jinak by na
-  // nocích bez vyžadovaného ověření (Noc 1–3, monsterRetreatVerified se tam
-  // nastaví na true hned při ústupu) fleeing snímek nikdy nešel vidět.
-  it("shows the fleeing asset when the monster retreated to this camera's stage", () => {
-    const src = getCameraImageSrc("left_hallway", true, false, 0, "left_hallway", "left_hallway");
+  // Záměrně NEZÁVISÍ na monsterRetreatedTo/monsterRetreatVerified (ty řídí
+  // jen bezpečnost otevření dveří) — jen na `lastEnemyDecision`, ať fleeing
+  // funguje i pro obyčejnou náhodnou 10% šanci na ústup v ENEMY_ADVANCE
+  // ("retreat"), ne jen pro vynucené ústupy (viz zadání "funguje fleeing i
+  // při náhodném ústupu, kdy si to bestie sama rozmyslí?" — ANO).
+  it("shows the fleeing asset for a plain random retreat decision ('retreat')", () => {
+    const src = getCameraImageSrc("left_hallway", true, false, 0, "left_hallway", "retreat");
     expect(src).toBe("/object_13/camera/left_hallway/left_hallway_fleeing_monster.webp");
   });
 
   it("works the same for outer_yard (outdoor)", () => {
-    const src = getCameraImageSrc("outer_yard", true, false, 0, "outer_yard", "outer_yard");
+    const src = getCameraImageSrc("outer_yard", true, false, 0, "outer_yard", "retreat");
     expect(src).toBe("/object_13/camera/outdoor/outdoor_fleeing_monster.webp");
   });
 
+  it("also shows fleeing for the forced-retreat decisions (gave_up, light_repelled, hallway_light_repelled, monster_hit_confirmed)", () => {
+    for (const decision of ["gave_up", "light_repelled", "hallway_light_repelled", "monster_hit_confirmed"] as const) {
+      const src = getCameraImageSrc("left_hallway", true, false, 0, "left_hallway", decision);
+      expect(src).toContain("fleeing_monster");
+    }
+  });
+
   it("takes priority over the regular monster asset", () => {
-    const regular = getCameraImageSrc("left_hallway", true, false, 0, "left_hallway");
-    const fleeing = getCameraImageSrc("left_hallway", true, false, 0, "left_hallway", "left_hallway");
+    const regular = getCameraImageSrc("left_hallway", true, false, 0, "left_hallway", "stay");
+    const fleeing = getCameraImageSrc("left_hallway", true, false, 0, "left_hallway", "retreat");
     expect(fleeing).not.toBe(regular);
     expect(fleeing).toContain("fleeing_monster");
   });
 
-  it("falls back to the regular monster asset when this camera isn't the retreat destination", () => {
-    const src = getCameraImageSrc("right_hallway", true, false, 0, "right_hallway", "left_hallway");
-    expect(src).not.toContain("fleeing_monster");
+  it("does not show fleeing for a non-retreat decision (advance/stay)", () => {
+    expect(getCameraImageSrc("left_hallway", true, false, 0, "left_hallway", "advance")).not.toContain("fleeing_monster");
+    expect(getCameraImageSrc("left_hallway", true, false, 0, "left_hallway", "stay")).not.toContain("fleeing_monster");
   });
 
-  it("does not show fleeing when monsterRetreatedTo is null (no pending retreat at all)", () => {
-    const src = getCameraImageSrc("left_hallway", true, false, 0, "left_hallway", null);
+  it("does not show fleeing when lastEnemyDecision is omitted", () => {
+    const src = getCameraImageSrc("left_hallway", true, false, 0, "left_hallway");
     expect(src).not.toContain("fleeing_monster");
   });
 });
@@ -90,19 +98,19 @@ describe("door_hallway camera never shows the lit variant when the bulb is broke
 
 describe("getCameraImageSrc — door_hallway fleeing (hallway UV retreat)", () => {
   // Viz gameReducer.ts#updateDoorHallwayUvRepel — na hallway UV retreatu se
-  // monsterRetreatedTo/enemyStage přesune na jednu z MONSTER_RETREAT_CANDIDATES
+  // enemyStage přesune na jednu z MONSTER_RETREAT_CANDIDATES
   // (right_hallway/left_hallway/outer_yard), nikdy zůstane na "door_hallway"
   // (to je stage, KDE se retreat spustil, ne kam nepřítel odešel). Tenhle
   // test jen ověřuje, že door_hallway kamera samotná (obecný mechanismus,
   // stejný jako u ostatních kamer) používá lightOn variantu fleeing setu,
-  // kdyby to jako cíl retreatu použil.
+  // kdyby jako cíl retreatu zůstala.
   it("uses the lit fleeing asset when UV is still on", () => {
-    const src = getCameraImageSrc("door_hallway", true, true, 0, "door_hallway", "door_hallway");
+    const src = getCameraImageSrc("door_hallway", true, true, 0, "door_hallway", "hallway_light_repelled");
     expect(src).toBe("/object_13/camera/door_hallway_light/door_hallway_light_fleeing_monster.webp");
   });
 
   it("falls back to the dark fleeing asset when UV is off", () => {
-    const src = getCameraImageSrc("door_hallway", true, false, 0, "door_hallway", "door_hallway");
+    const src = getCameraImageSrc("door_hallway", true, false, 0, "door_hallway", "hallway_light_repelled");
     expect(src).toBe("/object_13/camera/door_hallway/door_hallway_fleeing_monster.webp");
   });
 });

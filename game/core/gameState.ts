@@ -92,6 +92,8 @@ export function createInitialGameState(
     officeBreachAftermathActive: false,
     monsterRetreatedTo: null,
     monsterRetreatVerified: false,
+    enemyForcedRetreatUntilMs: null,
+    enemyForcedRetreatChance: null,
 
     deathReason: null,
     doorDeathRevealUntilMs: null,

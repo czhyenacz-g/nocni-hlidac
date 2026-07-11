@@ -159,7 +159,21 @@ export interface EnemyDefinition {
    * `gameReducer.ts#updateDoorHallwayUvRepel`.
    */
   doorHallwayUvRepelRequiredMs: number;
-  /** Kam se nepřítel vrátí po repelu — stejný typ resetu jako vzdání se standoffu u dveří. */
+  /**
+   * "Viditelný útěk" po odražení (viz GameState.enemyForcedRetreatUntilMs,
+   * gameReducer.ts) — `light_repelled`/`hallway_light_repelled`/`gave_up`
+   * posunou monstrum jen o JEDEN krok zpátky na trase a pak na `durationMs`
+   * dočasně zvýší jeho šanci na další ústup na `chance` (místo okamžitého
+   * teleportu na `monsterRetreatStage`/náhodný bod jako dřív). Světlo u
+   * zavřených dveří je nejsilnější/nejjistější odražení (100 %), UV o krok
+   * dřív v `door_hallway` slabší (60 %), vzdání se timeoutem bez světla
+   * (`gave_up`) nejslabší (40 %) — a všechny záměrně dost dlouhé, ať hráč
+   * stihne mezitím třeba vyměnit žárovku (viz zadání).
+   */
+  forcedRetreatAfterLightRepel: { durationMs: number; chance: number };
+  forcedRetreatAfterUvRepel: { durationMs: number; chance: number };
+  forcedRetreatAfterGaveUp: { durationMs: number; chance: number };
+  /** Kam se nepřítel vrátí po potvrzeném zásahu brokovnicí (viz gameReducer.ts CONFIRM_MONSTER_HIT) — jediné zbývající použití, repely u dveří/UV/gave_up už tenhle teleport nepoužívají. */
   monsterRetreatStage: EnemyStage;
 }
 
@@ -468,6 +482,24 @@ export interface GameState {
    * monstrum okamžitě zpátky ke dveřím (TOGGLE_DOOR).
    */
   monsterRetreatVerified: boolean;
+
+  /**
+   * "Viditelný útěk" po odražení u dveří (viz zadání "ať hráč vidí bestii
+   * utíkat, ne teleport") — `light_repelled`/`hallway_light_repelled`/
+   * `gave_up` teď monstrum posunou jen o JEDEN krok zpátky na trase (ne
+   * rovnou na `monsterRetreatStage`/náhodný bod), a otevřou tohle časové
+   * okno: dokud `elapsedMs < enemyForcedRetreatUntilMs`, `ENEMY_ADVANCE`
+   * (běžná pravděpodobnostní větev, mimo `at_door`/`breach`) použije
+   * `advanceChance: 0` a `retreatChance: enemyForcedRetreatChance` místo
+   * hodnot z `NightDefinition.enemy` — monstrum se tak nemůže přiblížit a
+   * má zvýšenou/jistou šanci couvnout další krok každý tik, dokud okno
+   * nevyprší nebo nedojde na `outside` (odkud už není kam couvat). Mimo
+   * tohle okno (`null`) se `ENEMY_ADVANCE` chová úplně normálně. Konkrétní
+   * síla/délka okna je různá pro každý spouštěč (viz gameReducer.ts).
+   */
+  enemyForcedRetreatUntilMs: number | null;
+  /** Viz `enemyForcedRetreatUntilMs` — `null`, dokud okno neběží. */
+  enemyForcedRetreatChance: number | null;
 
   deathReason: DeathReason | null;
   /**

@@ -1,5 +1,5 @@
 import { COPY } from "@/content/copy";
-import { CameraDefinition, EnemyStage } from "@/game/core/types";
+import { CameraDefinition, EnemyMoveDecision, EnemyStage } from "@/game/core/types";
 import CameraView from "./CameraView";
 import ViewSwitchArrow from "./ViewSwitchArrow";
 
@@ -9,7 +9,7 @@ interface CameraDetailViewProps {
   focused: boolean;
   lightOn: boolean;
   elapsedMs: number;
-  monsterRetreatedTo: EnemyStage | null;
+  lastEnemyDecision: EnemyMoveDecision;
   onBack: () => void;
 }
 
@@ -22,7 +22,7 @@ export default function CameraDetailView({
   focused,
   lightOn,
   elapsedMs,
-  monsterRetreatedTo,
+  lastEnemyDecision,
   onBack,
 }: CameraDetailViewProps) {
   return (
@@ -33,7 +33,7 @@ export default function CameraDetailView({
         focused={focused}
         lightOn={lightOn}
         elapsedMs={elapsedMs}
-        monsterRetreatedTo={monsterRetreatedTo}
+        lastEnemyDecision={lastEnemyDecision}
       />
       <ViewSwitchArrow label={COPY.game.backToOverviewLabel} onClick={onBack} align="left" />
     </div>

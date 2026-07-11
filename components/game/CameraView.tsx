@@ -1,5 +1,5 @@
 import { COPY } from "@/content/copy";
-import { CameraDefinition, EnemyStage } from "@/game/core/types";
+import { CameraDefinition, EnemyMoveDecision, EnemyStage } from "@/game/core/types";
 import { getCameraImageSrc } from "@/game/cameras/cameraAssets.object13";
 import { resolveCameraMotionConfig } from "@/game/cameras/cameraMotionConfig";
 
@@ -12,8 +12,8 @@ interface CameraViewProps {
   lightOn: boolean;
   /** Pro pomalé prostřídání "normal" snímků (viz getCameraImageSrc), ne pro herní logiku. */
   elapsedMs: number;
-  /** Kam monstrum odešlo po "gave_up" standoffu u dveří — viz getCameraImageSrc (fleeing_monster). */
-  monsterRetreatedTo: EnemyStage | null;
+  /** Poslední rozhodnutí nepřítele — viz getCameraImageSrc (fleeing_monster, RETREATING_DECISIONS). */
+  lastEnemyDecision: EnemyMoveDecision;
 }
 
 export default function CameraView({
@@ -22,7 +22,7 @@ export default function CameraView({
   focused,
   lightOn,
   elapsedMs,
-  monsterRetreatedTo,
+  lastEnemyDecision,
 }: CameraViewProps) {
   if (!camera) {
     return (
@@ -46,7 +46,7 @@ export default function CameraView({
   // sama žádné názvy souborů nezná, jen zobrazí, co vrátí getCameraImageSrc.
   // null (kamera bez assetů, nebo prázdné pole pro danou situaci) = dosavadní
   // textový/placeholder vzhled beze změny.
-  const imageSrc = getCameraImageSrc(camera.id, enemyVisible, lightOn, elapsedMs, enemyStage, monsterRetreatedTo);
+  const imageSrc = getCameraImageSrc(camera.id, enemyVisible, lightOn, elapsedMs, enemyStage, lastEnemyDecision);
   const motion = resolveCameraMotionConfig(camera.id);
 
   return (

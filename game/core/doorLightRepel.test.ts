@@ -5,18 +5,22 @@ import { NIGHT_01 } from "../nights/night01";
 import { GameState } from "./types";
 
 // Ověření současného door-light repel flow (viz GAME_DESIGN.md "Světlo a
-// dveře", gameReducer.ts#updateDoorLightRepel) — NEMĚNÍ chování, jen ho
-// pokrývá testy, protože dřív žádný dedikovaný test neexistoval.
+// dveře", gameReducer.ts#updateDoorLightRepel) — od zadání "ať hráč vidí
+// bestii utíkat, ne teleport" repel jen o jeden krok zpět na trase +
+// dočasné okno zvýšené šance na ústup (enemyForcedRetreatUntilMs/Chance),
+// místo přímého teleportu na night.enemy.monsterRetreatStage.
 
 const REQUIRED_MS = NIGHT_01.enemy.doorLightRepelRequiredMs; // 1500
-const RETREAT_STAGE = NIGHT_01.enemy.monsterRetreatStage; // "outside"
+const FORCED_RETREAT = NIGHT_01.enemy.forcedRetreatAfterLightRepel; // { durationMs, chance }
 
 function stateAtDoor(overrides: Partial<GameState> = {}): GameState {
   return {
     ...createInitialGameState(NIGHT_01),
     isRunning: true,
     screen: "playing",
-    enemyRoute: ["at_door", "attack"],
+    // Jeden krok PŘED at_door, ať stepBackOneStage má kam couvnout — reálná
+    // trasa vždy má door_hallway hned před at_door (viz basicIntruder.ts).
+    enemyRoute: ["door_hallway", "at_door", "attack"],
     enemyStage: "at_door",
     ...overrides,
   };
@@ -59,7 +63,7 @@ describe("door-light repel — triggers only with door closed + light really on 
     expect(result.doorLightRepelMs).toBe(100);
   });
 
-  it("once the duration is reached: enemyStage resets to the configured retreat stage and the standoff/hold fields clear", () => {
+  it("once the duration is reached: enemyStage steps back ONE stage (not a teleport) and the standoff/hold fields clear", () => {
     const reducer = createGameReducer(NIGHT_01);
     const state = stateAtDoor({
       doorClosed: true,
@@ -71,12 +75,26 @@ describe("door-light repel — triggers only with door closed + light really on 
     });
 
     const result = reducer(state, { type: "TICK", deltaMs: 100 });
-    expect(result.enemyStage).toBe(RETREAT_STAGE);
+    expect(result.enemyStage).toBe("door_hallway");
     expect(result.lastEnemyDecision).toBe("light_repelled");
     expect(result.doorLightRepelMs).toBe(0);
     expect(result.enemyAtDoorSinceMs).toBeNull();
     expect(result.enemyDoorHoldTargetMs).toBeNull();
     expect(result.enemyDoorHoldProgressMs).toBe(0);
+  });
+
+  it("opens the forced-retreat window with the configured duration/chance (strongest of the three triggers)", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = stateAtDoor({
+      doorClosed: true,
+      lightOn: true,
+      doorLightRepelMs: REQUIRED_MS - 50,
+      elapsedMs: 20_000,
+    });
+
+    const result = reducer(state, { type: "TICK", deltaMs: 100 });
+    expect(result.enemyForcedRetreatChance).toBe(FORCED_RETREAT.chance);
+    expect(result.enemyForcedRetreatUntilMs).toBe(20_000 + FORCED_RETREAT.durationMs);
   });
 
   it("resets to 0 the instant any condition breaks mid-accumulation (not just on completion)", () => {
@@ -116,7 +134,7 @@ describe("door-light repel — does not touch retreat verification", () => {
     });
 
     const result = reducer(state, { type: "TICK", deltaMs: 100 });
-    // Light-repel resets enemyStage to RETREAT_STAGE but must not silently
+    // Light-repel steps enemyStage back one stage but must not silently
     // "fix" an already-pending, unrelated verification requirement.
     expect(result.monsterRetreatedTo).toBe("left_hallway");
     expect(result.monsterRetreatVerified).toBe(false);

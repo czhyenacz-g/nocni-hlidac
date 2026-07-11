@@ -48,7 +48,7 @@ export default function DeskView({
           // žárovka nesmí dál ukazovat osvětlenou variantu.
           lightOn={isNearRoomLightActive(state)}
           elapsedMs={state.elapsedMs}
-          monsterRetreatedTo={state.monsterRetreatedTo}
+          lastEnemyDecision={state.lastEnemyDecision}
           showAdminDoorAlerts={isAdmin}
           onSelectCamera={onSelectCamera}
           onCloseCameras={onCloseCameras}
