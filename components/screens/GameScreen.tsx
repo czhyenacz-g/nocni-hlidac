@@ -58,6 +58,8 @@ interface GameScreenProps {
   onRestartGenerator: () => void;
   onDebugToggleDoor: () => void;
   onDebugRestartGenerator: () => void;
+  /** Admin-only "Test noci" v DebugPanel.tsx (viz zadání, GameState.debugNightOverride). */
+  onSetDebugNight: (night: number) => void;
   onStartBulbReplacement: () => void;
   onCancelBulbReplacement: () => void;
 }
@@ -90,6 +92,7 @@ export default function GameScreen({
   onRestartGenerator,
   onDebugToggleDoor,
   onDebugRestartGenerator,
+  onSetDebugNight,
   onStartBulbReplacement,
   onCancelBulbReplacement,
 }: GameScreenProps) {
@@ -275,8 +278,10 @@ export default function GameScreen({
               nightNumber={nightNumber}
               serverCurrentRun={serverCurrentRun}
               localSurvivedNights={localSurvivedNights}
+              isAdmin={isAdmin}
               onDebugToggleDoor={onDebugToggleDoor}
               onDebugRestartGenerator={onDebugRestartGenerator}
+              onSetDebugNight={onSetDebugNight}
             />
           </div>
         )}

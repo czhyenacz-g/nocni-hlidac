@@ -134,6 +134,12 @@ export function createInitialGameState(
     // app/play/page.tsx#handleBeginShift) — nový run vždy začíná `false`.
     monsterKilledThisRun: monsterKilledThisRunOverride ?? false,
 
+    // Admin-only debug knob (viz zadání "testovací nástroj pro late-run
+    // scény", DebugPanel.tsx) — vždy začíná `null`, žádný override parametr
+    // (nastavuje se výhradně SET_DEBUG_NIGHT akcí, ne při startu/restartu
+    // směny).
+    debugNightOverride: null,
+
     isRunning: false,
     audioMuted: false,
     officeDoorLockMs: officeDoorLockMsOverride ?? EMERGENCY_OFFICE_DOOR_LOCK_MS,

@@ -69,6 +69,13 @@ export type GameAction =
   // sám neclampuje (viz zadání "posuvník už to hlídá"), ale komponenta i tak
   // vždy posílá hodnotu v platném rozsahu.
   | { type: "SET_OFFICE_DOOR_LOCK_MS"; value: number }
+  // Admin-only debug nástroj (viz zadání "testovací nástroj pro late-run
+  // scény", DebugPanel.tsx, GameState.debugNightOverride) — nastaví, jaké
+  // číslo noci app/play/page.tsx dál používá pro Night 30 ending/Valhala
+  // rozhodnutí. Reducer sám clampuje `night` na >= 1 (viz gameReducer.ts) —
+  // volající (DebugPanel.tsx) nemusí. Nemění žádné jiné pole (gameMode/
+  // livesRemaining/hasShotgun/monsterKilledThisRun/roomBulbs/...).
+  | { type: "SET_DEBUG_NIGHT"; night: number }
   | { type: "START_BULB_REPLACEMENT" }
   // Puštění tlačítka/pointer leave/cancel před dokončením — viz DoorView.tsx.
   // No-op, pokud žádná výměna zrovna neběží.

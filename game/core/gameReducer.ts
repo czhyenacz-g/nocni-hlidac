@@ -610,6 +610,15 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
       case "SET_OFFICE_DOOR_LOCK_MS":
         return { ...state, officeDoorLockMs: action.value };
 
+      // Admin-only debug nástroj (viz zadání, gameActions.ts komentář u
+      // SET_DEBUG_NIGHT) — jen `debugNightOverride`, žádné jiné pole se
+      // nemění, žádný screen přechod. Clamp jen zdola (>= 1) a shora (<=
+      // 999, bezpečnostní strop proti absurdní hodnotě z numeric inputu) —
+      // konkrétní horní hranice není herně významná, jen ochrana před NaN/
+      // zápornými/extrémními čísly.
+      case "SET_DEBUG_NIGHT":
+        return { ...state, debugNightOverride: Math.min(999, Math.max(1, Math.round(action.night))) };
+
       case "START_BULB_REPLACEMENT": {
         // Riskantní ruční akce — jde jen z DoorView, jen s otevřenými dveřmi,
         // "zásobníková" výměna (kdykoliv, ne jen po prasknutí, viz

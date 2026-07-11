@@ -644,6 +644,23 @@ export interface GameState {
    */
   monsterKilledThisRun: boolean;
 
+  /**
+   * Admin-only debug override "aktuální noc" (viz zadání "testovací nástroj
+   * pro late-run scény", DebugPanel.tsx, gameActions.ts SET_DEBUG_NIGHT) —
+   * `null` = normální výpočet (app/play/page.tsx `currentNight`, ze
+   * survivedNights/serverRunState.currentRun), jinak ho PŘEBÍJÍ. Ovlivňuje
+   * jen "jaké číslo noci se použije" pro rozhodnutí navázaná na
+   * `currentNight` V MOMENTĚ přechodu na "win"/"death" (Night 30 ending,
+   * Valhala) — NEpřepočítává zpětně `nightFeatures` (ty se řeší jednou při
+   * START_SHIFT/RESTART_SHIFT, dřív, než admin override vůbec může
+   * nastavit). Nikdy nezasahuje do gameMode/livesRemaining/hasShotgun/
+   * monsterKilledThisRun/roomBulbs — čistě navíc pole, resetuje se jako
+   * kterékoliv jiné per-run pole na START_SHIFT/RESTART_SHIFT/GO_TO_MENU
+   * (createInitialGameState default `null`), admin si ho na dalším testu
+   * nastaví znovu.
+   */
+  debugNightOverride: number | null;
+
   isRunning: boolean;
   audioMuted: boolean;
   /**

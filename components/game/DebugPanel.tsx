@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { BULB_REPLACE_DURATION_MS, DEBUG_PANEL_ENABLED } from "@/game/balancing/constants";
 import { GameState, NightDefinition } from "@/game/core/types";
 import { getBlackoutPhaseIndex } from "@/game/visuals/blackoutPhase";
@@ -9,6 +10,11 @@ import { DEFAULT_DIFFICULTY } from "@/game/difficulty/difficultyConfig";
 import { computeNightScaling } from "@/game/difficulty/nightScaling";
 import DoorControl from "./DoorControl";
 
+// Rychlé volby pro admin-only "Test noci" sekci níže (viz zadání "testovací
+// nástroj pro late-run scény") — přesně nocí, které zajímají Valhala
+// (20–30) a Night 30 endingy (30).
+const QUICK_DEBUG_NIGHTS = [20, 29, 30] as const;
+
 interface DebugPanelProps {
   state: GameState;
   night: NightDefinition;
@@ -19,8 +25,12 @@ interface DebugPanelProps {
   serverCurrentRun: number | null;
   /** Lokální localStorage counter (viz game/core/survivedNights.ts) — fallback pro nepřihlášeného hráče. */
   localSurvivedNights: number;
+  /** Admin-only "Test noci" sekce (viz zadání) — regulérní hráč (isAdmin false) ji vůbec neuvidí, i kdyby DebugPanel měl otevřený. */
+  isAdmin: boolean;
   onDebugToggleDoor: () => void;
   onDebugRestartGenerator: () => void;
+  /** Viz GameState.debugNightOverride, gameActions.ts SET_DEBUG_NIGHT. */
+  onSetDebugNight: (night: number) => void;
 }
 
 export default function DebugPanel({
@@ -30,10 +40,23 @@ export default function DebugPanel({
   nightNumber,
   serverCurrentRun,
   localSurvivedNights,
+  isAdmin,
   onDebugToggleDoor,
   onDebugRestartGenerator,
+  onSetDebugNight,
 }: DebugPanelProps) {
+  // Lokální text inputu — ne GameState (je to jen rozepsaná hodnota PŘED
+  // odesláním, viz handleSetDebugNightSubmit níže), samostatné od
+  // state.debugNightOverride.
+  const [debugNightInput, setDebugNightInput] = useState(() => String(nightNumber ?? 1));
+
   if (!DEBUG_PANEL_ENABLED) return null;
+
+  function handleSetDebugNightSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const parsed = Number(debugNightInput);
+    if (Number.isFinite(parsed)) onSetDebugNight(parsed);
+  }
 
   // DEV panel nezná zvolenou obtížnost přímo (createGameReducer si ji drží
   // jen ve své uzávěře, GameState o ní nic neví) — app/play/page.tsx dnes
@@ -180,7 +203,56 @@ export default function DebugPanel({
           <div>server currentRun: {serverCurrentRun ?? "—"}</div>
           <div>local survived nights: {localSurvivedNights}</div>
           <div>resolved currentNight: {nightNumber ?? 1}</div>
+          <div>debugNightOverride: {state.debugNightOverride ?? "—"}</div>
+          <div>
+            gameMode: {state.gameMode} — lives: {state.livesRemaining} — monsterKilledThisRun:{" "}
+            {state.monsterKilledThisRun ? "ano" : "ne"}
+          </div>
+          <div>
+            hasShotgun: {state.hasShotgun ? "ano" : "ne"} — hasDoubleBarrelShotgun:{" "}
+            {state.hasDoubleBarrelShotgun ? "ano" : "ne"}
+          </div>
         </div>
+
+        {/* Admin-only "Test noci" (viz zadání "testovací nástroj pro
+            late-run scény, Valhala/Night 30 endingy") — regulérní hráč
+            (isAdmin false) tenhle blok vůbec nedostane, i s otevřeným DEV
+            panelem. Nastavuje jen GameState.debugNightOverride
+            (SET_DEBUG_NIGHT) — žádné jiné pole (gameMode/livesRemaining/
+            hasShotgun/monsterKilledThisRun/roomBulbs/...) se tím nemění. */}
+        {isAdmin && (
+          <div className="border-t border-amber-700/60 pt-2 mt-1">
+            <div className="text-amber-400 mb-1">Test noci/dne (admin):</div>
+            <form className="flex gap-1.5 mb-1.5" onSubmit={handleSetDebugNightSubmit}>
+              <input
+                type="number"
+                min={1}
+                max={999}
+                className="pixel-button w-16 px-1.5 py-1 text-xs"
+                value={debugNightInput}
+                onChange={(e) => setDebugNightInput(e.target.value)}
+              />
+              <button type="submit" className="pixel-button px-2 py-1 text-xs flex-1">
+                Nastavit noc
+              </button>
+            </form>
+            <div className="flex gap-1.5">
+              {QUICK_DEBUG_NIGHTS.map((quickNight) => (
+                <button
+                  key={quickNight}
+                  type="button"
+                  className="pixel-button px-2 py-1 text-xs flex-1"
+                  onClick={() => {
+                    setDebugNightInput(String(quickNight));
+                    onSetDebugNight(quickNight);
+                  }}
+                >
+                  Noc {quickNight}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <DoorControl doorClosed={state.doorClosed} onToggle={onDebugToggleDoor} />
         <button className="pixel-button px-3 py-2 text-xs w-full" onClick={onDebugRestartGenerator}>

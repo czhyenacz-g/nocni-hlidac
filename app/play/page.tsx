@@ -145,8 +145,13 @@ export default function PlayPage() {
   // Hardcore runu ve stejné session. `selectedGameModeRef` (ne `state.gameMode`)
   // je tu záměrně — musí platit i v krátkém okně menu -> loading -> briefing,
   // PŘED tím, než START_SHIFT skutečně zapíše gameMode do GameState.
+  // Admin-only debug override (viz zadání "testovací nástroj pro late-run
+  // scény", GameState.debugNightOverride, DebugPanel.tsx) — PŘEBÍJÍ normální
+  // výpočet, když je nastavený, ať admin může rychle otestovat Night 30
+  // ending/Valhala, aniž by musel opravdu odehrát/přežít 20-30 nocí.
   const currentNight =
-    selectedGameModeRef.current === "hardcore" && serverRunState ? serverRunState.currentRun + 1 : survivedNights + 1;
+    state.debugNightOverride ??
+    (selectedGameModeRef.current === "hardcore" && serverRunState ? serverRunState.currentRun + 1 : survivedNights + 1);
   // Aktivní nouzová minihra (viz components/minigame/EmergencyMiniGame.tsx,
   // handleStartEmergencyRun/handleEmergencyMiniGameComplete níže) — sourozenec
   // GameState, ne jeho pole (stejný vzor jako cinematicPending níže): dokud je
@@ -1445,6 +1450,12 @@ export default function PlayPage() {
     dispatch({ type: "RESTART_GENERATOR" });
   }
 
+  // ADMIN-ONLY: viz zadání "testovací nástroj pro late-run scény",
+  // DebugPanel.tsx "Test noci" sekce — jen dispatch, žádný jiný side effect.
+  function handleSetDebugNight(night: number) {
+    dispatch({ type: "SET_DEBUG_NIGHT", night });
+  }
+
   function handleToggleLight() {
     dispatch({ type: "TOGGLE_LIGHT" });
   }
@@ -1526,6 +1537,7 @@ export default function PlayPage() {
           onRestartGenerator={handleRestartGenerator}
           onDebugToggleDoor={handleDebugToggleDoor}
           onDebugRestartGenerator={handleDebugRestartGenerator}
+          onSetDebugNight={handleSetDebugNight}
           onStartBulbReplacement={handleStartBulbReplacement}
           onCancelBulbReplacement={handleCancelBulbReplacement}
           onStartEmergencyRunWindup={handleStartEmergencyRunWindup}
