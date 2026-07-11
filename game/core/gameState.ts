@@ -80,6 +80,7 @@ export function createInitialGameState(
 
     enemyRoute: pickRouteVariant(night),
     enemyStage: "outside",
+    enemyStageVisitSeq: 0,
     lastEnemyDecision: "stay",
     enemyAtDoorSinceMs: null,
     enemyDoorHoldTargetMs: null,

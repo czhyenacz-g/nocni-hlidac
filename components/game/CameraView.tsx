@@ -14,6 +14,8 @@ interface CameraViewProps {
   elapsedMs: number;
   /** Poslední rozhodnutí nepřítele — viz getCameraImageSrc (fleeing_monster, RETREATING_DECISIONS). */
   lastEnemyDecision: EnemyMoveDecision;
+  /** Seed pro výběr monster/fleeing obrázku (viz GameState.enemyStageVisitSeq) — mění se jen při novém příchodu na stage, ne při každém renderu. */
+  enemyStageVisitSeq: number;
 }
 
 export default function CameraView({
@@ -23,6 +25,7 @@ export default function CameraView({
   lightOn,
   elapsedMs,
   lastEnemyDecision,
+  enemyStageVisitSeq,
 }: CameraViewProps) {
   if (!camera) {
     return (
@@ -46,7 +49,15 @@ export default function CameraView({
   // sama žádné názvy souborů nezná, jen zobrazí, co vrátí getCameraImageSrc.
   // null (kamera bez assetů, nebo prázdné pole pro danou situaci) = dosavadní
   // textový/placeholder vzhled beze změny.
-  const imageSrc = getCameraImageSrc(camera.id, enemyVisible, lightOn, elapsedMs, enemyStage, lastEnemyDecision);
+  const imageSrc = getCameraImageSrc(
+    camera.id,
+    enemyVisible,
+    lightOn,
+    elapsedMs,
+    enemyStage,
+    lastEnemyDecision,
+    enemyStageVisitSeq,
+  );
   const motion = resolveCameraMotionConfig(camera.id);
 
   return (

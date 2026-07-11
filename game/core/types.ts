@@ -403,6 +403,19 @@ export interface GameState {
   /** Trasa vylosovaná při startu směny z enemy.routeVariants — platí po celou směnu. */
   enemyRoute: EnemyStage[];
   enemyStage: EnemyStage;
+  /**
+   * Zvýší se pokaždé, když se `enemyStage` skutečně změní na jinou hodnotu
+   * (viz gameReducer.ts#withEnemyStageVisitSeed — centrální wrapper kolem
+   * celého reduceru, ne rozeseté po jednotlivých case větvích). Slouží jako
+   * "seed" pro výběr `monster`/`fleeing` obrázku kamery
+   * (game/cameras/cameraAssets.object13.ts#getCameraImageSrc) — beze změny
+   * by `pickDeterministic` se stále stejným (čistě `cameraId`) seedem
+   * vracelo navěky STEJNÝ obrázek pro danou kameru (viz zadání "pořád ty
+   * samé"). S tímhle polem v seedu se obrázek vybere znovu při KAŽDÉM
+   * novém příchodu monstra na kameru, ale zůstává stabilní (nebliká), dokud
+   * tam beze změny stage zůstává.
+   */
+  enemyStageVisitSeq: number;
   /** Poslední rozhodnutí při vyhodnocení ENEMY_ADVANCE — jen pro DebugPanel, žádná logika na něm nestaví. */
   lastEnemyDecision: EnemyMoveDecision;
   enemyAtDoorSinceMs: number | null;

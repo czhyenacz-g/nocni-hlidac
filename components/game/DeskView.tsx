@@ -49,6 +49,7 @@ export default function DeskView({
           lightOn={isNearRoomLightActive(state)}
           elapsedMs={state.elapsedMs}
           lastEnemyDecision={state.lastEnemyDecision}
+          enemyStageVisitSeq={state.enemyStageVisitSeq}
           showAdminDoorAlerts={isAdmin}
           onSelectCamera={onSelectCamera}
           onCloseCameras={onCloseCameras}

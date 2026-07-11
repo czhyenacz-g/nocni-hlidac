@@ -11,6 +11,7 @@ interface CameraPanelProps {
   lightOn: boolean;
   elapsedMs: number;
   lastEnemyDecision: EnemyMoveDecision;
+  enemyStageVisitSeq: number;
   /** Admin-only rychlá testovací pomůcka (viz zadání "rychlejší testování", game/cameras/cameraDoorAlert.ts) — jen v overview (CameraMonitorGrid), detail už skutečný obsah ukazuje sám. */
   showAdminDoorAlerts: boolean;
   onSelectCamera: (id: CameraId) => void;
@@ -29,6 +30,7 @@ export default function CameraPanel({
   lightOn,
   elapsedMs,
   lastEnemyDecision,
+  enemyStageVisitSeq,
   showAdminDoorAlerts,
   onSelectCamera,
   onCloseCameras,
@@ -43,6 +45,7 @@ export default function CameraPanel({
         lightOn={lightOn}
         elapsedMs={elapsedMs}
         lastEnemyDecision={lastEnemyDecision}
+        enemyStageVisitSeq={enemyStageVisitSeq}
         onBack={onCloseCameras}
       />
     );

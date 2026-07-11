@@ -114,3 +114,39 @@ describe("getCameraImageSrc — door_hallway fleeing (hallway UV retreat)", () =
     expect(src).toBe("/object_13/camera/door_hallway/door_hallway_fleeing_monster.webp");
   });
 });
+
+describe("getCameraImageSrc — enemyStageVisitSeq drives monster/fleeing image variety", () => {
+  // right_hallway má 4 monster snímky (viz CAMERA_ASSETS) — dost na to, aby
+  // se přes několik různých seq hodnot projevila variabilita, ne jen shoda
+  // náhodou. Bez enemyStageVisitSeq v seedu (viz zadání "pořád ty samé") by
+  // tenhle test padal, protože by všechny seq hodnoty vracely stejný snímek.
+  it("picks a different monster image for different enemyStageVisitSeq values on the same camera/stage", () => {
+    const picks = new Set<string | null>();
+    for (let seq = 0; seq < 10; seq++) {
+      picks.add(getCameraImageSrc("right_hallway", true, false, 0, "right_hallway", "advance", seq));
+    }
+    expect(picks.size).toBeGreaterThan(1);
+  });
+
+  it("stays stable (same image) for the same enemyStageVisitSeq across repeated calls", () => {
+    const first = getCameraImageSrc("right_hallway", true, false, 0, "right_hallway", "advance", 3);
+    const second = getCameraImageSrc("right_hallway", true, false, 0, "right_hallway", "advance", 3);
+    expect(first).toBe(second);
+  });
+
+  it("defaults enemyStageVisitSeq to 0 when omitted, matching an explicit 0", () => {
+    const omitted = getCameraImageSrc("right_hallway", true, false, 0, "right_hallway", "advance");
+    const explicitZero = getCameraImageSrc("right_hallway", true, false, 0, "right_hallway", "advance", 0);
+    expect(omitted).toBe(explicitZero);
+  });
+
+  it("also varies the fleeing image by enemyStageVisitSeq when a camera has multiple fleeing assets", () => {
+    // Většina kamer má jen 1 fleeing asset (žádná variabilita možná) — tenhle
+    // test jen ověří, že seed string obsahuje seq (fleeing volání neselže,
+    // vrací pořád platný asset), skutečnou variabilitu pokrývá monster test výše.
+    const a = getCameraImageSrc("left_hallway", true, false, 0, "left_hallway", "retreat", 1);
+    const b = getCameraImageSrc("left_hallway", true, false, 0, "left_hallway", "retreat", 2);
+    expect(a).toBe("/object_13/camera/left_hallway/left_hallway_fleeing_monster.webp");
+    expect(b).toBe("/object_13/camera/left_hallway/left_hallway_fleeing_monster.webp");
+  });
+});

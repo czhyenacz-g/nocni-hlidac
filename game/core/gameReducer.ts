@@ -532,7 +532,12 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
     const requireMonsterRetreatVerification =
       rules.monster_check_or_return && state.nightFeatures.monsterRetreatVerificationEnabled;
 
-    switch (action.type) {
+    // Celý switch je zabalený do IIFE a jeho výsledek jde přes
+    // withEnemyStageVisitSeed (viz definice níže) — centrální, jedno místo,
+    // ne rozeseté po desítkách jednotlivých case větví, které by jinak
+    // musely samy hlídat, jestli zrovna mění enemyStage.
+    const nextState = ((): GameState => {
+      switch (action.type) {
       case "START_LOADING":
         return {
           ...createInitialGameState(night),
@@ -1531,6 +1536,19 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
 
       default:
         return state;
-    }
+      }
+    })();
+
+    return withEnemyStageVisitSeed(state, nextState);
   };
+}
+
+// Viz GameState.enemyStageVisitSeq — jediné místo, které ho mění, ať se
+// nemusí opakovat/hlídat ve všech ~15 case větvích, co enemyStage nastavují.
+// `nextState === state` (žádná změna/no-op guard) je běžný případ, `===`
+// srovnání enemyStage samo o sobě stačí, i kdyby nextState byl nový objekt
+// se stejnou hodnotou stage.
+function withEnemyStageVisitSeed(previousState: GameState, nextState: GameState): GameState {
+  if (nextState.enemyStage === previousState.enemyStage) return nextState;
+  return { ...nextState, enemyStageVisitSeq: previousState.enemyStageVisitSeq + 1 };
 }

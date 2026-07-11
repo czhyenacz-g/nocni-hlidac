@@ -237,6 +237,14 @@ function pickCycling(list: string[], elapsedMs: number): string | null {
  * `lightOn` mění jen sadu pro `door_hallway` (viz `resolveAssetSet`). `null`
  * = kamera nemá vhodný obrázek (prázdné pole/kamera bez assetů) —
  * `CameraView` pak zobrazí dosavadní textový/placeholder vzhled.
+ *
+ * `enemyStageVisitSeq` (viz GameState) je součástí seedu pro `monster`/
+ * `fleeing` výběr (`pickDeterministic` níže) — bez něj by seed byl čistě
+ * `cameraId`, tedy NAVŽDY stejný index pro danou kameru (viz zadání "pořád
+ * ty samé"). S tímhle polem se obrázek vybere znovu při KAŽDÉM novém
+ * příchodu monstra na kameru (enemyStage se změnil), ale zůstává stabilní
+ * (nebliká), dokud tam beze změny stage zůstává — `pickDeterministic` pořád
+ * není `Math.random()`, jen se mění, CO se hashuje.
  */
 export function getCameraImageSrc(
   cameraId: CameraId,
@@ -245,6 +253,7 @@ export function getCameraImageSrc(
   elapsedMs: number,
   enemyStage?: EnemyStage,
   lastEnemyDecision?: EnemyMoveDecision,
+  enemyStageVisitSeq: number = 0,
 ): string | null {
   const assets = CAMERA_ASSETS[cameraId];
   if (!assets) return null;
@@ -258,14 +267,14 @@ export function getCameraImageSrc(
   const isFleeingRetreat = hasMonster && lastEnemyDecision !== undefined && RETREATING_DECISIONS.includes(lastEnemyDecision);
 
   if (isFleeingRetreat) {
-    const fleeing = pickDeterministic(set.fleeing, `${cameraId}:fleeing`);
+    const fleeing = pickDeterministic(set.fleeing, `${cameraId}:fleeing:${enemyStageVisitSeq}`);
     if (fleeing) return fleeing;
     // Chybějící fleeing asset pro tuhle kameru — fallback na běžný monster
     // snímek níže, ne pád/prázdná obrazovka.
   }
 
   if (hasMonster) {
-    return pickDeterministic(set.monster, `${cameraId}:monster`) ?? pickCycling(set.normal, elapsedMs);
+    return pickDeterministic(set.monster, `${cameraId}:monster:${enemyStageVisitSeq}`) ?? pickCycling(set.normal, elapsedMs);
   }
   return pickCycling(set.normal, elapsedMs);
 }
