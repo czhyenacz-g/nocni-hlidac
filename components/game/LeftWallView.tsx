@@ -324,7 +324,7 @@ export default function LeftWallView({
             onPointerCancel={handleThinkItOverPointerUp}
           >
             <span className="console-icon-block console-icon-block--primary" aria-hidden="true">
-              <ConsoleIcon id="warn" />
+              <ConsoleIcon id="skull" />
             </span>
             <span className="flex-1 text-left">
               {thinkItOverWindupActive
