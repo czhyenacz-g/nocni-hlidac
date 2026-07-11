@@ -67,6 +67,12 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
     hasDefeatedMonster: reward.hasDefeatedMonster,
     doubleBarrelUnlocked: reward.doubleBarrelUnlocked,
   });
+  // "Zlatý hlídač" (viz zadání) — stejné pravidlo jako post_monster pozadí
+  // výše (hasDefeatedMonster NEBO doubleBarrelUnlocked), znovupoužité místo
+  // duplicitní podmínky — nahrazuje úvodní větu, dřívější samostatný
+  // veteranStatus panel (Status hlídače/Odměna/Bestie byla poražena) se pro
+  // tyhle hráče už nezobrazuje vůbec.
+  const isGoldenGuard = menuBackground === "post_monster";
 
   // NORMAL/HARDCORE i "Zůstat v Normal" jsou čistě lokální stav (žádný
   // dispatch do app/play/page.tsx, kde normálně žije audio pro ostatní
@@ -132,24 +138,10 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
           <div className="text-center p-6 md:p-8">
             <h1 className="text-3xl font-bold mb-1 text-red-500">{COPY.menu.title}</h1>
             <p className="text-gray-400 mb-6">{COPY.menu.subtitle}</p>
-            <p className="text-sm text-gray-500 mb-8">{COPY.menu.intro}</p>
-
-            {/* Status karta po prvním true endingu (viz zadání,
-                game/core/monsterDefeatReward.ts) — jen "ZLATÝ HLÍDAČ" status +
-                odemčená odměna, žádný postup/číslo (monsterDefeatsCount se
-                zatím nikde nezobrazuje, viz report). Stejný vizuální jazyk
-                jako hardcore login prompt níže (tmavý rámeček, drobný text). */}
-            {reward.hasDefeatedMonster && (
-              <div className="mb-4 border border-amber-700/60 bg-amber-950/20 p-3 text-left text-[11px]">
-                <p className="text-amber-300">
-                  {COPY.veteranStatus.statusLabel} <span className="font-bold">{COPY.veteranStatus.statusValue}</span>
-                </p>
-                <p className="mt-1 text-gray-300">
-                  {COPY.veteranStatus.rewardLabel} {COPY.veteranStatus.rewardValue}
-                </p>
-                <p className="mt-1 text-gray-500 italic">{COPY.veteranStatus.note}</p>
-              </div>
-            )}
+            {/* Zlatý hlídač (viz isGoldenGuard výše) dostává jinou úvodní
+                větu místo dřívějšího samostatného status panelu — žádný
+                zvláštní blok navíc, jen jiný text na stejném místě. */}
+            <p className="text-sm text-gray-500 mb-8">{isGoldenGuard ? COPY.menu.goldenGuardIntro : COPY.menu.intro}</p>
 
             {/* Dokud visí hardcoreLoginPrompt (nepřihlášený hráč klikl na
                 HARDCORE), nejde nastoupit na směnu vůbec — ani do Normal

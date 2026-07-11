@@ -50,6 +50,30 @@ describe("COPY.menu.leaderboardLinkLabel", () => {
   });
 });
 
+// Úvodní věta hlavního menu — "Zlatý hlídač" (hasDefeatedMonster nebo
+// doubleBarrelUnlocked, viz MainMenuScreen.tsx#isGoldenGuard) dostává jinou
+// větu MÍSTO dřívějšího samostatného veteranStatus panelu (ten byl
+// odstraněn, viz zadání), noví/běžní hráči vidí beze změny původní text.
+describe("COPY.menu.intro / goldenGuardIntro", () => {
+  it("default intro stays exactly the original text", () => {
+    expect(COPY.menu.intro).toBe("Sedíš v malé místnosti. Kamery šumí. Dveře nevydrží věčně. Přežij do rána.");
+  });
+
+  it("goldenGuardIntro is the new required text", () => {
+    expect(COPY.menu.goldenGuardIntro).toBe(
+      "Sedíš v malé místnosti. Kamery šumí. Dveře nevydrží věčně. Jenže tentokrát už nejsi ten, kdo má mít strach.",
+    );
+  });
+
+  it("the two intros are distinct", () => {
+    expect(COPY.menu.goldenGuardIntro).not.toBe(COPY.menu.intro);
+  });
+
+  it("the old standalone veteranStatus block no longer exists in COPY", () => {
+    expect((COPY as Record<string, unknown>).veteranStatus).toBeUndefined();
+  });
+});
+
 // Brokovnice — první krok k true endingu (viz game/core/shotgunEquipment.ts,
 // components/game/LeftWallView.tsx). {ammo}/{max} nahrazují LeftWallView.tsx.
 describe("COPY.game shotgun copy", () => {

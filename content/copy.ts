@@ -4,6 +4,15 @@ export const COPY = {
     title: "Noční hlídač",
     subtitle: "Objekt 13: První směna",
     intro: "Sedíš v malé místnosti. Kamery šumí. Dveře nevydrží věčně. Přežij do rána.",
+    // Zobrazí se místo intro výše, jen pro "Zlatého hlídače" (viz zadání,
+    // game/core/monsterDefeatReward.ts, MainMenuScreen.tsx) — reward.hasDefeatedMonster
+    // nebo reward.doubleBarrelUnlocked. Nahrazuje dřívější samostatný
+    // "veteranStatus" panel (Status hlídače/Odměna/Bestie byla poražena),
+    // který se pro tyhle hráče teď už vůbec nevykresluje — status "vyhrál jsi
+    // to jednou, bestie tě už nemá čím vystrašit" je součástí věty, ne
+    // vlastního panelu.
+    goldenGuardIntro:
+      "Sedíš v malé místnosti. Kamery šumí. Dveře nevydrží věčně. Jenže tentokrát už nejsi ten, kdo má mít strach.",
     startButton: "Nastoupit na směnu",
     // Zobrazí se místo startButton výše, jen když má hráč odemčenou
     // dvouhlavňovku (viz game/core/monsterDefeatReward.ts, MainMenuScreen.tsx)
@@ -23,16 +32,6 @@ export const COPY = {
     // nenápadný odkaz, žádný redesign menu.
     profileLinkLabel: "Profil hlídače",
     authorEmail: "hynek@darbujan.com",
-  },
-  // Status karta po prvním true endingu (viz zadání, game/core/monsterDefeatReward.ts,
-  // MainMenuScreen.tsx) — zobrazí se jen když reward.hasDefeatedMonster. Texty
-  // přesně podle zadání, drženo stručné/temné (na žádost "nepřehánět texty").
-  veteranStatus: {
-    statusLabel: "Status hlídače:",
-    statusValue: "ZLATÝ HLÍDAČ",
-    rewardLabel: "Odměna:",
-    rewardValue: "Dvouhlavňová brokovnice odemčena",
-    note: "Bestie byla poražena. Objekt 13 ale pořád stojí.",
   },
   // Profil hlídače (viz zadání, app/profile/page.tsx) — první verze budoucího
   // účtu/profilu, čistě lokální localStorage data (game/core/playerProfileStats.ts,
