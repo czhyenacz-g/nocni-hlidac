@@ -3,10 +3,21 @@
 import { useEffect, useState } from "react";
 import { CinematicSceneId, getCinematicScene } from "@/content/cinematics";
 import { audioManager } from "@/game/audio/audioManager";
+import { PlayerAchievement } from "@/game/core/playerAchievements";
+import AchievementResultPanel from "@/components/achievements/AchievementResultPanel";
 
 interface CinematicScreenProps {
   sceneId: CinematicSceneId;
   onComplete: () => void;
+  /**
+   * Achievementy nově odemčené událostí, kterou tenhle cinematic uvádí (viz
+   * zadání "Valhala cinematic je finální obrazovka, DeathScreen se po ní už
+   * nezobrazí") — volitelné, zobrazí se přes existující AchievementResultPanel
+   * jen u POSLEDNÍHO segmentu, ať nepřekáží dřív, než hráč scénu dočte.
+   * Vyhodnocení samotné (evaluateResultAchievements) proběhlo dřív a jen
+   * jednou v app/play/page.tsx — tenhle prop ho jen zobrazuje, nevyhodnocuje.
+   */
+  newlyUnlockedAchievements?: PlayerAchievement[];
 }
 
 // Obecná story/cinematic obrazovka (viz content/cinematics.ts) — velký
@@ -16,7 +27,7 @@ interface CinematicScreenProps {
 // `.atmosphere-root`, které má CSS `filter` (styles/atmosphere.css), a
 // filter na předkovi dělá z něj containing block pro `position: fixed`
 // potomky, takže by se fixed prvek nepřichytil k viewportu.
-export default function CinematicScreen({ sceneId, onComplete }: CinematicScreenProps) {
+export default function CinematicScreen({ sceneId, onComplete, newlyUnlockedAchievements = [] }: CinematicScreenProps) {
   const scene = getCinematicScene(sceneId);
   const [segmentIndex, setSegmentIndex] = useState(0);
   const segment = scene?.segments[segmentIndex] ?? null;
@@ -47,6 +58,8 @@ export default function CinematicScreen({ sceneId, onComplete }: CinematicScreen
 
   if (!scene || !segment) return null;
 
+  const isLastSegment = segmentIndex === scene.segments.length - 1;
+
   function handleResponseClick() {
     if (!scene) return;
     if (segmentIndex + 1 < scene.segments.length) {
@@ -65,6 +78,11 @@ export default function CinematicScreen({ sceneId, onComplete }: CinematicScreen
       <div className="w-full max-w-2xl pixel-panel p-4">
         {scene.title && <div className="text-sm font-bold mb-2 text-red-500">{scene.title}</div>}
         <p className="text-sm text-gray-200 mb-4 min-h-[1.5rem]">{segment.text}</p>
+        {isLastSegment && newlyUnlockedAchievements.length > 0 && (
+          <div className="mb-4">
+            <AchievementResultPanel achievements={newlyUnlockedAchievements} />
+          </div>
+        )}
         {segment.responseLabel && (
           <button className="pixel-button tap-target px-4 py-2 text-xs w-full" onClick={handleResponseClick}>
             {segment.responseLabel}
