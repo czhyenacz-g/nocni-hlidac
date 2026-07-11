@@ -85,12 +85,6 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
     setShowHardcoreLoginPrompt(true);
   }
 
-  function handleStayNormal() {
-    audioManager.init();
-    audioManager.play(AUDIO_EVENTS.uiClick);
-    setShowHardcoreLoginPrompt(false);
-  }
-
   // Bez bg-* třídy na <main> záměrně — main nezakládá vlastní stacking context
   // (žádný z-index/opacity/transform), takže vlastní background-color by se
   // vykreslil PŘED (nad) SceneBackground potomkem s -z-10 a úplně by ho
@@ -139,8 +133,17 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
               </div>
             )}
 
+            {/* Dokud visí hardcoreLoginPrompt (nepřihlášený hráč klikl na
+                HARDCORE), nejde nastoupit na směnu vůbec — ani do Normal
+                (ten jde zvolit jen explicitním kliknutím na NORMAL tlačítko
+                níže, které prompt samo zavře). Skutečné `disabled`, ne jen
+                ztlumený vzhled — dokud hráč neřekne, který mód chce, není co
+                spouštět. */}
             <button
-              className="pixel-button console-button console-button--primary tap-target px-6 py-3 text-sm w-full"
+              className={`pixel-button console-button console-button--primary tap-target px-6 py-3 text-sm w-full ${
+                showHardcoreLoginPrompt ? "opacity-50 cursor-not-allowed" : ""
+              }`}
+              disabled={showHardcoreLoginPrompt}
               onClick={() => onStart(gameMode)}
             >
               {reward.doubleBarrelUnlocked ? COPY.menu.startButtonVeteran : COPY.menu.startButton}
@@ -194,14 +197,12 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
             {showHardcoreLoginPrompt && (
               <div className="mt-3 border border-gray-600 bg-gray-900/80 p-3 text-left text-[11px] text-gray-300">
                 <p className="mb-2">{COPY.gameMode.hardcoreLoginPromptText}</p>
-                <div className="flex gap-2">
-                  <a href="/api/auth/login" className="pixel-button tap-target flex-1 px-2 py-1.5 text-center text-[10px]">
-                    {COPY.auth.discordLoginLabel}
-                  </a>
-                  <button className="pixel-button tap-target flex-1 px-2 py-1.5 text-[10px]" onClick={handleStayNormal}>
-                    {COPY.gameMode.hardcoreLoginPromptStayNormalLabel}
-                  </button>
-                </div>
+                <a
+                  href="/api/auth/login"
+                  className="pixel-button tap-target block w-full px-2 py-1.5 text-center text-[10px]"
+                >
+                  {COPY.auth.discordLoginLabel}
+                </a>
               </div>
             )}
 

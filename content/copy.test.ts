@@ -130,7 +130,6 @@ describe("COPY.gameMode", () => {
     expect(COPY.gameMode.hardcoreLoginPromptText).toBe(
       "Hardcore režim se zapisuje do Síně slávy, proto vyžaduje přihlášení přes Discord.",
     );
-    expect(COPY.gameMode.hardcoreLoginPromptStayNormalLabel).toBe("Zůstat v Normal");
   });
 });
 

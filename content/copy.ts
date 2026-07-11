@@ -116,7 +116,6 @@ export const COPY = {
     // MainMenuScreen.tsx#handleSelectHardcore) — hráč zůstává v Normal,
     // dokud se nepřihlásí.
     hardcoreLoginPromptText: "Hardcore režim se zapisuje do Síně slávy, proto vyžaduje přihlášení přes Discord.",
-    hardcoreLoginPromptStayNormalLabel: "Zůstat v Normal",
     // Zobrazí se místo normalTooltip, dokud má hráč rozehranou Hardcore
     // šňůru (currentRun > 0, viz MainMenuScreen.tsx#hasActiveHardcoreRun) —
     // Normal je v tu chvíli uzamčený, tenhle text vysvětluje proč (viz
