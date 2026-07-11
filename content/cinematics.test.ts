@@ -58,3 +58,28 @@ describe("cinematics config", () => {
     );
   });
 });
+
+describe("think_it_over_warning cinematic", () => {
+  it("has an imageSrc pointing at the converted webp", () => {
+    const scene = getCinematicScene("think_it_over_warning");
+    expect(scene?.imageSrc).toBe("/object_13/story/think_it_over_warning.webp");
+  });
+
+  it("the first segment is 'Nedělej to!'", () => {
+    const scene = getCinematicScene("think_it_over_warning");
+    expect(scene?.segments[0].text).toBe("Nedělej to!");
+  });
+
+  it("the last segment mentions ten hits and its responseLabel is 'Zpátky ke stolu.'", () => {
+    const scene = getCinematicScene("think_it_over_warning");
+    const last = scene?.segments.at(-1);
+    expect(last?.text).toContain("desetkrát");
+    expect(last?.responseLabel).toBe("Zpátky ke stolu.");
+  });
+
+  it("every segment has a responseLabel (no audioSrc required — no narration recorded)", () => {
+    const scene = getCinematicScene("think_it_over_warning");
+    expect(scene?.segments.every((segment) => Boolean(segment.responseLabel))).toBe(true);
+    expect(scene?.segments.every((segment) => segment.audioSrc === undefined)).toBe(true);
+  });
+});

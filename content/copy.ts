@@ -266,8 +266,6 @@ export const COPY = {
     startThinkItOverLabel: 'Nechat si to "projít hlavou"',
     /** Text tlačítka během držení (viz GameState.thinkItOverWindup) — {seconds} se nahradí zbývajícím počtem sekund. */
     thinkItOverHoldingLabel: "Přemýšlím… {seconds} s",
-    // Zobrazí se po doběhnutí držení (viz thinkItOverReadySeq) — přesný text ze zadání.
-    thinkItOverResultLabel: "Nevzdávej se a bojuj! To monstrum určitě lze nějak zabít. Potřebuješ možná více ran, nebo větší kalibr.",
     // Posuvník na LeftWallView.tsx, vidět jen s brokovnicí (stejná podmínka
     // jako startThinkItOverLabel výše, viz zadání "kompenzovat horší
     // mobilní ovládání") — nastavuje GameState.officeDoorLockMs (viz

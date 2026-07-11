@@ -84,11 +84,6 @@ describe("COPY.game think-it-over copy", () => {
     expect(COPY.game.thinkItOverHoldingLabel).toContain("{seconds}");
   });
 
-  it("thinkItOverResultLabel is the exact required message", () => {
-    expect(COPY.game.thinkItOverResultLabel).toBe(
-      "Nevzdávej se a bojuj! To monstrum určitě lze nějak zabít. Potřebuješ možná více ran, nebo větší kalibr.",
-    );
-  });
 });
 
 // Hidden true ending (viz game/core/monsterEnding.ts, MonsterDefeatedScreen.tsx).

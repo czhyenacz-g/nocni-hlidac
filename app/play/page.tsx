@@ -156,6 +156,12 @@ export default function PlayPage() {
   const [activeMiniGame, setActiveMiniGame] = useState<{ id: "battery_run" | "shotgun_run"; input: EmergencyMiniGameInput } | null>(
     null,
   );
+  // "Nechat si to projít hlavou" cinematic (viz content/cinematics.ts
+  // think_it_over_warning, LeftWallView.tsx) — stejný "hlavní smyčka stojí,
+  // dokud tohle běží" vzor jako activeMiniGame výše (viz useGameLoop
+  // isRunning níže), ať hráč nemůže umřít uprostřed nepřerušitelné scény,
+  // na kterou zrovna nemůže reagovat.
+  const [thinkItOverCinematicActive, setThinkItOverCinematicActive] = useState(false);
 
   // Jednorázově při mountu zjisti přihlášeného hráče a jeho serverový run
   // stav (viz app/api/auth/me/route.ts) — pokud je hráč přihlášený a hub API
@@ -189,10 +195,12 @@ export default function PlayPage() {
   // renderu (ne efekt) — stejný "latest ref" vzor jako jinde v Reactu.
   const stressLevelRef = useRef(0);
   useGameLoop({
-    // Dokud běží nouzová minihra (activeMiniGame), hlavní herní smyčka
+    // Dokud běží nouzová minihra (activeMiniGame) nebo "Nechat si to projít
+    // hlavou" cinematic (thinkItOverCinematicActive), hlavní herní smyčka
     // (TICK/ENEMY_ADVANCE) musí stát — jinak by čas/energie/nepřítel běžely
-    // dál na pozadí, zatímco hráč je "mimo kancelář" v EmergencyMiniGame.
-    isRunning: state.isRunning && !activeMiniGame,
+    // dál na pozadí, zatímco hráč je mimo kancelář/nemůže na obrazovku
+    // vůbec reagovat.
+    isRunning: state.isRunning && !activeMiniGame && !thinkItOverCinematicActive,
     enemyTickMs: night.enemyTickMs,
     dispatch,
     stressLevelRef,
@@ -824,16 +832,22 @@ export default function PlayPage() {
   }, [state.emergencyRunReadySeq]);
 
   // Držení "Nechat si to projít hlavou" doběhlo celé (viz gameReducer.ts
-  // START_THINK_IT_OVER_WINDUP/TICK) — na rozdíl od emergencyRunReadySeq
-  // výše tady nic nespouštíme, jen zobrazíme hlášku. Stejný `>` (ne `!==`)
-  // diff jako emergencyRunReadySeq — nová směna resetuje thinkItOverReadySeq
-  // zpět na 0, což by prostý `!==` diff mylně vzal za "windup zrovna doběhl".
+  // START_THINK_IT_OVER_WINDUP/TICK) — spustí celou cinematic scénu (viz
+  // content/cinematics.ts think_it_over_warning), ne jen krátkou hlášku
+  // (na výslovnou žádost, viz zadání "dej to do většího dialogu"). Stejný
+  // `>` (ne `!==`) diff jako emergencyRunReadySeq — nová směna resetuje
+  // thinkItOverReadySeq zpět na 0, což by prostý `!==` diff mylně vzal za
+  // "windup zrovna doběhl".
   useEffect(() => {
     if (state.thinkItOverReadySeq > prevThinkItOverReadySeqRef.current) {
-      setEmergencyRunMessage(COPY.game.thinkItOverResultLabel);
+      setThinkItOverCinematicActive(true);
     }
     prevThinkItOverReadySeqRef.current = state.thinkItOverReadySeq;
   }, [state.thinkItOverReadySeq]);
+
+  function handleThinkItOverCinematicComplete() {
+    setThinkItOverCinematicActive(false);
+  }
 
   useEffect(() => {
     if (prevGameStatusRef.current !== "blackout" && state.gameStatus === "blackout") {
@@ -1405,7 +1419,10 @@ export default function PlayPage() {
       {state.screen === "menu" && <MainMenuScreen onStart={handleStart} />}
       {state.screen === "loading" && <LoadingScreen />}
       {state.screen === "briefing" && <BriefingScreen nightNumber={currentNight} onStartShift={handleBeginShift} />}
-      {state.screen === "playing" && !activeMiniGame && (
+      {state.screen === "playing" && thinkItOverCinematicActive && (
+        <CinematicScreen sceneId="think_it_over_warning" onComplete={handleThinkItOverCinematicComplete} />
+      )}
+      {state.screen === "playing" && !activeMiniGame && !thinkItOverCinematicActive && (
         <GameScreen
           state={state}
           night={night}

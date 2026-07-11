@@ -2,7 +2,7 @@
 // components/screens/CinematicScreen.tsx). Připraveno na to, aby později
 // přibyly další scény/segmenty/audio, beze změny CinematicScreen.tsx.
 
-export type CinematicSceneId = "old_guard_first_death_warning";
+export type CinematicSceneId = "old_guard_first_death_warning" | "think_it_over_warning";
 
 export interface CinematicSegment {
   id: string;
@@ -106,6 +106,48 @@ export const CINEMATIC_SCENES: Record<CinematicSceneId, CinematicScene> = {
         id: "farewell",
         text: "Tak přeju pěknou noc.",
         audioSrc: "/object_13/story/segments/story_1_farewell.m4a",
+        responseLabel: "Zpátky ke stolu.",
+      },
+    ],
+  },
+  // "Nechat si to projít hlavou" (viz zadání, LeftWallView.tsx#thinkItOver
+  // tlačítko, app/play/page.tsx#thinkItOverReadySeq efekt) — dřív jen
+  // jednořádkový toast (COPY.game.thinkItOverResultLabel), teď plnohodnotná
+  // klikací scéna jako old_guard_first_death_warning výše, jen bez audia
+  // (žádné namluvené klipy nejsou k dispozici, CinematicScreen.tsx to
+  // zvládá beze změny — segmentAudioSrc je volitelný). Text rozdělený na
+  // kratší klikací kousky, ne jeden dlouhý odstavec, ať to působí jako
+  // rozhovor se sebou samým/hlasem v hlavě, ne jako čtení nástěnky.
+  think_it_over_warning: {
+    id: "think_it_over_warning",
+    imageSrc: "/object_13/story/think_it_over_warning.webp",
+    segments: [
+      { id: "dont", text: "Nedělej to!", responseLabel: "..." },
+      {
+        id: "not_a_coward",
+        text: "Myslel jsem, že nejsi slaboch, co se tak snadno vzdá.",
+        responseLabel: "Nejsem.",
+      },
+      { id: "find_warrior", text: "Najdi v sobě válečníka.", responseLabel: "Zkusím." },
+      {
+        id: "not_invincible",
+        text: "Monstrum není nezranitelné — jen je tvrdší, než vypadá.",
+        responseLabel: "Poslouchám.",
+      },
+      { id: "heals", text: "Ale pamatuj: s ránem se znovu zahojí.", responseLabel: "Chápu." },
+      {
+        id: "one_night",
+        text: "Jestli ji chceš položit, musíš to dokázat během jediné noci.",
+        responseLabel: "Dobře.",
+      },
+      {
+        id: "one_two_hits",
+        text: "Jedna rána nic neukončí, dvě tě jen uklidní…",
+        responseLabel: "A dál?",
+      },
+      {
+        id: "ten_hits",
+        text: "…ale desetkrát se postavit strachu a znovu zmáčknout spoušť? To už může být dost na to, aby padla i bestie.",
         responseLabel: "Zpátky ke stolu.",
       },
     ],
