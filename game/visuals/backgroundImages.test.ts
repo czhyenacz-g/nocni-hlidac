@@ -32,6 +32,30 @@ describe("BACKGROUND_SCENES.menuFirstWin", () => {
   });
 });
 
+// Login menu background (viz zadání, game/visuals/mainMenuBackground.ts,
+// MainMenuScreen.tsx) — přihlášený Discord hráč bez monster defeat odměny.
+// Na rozdíl od menu/menuFirstWin/win výše má KAŽDÝ snímek vlastní holdMs
+// (dlouhý základní frame, krátký alarmový záblesk), viz BackgroundFrame.
+describe("BACKGROUND_SCENES.menuLogin", () => {
+  it("has both provided frames (menu_bg_login_0/1), exact filenames, not renamed", () => {
+    const srcs = BACKGROUND_SCENES.menuLogin.frames.map((f) => f.src);
+    expect(srcs).toEqual([
+      "/object_13/background/menu_bg_login_0.webp",
+      "/object_13/background/menu_bg_login_1.webp",
+    ]);
+  });
+
+  it("holds the base frame (0) noticeably longer than the alarm frame (1)", () => {
+    const [base, alarm] = BACKGROUND_SCENES.menuLogin.frames;
+    expect(base.holdMs).toBeGreaterThan(alarm.holdMs!);
+    // Souhlasí s doporučeným rozsahem ze zadání (5-8s / 0.8-1.5s).
+    expect(base.holdMs).toBeGreaterThanOrEqual(5000);
+    expect(base.holdMs).toBeLessThanOrEqual(8000);
+    expect(alarm.holdMs).toBeGreaterThanOrEqual(800);
+    expect(alarm.holdMs).toBeLessThanOrEqual(1500);
+  });
+});
+
 // Existing scenes already prove frames arrays of length 1 are a fully valid,
 // non-crashing config (SceneBackground.tsx just skips the interval and shows
 // a static image) — documented here so it's explicit that menuFirstWin could

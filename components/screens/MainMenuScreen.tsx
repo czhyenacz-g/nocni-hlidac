@@ -7,12 +7,22 @@ import Footer from "@/components/Footer";
 import SceneBackground from "@/components/SceneBackground";
 import AuthStatus from "@/components/auth/AuthStatus";
 import { useAuthStatus } from "@/components/auth/useAuthStatus";
-import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
+import { BACKGROUND_SCENES, SceneBackgroundConfig } from "@/game/visuals/backgroundImages";
 import { DEFAULT_GAME_MODE, GameMode } from "@/game/core/gameMode";
 import ConsoleIcon from "@/components/game/ConsoleIcon";
 import { audioManager } from "@/game/audio/audioManager";
 import { AUDIO_EVENTS } from "@/game/audio/audioEvents";
 import { getMonsterDefeatReward } from "@/game/core/monsterDefeatReward";
+import { MainMenuBackgroundKind, resolveMainMenuBackground } from "@/game/visuals/mainMenuBackground";
+
+// Mapování čistého výsledku resolveMainMenuBackground na skutečnou scénu
+// (viz game/visuals/backgroundImages.ts) — samo o sobě žádná rozhodovací
+// logika, ta je celá v resolveMainMenuBackground.
+const MAIN_MENU_BACKGROUND_SCENE: Record<MainMenuBackgroundKind, SceneBackgroundConfig> = {
+  default: BACKGROUND_SCENES.menu,
+  login: BACKGROUND_SCENES.menuLogin,
+  post_monster: BACKGROUND_SCENES.menuFirstWin,
+};
 
 interface MainMenuScreenProps {
   /** Dostane zvolený režim (viz gameMode state níže) — zatím jen UI příprava, žádná death/leaderboard logika se pro "hardcore" ještě neliší (viz game/core/gameMode.ts). */
@@ -49,6 +59,14 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
   // state.screen přejde na "menu" (viz app/play/page.tsx), takže hodnota je
   // vždy čerstvá po "ZPĚT DO MENU" z MonsterDefeatedScreen.
   const [reward] = useState(() => getMonsterDefeatReward());
+  // Viz game/visuals/mainMenuBackground.ts — priorita post_monster > login >
+  // default, "přihlášený přes Discord" == authStatus.status === "authenticated"
+  // (stejná podmínka jako všude jinde v týhle komponentě).
+  const menuBackground = resolveMainMenuBackground({
+    isDiscordLoggedIn: authStatus.status === "authenticated",
+    hasDefeatedMonster: reward.hasDefeatedMonster,
+    doubleBarrelUnlocked: reward.doubleBarrelUnlocked,
+  });
 
   // NORMAL/HARDCORE i "Zůstat v Normal" jsou čistě lokální stav (žádný
   // dispatch do app/play/page.tsx, kde normálně žije audio pro ostatní
@@ -91,7 +109,7 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
   // zakryl. <body> má bg-gray-900 jako fallback, což stačí.
   return (
     <main className="relative min-h-screen flex flex-col items-center justify-center p-4">
-      <SceneBackground scene={reward.hasDefeatedMonster ? BACKGROUND_SCENES.menuFirstWin : BACKGROUND_SCENES.menu} />
+      <SceneBackground scene={MAIN_MENU_BACKGROUND_SCENE[menuBackground]} />
 
       {/* Menu jako fyzický "terminál" (viz zadání "control-room konzole, ne
           plakát") — kovový rám (.menu-terminal-frame) se 4 rohovými šrouby

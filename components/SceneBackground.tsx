@@ -35,11 +35,16 @@ export default function SceneBackground({ scene, activeIndexOverride }: SceneBac
 
   useEffect(() => {
     if (activeIndexOverride !== undefined || scene.frames.length <= 1) return;
-    const interval = setInterval(() => {
-      setAutoIndex((index) => (index + 1) % scene.frames.length);
-    }, scene.holdMs);
-    return () => clearInterval(interval);
-  }, [scene.frames, scene.holdMs, activeIndexOverride]);
+    // Řetězec setTimeoutů (ne jeden pevný setInterval) — každý snímek smí mít
+    // vlastní `holdMs` (viz BackgroundFrame, "menuLogin": dlouhý základní
+    // frame, krátký alarmový záblesk). Beze změny `holdMs` po jednotlivých
+    // snímcích se chová identicky jako dřívější fixní interval.
+    const timeout = setTimeout(
+      () => setAutoIndex((index) => (index + 1) % scene.frames.length),
+      scene.frames[autoIndex].holdMs ?? scene.holdMs,
+    );
+    return () => clearTimeout(timeout);
+  }, [scene.frames, scene.holdMs, activeIndexOverride, autoIndex]);
 
   if (scene.frames.length === 0) return null;
 

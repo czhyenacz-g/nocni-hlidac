@@ -5,6 +5,13 @@
 
 export interface BackgroundFrame {
   src: string;
+  /**
+   * Volitelné přebití `SceneBackgroundConfig.holdMs` jen pro tenhle jeden
+   * snímek (viz "menuLogin" — základní frame vydrží déle, alarmový červený
+   * frame jen krátce probliskne). Bez tohohle pole (undefined) se použije
+   * `scene.holdMs` stejně jako dřív, žádná změna chování existujících scén.
+   */
+  holdMs?: number;
 }
 
 /** Jemný, nekonečně se opakující pulz jasu (blikající kontrolka, ztlumené světlo) — nezávislý na počtu snímků. */
@@ -50,6 +57,7 @@ const OBJECT_13_BACKGROUND_PATH = "/object_13/background";
 export type BackgroundSceneId =
   | "menu"
   | "menuFirstWin"
+  | "menuLogin"
   | "loading"
   | "play"
   | "door"
@@ -90,6 +98,23 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
     frames: [
       { src: `${OBJECT_13_BACKGROUND_PATH}/menu_backgroud_first_win_0.webp` },
       { src: `${OBJECT_13_BACKGROUND_PATH}/menu_backgroud_first_win_1.webp` },
+    ],
+    holdMs: DEFAULT_HOLD_MS,
+    crossfadeMs: DEFAULT_CROSSFADE_MS,
+    overlay: DEFAULT_OVERLAY,
+  },
+  // Menu pro přihlášeného Discord hráče, který ještě nemá monster defeat
+  // odměnu (viz zadání, game/visuals/mainMenuBackground.ts#resolveMainMenuBackground,
+  // MainMenuScreen.tsx) — nikdy se nezobrazí zároveň s "menuFirstWin" (ta má
+  // přednost, viz resolveMainMenuBackground). Frame 0 (strážný na obchůzce)
+  // drží dlouho, frame 1 (červené alarmové světlo, hrozba ve stínu) jen
+  // krátce probliskne — vlastní `holdMs` na každém snímku (viz BackgroundFrame),
+  // scene.holdMs níže se prakticky nepoužije (obě frames mají explicitní
+  // hodnotu), ponechané jen jako typově vyžadovaný fallback.
+  menuLogin: {
+    frames: [
+      { src: `${OBJECT_13_BACKGROUND_PATH}/menu_bg_login_0.webp`, holdMs: 7000 },
+      { src: `${OBJECT_13_BACKGROUND_PATH}/menu_bg_login_1.webp`, holdMs: 1100 },
     ],
     holdMs: DEFAULT_HOLD_MS,
     crossfadeMs: DEFAULT_CROSSFADE_MS,
