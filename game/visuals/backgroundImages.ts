@@ -67,10 +67,11 @@ export type BackgroundSceneId =
   | "about"
   | "monsterDefeated";
 
-// menu/play/win mají 2 varianty snímků (*_0.webp, *_1.webp v
+// play/win mají 2 varianty snímků (*_0.webp, *_1.webp v
 // public/object_13/background/ — stejný obraz, jemně jiná varianta, např.
 // jinak kouřící komín), které SceneBackground plynule prolíná automaticky po
-// holdMs. about/loading/death/
+// holdMs. `menu` (default, nepřihlášený hráč) má 3 varianty stejným
+// způsobem (menu_bg_0/1/2.webp). about/loading/death/
 // deathDoorAttack mají zatím jen 1 snímek (statické pozadí, bez střídání).
 // `door` má 3 snímky (otevřené/zavřené dveře + monstrum ve dveřích), ale
 // NEcyklují se samy — GameScreen.tsx řídí aktivní index přes
@@ -81,6 +82,7 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
     frames: [
       { src: `${OBJECT_13_BACKGROUND_PATH}/menu_bg_0.webp` },
       { src: `${OBJECT_13_BACKGROUND_PATH}/menu_bg_1.webp` },
+      { src: `${OBJECT_13_BACKGROUND_PATH}/menu_bg_2.webp` },
     ],
     holdMs: DEFAULT_HOLD_MS,
     crossfadeMs: DEFAULT_CROSSFADE_MS,

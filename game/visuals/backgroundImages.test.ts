@@ -1,6 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { BACKGROUND_SCENES } from "./backgroundImages";
 
+// Default (nepřihlášený hráč) menu pozadí — rozšířeno ze 2 na 3 snímky
+// (menu_bg_0/1/2.webp, viz zadání "přidal jsem menu_bg_2.png"), stejný
+// crossfade mechanismus jako dřív, jen s dalším snímkem navíc.
+describe("BACKGROUND_SCENES.menu", () => {
+  it("has all three frames (menu_bg_0/1/2), exact filenames", () => {
+    const srcs = BACKGROUND_SCENES.menu.frames.map((f) => f.src);
+    expect(srcs).toEqual([
+      "/object_13/background/menu_bg_0.webp",
+      "/object_13/background/menu_bg_1.webp",
+      "/object_13/background/menu_bg_2.webp",
+    ]);
+  });
+});
+
 // Post-win menu background (viz zadání, game/core/monsterDefeatReward.ts,
 // MainMenuScreen.tsx) — reuses the existing multi-frame crossfade scene
 // system (see "menu"/"win" above for the same 2-frame pattern), no new
