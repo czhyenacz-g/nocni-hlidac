@@ -1,6 +1,7 @@
 "use client";
 
 import { COPY } from "@/content/copy";
+import ConsoleIcon from "@/components/game/ConsoleIcon";
 import { useAuthStatus } from "./useAuthStatus";
 
 // Nenápadný login box v hlavním menu — základ identity hráče pro budoucí
@@ -17,7 +18,13 @@ export default function AuthStatus() {
 
   if (state.status === "guest") {
     return (
-      <a href="/api/auth/login" className="block text-center text-[11px] text-gray-500 hover:text-gray-300 mt-4">
+      <a
+        href="/api/auth/login"
+        className="pixel-button console-button tap-target mt-4 flex items-center justify-center gap-2 px-3 py-1.5 text-[10px]"
+      >
+        <span className="console-icon-block console-icon-block--sm" aria-hidden="true">
+          <ConsoleIcon id="discord" />
+        </span>
         {COPY.auth.discordLoginLabel}
       </a>
     );

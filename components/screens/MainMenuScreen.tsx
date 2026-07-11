@@ -199,8 +199,11 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
                 <p className="mb-2">{COPY.gameMode.hardcoreLoginPromptText}</p>
                 <a
                   href="/api/auth/login"
-                  className="pixel-button tap-target block w-full px-2 py-1.5 text-center text-[10px]"
+                  className="pixel-button console-button tap-target flex items-center justify-center gap-2 px-2 py-1.5 text-[10px]"
                 >
+                  <span className="console-icon-block console-icon-block--sm" aria-hidden="true">
+                    <ConsoleIcon id="discord" />
+                  </span>
                   {COPY.auth.discordLoginLabel}
                 </a>
               </div>
