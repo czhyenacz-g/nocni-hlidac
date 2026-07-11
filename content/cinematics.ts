@@ -153,7 +153,7 @@ export const CINEMATIC_SCENES: Record<CinematicSceneId, CinematicScene> = {
       {
         id: "ten_hits",
         text: "…ale DESETKRÁT se postavit strachu a znovu zmáčknout spoušť? To už může být dost na to, aby padla i tahle bestie.",
-        responseLabel: "Zpátky ke stolu.",
+        responseLabel: "Zpátky ke stolu a vrhnout se do boje.",
       },
     ],
   },

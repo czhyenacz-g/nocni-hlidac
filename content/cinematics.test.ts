@@ -70,11 +70,11 @@ describe("think_it_over_warning cinematic", () => {
     expect(scene?.segments[0].text).toBe("Nedělej to!");
   });
 
-  it("the last segment mentions ten hits and its responseLabel is 'Zpátky ke stolu.'", () => {
+  it("the last segment mentions ten hits and its responseLabel is 'Zpátky ke stolu a vrhnout se do boje.'", () => {
     const scene = getCinematicScene("think_it_over_warning");
     const last = scene?.segments.at(-1);
     expect(last?.text).toContain("DESETKRÁT");
-    expect(last?.responseLabel).toBe("Zpátky ke stolu.");
+    expect(last?.responseLabel).toBe("Zpátky ke stolu a vrhnout se do boje.");
   });
 
   it("every segment has a responseLabel (no audioSrc required — no narration recorded)", () => {
