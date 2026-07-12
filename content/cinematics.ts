@@ -3,6 +3,7 @@
 // přibyly další scény/segmenty/audio, beze změny CinematicScreen.tsx.
 
 export type CinematicSceneId =
+  | "intro"
   | "old_guard_first_death_warning"
   | "think_it_over_warning"
   | "valhala_ending"
@@ -36,6 +37,56 @@ export interface CinematicScene {
 // jeden na segment — hranice střihu ověřené přepisem (Whisper), ne jen slepě
 // podle ticha, ať žádný klip neusekne slovo.
 export const CINEMATIC_SCENES: Record<CinematicSceneId, CinematicScene> = {
+  // Volitelné intro před Nocí 1 (viz zadání "Spustit intro" na briefingu i na
+  // /terms, components/screens/BriefingScreen.tsx, app/terms/page.tsx) —
+  // pracovní pohovor, který hráč nikdy nemusí spustit (Night 1 mechaniky na
+  // něm nezávisí). Text přesně podle zadání, jen sloučené technické zalomení
+  // řádků do souvislých vět (stejný vzor jako ostatní scény tady — jeden
+  // segment = jeden `<p>`, žádné `\n`).
+  intro: {
+    id: "intro",
+    imageSrc: "/object_13/story/intro_bg.webp",
+    title: "PRACOVNÍ POHOVOR",
+    segments: [
+      { id: "greeting", text: "Dobrý den. Děkujeme, že jste přišel.", responseLabel: "Pokračovat." },
+      {
+        id: "profile_match",
+        text: "Váš profil odpovídá tomu, co hledáme. Posledních dvacet let jste pracoval jako noční hlídač v místní chemičce, než závod uzavřeli.",
+        responseLabel: "Pokračovat.",
+      },
+      {
+        id: "no_complaints",
+        text: "Za celou dobu na vás nebyla jediná vážná stížnost. Jste spolehlivý, dochvilný a zvyklý pracovat v noci.",
+        responseLabel: "Pokračovat.",
+      },
+      {
+        id: "no_dependents",
+        text: "Také vidím, že nemáte děti ani blízké příbuzné, kteří by na vás byli závislí. Pro tuto pozici je to výhoda.",
+        responseLabel: "Pokračovat.",
+      },
+      { id: "hired", text: "Ráda vám oznamuji, že jste přijat.", responseLabel: "Pokračovat." },
+      {
+        id: "special_place",
+        text: "Půjde o hlídání na velmi speciálním místě. A speciální místo samozřejmě znamená i speciální odměny.",
+        responseLabel: "Pokračovat.",
+      },
+      {
+        id: "risk_and_pay",
+        text: "Práce je nadstandardně placená a při dobrých výsledcích můžete získat mimořádné bonusy. Současně vás ale musím upozornit, že pozice je spojena s určitým rizikem.",
+        responseLabel: "Pokračovat.",
+      },
+      {
+        id: "duties",
+        text: "Vaším úkolem bude sledovat kamery, kontrolovat vybavení a řídit se služebními postupy.",
+        responseLabel: "Pokračovat.",
+      },
+      {
+        id: "welcome",
+        text: "Pokud budete dodržovat pokyny, neměl by nastat žádný problém. Vítejte v Objektu 13.",
+        responseLabel: "Rozumím.",
+      },
+    ],
+  },
   old_guard_first_death_warning: {
     id: "old_guard_first_death_warning",
     imageSrc: "/object_13/story/story_1.webp",

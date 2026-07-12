@@ -170,6 +170,14 @@ export default function PlayPage() {
   // isRunning níže), ať hráč nemůže umřít uprostřed nepřerušitelné scény,
   // na kterou zrovna nemůže reagovat.
   const [thinkItOverCinematicActive, setThinkItOverCinematicActive] = useState(false);
+  // Volitelné "intro" cinematic (viz content/cinematics.ts#intro, zadání
+  // "Spustit intro") — otevřené z BriefingScreen.tsx (jen Noc 1) i z
+  // app/terms/page.tsx (přes IntroCinematicButton.tsx). Na briefingu je to
+  // čistě lokální UI přepínač (BriefingScreen/CinematicScreen), nic
+  // nedispatchuje do gameReduceru — hra samotná (gameMode/livesRemaining/
+  // shotgun/monsterKilledThisRun/isRunning) zůstává úplně beze změny, dokud
+  // hráč sám neklikne "Nastoupit na směnu".
+  const [introCinematicActive, setIntroCinematicActive] = useState(false);
 
   // Jednorázově při mountu zjisti přihlášeného hráče a jeho serverový run
   // stav (viz app/api/auth/me/route.ts) — pokud je hráč přihlášený a hub API
@@ -912,6 +920,18 @@ export default function PlayPage() {
     setThinkItOverCinematicActive(false);
   }
 
+  // "Spustit intro" na BriefingScreen.tsx (jen Noc 1, viz JSX níže) —
+  // otevře cinematic, žádný dispatch (viz introCinematicActive komentář
+  // výše). Dokončení jen scénu zavře, hráč zůstává na stejném briefingu se
+  // stále funkčním "Nastoupit na směnu".
+  function handleStartIntroFromBriefing() {
+    setIntroCinematicActive(true);
+  }
+
+  function handleIntroCinematicComplete() {
+    setIntroCinematicActive(false);
+  }
+
   useEffect(() => {
     if (prevGameStatusRef.current !== "blackout" && state.gameStatus === "blackout") {
       audioManager.play(AUDIO_EVENTS.blackoutHowl);
@@ -997,6 +1017,7 @@ export default function PlayPage() {
     // směna ho vždy explicitně vyčistí, ať /minihra nikdy nepřežije do
     // dalšího života hlídače.
     setActiveMiniGame(null);
+    setIntroCinematicActive(false);
     const nightFeatures = getNightConfig(currentNight, isAdmin).features;
     if (pendingShiftKindRef.current === "restart") {
       const gameMode = state.gameMode;
@@ -1511,7 +1532,12 @@ export default function PlayPage() {
     >
       {state.screen === "menu" && <MainMenuScreen onStart={handleStart} />}
       {state.screen === "loading" && <LoadingScreen gameMode={selectedGameModeRef.current} />}
-      {state.screen === "briefing" && <BriefingScreen nightNumber={currentNight} onStartShift={handleBeginShift} />}
+      {state.screen === "briefing" && !introCinematicActive && (
+        <BriefingScreen nightNumber={currentNight} onStartShift={handleBeginShift} onStartIntro={handleStartIntroFromBriefing} />
+      )}
+      {state.screen === "briefing" && introCinematicActive && (
+        <CinematicScreen sceneId="intro" onComplete={handleIntroCinematicComplete} />
+      )}
       {state.screen === "playing" && thinkItOverCinematicActive && (
         <CinematicScreen sceneId="think_it_over_warning" onComplete={handleThinkItOverCinematicComplete} />
       )}

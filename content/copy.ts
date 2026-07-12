@@ -33,6 +33,13 @@ export const COPY = {
     profileLinkLabel: "Profil hlídače",
     authorEmail: "hynek@darbujan.com",
   },
+  // Sdílené texty pro volitelné "intro" cinematic (viz zadání,
+  // content/cinematics.ts#intro) — jedna definice, použitá jak na
+  // BriefingScreen.tsx (Noc 1), tak na app/terms/page.tsx, ať nevznikají dvě
+  // kopie stejného tlačítka.
+  intro: {
+    startIntroLabel: "Spustit intro",
+  },
   // Profil hlídače (viz zadání, app/profile/page.tsx) — první verze budoucího
   // účtu/profilu, čistě lokální localStorage data (game/core/playerProfileStats.ts,
   // game/core/monsterDefeatReward.ts). Texty přesně podle zadání.

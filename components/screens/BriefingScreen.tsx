@@ -7,13 +7,20 @@ interface BriefingScreenProps {
   /** currentNight = survivedNights + 1 (viz game/core/survivedNights.ts) — stejný zdroj jako HUD/ShiftTimer. */
   nightNumber: number;
   onStartShift: () => void;
+  /**
+   * Otevře sdílený "intro" cinematic (viz content/cinematics.ts#intro,
+   * zadání "Spustit intro") — jen na Noci 1 (viz JSX níže), na dalších
+   * nocích tlačítko vůbec nevykreslíme. Samo o sobě nic nemění na game
+   * state kromě zobrazení cinematicu (viz app/play/page.tsx).
+   */
+  onStartIntro: () => void;
 }
 
 // Krátký vnitřní monolog hlídače před směnou (viz game/difficulty/nightConfig.ts)
 // — ne firemní oznámení ani tutorial, jen pár vět, co si sám pro sebe říká.
 // Mezikrok po LoadingScreen (nový start) i po smrti/výhře (retry), nikdy se
 // nezobrazí uprostřed běžící směny (viz app/play/page.tsx, state.screen === "briefing").
-export default function BriefingScreen({ nightNumber, onStartShift }: BriefingScreenProps) {
+export default function BriefingScreen({ nightNumber, onStartShift, onStartIntro }: BriefingScreenProps) {
   const { briefing } = getNightConfig(nightNumber);
 
   return (
@@ -42,12 +49,24 @@ export default function BriefingScreen({ nightNumber, onStartShift }: BriefingSc
                 <p key={line}>{line}</p>
               ))}
             </div>
-            <button
-              className="pixel-button console-button console-button--primary tap-target px-6 py-3 text-sm w-full"
-              onClick={onStartShift}
-            >
-              {COPY.menu.startButton}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                className="pixel-button console-button console-button--primary tap-target flex-1 px-6 py-3 text-sm"
+                onClick={onStartShift}
+              >
+                {COPY.menu.startButton}
+              </button>
+              {/* Jen Noc 1 (viz zadání) — sekundární tlačítko, žádný nový
+                  vizuální styl mimo existující .pixel-button/.console-button. */}
+              {nightNumber === 1 && (
+                <button
+                  className="pixel-button console-button tap-target flex-1 px-6 py-3 text-sm"
+                  onClick={onStartIntro}
+                >
+                  {COPY.intro.startIntroLabel}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -196,3 +196,49 @@ describe("no_kill_ending cinematic", () => {
     ).toBe(true);
   });
 });
+
+// Volitelné "intro" cinematic (viz zadání "Spustit intro" na BriefingScreen
+// Noci 1 i na /terms, components/screens/TermsScreen.tsx) — jedna společná
+// definice, žádná duplikovaná kopie textu/komponenty.
+describe("cinematics config — intro", () => {
+  it("has the id 'intro'", () => {
+    const scene = getCinematicScene("intro");
+    expect(scene?.id).toBe("intro");
+  });
+
+  it("uses /object_13/story/intro_bg.webp as its background", () => {
+    const scene = getCinematicScene("intro");
+    expect(scene?.imageSrc).toBe("/object_13/story/intro_bg.webp");
+  });
+
+  it("has the UI title PRACOVNÍ POHOVOR", () => {
+    const scene = getCinematicScene("intro");
+    expect(scene?.title).toBe("PRACOVNÍ POHOVOR");
+  });
+
+  it("has all 9 segments in the exact required order", () => {
+    const scene = getCinematicScene("intro");
+    const texts = scene?.segments.map((segment) => segment.text) ?? [];
+    expect(texts).toEqual([
+      "Dobrý den. Děkujeme, že jste přišel.",
+      "Váš profil odpovídá tomu, co hledáme. Posledních dvacet let jste pracoval jako noční hlídač v místní chemičce, než závod uzavřeli.",
+      "Za celou dobu na vás nebyla jediná vážná stížnost. Jste spolehlivý, dochvilný a zvyklý pracovat v noci.",
+      "Také vidím, že nemáte děti ani blízké příbuzné, kteří by na vás byli závislí. Pro tuto pozici je to výhoda.",
+      "Ráda vám oznamuji, že jste přijat.",
+      "Půjde o hlídání na velmi speciálním místě. A speciální místo samozřejmě znamená i speciální odměny.",
+      "Práce je nadstandardně placená a při dobrých výsledcích můžete získat mimořádné bonusy. Současně vás ale musím upozornit, že pozice je spojena s určitým rizikem.",
+      "Vaším úkolem bude sledovat kamery, kontrolovat vybavení a řídit se služebními postupy.",
+      "Pokud budete dodržovat pokyny, neměl by nastat žádný problém. Vítejte v Objektu 13.",
+    ]);
+  });
+
+  it("every segment has a responseLabel (all clickable through to completion)", () => {
+    const scene = getCinematicScene("intro");
+    expect(scene?.segments.every((segment) => Boolean(segment.responseLabel))).toBe(true);
+  });
+
+  it("has no audioSrc on any segment (no audio requested for this cinematic)", () => {
+    const scene = getCinematicScene("intro");
+    expect(scene?.segments.every((segment) => segment.audioSrc === undefined)).toBe(true);
+  });
+});

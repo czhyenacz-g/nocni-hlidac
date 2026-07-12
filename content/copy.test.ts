@@ -181,3 +181,12 @@ describe("COPY.death mode-specific copy", () => {
     expect(COPY.death.hardcoreGameOverButton).toBe("NOVÁ HRA");
   });
 });
+
+// Sdílený "Spustit intro" text (viz zadání, content/cinematics.ts#intro,
+// BriefingScreen.tsx, TermsScreen.tsx) — jedna definice, obě obrazovky ji
+// čtou ze stejného místa.
+describe("COPY.intro.startIntroLabel", () => {
+  it("is the exact required text", () => {
+    expect(COPY.intro.startIntroLabel).toBe("Spustit intro");
+  });
+});
