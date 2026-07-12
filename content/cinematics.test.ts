@@ -216,7 +216,7 @@ describe("cinematics config — intro", () => {
     expect(scene?.title).toBe("PRACOVNÍ POHOVOR");
   });
 
-  it("has all 9 segments in the exact required order", () => {
+  it("has all 10 segments in the exact required order", () => {
     const scene = getCinematicScene("intro");
     const texts = scene?.segments.map((segment) => segment.text) ?? [];
     expect(texts).toEqual([
@@ -229,6 +229,7 @@ describe("cinematics config — intro", () => {
       "Práce je nadstandardně placená a při dobrých výsledcích můžete získat mimořádné bonusy. Současně vás ale musím upozornit, že pozice je spojena s určitým rizikem.",
       "Vaším úkolem bude sledovat kamery, kontrolovat vybavení a řídit se služebními postupy.",
       "Pokud budete dodržovat pokyny, neměl by nastat žádný problém. Vítejte v Objektu 13.",
+      "P.S.: Výplata je standardně každých 30 dní.",
     ]);
   });
 

@@ -85,6 +85,11 @@ export const CINEMATIC_SCENES: Record<CinematicSceneId, CinematicScene> = {
         text: "Pokud budete dodržovat pokyny, neměl by nastat žádný problém. Vítejte v Objektu 13.",
         responseLabel: "Rozumím.",
       },
+      {
+        id: "payday_note",
+        text: "P.S.: Výplata je standardně každých 30 dní.",
+        responseLabel: "Rozumím.",
+      },
     ],
   },
   old_guard_first_death_warning: {
