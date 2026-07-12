@@ -2,6 +2,7 @@ import { COPY } from "@/content/copy";
 import { CameraDefinition, EnemyMoveDecision, EnemyStage } from "@/game/core/types";
 import { getCameraImageSrc } from "@/game/cameras/cameraAssets.object13";
 import { resolveCameraMotionConfig } from "@/game/cameras/cameraMotionConfig";
+import CameraManualPanImage from "./CameraManualPanImage";
 
 interface CameraViewProps {
   camera: CameraDefinition | null;
@@ -16,6 +17,8 @@ interface CameraViewProps {
   lastEnemyDecision: EnemyMoveDecision;
   /** Seed pro výběr monster/fleeing obrázku (viz GameState.enemyStageVisitSeq) — mění se jen při novém příchodu na stage, ne při každém renderu. */
   enemyStageVisitSeq: number;
+  /** Admin/debug "Experimentální ruční kamera" (viz zadání, game/visuals/cameraManualPan.ts) — default false, beze změny dosavadního chování. */
+  manualCameraExperimentEnabled: boolean;
 }
 
 export default function CameraView({
@@ -26,6 +29,7 @@ export default function CameraView({
   elapsedMs,
   lastEnemyDecision,
   enemyStageVisitSeq,
+  manualCameraExperimentEnabled,
 }: CameraViewProps) {
   if (!camera) {
     return (
@@ -59,10 +63,28 @@ export default function CameraView({
     enemyStageVisitSeq,
   );
   const motion = resolveCameraMotionConfig(camera.id);
+  // Ruční pan se použije jen když je (a) admin experiment zapnutý a (b) tahle
+  // kamera vůbec má auto drift (motion.enabled) — bez auto driftu není co
+  // rozšiřovat (viz zadání "rozšiř existující efekt"). `key={camera.id}`
+  // vynutí čistý remount (a tím pád i úklid rAF/timerů/target hodnot, viz
+  // CameraManualPanImage.tsx) při přepnutí na jinou kameru — ne jen update
+  // propů existující instance.
+  const useManualPan = manualCameraExperimentEnabled && motion.enabled;
 
   return (
     <div className="pixel-panel h-48 flex flex-col items-center justify-center relative overflow-hidden group">
-      {imageSrc && (
+      {imageSrc && useManualPan && (
+        <CameraManualPanImage
+          key={camera.id}
+          src={imageSrc}
+          autoZoom={motion.zoom}
+          autoPanXPercent={motion.panXPercent}
+          autoPanYPercent={motion.panYPercent}
+          autoDurationMs={motion.durationMs}
+          autoEasing={motion.easing}
+        />
+      )}
+      {imageSrc && !useManualPan && (
         <img
           src={imageSrc}
           alt=""

@@ -11,6 +11,7 @@ interface CameraDetailViewProps {
   elapsedMs: number;
   lastEnemyDecision: EnemyMoveDecision;
   enemyStageVisitSeq: number;
+  manualCameraExperimentEnabled: boolean;
   onBack: () => void;
 }
 
@@ -25,6 +26,7 @@ export default function CameraDetailView({
   elapsedMs,
   lastEnemyDecision,
   enemyStageVisitSeq,
+  manualCameraExperimentEnabled,
   onBack,
 }: CameraDetailViewProps) {
   return (
@@ -37,6 +39,7 @@ export default function CameraDetailView({
         elapsedMs={elapsedMs}
         lastEnemyDecision={lastEnemyDecision}
         enemyStageVisitSeq={enemyStageVisitSeq}
+        manualCameraExperimentEnabled={manualCameraExperimentEnabled}
       />
       <ViewSwitchArrow label={COPY.game.backToOverviewLabel} onClick={onBack} align="left" />
     </div>

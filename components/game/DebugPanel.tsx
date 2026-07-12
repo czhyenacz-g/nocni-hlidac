@@ -27,6 +27,9 @@ interface DebugPanelProps {
   localSurvivedNights: number;
   /** Admin-only "Test noci" sekce (viz zadání) — regulérní hráč (isAdmin false) ji vůbec neuvidí, i kdyby DebugPanel měl otevřený. */
   isAdmin: boolean;
+  /** Admin-only "Experimentální ruční kamera" (viz zadání, game/visuals/cameraManualPan.ts, CameraView.tsx). Default false, čistě lokální UI stav v GameScreen.tsx — žádný vliv na GameState/gameplay. */
+  manualCameraExperimentEnabled: boolean;
+  onToggleManualCameraExperiment: () => void;
   onDebugToggleDoor: () => void;
   onDebugRestartGenerator: () => void;
   /** Viz GameState.debugNightOverride, gameActions.ts SET_DEBUG_NIGHT. */
@@ -41,6 +44,8 @@ export default function DebugPanel({
   serverCurrentRun,
   localSurvivedNights,
   isAdmin,
+  manualCameraExperimentEnabled,
+  onToggleManualCameraExperiment,
   onDebugToggleDoor,
   onDebugRestartGenerator,
   onSetDebugNight,
@@ -213,6 +218,23 @@ export default function DebugPanel({
             {state.hasDoubleBarrelShotgun ? "ano" : "ne"}
           </div>
         </div>
+
+        {/* Admin-only "Experimentální ruční kamera" (viz zadání) — čistě
+            vizuální experiment nad kamerovým detailem (viz
+            game/visuals/cameraManualPan.ts, CameraView.tsx), default
+            vypnuto, žádný vliv na GameState/gameplay/spotřebu energie. */}
+        {isAdmin && (
+          <div className="border-t border-amber-700/60 pt-2 mt-1">
+            <label className="flex items-center gap-1.5 text-amber-400 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={manualCameraExperimentEnabled}
+                onChange={onToggleManualCameraExperiment}
+              />
+              Experimentální ruční kamera
+            </label>
+          </div>
+        )}
 
         {/* Admin-only "Test noci" (viz zadání "testovací nástroj pro
             late-run scény, Valhala/Night 30 endingy") — regulérní hráč
