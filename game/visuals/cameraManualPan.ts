@@ -24,12 +24,19 @@ export interface CameraManualPanConfig {
   perspectivePx: number;
 }
 
+// Doladěno po prvním playtest reportu (viz zadání): slabší zoom (1.20 ->
+// 1.15, ať nepůsobí jako moc silný digitální zoom), víc horizontální než
+// vertikální pan (maxPanY 24 -> 10, ať se nikdy neodhalí okraj obrázku a
+// pohyb je hlavně "otáčení hlavy do stran") a delší setrvání v ručním
+// režimu (autoResumeDelayMs 1600 -> 2400, ať se auto drift nevrací hned po
+// krátké pauze myši). lerpFactor/maxTiltYDeg/maxTiltXDeg/perspectivePx
+// záměrně beze změny.
 export const CAMERA_MANUAL_PAN_CONFIG: CameraManualPanConfig = {
-  scale: 1.2,
+  scale: 1.15,
   maxPanX: 40,
-  maxPanY: 24,
+  maxPanY: 10,
   lerpFactor: 0.1,
-  autoResumeDelayMs: 1600,
+  autoResumeDelayMs: 2400,
   maxTiltYDeg: 1.2,
   maxTiltXDeg: 0.7,
   perspectivePx: 1000,
