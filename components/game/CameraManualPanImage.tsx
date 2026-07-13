@@ -149,42 +149,39 @@ export default function CameraManualPanImage({
   function handlePointerLeave() {}
 
   return (
-    <>
-      <div
-        ref={wrapperRef}
-        className="absolute inset-0 h-full w-full"
-        style={{ transformOrigin: "center center" }}
-        onPointerMove={handlePointerMove}
-        onPointerLeave={handlePointerLeave}
-      >
-        <img
-          ref={imgRef}
-          src={src}
-          alt=""
-          aria-hidden="true"
-          className="h-full w-full object-cover camera-image-motion"
-          style={
-            {
-              "--camera-motion-zoom": autoZoom,
-              "--camera-motion-pan-x": `${autoPanXPercent}%`,
-              "--camera-motion-pan-y": `${autoPanYPercent}%`,
-              animationDuration: `${autoDurationMs}ms`,
-              animationTimingFunction: autoEasing,
-            } as React.CSSProperties
-          }
-        />
-      </div>
-      {/* Read-only debug hodnoty (viz zadání "11. Debug informace") —
-          ZÁMĚRNĚ MIMO transformovaný wrapper výše (sourozenec, ne potomek) —
-          uvnitř wrapperu by štítek dostal STEJNÝ scale/translate/rotate jako
-          kamerový obraz (viz zadání "bug: vidím jen vršek nápisu" — zoom
-          1.2 + pan ho vytlačily mimo viditelnou oblast, overflow-hidden na
-          rodiči zbytek oříznul). Admin dostane experiment vůbec jen přes
-          DebugPanel.tsx, běžné UI se to netýká. */}
-      <div className="absolute inset-x-0 bottom-0 bg-black text-amber-300 font-mono text-sm font-bold px-2 py-1 pointer-events-none text-center z-10">
+    <div
+      ref={wrapperRef}
+      className="absolute inset-0 h-full w-full"
+      style={{ transformOrigin: "center center" }}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={handlePointerLeave}
+    >
+      <img
+        ref={imgRef}
+        src={src}
+        alt=""
+        aria-hidden="true"
+        className="h-full w-full object-cover camera-image-motion"
+        style={
+          {
+            "--camera-motion-zoom": autoZoom,
+            "--camera-motion-pan-x": `${autoPanXPercent}%`,
+            "--camera-motion-pan-y": `${autoPanYPercent}%`,
+            animationDuration: `${autoDurationMs}ms`,
+            animationTimingFunction: autoEasing,
+          } as React.CSSProperties
+        }
+      />
+      {/* Read-only debug hodnoty (viz zadání "11. Debug informace") — jen
+          uvnitř kamerového viewportu, admin dostane experiment vůbec jen
+          přes DebugPanel.tsx, běžné UI se to netýká. Záměrně nápadné (celá
+          šířka spodku, plné černé pozadí, velký text) — na žádost po
+          předchozí verzi, kde byl 9px štítek v rohu prakticky neviditelný a
+          nešlo z něj poznat, jestli experiment vůbec běží. */}
+      <div className="absolute inset-x-0 bottom-0 bg-black text-amber-300 font-mono text-sm font-bold px-2 py-1 pointer-events-none text-center">
         {debugInfo.mode} · pan x{debugInfo.panX.toFixed(1)} y{debugInfo.panY.toFixed(1)} · zoom{" "}
         {CAMERA_MANUAL_PAN_CONFIG.scale.toFixed(2)}
       </div>
-    </>
+    </div>
   );
 }
