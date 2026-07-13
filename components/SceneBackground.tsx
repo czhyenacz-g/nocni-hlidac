@@ -35,6 +35,11 @@ export default function SceneBackground({ scene, activeIndexOverride }: SceneBac
 
   useEffect(() => {
     if (activeIndexOverride !== undefined || scene.frames.length <= 1) return;
+    // `playOnce` (viz "death" — jednorázová sekvence útoku, BackgroundImages.ts)
+    // — jakmile je poslední snímek na řadě, žádný další timeout se
+    // nenaplánuje, takže tam animace zůstane navždy stát (žádná smyčka
+    // zpátky na snímek 0, na rozdíl od ostatních scén níže).
+    if (scene.playOnce && autoIndex >= scene.frames.length - 1) return;
     // Řetězec setTimeoutů (ne jeden pevný setInterval) — každý snímek smí mít
     // vlastní `holdMs` (viz BackgroundFrame, "menuLogin": dlouhý základní
     // frame, krátký alarmový záblesk). Beze změny `holdMs` po jednotlivých
@@ -44,7 +49,7 @@ export default function SceneBackground({ scene, activeIndexOverride }: SceneBac
       scene.frames[autoIndex].holdMs ?? scene.holdMs,
     );
     return () => clearTimeout(timeout);
-  }, [scene.frames, scene.holdMs, activeIndexOverride, autoIndex]);
+  }, [scene.frames, scene.holdMs, scene.playOnce, activeIndexOverride, autoIndex]);
 
   if (scene.frames.length === 0) return null;
 

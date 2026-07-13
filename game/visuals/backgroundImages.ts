@@ -36,6 +36,14 @@ export interface SceneBackgroundConfig {
   flicker?: BackgroundFlicker;
   /** Tmavý gradient přes obrázek, ať zůstane čitelný text panelů nad ním. */
   overlay: string;
+  /**
+   * `true` = jednorázová sekvence (viz "death" — hráč umře, monstrum
+   * dokoná útok na 3 snímcích, pak zůstane stát) — po dosažení posledního
+   * snímku se přestane cyklovat zpátky na první (viz SceneBackground.tsx).
+   * Bez tohohle pole (undefined/false) scéna cykluje pořád dokola jako dřív
+   * (menu/win/menuLogin/...), žádná změna chování existujících scén.
+   */
+  playOnce?: boolean;
 }
 
 const DEFAULT_HOLD_MS = 6000;
@@ -151,11 +159,25 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
     crossfadeMs: 350,
     overlay: "linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.3))",
   },
+  // Jednorázová 3-snímková animace útoku (viz zadání "nahradit statickou
+  // death obrazovku jednoduchou animací") — nahrazuje dřívější jediný
+  // statický `death_bg_0.webp`. Assety žijí v `public/object_13/monster/ghoul/`
+  // (ne pod OBJECT_13_BACKGROUND_PATH jako většina scén tady) — stejný důvod
+  // jako `monsterDefeated` níže: patří k monstru, ne k "pozadí objektu".
+  // `holdMs: 500` na každém snímku + `playOnce: true` (viz SceneBackground.tsx)
+  // = přehraje se jednou (0 → 1 → 2) a zůstane stát na posledním, žádná
+  // smyčka zpátky na první snímek. Krátký `crossfadeMs` (150ms), ať se tři
+  // snímky za 500ms každý nerozmazaly do sebe přes zbytečně dlouhé prolnutí.
   death: {
-    frames: [{ src: `${OBJECT_13_BACKGROUND_PATH}/death_bg_0.webp` }],
+    frames: [
+      { src: "/object_13/monster/ghoul/ghoul_death_0.webp", holdMs: 500 },
+      { src: "/object_13/monster/ghoul/ghoul_death_1.webp", holdMs: 500 },
+      { src: "/object_13/monster/ghoul/ghoul_death_2.webp", holdMs: 500 },
+    ],
     holdMs: DEFAULT_HOLD_MS,
-    crossfadeMs: DEFAULT_CROSSFADE_MS,
+    crossfadeMs: 150,
     overlay: DEFAULT_OVERLAY,
+    playOnce: true,
   },
   // Smrt "door_open_at_attack" nastává ve stejném reducer dispatchi, kdy
   // enemyStage přejde na "attack" a screen na "death" zároveň — hráč tedy

@@ -21,7 +21,7 @@ describe("BACKGROUND_SCENES.menu", () => {
 // rendering code needed. SceneBackground.tsx itself already tolerates
 // 0/1/2+ frames gracefully (frames.length <= 1 just skips the auto-cycle
 // interval) — that's exercised by the existing single-frame scenes below
-// ("loading"/"about"/"death"), not re-tested here.
+// ("loading"/"about"), not re-tested here.
 describe("BACKGROUND_SCENES.menuFirstWin", () => {
   it("exists", () => {
     expect(BACKGROUND_SCENES.menuFirstWin).toBeDefined();
@@ -78,5 +78,31 @@ describe("single-frame scenes stay valid (graceful degradation precedent for men
   it("'about' has exactly 1 frame and is still a well-formed scene", () => {
     expect(BACKGROUND_SCENES.about.frames).toHaveLength(1);
     expect(BACKGROUND_SCENES.about.frames[0].src.length).toBeGreaterThan(0);
+  });
+});
+
+// Death obrazovka — jednorázová 3-snímková animace útoku (viz zadání
+// "nahradit statickou death obrazovku jednoduchou animací"), nahrazuje
+// dřívější jediný statický death_bg_0.webp. `playOnce: true` je otestované
+// na úrovni SceneBackground.tsx (viz komentář tam) — tady jen ověřujeme
+// samotnou konfiguraci dat.
+describe("BACKGROUND_SCENES.death", () => {
+  it("has all three ghoul_death frames in order, exact filenames", () => {
+    const srcs = BACKGROUND_SCENES.death.frames.map((f) => f.src);
+    expect(srcs).toEqual([
+      "/object_13/monster/ghoul/ghoul_death_0.webp",
+      "/object_13/monster/ghoul/ghoul_death_1.webp",
+      "/object_13/monster/ghoul/ghoul_death_2.webp",
+    ]);
+  });
+
+  it("holds each frame for ~500ms", () => {
+    for (const frame of BACKGROUND_SCENES.death.frames) {
+      expect(frame.holdMs).toBe(500);
+    }
+  });
+
+  it("is marked playOnce (plays through once, then freezes on the last frame)", () => {
+    expect(BACKGROUND_SCENES.death.playOnce).toBe(true);
   });
 });
