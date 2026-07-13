@@ -40,6 +40,12 @@ export function speakRadioMessage(text: string, onEnd: () => void): SpeakRadioMe
     utterance.onend = onEnd;
     utterance.onerror = onEnd;
 
+    // Známá chromí "quirk" (viz zadání "radio se zaseklo") — zbylá/uvízlá
+    // utterance ve frontě z předchozího volání (nebo z jiné části stránky)
+    // umí zablokovat novou syntézu tak, že `onend`/`onerror` u ní nikdy
+    // nepřijde. `cancel()` těsně před `speak()` frontu vyčistí; volající si
+    // navíc drží vlastní timeout jako druhou pojistku (viz useRadioMessage.ts).
+    synth.cancel();
     synth.speak(utterance);
 
     return {
