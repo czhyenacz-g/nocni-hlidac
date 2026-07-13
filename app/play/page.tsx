@@ -25,7 +25,6 @@ import {
   AMBIENCE_DEATH_FADE_MS,
   BLACKOUT_FINAL_AMBIENCE_FADE_MS,
   CINEMATIC_PRE_DELAY_MS,
-  DEATH_SCREEN_REVEAL_DELAY_MS,
   JUMPSCARE_SILENT_GAP_MS,
   LOADING_SCREEN_DURATION_MS,
   MONSTER_DOOR_BANG_COOLDOWN_MS,
@@ -274,8 +273,8 @@ export default function PlayPage() {
   // zobrazí, přesně jako dnes.
   const [cinematicPending, setCinematicPending] = useState(false);
   const [activeCinematicSceneId, setActiveCinematicSceneId] = useState<CinematicSceneId | null>(null);
-  // Death sekvence (blackout -> white flash -> monster image -> GAME OVER,
-  // viz components/death/DeathSequenceOverlay.tsx a /death-test, kde se
+  // Death sekvence (ticho -> bílý záblesk -> shake -> zvuk, viz
+  // components/death/DeathSequenceOverlay.tsx a /death-test, kde se
   // laděla) — jen pro SKUTEČNOU smrt, ne pro první-noc near-miss (ten dál
   // jede starým fadeOut+jumpscare flow do CinematicScreen, viz efekt na
   // state.screen níže). Dokud běží, DeathScreen se vůbec nemountuje (viz
@@ -295,27 +294,16 @@ export default function PlayPage() {
   // vrátí na `false` a rovnou spustí normální deathSequenceActive, přesně
   // jako by Valhala nikdy neproběhla.
   const [valhalaCinematicActive, setValhalaCinematicActive] = useState(false);
-  // Poslední frame sekvence (monster image + GAME OVER) zůstává zamrzlý na
-  // obrazovce ještě DEATH_SCREEN_REVEAL_DELAY_MS po jejím dokončení, než se
-  // teprve namountuje DeathScreen s dialogem "Předčasný konec směny" (viz
-  // zadání "ať hráč nejdřív vidí obrázek s monstrem, jak ho jde zabít") —
-  // DeathSequenceOverlay sám po fázi "complete" žádnou další animaci
-  // nespouští, jen zůstává vykreslený, dokud `active` neklesne na `false`.
-  const deathScreenRevealTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
+  // DeathSequenceOverlay dokončí jen ticho/bílý záblesk/shake/zvuk (žádný
+  // vlastní statický obrázek ani "GAME OVER" text, viz
+  // game/death/liveDeathSequenceConfig.ts) — jakmile skončí, rovnou se
+  // namountuje DeathScreen. Ten sám drží dialog "Předčasný konec směny"
+  // schovaný, dokud ghoul_death animace na jeho pozadí nedoběhne na poslední
+  // snímek a chvíli se na něm nezastaví (viz DeathScreen.tsx), takže žádný
+  // další reveal timeout tady navíc není potřeba.
   function handleDeathSequenceComplete() {
-    if (deathScreenRevealTimeoutRef.current !== null) clearTimeout(deathScreenRevealTimeoutRef.current);
-    deathScreenRevealTimeoutRef.current = setTimeout(() => {
-      deathScreenRevealTimeoutRef.current = null;
-      setDeathSequenceActive(false);
-    }, DEATH_SCREEN_REVEAL_DELAY_MS);
+    setDeathSequenceActive(false);
   }
-
-  useEffect(() => {
-    return () => {
-      if (deathScreenRevealTimeoutRef.current !== null) clearTimeout(deathScreenRevealTimeoutRef.current);
-    };
-  }, []);
   // Achievement toast (viz components/game/AchievementToast.tsx) — čistě
   // vizuální, nezávislý na screen flow. `null` = žádný toast aktivní.
   const [activeAchievement, setActiveAchievement] = useState<Achievement | null>(null);
@@ -540,21 +528,13 @@ export default function PlayPage() {
         // Normal (ať už pokračuje, nebo mu došly životy) na server nikdy
         // nesahá — nesmí ovlivnit Hardcore currentRun/bestRun (viz zadání).
 
-        // Skutečná smrt spouští death sekvenci (blackout -> white flash ->
-        // monster image -> GAME OVER, viz components/death/DeathSequenceOverlay.tsx,
+        // Skutečná smrt spouští death sekvenci (ticho -> bílý záblesk ->
+        // shake -> zvuk, viz components/death/DeathSequenceOverlay.tsx,
         // game/death/liveDeathSequenceConfig.ts) místo starého krátkého
         // fadeOut+jumpscare flow — ten zůstává jen pro near-miss výše.
         // Ambient/heartbeat hraje dál normálně, dokud sekvence sama
         // nezačne (cutAmbientInstantly ho tvrdě přeruší přesně v
         // nakonfigurovaný moment, viz deathSequenceConfig.ts).
-        // Defenzivně zruš případný "reveal DeathScreen" timeout z PŘEDCHOZÍ
-        // smrti (viz handleDeathSequenceComplete výše) — bez tohohle by ho
-        // teoreticky mohl doběhnout starý timer a schovat čerstvě spuštěnou
-        // sekvenci hned po jejím startu.
-        if (deathScreenRevealTimeoutRef.current !== null) {
-          clearTimeout(deathScreenRevealTimeoutRef.current);
-          deathScreenRevealTimeoutRef.current = null;
-        }
         // Valhala meziscéna (viz zadání, game/core/valhalaEnding.ts) — jen
         // Hardcore smrt v noci 20–30 včetně. `nightThatEnded`, ne
         // `currentNight` (stejný důvod jako recordHardcoreDeathOnNight výše).
@@ -1662,11 +1642,13 @@ export default function PlayPage() {
       )}
     </div>
     {/* Skutečná smrt (near-miss jede přes cinematicPending/activeCinematicSceneId
-        výše, nikdy sem) — nejdřív death sekvence (blackout -> white flash ->
-        monster image -> GAME OVER, viz DeathSequenceOverlay.tsx, vyladěná na
-        /death-test), DeathScreen se mountuje AŽ PO jejím dokončení, ať hráč
-        nemůže kliknout na tlačítko schované pod neprůhledným overlayem (ten
-        má pointer-events: none, klik by jinak propadl skrz).
+        výše, nikdy sem) — nejdřív death sekvence (ticho -> bílý záblesk ->
+        shake -> zvuk, viz DeathSequenceOverlay.tsx, vyladěná na /death-test),
+        DeathScreen se mountuje AŽ PO jejím dokončení, ať hráč nemůže kliknout
+        na tlačítko schované pod neprůhledným overlayem (ten má
+        pointer-events: none, klik by jinak propadl skrz). DeathScreen sám
+        pak ještě chvíli drží dialog schovaný, dokud ghoul_death animace na
+        jeho pozadí nedoběhne (viz DeathScreen.tsx).
         SOUROZENEC .atmosphere-root, ne jeho potomek — stejný gotcha jako u
         AchievementToast níže (fixed inset-0 uvnitř filtrovaného rodiče by se
         nepřichytil k viewportu, ale ke zborcenému nulovému boxu .atmosphere-root,

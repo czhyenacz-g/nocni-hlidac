@@ -2,8 +2,9 @@
 
 import { useRef, useState } from "react";
 import DeathSequenceOverlay from "@/components/death/DeathSequenceOverlay";
-import DeathTestControls from "@/components/death/DeathTestControls";
-import { DEATH_SEQUENCE_DEFAULT_CONFIG, DeathSequenceConfig } from "@/game/death/deathSequenceConfig";
+import DeathScreen from "@/components/screens/DeathScreen";
+import { getLiveDeathSequenceConfig, isDoorAttackDeath } from "@/game/death/liveDeathSequenceConfig";
+import { DeathReason } from "@/game/core/types";
 import { audioManager } from "@/game/audio/audioManager";
 import { AUDIO_EVENTS } from "@/game/audio/audioEvents";
 import { AUDIO_CONFIG } from "@/game/audio/audioConfig";
@@ -12,26 +13,30 @@ import { computeAmbientStressMultiplier, computeHeartbeatVolumes } from "@/game/
 // Napětí (0..100) simulované PŘED spuštěním death sekvence (viz zadání
 // "co nejvíce jako reálná hra... tlukot srdce na 80 %, stejný ambient") —
 // stejná hodnota, na jaké skutečná hra drží heartbeat, když hráč sleduje
-// monstrum ve dveřích se zavřenými dveřmi (viz
-// game/audio/heartbeatStress.ts#computeHeartbeatTargetStress,
-// enemyStage "door_hallway" + doorClosed). Cíl týhle stránky je vyladit
-// LEPŠÍ death sekvenci pro reálnou hru — testovat střih z tichého/napjatého
-// stavu do smrti má smysl jen s realistickým "před" stavem, ne v tichu.
+// monstrum ve dveřích se zavřenými dveřmi.
 const PRE_DEATH_STRESS_PERCENT = 80;
 const BASE_AMBIENT_VOLUME = AUDIO_CONFIG[AUDIO_EVENTS.ambienceLoop].volume;
 
-// Veřejná ladicí stránka pro DeathSequenceOverlay (viz zadání "6. úkol") —
-// NENAPOJENÁ na skutečnou hru: nevyžaduje login, nezapisuje statistiky,
-// nevolá server, nespouští /play. Preview vlevo je jen statický "kontrolní
-// místnost" panel (žádný GameScreen/tick z hlavní hry), vpravo posuvníky
-// měnící DeathSequenceConfig (viz DeathTestControls.tsx). Audio PŘED
-// spuštěním smrti (ambient + heartbeat na PRE_DEATH_STRESS_PERCENT) žije
-// jen tady, ne v DeathSequenceOverlay.tsx — v reálné hře už tohle hraje
-// samo z normálního provozu (viz useHeartbeatStress.ts), overlay tam bude
-// jen napojený na existující loopy, ne je sám spouštět.
+const DEATH_REASON_OPTIONS: { reason: DeathReason; label: string }[] = [
+  { reason: "door_open_at_attack", label: "Útok u dveří (otevřené dveře)" },
+  { reason: "bulb_replacement_attack", label: "Útok při výměně žárovky" },
+  { reason: "blackout_timeout", label: "Blackout — baterie došla" },
+  { reason: "emergency_run", label: "Nouzová minihra (bez animace/hold, viz DeathScreen.tsx)" },
+];
+
+// Veřejná ladicí stránka pro skutečnou death sekvenci (viz zadání "chci mít
+// zorbazené aktuální chování smrti") — NENAPOJENÁ na skutečnou hru (nevyžaduje
+// login, nezapisuje statistiky, nevolá server, nespouští /play), ale
+// přehrává PŘESNĚ stejnou komponentní dvojici jako app/play/page.tsx:
+// DeathSequenceOverlay (efekty) -> DeathScreen (ghoul_death animace + dialog
+// se zpožděním). Žádné posuvníky pro ladění timingů — ten je teď pevně daný
+// (viz game/death/liveDeathSequenceConfig.ts, components/screens/DeathScreen.tsx),
+// tahle stránka slouží jen k tomu, aby šlo reálné chování kdykoliv vyvolat a
+// zkontrolovat, ne k jeho přeladění.
 export default function DeathTestPage() {
-  const [config, setConfig] = useState<DeathSequenceConfig>(DEATH_SEQUENCE_DEFAULT_CONFIG);
-  const [active, setActive] = useState(false);
+  const [reason, setReason] = useState<DeathReason>(DEATH_REASON_OPTIONS[0].reason);
+  const [deathSequenceActive, setDeathSequenceActive] = useState(false);
+  const [showDeathScreen, setShowDeathScreen] = useState(false);
   const previewRef = useRef<HTMLDivElement | null>(null);
 
   /** Natvrdo zastaví všechny "před smrtí" loopy — volá se při dokončení sekvence i defenzivně před každým novým přehráním. */
@@ -43,25 +48,22 @@ export default function DeathTestPage() {
 
   async function handlePlay(fullscreen: boolean) {
     // audioManager.init() musí proběhnout po uživatelském gestu (autoplay
-    // policy prohlížečů, viz app/dev-sound/page.tsx#handlePlay stejný vzor)
-    // — klik na "Přehrát" je samo o sobě gesto, bezpečné volat opakovaně
-    // (no-op po prvním init, viz audioManager.ts).
+    // policy prohlížečů) — klik na "Přehrát" je samo o sobě gesto, bezpečné
+    // volat opakovaně (no-op po prvním init, viz audioManager.ts).
     audioManager.init();
     if (fullscreen && previewRef.current) {
       try {
         await previewRef.current.requestFullscreen();
       } catch {
         // requestFullscreen může selhat (chybějící gesto, blokováno
-        // prohlížečem apod., viz zadání) — death preview se i tak spustí
-        // normálně, jen bez fullscreen.
+        // prohlížečem apod.) — death preview se i tak spustí normálně, jen
+        // bez fullscreen.
       }
     }
 
     // Realistický "před smrtí" zvukový podklad — stejný výpočet hlasitosti
     // jako skutečná hra (viz game/audio/heartbeatStress.ts), jen s pevnou
-    // hodnotou napětí místo odvozené z GameState. DeathSequenceOverlay pak
-    // tohle (viz cutAmbientInstantly) buď tvrdě přeruší, nebo nechá doznít,
-    // podle aktuálního configu — přesně to, co má tahle stránka pomoct vyladit.
+    // hodnotou napětí místo odvozené z GameState.
     stopPreDeathAudio();
     audioManager.setVolume(AUDIO_EVENTS.ambienceLoop, BASE_AMBIENT_VOLUME * computeAmbientStressMultiplier(PRE_DEATH_STRESS_PERCENT / 100));
     audioManager.startLoop(AUDIO_EVENTS.ambienceLoop);
@@ -71,16 +73,20 @@ export default function DeathTestPage() {
     audioManager.startLoop(AUDIO_EVENTS.heartbeatStressSlow);
     audioManager.startLoop(AUDIO_EVENTS.heartbeatStressFast);
 
-    setActive(true);
+    setShowDeathScreen(false);
+    setDeathSequenceActive(true);
   }
 
-  function handleComplete() {
-    setActive(false);
-    // Ať cutAmbientInstantly bylo zapnuté nebo ne, po dokončení sekvence už
-    // nemá co dál hrát na pozadí zamrzlé "GAME OVER" obrazovky.
+  function handleSequenceComplete() {
+    setDeathSequenceActive(false);
+    // Ať cutAmbientInstantly bylo zapnuté nebo ne, po dokončení efektové
+    // sekvence už nemá co dál hrát na pozadí ghoul_death animace.
     stopPreDeathAudio();
-    // Necháváme hráče na /death-test (viz zadání "nepřesměrovávej") — jen
-    // se vrátíme z fullscreenu, pokud jsme v něm byli.
+    setShowDeathScreen(true);
+  }
+
+  function handleRetry() {
+    setShowDeathScreen(false);
     if (document.fullscreenElement) {
       void document.exitFullscreen().catch(() => {});
     }
@@ -94,29 +100,77 @@ export default function DeathTestPage() {
         <span className="camera-monitor-screw" style={{ bottom: 5, left: 5 }} aria-hidden="true" />
         <span className="camera-monitor-screw" style={{ bottom: 5, right: 5 }} aria-hidden="true" />
 
-        {/* Statický control-room preview — schválně NE skutečný GameScreen
-            (viz zadání "raději statický preview než riskovat zásah do
-            hry"), jen vizuální pozadí pro death sekvenci. */}
-        <div className="menu-terminal-screen relative h-full min-h-[340px] flex flex-col items-center justify-center gap-4 p-8 pixel-screen-static">
-          <p className="text-[10px] tracking-widest text-gray-500 uppercase">Objekt 13 — Noční služba</p>
-          <h1 className="text-xl font-bold text-amber-400 uppercase tracking-wide">Kontrolní místnost</h1>
-          <div className="w-full max-w-xs aspect-video camera-static border border-gray-700 flex items-center justify-center">
-            <span className="text-[10px] text-gray-500 uppercase tracking-widest">Kamera 01 — bez signálu</span>
+        {!showDeathScreen && (
+          // Statický control-room preview — schválně NE skutečný GameScreen,
+          // jen vizuální pozadí pro death sekvenci.
+          <div className="menu-terminal-screen relative h-full min-h-[340px] flex flex-col items-center justify-center gap-4 p-8 pixel-screen-static">
+            <p className="text-[10px] tracking-widest text-gray-500 uppercase">Objekt 13 — Noční služba</p>
+            <h1 className="text-xl font-bold text-amber-400 uppercase tracking-wide">Kontrolní místnost</h1>
+            <div className="w-full max-w-xs aspect-video camera-static border border-gray-700 flex items-center justify-center">
+              <span className="text-[10px] text-gray-500 uppercase tracking-widest">Kamera 01 — bez signálu</span>
+            </div>
+            <p className="text-xs text-gray-400">Dveře: zavřeno</p>
           </div>
-          <p className="text-xs text-gray-400">Dveře: zavřeno</p>
-        </div>
+        )}
 
-        <DeathSequenceOverlay active={active} config={config} variant="default" onComplete={handleComplete} />
+        {showDeathScreen && (
+          <DeathScreen
+            reason={reason}
+            deathCount={3}
+            gameMode="normal"
+            livesRemaining={2}
+            nightNumber={2}
+            onRetry={handleRetry}
+          />
+        )}
+
+        <DeathSequenceOverlay
+          active={deathSequenceActive}
+          config={getLiveDeathSequenceConfig(reason)}
+          variant={isDoorAttackDeath(reason) ? "door" : "default"}
+          onComplete={handleSequenceComplete}
+        />
       </div>
 
-      <div className="lg:w-96 w-full">
-        <DeathTestControls
-          config={config}
-          onChange={setConfig}
-          onPlayFullscreen={() => handlePlay(true)}
-          onPlayInline={() => handlePlay(false)}
-          onReset={() => setConfig(DEATH_SEQUENCE_DEFAULT_CONFIG)}
-        />
+      <div className="lg:w-80 w-full flex flex-col gap-4">
+        <div className="pixel-panel p-4 flex flex-col gap-3">
+          <h2 className="text-sm font-bold text-amber-400 uppercase tracking-wide">Skutečná death sekvence</h2>
+          <p className="text-xs text-gray-400">
+            Přehraje přesně to, co uvidí hráč po smrti ve hře: efekty (ticho, bílý záblesk, shake, zvuk) → ghoul_death
+            animace → dialog. Žádné ladicí posuvníky — timing je pevně daný.
+          </p>
+
+          <label className="flex flex-col gap-1 text-xs text-gray-300">
+            Důvod smrti
+            <select
+              className="pixel-input bg-gray-900 border border-gray-700 rounded px-2 py-1 text-white text-xs"
+              value={reason}
+              onChange={(event) => setReason(event.target.value as DeathReason)}
+              disabled={deathSequenceActive}
+            >
+              {DEATH_REASON_OPTIONS.map((option) => (
+                <option key={option.reason} value={option.reason}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <button
+            className="pixel-button console-button console-button--primary tap-target px-4 py-2 text-sm"
+            onClick={() => handlePlay(false)}
+            disabled={deathSequenceActive}
+          >
+            Přehrát
+          </button>
+          <button
+            className="pixel-button console-button tap-target px-4 py-2 text-sm"
+            onClick={() => handlePlay(true)}
+            disabled={deathSequenceActive}
+          >
+            Přehrát na celou obrazovku
+          </button>
+        </div>
       </div>
     </main>
   );

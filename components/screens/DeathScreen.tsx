@@ -1,14 +1,15 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { COPY } from "@/content/copy";
 import { DeathReason } from "@/game/core/types";
 import { GameMode } from "@/game/core/gameMode";
 import { PlayerAchievement } from "@/game/core/playerAchievements";
 import { resolveDeathScreenStatus } from "@/game/core/deathScreenStatus";
 import SceneBackground from "@/components/SceneBackground";
-import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
+import { BACKGROUND_SCENES, getPlayOnceLastFrameDelayMs } from "@/game/visuals/backgroundImages";
 import AchievementResultPanel from "@/components/achievements/AchievementResultPanel";
+import { DEATH_SCREEN_REVEAL_DELAY_MS } from "@/game/balancing/constants";
 
 interface DeathScreenProps {
   reason: DeathReason | null;
@@ -66,58 +67,78 @@ export default function DeathScreen({
     return messages[Math.floor(Math.random() * messages.length)];
   }, []);
 
+  // Dialog "Předčasný konec směny" se má objevit AŽ POTÉ, co ghoul_death
+  // animace na pozadí (`scene` výše) doběhne na poslední snímek a chvíli se
+  // na něm zastaví (viz zadání "poslední obrázek byl pár sekund vidět a
+  // teprve pak se přes to zobrazil dialog") — ne zároveň s namountováním
+  // téhle obrazovky, jak fungovalo dřív. `emergency_run` (smrt v nouzové
+  // minihře) je výjimka na výslovnou žádost — ta dál dialog zobrazuje rovnou,
+  // beze změny.
+  const skipReveal = reason === "emergency_run";
+  const [dialogRevealed, setDialogRevealed] = useState(skipReveal);
+
+  useEffect(() => {
+    if (skipReveal) return;
+    const revealDelayMs = getPlayOnceLastFrameDelayMs(scene) + DEATH_SCREEN_REVEAL_DELAY_MS;
+    const timeout = setTimeout(() => setDialogRevealed(true), revealDelayMs);
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [skipReveal, scene]);
+
   return (
     <main className="relative min-h-screen flex items-center justify-center p-4">
       <SceneBackground scene={scene} />
 
-      {/* Stejný "terminál" obal jako MainMenuScreen/BriefingScreen (viz
-          zadání "podobným způsobem uprav") — kovový rám + 4 šrouby +
-          zapuštěná obrazovka, místo ploché pixel-panel karty. */}
-      <div className="w-full max-w-md menu-terminal-frame relative z-10">
-        <span className="camera-monitor-screw" style={{ top: 5, left: 5 }} aria-hidden="true" />
-        <span className="camera-monitor-screw" style={{ top: 5, right: 5 }} aria-hidden="true" />
-        <span className="camera-monitor-screw" style={{ bottom: 5, left: 5 }} aria-hidden="true" />
-        <span className="camera-monitor-screw" style={{ bottom: 5, right: 5 }} aria-hidden="true" />
+      {dialogRevealed && (
+        /* Stejný "terminál" obal jako MainMenuScreen/BriefingScreen (viz
+            zadání "podobným způsobem uprav") — kovový rám + 4 šrouby +
+            zapuštěná obrazovka, místo ploché pixel-panel karty. */
+        <div className="w-full max-w-md menu-terminal-frame relative z-10">
+          <span className="camera-monitor-screw" style={{ top: 5, left: 5 }} aria-hidden="true" />
+          <span className="camera-monitor-screw" style={{ top: 5, right: 5 }} aria-hidden="true" />
+          <span className="camera-monitor-screw" style={{ bottom: 5, left: 5 }} aria-hidden="true" />
+          <span className="camera-monitor-screw" style={{ bottom: 5, right: 5 }} aria-hidden="true" />
 
-        <div className="menu-terminal-screen pixel-screen-static text-center p-8">
-          <h1 className="text-2xl font-bold mb-2 text-red-500">{COPY.death.title}</h1>
-          <p className="text-sm text-gray-400 mb-4">{reason ? COPY.death.reasons[reason] : ""}</p>
-          <p className="text-xs text-gray-300 mb-2 italic">{corporateMessage}</p>
-          <p className="text-xs text-gray-400 mb-4">
-            {COPY.death.previousGuardsLabel.replace("{count}", String(deathCount))}
-          </p>
-
-          {status.kind === "normal_continue" ? (
-            <p className="text-sm text-amber-400 mb-6">
-              {COPY.death.normalContinueLivesLabel.replace("{lives}", String(status.livesRemaining))}
-              <br />
-              {COPY.death.normalContinueNightLabel.replace("{night}", String(status.nightNumber))}
+          <div className="menu-terminal-screen pixel-screen-static text-center p-8">
+            <h1 className="text-2xl font-bold mb-2 text-red-500">{COPY.death.title}</h1>
+            <p className="text-sm text-gray-400 mb-4">{reason ? COPY.death.reasons[reason] : ""}</p>
+            <p className="text-xs text-gray-300 mb-2 italic">{corporateMessage}</p>
+            <p className="text-xs text-gray-400 mb-4">
+              {COPY.death.previousGuardsLabel.replace("{count}", String(deathCount))}
             </p>
-          ) : (
-            <div className="mb-6">
-              <p className="text-sm text-red-400">
-                {status.kind === "hardcore_game_over" ? COPY.death.hardcoreGameOverLabel : COPY.death.normalGameOverLabel}
+
+            {status.kind === "normal_continue" ? (
+              <p className="text-sm text-amber-400 mb-6">
+                {COPY.death.normalContinueLivesLabel.replace("{lives}", String(status.livesRemaining))}
+                <br />
+                {COPY.death.normalContinueNightLabel.replace("{night}", String(status.nightNumber))}
               </p>
-              {status.kind === "normal_game_over" && (
-                <p className="text-[11px] text-gray-500 mt-2">{COPY.death.normalLeaderboardNote}</p>
-              )}
-            </div>
-          )}
+            ) : (
+              <div className="mb-6">
+                <p className="text-sm text-red-400">
+                  {status.kind === "hardcore_game_over" ? COPY.death.hardcoreGameOverLabel : COPY.death.normalGameOverLabel}
+                </p>
+                {status.kind === "normal_game_over" && (
+                  <p className="text-[11px] text-gray-500 mt-2">{COPY.death.normalLeaderboardNote}</p>
+                )}
+              </div>
+            )}
 
-          <AchievementResultPanel achievements={newlyUnlockedAchievements} />
+            <AchievementResultPanel achievements={newlyUnlockedAchievements} />
 
-          <button
-            className="pixel-button console-button console-button--primary tap-target px-6 py-3 text-sm w-full"
-            onClick={onRetry}
-          >
-            {status.kind === "normal_continue"
-              ? COPY.death.normalContinueButton
-              : status.kind === "hardcore_game_over"
-                ? COPY.death.hardcoreGameOverButton
-                : COPY.death.normalGameOverButton}
-          </button>
+            <button
+              className="pixel-button console-button console-button--primary tap-target px-6 py-3 text-sm w-full"
+              onClick={onRetry}
+            >
+              {status.kind === "normal_continue"
+                ? COPY.death.normalContinueButton
+                : status.kind === "hardcore_game_over"
+                  ? COPY.death.hardcoreGameOverButton
+                  : COPY.death.normalGameOverButton}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </main>
   );
 }

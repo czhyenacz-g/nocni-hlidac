@@ -16,15 +16,12 @@ describe("isDoorAttackDeath", () => {
 });
 
 describe("getLiveDeathSequenceConfig", () => {
-  it("selects the door_open_death image for door-attack death reasons", () => {
-    expect(getLiveDeathSequenceConfig("door_open_at_attack").deathImageId).toBe("door_open_death");
-    expect(getLiveDeathSequenceConfig("bulb_replacement_attack").deathImageId).toBe("door_open_death");
-  });
-
-  it("selects the death_bg image for other death reasons", () => {
-    expect(getLiveDeathSequenceConfig("blackout_timeout").deathImageId).toBe("death_bg");
-    expect(getLiveDeathSequenceConfig("emergency_run").deathImageId).toBe("death_bg");
-    expect(getLiveDeathSequenceConfig(null).deathImageId).toBe("death_bg");
+  it("never enables the static death image or the GAME OVER overlay — the real reveal is the ghoul_death animation in DeathScreen.tsx", () => {
+    for (const reason of ["door_open_at_attack", "bulb_replacement_attack", "blackout_timeout", "emergency_run", null] as const) {
+      const config = getLiveDeathSequenceConfig(reason);
+      expect(config.deathImageEnabled).toBe(false);
+      expect(config.gameOverOverlayEnabled).toBe(false);
+    }
   });
 
   it("tunes deathSoundPlaybackRate to 2.2 and mutes roar/impact/glitch", () => {
@@ -37,9 +34,17 @@ describe("getLiveDeathSequenceConfig", () => {
 
   it("leaves every other field at the /death-test default", () => {
     const config = getLiveDeathSequenceConfig(null);
-    const { deathImageId, deathSoundPlaybackRate, roarVolume, impactVolume, glitchVolume, ...rest } = config;
-    const { deathImageId: _di, deathSoundPlaybackRate: _dr, roarVolume: _rv, impactVolume: _iv, glitchVolume: _gv, ...restDefault } =
-      DEATH_SEQUENCE_DEFAULT_CONFIG;
+    const { deathImageEnabled, gameOverOverlayEnabled, deathSoundPlaybackRate, roarVolume, impactVolume, glitchVolume, ...rest } =
+      config;
+    const {
+      deathImageEnabled: _die,
+      gameOverOverlayEnabled: _goe,
+      deathSoundPlaybackRate: _dr,
+      roarVolume: _rv,
+      impactVolume: _iv,
+      glitchVolume: _gv,
+      ...restDefault
+    } = DEATH_SEQUENCE_DEFAULT_CONFIG;
     expect(rest).toEqual(restDefault);
   });
 });

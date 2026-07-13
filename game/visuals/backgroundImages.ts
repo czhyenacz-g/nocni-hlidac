@@ -46,6 +46,19 @@ export interface SceneBackgroundConfig {
   playOnce?: boolean;
 }
 
+/**
+ * Kolik ms trvá, než jednorázová (`playOnce`) scéna dosáhne svého POSLEDNÍHO
+ * snímku — součet `holdMs` všech snímků KROMĚ posledního (ten pak zůstává
+ * stát, viz SceneBackground.tsx#playOnce). `0` pro scény s <= 1 snímkem.
+ * Používá `components/screens/DeathScreen.tsx`, ať ví, kdy přesně ghoul_death
+ * animace doběhla na poslední snímek, než začne odpočítávat vlastní "hold"
+ * před zobrazením dialogu.
+ */
+export function getPlayOnceLastFrameDelayMs(scene: SceneBackgroundConfig): number {
+  if (scene.frames.length <= 1) return 0;
+  return scene.frames.slice(0, -1).reduce((sum, frame) => sum + (frame.holdMs ?? scene.holdMs), 0);
+}
+
 const DEFAULT_HOLD_MS = 6000;
 const DEFAULT_CROSSFADE_MS = 1500;
 // Zdrojové obrázky jsou samy o sobě velmi tmavé (záměrně, hororová atmosféra)

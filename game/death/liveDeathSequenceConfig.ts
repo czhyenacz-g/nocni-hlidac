@@ -18,16 +18,24 @@ export function isDoorAttackDeath(reason: DeathReason | null): boolean {
  * Vyladěno na /death-test (viz zadání "teď se mi to líbí s
  * deathSoundPlaybackRate: 2.2; všichni jinak v defaultu... impact, roar a
  * glitch zvuky vůbec nepoužívat") — vychází z `DEATH_SEQUENCE_DEFAULT_CONFIG`
- * beze změny, jen: vyšší tón/rychlejší death zvuk (2.2×), a impact/roar/
- * glitch VYPNUTÉ nastavením hlasitosti na 0 (žádná nová "enabled" pole
- * navíc — `playDeathSequenceSound` je při `volume <= 0` no-op, viz
- * DeathSequenceOverlay.tsx). Death image se vybírá stejně jako dosavadní
- * `SceneBackground` v DeathScreen.tsx (deathDoorAttack vs death).
+ * beze změny, jen: vyšší tón/rychlejší death zvuk (2.2×), impact/roar/glitch
+ * VYPNUTÉ nastavením hlasitosti na 0 (žádná nová "enabled" pole navíc —
+ * `playDeathSequenceSound` je při `volume <= 0` no-op, viz
+ * DeathSequenceOverlay.tsx).
+ *
+ * `deathImageEnabled`/`gameOverOverlayEnabled` jsou VŽDY `false` — na žádost
+ * (viz zadání "nepoužívat už death_bg_0.webp") tahle sekvence po dokončení
+ * efektů (ticho, bílý záblesk, shake, zvuk) žádný vlastní statický obrázek
+ * ani "GAME OVER" text nezobrazuje. Skutečný "reveal" smrti přebírá
+ * `DeathScreen.tsx` — jeho `SceneBackground` s `death`/`deathDoorAttack`
+ * scénou (3-snímková ghoul_death animace), kterou hráč uvidí hned po téhle
+ * sekvenci, ne statický obrázek uprostřed ní.
  */
 export function getLiveDeathSequenceConfig(reason: DeathReason | null): DeathSequenceConfig {
   return clampDeathSequenceConfig({
     ...DEATH_SEQUENCE_DEFAULT_CONFIG,
-    deathImageId: isDoorAttackDeath(reason) ? "door_open_death" : "death_bg",
+    deathImageEnabled: false,
+    gameOverOverlayEnabled: false,
     deathSoundPlaybackRate: 2.2,
     roarVolume: 0,
     impactVolume: 0,
