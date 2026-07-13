@@ -177,15 +177,15 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
   // statický `death_bg_0.webp`. Assety žijí v `public/object_13/monster/ghoul/`
   // (ne pod OBJECT_13_BACKGROUND_PATH jako většina scén tady) — stejný důvod
   // jako `monsterDefeated` níže: patří k monstru, ne k "pozadí objektu".
-  // `holdMs: 500` na každém snímku + `playOnce: true` (viz SceneBackground.tsx)
+  // `holdMs: 300` na každém snímku + `playOnce: true` (viz SceneBackground.tsx)
   // = přehraje se jednou (0 → 1 → 2) a zůstane stát na posledním, žádná
   // smyčka zpátky na první snímek. Krátký `crossfadeMs` (150ms), ať se tři
-  // snímky za 500ms každý nerozmazaly do sebe přes zbytečně dlouhé prolnutí.
+  // snímky za 300ms každý nerozmazaly do sebe přes zbytečně dlouhé prolnutí.
   death: {
     frames: [
-      { src: "/object_13/monster/ghoul/ghoul_death_0.webp", holdMs: 500 },
-      { src: "/object_13/monster/ghoul/ghoul_death_1.webp", holdMs: 500 },
-      { src: "/object_13/monster/ghoul/ghoul_death_2.webp", holdMs: 500 },
+      { src: "/object_13/monster/ghoul/ghoul_death_0.webp", holdMs: 300 },
+      { src: "/object_13/monster/ghoul/ghoul_death_1.webp", holdMs: 300 },
+      { src: "/object_13/monster/ghoul/ghoul_death_2.webp", holdMs: 300 },
     ],
     holdMs: DEFAULT_HOLD_MS,
     crossfadeMs: 150,
@@ -202,9 +202,9 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
   // zůstala nečekaně statická).
   deathDoorAttack: {
     frames: [
-      { src: "/object_13/monster/ghoul/ghoul_death_0.webp", holdMs: 500 },
-      { src: "/object_13/monster/ghoul/ghoul_death_1.webp", holdMs: 500 },
-      { src: "/object_13/monster/ghoul/ghoul_death_2.webp", holdMs: 500 },
+      { src: "/object_13/monster/ghoul/ghoul_death_0.webp", holdMs: 300 },
+      { src: "/object_13/monster/ghoul/ghoul_death_1.webp", holdMs: 300 },
+      { src: "/object_13/monster/ghoul/ghoul_death_2.webp", holdMs: 300 },
     ],
     holdMs: DEFAULT_HOLD_MS,
     crossfadeMs: 150,
