@@ -134,26 +134,22 @@ describe("isBlackoutActive", () => {
 });
 
 describe("resolveDarknessOpacity", () => {
-  it("is 0 before the sequence starts (still waiting)", () => {
-    expect(resolveDarknessOpacity(0, CONFIG)).toBe(0);
-    expect(resolveDarknessOpacity(CONFIG.preDeathDelayMs, CONFIG)).toBe(0);
-  });
-
-  it("ramps linearly from 0 to darknessOpacity over blackoutDurationMs", () => {
+  it("starts ramping immediately at elapsedMs = 0 — independent of preDeathDelayMs", () => {
     const config: DeathSequenceConfig = { ...CONFIG, blackoutDurationMs: 1000, darknessOpacity: 1 };
-    expect(resolveDarknessOpacity(config.preDeathDelayMs + 250, config)).toBeCloseTo(0.25);
-    expect(resolveDarknessOpacity(config.preDeathDelayMs + 500, config)).toBeCloseTo(0.5);
-    expect(resolveDarknessOpacity(config.preDeathDelayMs + 1000, config)).toBeCloseTo(1);
+    expect(resolveDarknessOpacity(0, config)).toBe(0);
+    expect(resolveDarknessOpacity(250, config)).toBeCloseTo(0.25);
+    expect(resolveDarknessOpacity(500, config)).toBeCloseTo(0.5);
+    expect(resolveDarknessOpacity(1000, config)).toBeCloseTo(1);
   });
 
   it("stays at darknessOpacity after blackoutDurationMs has elapsed", () => {
     const config: DeathSequenceConfig = { ...CONFIG, blackoutDurationMs: 1000, darknessOpacity: 0.8 };
-    expect(resolveDarknessOpacity(config.preDeathDelayMs + 5000, config)).toBeCloseTo(0.8);
+    expect(resolveDarknessOpacity(5000, config)).toBeCloseTo(0.8);
   });
 
   it("jumps straight to darknessOpacity when blackoutDurationMs is 0", () => {
     const config: DeathSequenceConfig = { ...CONFIG, blackoutDurationMs: 0, darknessOpacity: 1 };
-    expect(resolveDarknessOpacity(config.preDeathDelayMs + 1, config)).toBe(1);
+    expect(resolveDarknessOpacity(1, config)).toBe(1);
   });
 });
 

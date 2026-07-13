@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import DeathSequenceOverlay from "@/components/death/DeathSequenceOverlay";
 import DeathScreen from "@/components/screens/DeathScreen";
 import { getLiveDeathSequenceConfig, isDoorAttackDeath } from "@/game/death/liveDeathSequenceConfig";
 import { DeathReason } from "@/game/core/types";
+import { preloadBackgroundImages } from "@/game/visuals/backgroundImages";
 import { audioManager } from "@/game/audio/audioManager";
 import { AUDIO_EVENTS } from "@/game/audio/audioEvents";
 import { AUDIO_CONFIG } from "@/game/audio/audioConfig";
@@ -38,6 +39,17 @@ export default function DeathTestPage() {
   const [deathSequenceActive, setDeathSequenceActive] = useState(false);
   const [showDeathScreen, setShowDeathScreen] = useState(false);
   const previewRef = useRef<HTMLDivElement | null>(null);
+
+  // Na skutečné /play tuhle práci odvede LoadingScreen.tsx při každém
+  // startu/restartu směny, PŘEDTÍM než hráč vůbec může umřít — /death-test
+  // ale žádný LoadingScreen nemá, takže bez tohohle by prohlížeč stahoval
+  // ghoul_death_0/1/2.webp (viz game/visuals/backgroundImages.ts scéna
+  // "death"/"deathDoorAttack") až v okamžiku, kdy je poprvé potřeba
+  // vykreslit, tedy PO doběhnutí DeathSequenceOverlay — krátký viditelný
+  // blesk pozadí stránky (`body`), než se snímek stihne stáhnout.
+  useEffect(() => {
+    preloadBackgroundImages();
+  }, []);
 
   /** Natvrdo zastaví všechny "před smrtí" loopy — volá se při dokončení sekvence i defenzivně před každým novým přehráním. */
   function stopPreDeathAudio() {
@@ -94,7 +106,15 @@ export default function DeathTestPage() {
 
   return (
     <main className="min-h-screen bg-gray-950 text-white p-4 flex flex-col lg:flex-row gap-4">
-      <div ref={previewRef} className="relative flex-1 min-h-[360px] menu-terminal-frame">
+      {/* `isolate` (CSS `isolation: isolate`) je tu nutné — DeathScreen.tsx
+          drží svůj SceneBackground na `-z-10` vůči nejbližšímu positioned
+          předkovi (viz SceneBackground.tsx). Ve skutečné hře ho "chytí" CSS
+          filter na `.atmosphere-root` (ten sám o sobě vytváří nový stacking
+          context, viz app/play/page.tsx komentáře u AchievementToast), tady
+          žádný takový předek není — bez `isolate` by `-z-10` vrstva propadla
+          až za neprůhledné pozadí `.menu-terminal-frame`/`.menu-terminal-screen`
+          níže a ghoul_death animace by nebyla vůbec vidět. */}
+      <div ref={previewRef} className="relative isolate flex-1 min-h-[360px] menu-terminal-frame">
         <span className="camera-monitor-screw" style={{ top: 5, left: 5 }} aria-hidden="true" />
         <span className="camera-monitor-screw" style={{ top: 5, right: 5 }} aria-hidden="true" />
         <span className="camera-monitor-screw" style={{ bottom: 5, left: 5 }} aria-hidden="true" />
