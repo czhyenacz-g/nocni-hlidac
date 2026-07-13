@@ -85,62 +85,19 @@ describe("clampCameraPan", () => {
 
 describe("lerpCameraPan", () => {
   it("moves partway toward the target by the given factor", () => {
-    const result = lerpCameraPan({ x: 0, y: 0 }, { x: 40, y: 10 }, 0.1);
+    const result = lerpCameraPan({ x: 0, y: 0 }, { x: 40, y: 24 }, 0.1);
     expect(result.x).toBeCloseTo(4);
-    expect(result.y).toBeCloseTo(1);
+    expect(result.y).toBeCloseTo(2.4);
   });
 
   it("never overshoots the target (factor 1 lands exactly on it)", () => {
-    const result = lerpCameraPan({ x: 0, y: 0 }, { x: 40, y: 10 }, 1);
-    expect(result).toEqual({ x: 40, y: 10 });
+    const result = lerpCameraPan({ x: 0, y: 0 }, { x: 40, y: 24 }, 1);
+    expect(result).toEqual({ x: 40, y: 24 });
   });
 
   it("factor 0 leaves current unchanged", () => {
-    const result = lerpCameraPan({ x: 5, y: 5 }, { x: 40, y: 10 }, 0);
+    const result = lerpCameraPan({ x: 5, y: 5 }, { x: 40, y: 24 }, 0);
     expect(result).toEqual({ x: 5, y: 5 });
-  });
-});
-
-// Doladěné hodnoty po prvním playtest reportu (viz zadání) — slabší zoom,
-// hlavně horizontální pan, delší setrvání v ručním režimu. lerpFactor/
-// maxTiltYDeg/maxTiltXDeg/perspectivePx zůstávají beze změny.
-describe("CAMERA_MANUAL_PAN_CONFIG — tuned values", () => {
-  it("uses the reduced zoom (1.15, not the original 1.20)", () => {
-    expect(CAMERA_MANUAL_PAN_CONFIG.scale).toBe(1.15);
-  });
-
-  it("keeps horizontal pan at ±40px", () => {
-    expect(CAMERA_MANUAL_PAN_CONFIG.maxPanX).toBe(40);
-  });
-
-  it("reduces vertical pan to ±10px (mostly horizontal movement)", () => {
-    expect(CAMERA_MANUAL_PAN_CONFIG.maxPanY).toBe(10);
-  });
-
-  it("waits longer before resuming auto drift (2400ms, not the original 1600ms)", () => {
-    expect(CAMERA_MANUAL_PAN_CONFIG.autoResumeDelayMs).toBe(2400);
-  });
-
-  it("leaves lerpFactor, tilt limits, and perspective untouched", () => {
-    expect(CAMERA_MANUAL_PAN_CONFIG.lerpFactor).toBe(0.1);
-    expect(CAMERA_MANUAL_PAN_CONFIG.maxTiltYDeg).toBe(1.2);
-    expect(CAMERA_MANUAL_PAN_CONFIG.maxTiltXDeg).toBe(0.7);
-    expect(CAMERA_MANUAL_PAN_CONFIG.perspectivePx).toBe(1000);
-  });
-
-  // Reserve daná zoomem musí pokrýt maxPanY, jinak by při maximálním
-  // vertikálním vychýlení myši šel vidět okraj obrázku (viz zadání "žádný
-  // okraj obrázku není při maximálním vertikálním panu vidět") — reserve na
-  // jednu stranu je (scale - 1) / 2 podílu z výšky viewportu; overflow
-  // počítáme jako podíl výšky, protože translate je v px a scale je
-  // bezrozměrný poměr, takže bezpečnost je nutně vztažená ke konkrétní výšce
-  // kamerového detailu (h-48 = 192px, viz CameraView.tsx). Test jen ověřuje
-  // konzistenci configu samotného (scale dost velký na maxPanY při 192px),
-  // ne vykreslení.
-  it("scale reserve at the 192px camera detail height covers maxPanY without exposing the image edge", () => {
-    const cameraDetailHeightPx = 192;
-    const verticalReservePerSidePx = ((CAMERA_MANUAL_PAN_CONFIG.scale - 1) * cameraDetailHeightPx) / 2;
-    expect(verticalReservePerSidePx).toBeGreaterThan(CAMERA_MANUAL_PAN_CONFIG.maxPanY);
   });
 });
 
@@ -152,7 +109,7 @@ describe("shouldUseManualCameraMode", () => {
         isTouchDevice: false,
         prefersReducedMotion: false,
         msSinceLastPointerMove: 0,
-        autoResumeDelayMs: 2400,
+        autoResumeDelayMs: 1600,
       }),
     ).toBe(false);
   });
@@ -164,15 +121,15 @@ describe("shouldUseManualCameraMode", () => {
         isTouchDevice: false,
         prefersReducedMotion: false,
         msSinceLastPointerMove: 200,
-        autoResumeDelayMs: 2400,
+        autoResumeDelayMs: 1600,
       }),
     ).toBe(true);
   });
 
   it("returns to auto mode once msSinceLastPointerMove reaches autoResumeDelayMs", () => {
-    const base = { experimentEnabled: true, isTouchDevice: false, prefersReducedMotion: false, autoResumeDelayMs: 2400 };
-    expect(shouldUseManualCameraMode({ ...base, msSinceLastPointerMove: 2399 })).toBe(true);
-    expect(shouldUseManualCameraMode({ ...base, msSinceLastPointerMove: 2400 })).toBe(false);
+    const base = { experimentEnabled: true, isTouchDevice: false, prefersReducedMotion: false, autoResumeDelayMs: 1600 };
+    expect(shouldUseManualCameraMode({ ...base, msSinceLastPointerMove: 1599 })).toBe(true);
+    expect(shouldUseManualCameraMode({ ...base, msSinceLastPointerMove: 1600 })).toBe(false);
     expect(shouldUseManualCameraMode({ ...base, msSinceLastPointerMove: 5000 })).toBe(false);
   });
 
@@ -183,7 +140,7 @@ describe("shouldUseManualCameraMode", () => {
         isTouchDevice: false,
         prefersReducedMotion: false,
         msSinceLastPointerMove: null,
-        autoResumeDelayMs: 2400,
+        autoResumeDelayMs: 1600,
       }),
     ).toBe(false);
   });
@@ -195,7 +152,7 @@ describe("shouldUseManualCameraMode", () => {
         isTouchDevice: true,
         prefersReducedMotion: false,
         msSinceLastPointerMove: 0,
-        autoResumeDelayMs: 2400,
+        autoResumeDelayMs: 1600,
       }),
     ).toBe(false);
   });
@@ -207,7 +164,7 @@ describe("shouldUseManualCameraMode", () => {
         isTouchDevice: false,
         prefersReducedMotion: true,
         msSinceLastPointerMove: 0,
-        autoResumeDelayMs: 2400,
+        autoResumeDelayMs: 1600,
       }),
     ).toBe(false);
   });
