@@ -14,8 +14,6 @@ interface CameraPanelProps {
   enemyStageVisitSeq: number;
   /** Admin-only rychlá testovací pomůcka (viz zadání "rychlejší testování", game/cameras/cameraDoorAlert.ts) — jen v overview (CameraMonitorGrid), detail už skutečný obsah ukazuje sám. */
   showAdminDoorAlerts: boolean;
-  /** Admin/debug přepínač "Experimentální ruční kamera" (viz zadání, game/visuals/cameraManualPan.ts) — jen v detailu (CameraDetailView), overview žádný živý obraz nemá. */
-  manualCameraExperimentEnabled: boolean;
   onSelectCamera: (id: CameraId) => void;
   onCloseCameras: () => void;
 }
@@ -34,7 +32,6 @@ export default function CameraPanel({
   lastEnemyDecision,
   enemyStageVisitSeq,
   showAdminDoorAlerts,
-  manualCameraExperimentEnabled,
   onSelectCamera,
   onCloseCameras,
 }: CameraPanelProps) {
@@ -49,7 +46,6 @@ export default function CameraPanel({
         elapsedMs={elapsedMs}
         lastEnemyDecision={lastEnemyDecision}
         enemyStageVisitSeq={enemyStageVisitSeq}
-        manualCameraExperimentEnabled={manualCameraExperimentEnabled}
         onBack={onCloseCameras}
       />
     );

@@ -132,12 +132,6 @@ export default function GameScreen({
     e.preventDefault();
     setDebugPanelVisible((visible) => !visible);
   }
-  // Experimentální ruční ovládání kamerového detailu myší (viz zadání,
-  // game/visuals/cameraManualPan.ts, DebugPanel.tsx) — čistě lokální UI
-  // přepínač, stejná konvence jako debugPanelVisible výše: nepatří do
-  // GameState/reduceru (žádný vliv na gameplay), default false, dostupný
-  // jen přes admin-only sekci v DebugPanel.tsx.
-  const [manualCameraExperimentEnabled, setManualCameraExperimentEnabled] = useState(false);
   // Dev debug text pro PowerMeter — přesný údaj v sekundách, ne finální
   // atmosférický text (viz game/core/roomBulbs.ts, content/copy.ts).
   // `undefined`, dokud nightFeatures.bulbLifetimeEnabled je false (Noc 1–3,
@@ -214,7 +208,6 @@ export default function GameScreen({
                 state={state}
                 night={night}
                 isAdmin={isAdmin}
-                manualCameraExperimentEnabled={manualCameraExperimentEnabled}
                 onToggleLight={onToggleLight}
                 onSelectCamera={onSelectCamera}
                 onCloseCameras={onCloseCameras}
@@ -286,8 +279,6 @@ export default function GameScreen({
               serverCurrentRun={serverCurrentRun}
               localSurvivedNights={localSurvivedNights}
               isAdmin={isAdmin}
-              manualCameraExperimentEnabled={manualCameraExperimentEnabled}
-              onToggleManualCameraExperiment={() => setManualCameraExperimentEnabled((enabled) => !enabled)}
               onDebugToggleDoor={onDebugToggleDoor}
               onDebugRestartGenerator={onDebugRestartGenerator}
               onSetDebugNight={onSetDebugNight}

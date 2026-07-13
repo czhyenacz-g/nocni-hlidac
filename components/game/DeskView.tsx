@@ -12,8 +12,6 @@ interface DeskViewProps {
   night: NightDefinition;
   /** Admin-only rychlá testovací pomůcka (viz zadání "rychlejší testování") — rozsvítí LED kamerového monitoru v overview, viz CameraPanel.tsx/CameraMonitorGrid.tsx. */
   isAdmin: boolean;
-  /** Admin/debug přepínač "Experimentální ruční kamera" (viz zadání, DebugPanel.tsx, GameScreen.tsx) — default false, běžný hráč ho nikde nenastaví. */
-  manualCameraExperimentEnabled: boolean;
   onToggleLight: () => void;
   onSelectCamera: (id: CameraId) => void;
   onCloseCameras: () => void;
@@ -28,7 +26,6 @@ export default function DeskView({
   state,
   night,
   isAdmin,
-  manualCameraExperimentEnabled,
   onToggleLight,
   onSelectCamera,
   onCloseCameras,
@@ -54,7 +51,6 @@ export default function DeskView({
           lastEnemyDecision={state.lastEnemyDecision}
           enemyStageVisitSeq={state.enemyStageVisitSeq}
           showAdminDoorAlerts={isAdmin}
-          manualCameraExperimentEnabled={manualCameraExperimentEnabled}
           onSelectCamera={onSelectCamera}
           onCloseCameras={onCloseCameras}
         />
