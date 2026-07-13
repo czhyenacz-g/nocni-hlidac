@@ -183,12 +183,20 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
   // enemyStage přejde na "attack" a screen na "death" zároveň — hráč tedy
   // nikdy neuvidí samostatnou "útok probíhá" fázi v DoorView, jen rovnou
   // DeathScreen. Tenhle obrázek proto slouží jako pozadí death screenu pro
-  // tuhle konkrétní deathReason, viz DeathScreen.tsx.
+  // tuhle konkrétní deathReason, viz DeathScreen.tsx. Nejčastější způsob
+  // smrti (útok u dveří) — dostává stejnou ghoul animaci jako výchozí
+  // "death" scéna výše (na žádost po prvním živém testu, kde tahle scéna
+  // zůstala nečekaně statická).
   deathDoorAttack: {
-    frames: [{ src: `${OBJECT_13_BACKGROUND_PATH}/door_open_death_0.webp` }],
+    frames: [
+      { src: "/object_13/monster/ghoul/ghoul_death_0.webp", holdMs: 500 },
+      { src: "/object_13/monster/ghoul/ghoul_death_1.webp", holdMs: 500 },
+      { src: "/object_13/monster/ghoul/ghoul_death_2.webp", holdMs: 500 },
+    ],
     holdMs: DEFAULT_HOLD_MS,
-    crossfadeMs: DEFAULT_CROSSFADE_MS,
+    crossfadeMs: 150,
     overlay: DEFAULT_OVERLAY,
+    playOnce: true,
   },
   win: {
     frames: [

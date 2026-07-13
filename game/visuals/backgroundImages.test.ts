@@ -106,3 +106,21 @@ describe("BACKGROUND_SCENES.death", () => {
     expect(BACKGROUND_SCENES.death.playOnce).toBe(true);
   });
 });
+
+// door_open_at_attack (útok u dveří — nejčastější způsob smrti, viz
+// DeathScreen.tsx) používá vlastní scénu "deathDoorAttack", ne "death" výše
+// — dostala stejnou ghoul animaci na žádost po prvním živém testu, kde
+// zůstala nečekaně statická.
+describe("BACKGROUND_SCENES.deathDoorAttack", () => {
+  it("has the same three ghoul_death frames in order as BACKGROUND_SCENES.death", () => {
+    const srcs = BACKGROUND_SCENES.deathDoorAttack.frames.map((f) => f.src);
+    expect(srcs).toEqual(BACKGROUND_SCENES.death.frames.map((f) => f.src));
+  });
+
+  it("holds each frame for ~500ms and is marked playOnce", () => {
+    for (const frame of BACKGROUND_SCENES.deathDoorAttack.frames) {
+      expect(frame.holdMs).toBe(500);
+    }
+    expect(BACKGROUND_SCENES.deathDoorAttack.playOnce).toBe(true);
+  });
+});
