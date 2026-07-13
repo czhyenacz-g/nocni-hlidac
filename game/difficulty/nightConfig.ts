@@ -20,7 +20,7 @@ export interface NightFeatureFlags {
    * ZATÍM true pro všechny noci (vývoj/ruční testování) — zamýšlený budoucí
    * stav je noc 1–4 false, noc 5+ true (viz getNightConfig komentář — noc 5
    * je i práh, kde energyDrainMultiplier v nightScaling.ts poprvé udělá
-   * skok, ×1.15 → ×1.25, ne jen 1–4 free-hodinu), ale dokud neexistuje víc
+   * skok, ×1.21 → ×1.36, ne jen 1–4 free-hodinu), ale dokud neexistuje víc
    * než jedna výprava, nemá smysl to už teď takhle omezovat v produkčním
    * defaultu.
    */
@@ -106,7 +106,7 @@ export interface ResolvedNightConfig {
 //   noc 5+:   emergencyRunsEnabled: true, batteryRunEnabled: true
 //   noc 7+:   bulbRunEnabled: true (až bude v /play existovat bulb run mise)
 // Noc 5 není náhoda — od tamtud energyDrainMultiplier (game/difficulty/nightScaling.ts)
-// poprvé skáče víc než o 5 % (×1.15 → ×1.25), takže nouzová obchůzka/baterie
+// poprvé skáče víc než o 7 % (×1.21 → ×1.36), takže nouzová obchůzka/baterie
 // začne dávat smysl přesně tam, kde spotřeba energie přestane být mírná.
 // Až se tohle zapne doopravdy, půjde jednoduše přidat
 // `features: { emergencyRunsEnabled: false, batteryRunEnabled: false }` do

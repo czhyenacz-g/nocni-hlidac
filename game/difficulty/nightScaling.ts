@@ -14,24 +14,25 @@ export interface NightScaling {
 
 /**
  * Explicitní křivka spotřeby energie podle noci (ne lineární step/cap) —
- * noci 1–4 jsou učící ("kancelářské mechaniky"), od noci 5 skok na ×1.25 dělá
- * smysluplnou první motivaci pro nouzovou obchůzku/baterii, dál strmě roste
- * až k ×2.00 od noci 10 — tam už battery run není bonus, ale riskantní
- * způsob, jak vůbec přežít (viz zadání). Noci nad 10 dál používají stejný
- * strop ×2.00 (viz computeNightScaling), ať žádný modifikátor neroste
- * donekonečna.
+ * noci 1–4 jsou učící ("kancelářské mechaniky"), teď rostou po +7 % místo
+ * dřívějších +5 % (na žádost, viz zadání "navýšení 7% místo 5"), od noci 5
+ * skok na ×1.36 dělá smysluplnou první motivaci pro nouzovou obchůzku/
+ * baterii, dál strmě roste až ke stropu ×2.50 od noci 10 (dřív ×2.00, na
+ * žádost) — tam už battery run není bonus, ale riskantní způsob, jak vůbec
+ * přežít (viz zadání). Noci nad 10 dál používají stejný strop ×2.50 (viz
+ * computeNightScaling), ať žádný modifikátor neroste donekonečna.
  */
 const NIGHT_ENERGY_DRAIN_MULTIPLIERS = {
   1: 1.0,
-  2: 1.05,
-  3: 1.1,
-  4: 1.15,
-  5: 1.25,
-  6: 1.4,
-  7: 1.55,
-  8: 1.7,
-  9: 1.85,
-  10: 2.0,
+  2: 1.07,
+  3: 1.14,
+  4: 1.21,
+  5: 1.36,
+  6: 1.57,
+  7: 1.78,
+  8: 1.99,
+  9: 2.2,
+  10: 2.5,
 } as const;
 
 const MAX_NIGHT_WITH_OWN_MULTIPLIER = 10;
@@ -41,7 +42,7 @@ const MAX_NIGHT_WITH_OWN_MULTIPLIER = 10;
  * čistá, testovatelná funkce. Neplatný/nesmyslný vstup (< 1, NaN, necelé
  * číslo, ...) se bezpečně bere jako noc 1 (žádné ztěžování) — stejná
  * konvence jako `getNightConfig`. Noci nad `MAX_NIGHT_WITH_OWN_MULTIPLIER`
- * (10+) dostanou stejný strop (×2.00, noc 10), ať multiplier neroste
+ * (10+) dostanou stejný strop (×2.50, noc 10), ať multiplier neroste
  * donekonečna.
  */
 export function computeNightScaling(currentNight: number): NightScaling {
