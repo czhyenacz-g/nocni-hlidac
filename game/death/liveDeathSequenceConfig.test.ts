@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getLiveDeathSequenceConfig, isDoorAttackDeath } from "./liveDeathSequenceConfig";
 import { DEATH_SEQUENCE_DEFAULT_CONFIG } from "./deathSequenceConfig";
+import { DEATH_SEQUENCE_COMPLETE_AFTER_MS, resolveDeathSequencePhase } from "./deathSequenceTiming";
 
 describe("isDoorAttackDeath", () => {
   it("is true for door_open_at_attack and bulb_replacement_attack", () => {
@@ -32,13 +33,44 @@ describe("getLiveDeathSequenceConfig", () => {
     expect(config.glitchVolume).toBe(0);
   });
 
+  it("reaches the 'complete' phase (DeathSequenceOverlay.onComplete) shortly after the white flash ends, not ~1.2s later", () => {
+    const config = getLiveDeathSequenceConfig(null);
+    expect(config.gameOverAtMs).toBe(0);
+
+    const whiteFlashEndsAtMs = config.preDeathDelayMs + config.whiteFlashAtMs + config.whiteFlashDurationMs;
+    const completeAtMs = config.preDeathDelayMs + config.gameOverAtMs + DEATH_SEQUENCE_COMPLETE_AFTER_MS;
+    expect(completeAtMs).toBeGreaterThan(whiteFlashEndsAtMs);
+    expect(completeAtMs - whiteFlashEndsAtMs).toBeLessThan(500);
+    expect(resolveDeathSequencePhase(completeAtMs, config)).toBe("complete");
+  });
+
+  it("finishes the shake before the sequence completes, instead of getting cut off mid-shake", () => {
+    const config = getLiveDeathSequenceConfig(null);
+    const shakeEndsAtMs = config.preDeathDelayMs + config.shakeAtMs + config.shakeDurationMs;
+    const completeAtMs = config.preDeathDelayMs + config.gameOverAtMs + DEATH_SEQUENCE_COMPLETE_AFTER_MS;
+    expect(shakeEndsAtMs).toBeLessThanOrEqual(completeAtMs);
+  });
+
   it("leaves every other field at the /death-test default", () => {
     const config = getLiveDeathSequenceConfig(null);
-    const { deathImageEnabled, gameOverOverlayEnabled, deathSoundPlaybackRate, roarVolume, impactVolume, glitchVolume, ...rest } =
-      config;
+    const {
+      deathImageEnabled,
+      gameOverOverlayEnabled,
+      gameOverAtMs,
+      shakeAtMs,
+      shakeDurationMs,
+      deathSoundPlaybackRate,
+      roarVolume,
+      impactVolume,
+      glitchVolume,
+      ...rest
+    } = config;
     const {
       deathImageEnabled: _die,
       gameOverOverlayEnabled: _goe,
+      gameOverAtMs: _goa,
+      shakeAtMs: _sam,
+      shakeDurationMs: _sdm,
       deathSoundPlaybackRate: _dr,
       roarVolume: _rv,
       impactVolume: _iv,

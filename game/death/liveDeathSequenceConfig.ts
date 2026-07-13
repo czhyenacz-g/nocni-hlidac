@@ -30,12 +30,26 @@ export function isDoorAttackDeath(reason: DeathReason | null): boolean {
  * `DeathScreen.tsx` — jeho `SceneBackground` s `death`/`deathDoorAttack`
  * scénou (3-snímková ghoul_death animace), kterou hráč uvidí hned po téhle
  * sekvenci, ne statický obrázek uprostřed ní.
+ *
+ * `gameOverAtMs: 0` (defaultně 1200) — na žádost "ghoul by měl vyrazit hned
+ * po tom bliknutí": `resolveDeathSequencePhase` označí sekvenci za
+ * `"complete"` (= `DeathSequenceOverlay.onComplete`, viz app/play/page.tsx)
+ * `DEATH_SEQUENCE_COMPLETE_AFTER_MS` (1500 ms, deathSequenceTiming.ts) PO
+ * `gameOverAtMs` — s `0` je to nejdřív, kdy může "complete" nastat, takže
+ * ghoul_death animace naskočí `preDeathDelayMs + 1500` ms od smrti, těsně
+ * (~300 ms) po konci bílého záblesku (`whiteFlashAtMs + whiteFlashDurationMs`
+ * = 1190 ms), ne až o dalších ~1.2 s později. `shakeAtMs`/`shakeDurationMs`
+ * jsou zkrácené/posunuté tak, aby shake doběhl PŘED touhle hranicí (ne aby
+ * ho `DeathScreen` mount uprostřed usekl).
  */
 export function getLiveDeathSequenceConfig(reason: DeathReason | null): DeathSequenceConfig {
   return clampDeathSequenceConfig({
     ...DEATH_SEQUENCE_DEFAULT_CONFIG,
     deathImageEnabled: false,
     gameOverOverlayEnabled: false,
+    gameOverAtMs: 0,
+    shakeAtMs: 1100,
+    shakeDurationMs: 350,
     deathSoundPlaybackRate: 2.2,
     roarVolume: 0,
     impactVolume: 0,
