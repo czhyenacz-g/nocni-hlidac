@@ -33,16 +33,27 @@ export default function CinematicScreen({ sceneId, onComplete }: CinematicScreen
   // per-segment cesty). Respektuje globální mute; chybějící soubor,
   // zakázané přehrání prohlížečem nebo jakákoliv jiná chyba se jen zaloguje
   // jako warning a scéna pokračuje dál beze změny.
+  //
+  // Cleanup (viz zadání "bug: doznívají předchozí dialogy, mluví přes
+  // sebe") — bez tohohle by starý <audio> instance dál hrála nezávisle na
+  // pozadí, i když hráč mezitím odkliknul další (nebo i několik dalších)
+  // segmentů. React zavolá tenhle cleanup PŘED spuštěním efektu pro nový
+  // segment (nebo při unmountu), takže staré přehrávání se vždy zastaví
+  // dřív, než začne nové.
   useEffect(() => {
     if (!segment?.audioSrc || audioManager.isMuted()) return;
+    let audio: HTMLAudioElement | null = null;
     try {
-      const audio = new Audio(segment.audioSrc);
+      audio = new Audio(segment.audioSrc);
       void audio.play().catch((err) => {
         console.warn("[CinematicScreen] segment audio failed to play", err);
       });
     } catch (err) {
       console.warn("[CinematicScreen] segment audio failed to play", err);
     }
+    return () => {
+      audio?.pause();
+    };
   }, [segment?.audioSrc]);
 
   if (!scene || !segment) return null;
