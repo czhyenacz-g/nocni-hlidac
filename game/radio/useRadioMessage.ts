@@ -7,6 +7,11 @@ import { advanceRadioTriggerTracker, createInitialRadioTriggerTracker, RadioTrig
 import { resolveRadioFallbackDurationMs, speakRadioMessage } from "./speakRadioMessage";
 import { RadioMessageState } from "./radioTypes";
 
+// Dočasně vypnuto (na žádost) — nemazat zbytek modulu, jen krátkodobě
+// potlačit spouštění/přehrávání. Vrátit na `false`, až se má rádio zase
+// přehrávat.
+const RADIO_MESSAGES_DISABLED = true;
+
 /**
  * Jediné místo, kde se rádiová zpráva skládá dohromady — detekce přechodu
  * (radioTrigger.ts), text (buildNightReleaseMessage.ts) a přehrání
@@ -27,6 +32,7 @@ export function useRadioMessage(monsterStage: EnemyStage, nightNumber: number): 
   const [state, setState] = useState<RadioMessageState>({ visible: false, text: null });
 
   useEffect(() => {
+    if (RADIO_MESSAGES_DISABLED) return;
     const { next, shouldTrigger } = advanceRadioTriggerTracker(trackerRef.current, nightNumber, monsterStage);
     trackerRef.current = next;
     if (!shouldTrigger) return;
