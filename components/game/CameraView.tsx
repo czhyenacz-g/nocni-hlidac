@@ -106,14 +106,8 @@ export default function CameraView({
       {/* Šum/scanline efekt jako samostatná vrstva NAD obrázkem (ne na stejném
           elementu — background-image z .pixel-screen-static by se přepsal
           inline stylem <img>u a šum by úplně zmizel). Bez obrázku (imageSrc
-          null) je to jediná vrstva, vizuálně stejné jako dřív.
-          `pointer-events-none` (viz zadání "nic to nedělá" — bez tohohle tahle
-          vrstva pohltí VŠECHNY pointer eventy dřív, než se dostanou k
-          CameraManualPanImage.tsx pod ní, takže onPointerMove tam nikdy
-          nenaskočí). Bezpečné přidat jen sem, ne do sdílené `.pixel-screen-static`
-          třídy — jinde se používá přímo NA klikacím elementu (tlačítka atd.),
-          ne jako samostatná vrstva navrch. */}
-      <div className="absolute inset-0 pixel-screen-static pointer-events-none" />
+          null) je to jediná vrstva, vizuálně stejné jako dřív. */}
+      <div className="absolute inset-0 pixel-screen-static" />
       <span className="absolute top-1 left-2 text-[10px] text-gray-500">
         {camera.label}
         {/* Popis kamery se schová, dokud hráč nenajede myší na obraz — ať
