@@ -55,23 +55,14 @@ export default function CameraManualPanImage({
   const [debugInfo, setDebugInfo] = useState({ mode: "AUTO" as "AUTO" | "MANUAL", panX: 0, panY: 0 });
 
   useEffect(() => {
-    // Defenzivně obalené matchMedia (viz zadání "9. Mobil a reduced motion")
-    // — starší/neobvyklý prohlížeč bez podporovaného API tu nesmí shodit
-    // celý efekt (a tím pádem celou ruční kameru včetně debug štítku), jen
-    // tiše spadne na bezpečné výchozí hodnoty (myš, bez reduced motion).
-    let reducedMotionQuery: MediaQueryList | null = null;
-    let handleReducedMotionChange: (() => void) | null = null;
-    try {
-      isTouchDeviceRef.current = window.matchMedia("(pointer: coarse)").matches;
-      reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    isTouchDeviceRef.current = window.matchMedia("(pointer: coarse)").matches;
+
+    const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    prefersReducedMotionRef.current = reducedMotionQuery.matches;
+    const handleReducedMotionChange = () => {
       prefersReducedMotionRef.current = reducedMotionQuery.matches;
-      handleReducedMotionChange = () => {
-        prefersReducedMotionRef.current = reducedMotionQuery!.matches;
-      };
-      reducedMotionQuery.addEventListener("change", handleReducedMotionChange);
-    } catch (err) {
-      console.warn("[CameraManualPanImage] matchMedia setup failed", err);
-    }
+    };
+    reducedMotionQuery.addEventListener("change", handleReducedMotionChange);
 
     let frameId: number;
     let lastDebugUpdateAtMs = 0;
@@ -122,9 +113,7 @@ export default function CameraManualPanImage({
 
     return () => {
       cancelAnimationFrame(frameId);
-      if (reducedMotionQuery && handleReducedMotionChange) {
-        reducedMotionQuery.removeEventListener("change", handleReducedMotionChange);
-      }
+      reducedMotionQuery.removeEventListener("change", handleReducedMotionChange);
       // Reset lokálních target/current hodnot (viz zadání "úklid efektu") —
       // příští mount (nová kamera/znovu zapnutý experiment, viz `key` na
       // volajícím v CameraView.tsx) tak vždy začíná čistě od středu, ne s
@@ -174,12 +163,9 @@ export default function CameraManualPanImage({
       />
       {/* Read-only debug hodnoty (viz zadání "11. Debug informace") — jen
           uvnitř kamerového viewportu, admin dostane experiment vůbec jen
-          přes DebugPanel.tsx, běžné UI se to netýká. Záměrně nápadné (celá
-          šířka spodku, plné černé pozadí, velký text) — na žádost po
-          předchozí verzi, kde byl 9px štítek v rohu prakticky neviditelný a
-          nešlo z něj poznat, jestli experiment vůbec běží. */}
-      <div className="absolute inset-x-0 bottom-0 bg-black text-amber-300 font-mono text-sm font-bold px-2 py-1 pointer-events-none text-center">
-        {debugInfo.mode} · pan x{debugInfo.panX.toFixed(1)} y{debugInfo.panY.toFixed(1)} · zoom{" "}
+          přes DebugPanel.tsx, běžné UI se to netýká. */}
+      <div className="absolute bottom-1 right-1 text-[9px] text-amber-300/80 font-mono bg-black/50 px-1 pointer-events-none">
+        {debugInfo.mode} · x{debugInfo.panX.toFixed(1)} y{debugInfo.panY.toFixed(1)} · zoom{" "}
         {CAMERA_MANUAL_PAN_CONFIG.scale.toFixed(2)}
       </div>
     </div>
