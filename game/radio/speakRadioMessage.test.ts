@@ -69,6 +69,22 @@ describe("speakRadioMessage — speechSynthesis available (mocked)", () => {
     expect(utterance.voice).toBe(csVoice);
   });
 
+  it("prefers a localService Czech voice over a cloud one — older on-device engines sound more robotic", () => {
+    const csCloudVoice = { lang: "cs-CZ", name: "Czech Cloud", localService: false } as SpeechSynthesisVoice;
+    const csLocalVoice = { lang: "cs-CZ", name: "Czech Local", localService: true } as SpeechSynthesisVoice;
+    const { speak } = stubSpeechSynthesis([csCloudVoice, csLocalVoice]);
+    speakRadioMessage("Testovací subjekt č. 4 vypuštěn.", () => {});
+    const utterance = speak.mock.calls[0][0] as { voice: SpeechSynthesisVoice | null };
+    expect(utterance.voice).toBe(csLocalVoice);
+  });
+
+  it("sets pitch to the minimum (0) for a flat, robotic tone", () => {
+    const { speak } = stubSpeechSynthesis();
+    speakRadioMessage("Testovací subjekt č. 4 vypuštěn.", () => {});
+    const utterance = speak.mock.calls[0][0] as { pitch: number };
+    expect(utterance.pitch).toBe(0);
+  });
+
   it("cancel() clears the onend/onerror handlers and calls synth.cancel() again", () => {
     const { cancel } = stubSpeechSynthesis();
     const result = speakRadioMessage("Testovací subjekt č. 4 vypuštěn.", () => {});

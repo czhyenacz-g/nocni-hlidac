@@ -22,8 +22,12 @@ export interface SpeakRadioMessageResult {
  * nesmí shodit appku: chybějící API, zakázané přehrání i jakákoliv jiná
  * chyba se jen zaloguje a chová se jako `supported: false`. Preferuje český
  * hlas, pokud je v systému dostupný (viz `voice.lang`), jinak necháme
- * prohlížeč vybrat výchozí. Mírně pomalejší tempo (`rate`) a lehce nižší
- * hlas (`pitch`) — "rádiové" hlášení, ne běžná řeč.
+ * prohlížeč vybrat výchozí. Záměrně "robotické", ne lidsky znějící hlášení
+ * (viz zadání "přečteno robotickým hlasem, ne lidským") — `pitch` na
+ * minimu + mírně pomalejší `rate` dělá hlas mechaničtější/monotónnější u
+ * JAKÉHOKOLIV vybraného hlasu; navíc mezi víc dostupnými českými hlasy
+ * preferuje `localService` (na zařízení instalovaný klasický TTS engine),
+ * ten zní syntetičtěji než novější cloud/neural hlasy.
  */
 export function speakRadioMessage(text: string, onEnd: () => void): SpeakRadioMessageResult {
   if (typeof window === "undefined" || !("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") {
@@ -33,10 +37,13 @@ export function speakRadioMessage(text: string, onEnd: () => void): SpeakRadioMe
   try {
     const synth = window.speechSynthesis;
     const utterance = new SpeechSynthesisUtterance(text);
-    const czechVoice = synth.getVoices().find((voice) => voice.lang.toLowerCase().startsWith("cs"));
+    const czechVoices = synth.getVoices().filter((voice) => voice.lang.toLowerCase().startsWith("cs"));
+    const czechVoice = czechVoices.find((voice) => voice.localService) ?? czechVoices[0];
     if (czechVoice) utterance.voice = czechVoice;
     utterance.rate = 0.85;
-    utterance.pitch = 0.85;
+    // 0 = nejnižší hodnota škály (0–2) — plochý, monotónní tón bez lidské
+    // intonace.
+    utterance.pitch = 0;
     utterance.onend = onEnd;
     utterance.onerror = onEnd;
 
