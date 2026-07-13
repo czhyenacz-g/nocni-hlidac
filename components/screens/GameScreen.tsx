@@ -20,6 +20,7 @@ import AudioToggle from "../game/AudioToggle";
 import MapButton from "../game/MapButton";
 import DebugPanel from "../game/DebugPanel";
 import OfficeBreachBanner from "../game/OfficeBreachBanner";
+import RadioMessageOverlay from "../game/radio/RadioMessageOverlay";
 
 interface GameScreenProps {
   state: GameState;
@@ -155,6 +156,13 @@ export default function GameScreen({
     // <body> background. Herní obsah je proto v samostatném vnitřním divu.
     <main className="relative min-h-screen p-4">
       {showPlayBackground && <SceneBackground scene={BACKGROUND_SCENES.play} />}
+
+      {/* Rádiová zpráva (viz zadání, game/radio/, components/game/radio/) —
+          pasivní informační vrstva na VŠECH pohledech (stejná konvence jako
+          OfficeBreachBanner níže), vlastní stav/timer/speechSynthesis si drží
+          celé uvnitř sebe (viz useRadioMessage.ts), GameScreen jen předává
+          monsterStage/nightNumber. */}
+      <RadioMessageOverlay monsterStage={state.enemyStage} nightNumber={nightNumber} />
 
       {/* DoorView schválně NENÍ v max-w-[33.6rem] — dveřní scéna (DoorSceneFrame)
           má využít co nejvíc dostupné plochy viewportu (viz .door-scene-frame,

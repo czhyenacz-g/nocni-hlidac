@@ -554,3 +554,23 @@
   }
 }
 
+
+/* ── Rádiová zpráva (viz game/radio/, components/game/radio/) ──────────────
+ * Jednoduchá "vlnovka" ze znaků `~` (viz RadioWaveform.tsx) — každý znak se
+ * nezávisle jemně houpe nahoru/dolů se staggered animation-delay, ať to
+ * vypadá jako živý přenos, ne statický nápis. Čistě CSS, žádná knihovna. */
+.radio-waveform-char {
+  display: inline-block;
+  animation: radio-waveform-bounce 900ms ease-in-out infinite;
+}
+
+@keyframes radio-waveform-bounce {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
