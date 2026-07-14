@@ -28,7 +28,7 @@ export function isDoorAttackDeath(reason: DeathReason | null): boolean {
  * efektů (ticho, bílý záblesk, shake, zvuk) žádný vlastní statický obrázek
  * ani "GAME OVER" text nezobrazuje. Skutečný "reveal" smrti přebírá
  * `DeathScreen.tsx` — jeho `SceneBackground` s `death`/`deathDoorAttack`
- * scénou (3-snímková ghoul_death animace), kterou hráč uvidí hned po téhle
+ * scénou (4-snímková ghoul_death animace), kterou hráč uvidí hned po téhle
  * sekvenci, ne statický obrázek uprostřed ní.
  *
  * `gameOverAtMs: 0` (defaultně 1200) — na žádost "ghoul by měl vyrazit hned

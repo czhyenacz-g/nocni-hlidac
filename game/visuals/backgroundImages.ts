@@ -172,24 +172,30 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
     crossfadeMs: 350,
     overlay: "linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.3))",
   },
-  // Jednorázová 3-snímková animace útoku (viz zadání "nahradit statickou
-  // death obrazovku jednoduchou animací") — nahrazuje dřívější jediný
-  // statický `death_bg_0.webp`. Assety žijí v `public/object_13/monster/ghoul/`
+  // Jednorázová 4-snímková animace útoku (viz zadání "nahradit statickou
+  // death obrazovku jednoduchou animací", pak "mám nové obrázky ghoul_death_1-4")
+  // — nahrazuje dřívější jediný statický `death_bg_0.webp` i starší 3-snímkovou
+  // sadu `ghoul_death_0/1/2`. Assety žijí v `public/object_13/monster/ghoul/`
   // (ne pod OBJECT_13_BACKGROUND_PATH jako většina scén tady) — stejný důvod
   // jako `monsterDefeated` níže: patří k monstru, ne k "pozadí objektu".
+  // Číslování snímků (1-4, ne 0-3) sedí se zdrojovými PNG, ze kterých se
+  // konvertovaly (`ghoul_death_1.png..4.png` přes `cwebp`), záměrně beze
+  // změny — přejmenování by jen matlo párování se zdrojem.
   // `holdMs: 50` na každém snímku + `playOnce: true` (viz SceneBackground.tsx)
-  // = přehraje se jednou (0 → 1 → 2) a zůstane stát na posledním, žádná
-  // smyčka zpátky na první snímek. `crossfadeMs` (150ms) je tu teď 3×
-  // delší než samotné `holdMs` — sousední crossfady se tak plynule
-  // překrývají (ne vada), snímky se prolínají skoro jako jedna animace.
+  // = přehraje se jednou (1 → 2 → 3 → 4) a zůstane stát na posledním, žádná
+  // smyčka zpátky na první snímek. `crossfadeMs` je záměrně KRATŠÍ než
+  // `holdMs` (na žádost "snímky moc zanikají, dej rozumně menší crossfade" —
+  // dřív bylo 150ms, 3× DELŠÍ než holdMs, takže se snímky rozmazaly skoro do
+  // jednoho), ať je každý snímek ještě chvíli čistě vidět, ne jen v prolnutí.
   death: {
     frames: [
-      { src: "/object_13/monster/ghoul/ghoul_death_0.webp", holdMs: 50 },
       { src: "/object_13/monster/ghoul/ghoul_death_1.webp", holdMs: 50 },
       { src: "/object_13/monster/ghoul/ghoul_death_2.webp", holdMs: 50 },
+      { src: "/object_13/monster/ghoul/ghoul_death_3.webp", holdMs: 50 },
+      { src: "/object_13/monster/ghoul/ghoul_death_4.webp", holdMs: 50 },
     ],
     holdMs: DEFAULT_HOLD_MS,
-    crossfadeMs: 150,
+    crossfadeMs: 40,
     overlay: DEFAULT_OVERLAY,
     playOnce: true,
   },
@@ -203,12 +209,13 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
   // zůstala nečekaně statická).
   deathDoorAttack: {
     frames: [
-      { src: "/object_13/monster/ghoul/ghoul_death_0.webp", holdMs: 50 },
       { src: "/object_13/monster/ghoul/ghoul_death_1.webp", holdMs: 50 },
       { src: "/object_13/monster/ghoul/ghoul_death_2.webp", holdMs: 50 },
+      { src: "/object_13/monster/ghoul/ghoul_death_3.webp", holdMs: 50 },
+      { src: "/object_13/monster/ghoul/ghoul_death_4.webp", holdMs: 50 },
     ],
     holdMs: DEFAULT_HOLD_MS,
-    crossfadeMs: 150,
+    crossfadeMs: 40,
     overlay: DEFAULT_OVERLAY,
     playOnce: true,
   },

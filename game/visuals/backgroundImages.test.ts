@@ -81,18 +81,20 @@ describe("single-frame scenes stay valid (graceful degradation precedent for men
   });
 });
 
-// Death obrazovka — jednorázová 3-snímková animace útoku (viz zadání
-// "nahradit statickou death obrazovku jednoduchou animací"), nahrazuje
-// dřívější jediný statický death_bg_0.webp. `playOnce: true` je otestované
-// na úrovni SceneBackground.tsx (viz komentář tam) — tady jen ověřujeme
-// samotnou konfiguraci dat.
+// Death obrazovka — jednorázová 4-snímková animace útoku (viz zadání
+// "nahradit statickou death obrazovku jednoduchou animací", pak "mám nové
+// obrázky ghoul_death_1-4"), nahrazuje dřívější jediný statický
+// death_bg_0.webp i starší 3-snímkovou sadu ghoul_death_0/1/2. `playOnce:
+// true` je otestované na úrovni SceneBackground.tsx (viz komentář tam) —
+// tady jen ověřujeme samotnou konfiguraci dat.
 describe("BACKGROUND_SCENES.death", () => {
-  it("has all three ghoul_death frames in order, exact filenames", () => {
+  it("has all four ghoul_death frames in order, exact filenames", () => {
     const srcs = BACKGROUND_SCENES.death.frames.map((f) => f.src);
     expect(srcs).toEqual([
-      "/object_13/monster/ghoul/ghoul_death_0.webp",
       "/object_13/monster/ghoul/ghoul_death_1.webp",
       "/object_13/monster/ghoul/ghoul_death_2.webp",
+      "/object_13/monster/ghoul/ghoul_death_3.webp",
+      "/object_13/monster/ghoul/ghoul_death_4.webp",
     ]);
   });
 
@@ -100,6 +102,10 @@ describe("BACKGROUND_SCENES.death", () => {
     for (const frame of BACKGROUND_SCENES.death.frames) {
       expect(frame.holdMs).toBe(50);
     }
+  });
+
+  it("crossfades faster than the hold time, so frames don't fade into each other", () => {
+    expect(BACKGROUND_SCENES.death.crossfadeMs).toBeLessThan(BACKGROUND_SCENES.death.frames[0].holdMs!);
   });
 
   it("is marked playOnce (plays through once, then freezes on the last frame)", () => {
@@ -112,7 +118,7 @@ describe("BACKGROUND_SCENES.death", () => {
 // — dostala stejnou ghoul animaci na žádost po prvním živém testu, kde
 // zůstala nečekaně statická.
 describe("BACKGROUND_SCENES.deathDoorAttack", () => {
-  it("has the same three ghoul_death frames in order as BACKGROUND_SCENES.death", () => {
+  it("has the same four ghoul_death frames in order as BACKGROUND_SCENES.death", () => {
     const srcs = BACKGROUND_SCENES.deathDoorAttack.frames.map((f) => f.src);
     expect(srcs).toEqual(BACKGROUND_SCENES.death.frames.map((f) => f.src));
   });

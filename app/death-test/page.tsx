@@ -43,7 +43,7 @@ export default function DeathTestPage() {
   // Na skutečné /play tuhle práci odvede LoadingScreen.tsx při každém
   // startu/restartu směny, PŘEDTÍM než hráč vůbec může umřít — /death-test
   // ale žádný LoadingScreen nemá, takže bez tohohle by prohlížeč stahoval
-  // ghoul_death_0/1/2.webp (viz game/visuals/backgroundImages.ts scéna
+  // ghoul_death_1/2/3/4.webp (viz game/visuals/backgroundImages.ts scéna
   // "death"/"deathDoorAttack") až v okamžiku, kdy je poprvé potřeba
   // vykreslit, tedy PO doběhnutí DeathSequenceOverlay — krátký viditelný
   // blesk pozadí stránky (`body`), než se snímek stihne stáhnout.
