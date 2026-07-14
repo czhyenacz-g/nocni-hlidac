@@ -467,4 +467,78 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
     volume: 0.85,
     loop: false,
   },
+  // ── Rádiová hláška "reakce na sonické dělo" (viz zadání) — zpracované z
+  // public/object_13/sound/repel_monster/{repel_success,repel_stay,repel_failed}.wav
+  // (ticho detekováno přes ffmpeg silencedetect, viz report). Stejná
+  // hlasitost jako radioReleaseMonster* výše, bez fallbackSynth (namluvenou
+  // větu nemá smysl nahrazovat syntetizovaným tónem).
+  [AUDIO_EVENTS.radioMonsterRepelSuccess0]: {
+    src: "/object_13/sound/repel_monster/radio_monster_repel_success_0.mp3",
+    volume: 0.85,
+    loop: false,
+  },
+  [AUDIO_EVENTS.radioMonsterRepelSuccess1]: {
+    src: "/object_13/sound/repel_monster/radio_monster_repel_success_1.mp3",
+    volume: 0.85,
+    loop: false,
+  },
+  [AUDIO_EVENTS.radioMonsterRepelSuccess2]: {
+    src: "/object_13/sound/repel_monster/radio_monster_repel_success_2.mp3",
+    volume: 0.85,
+    loop: false,
+  },
+  [AUDIO_EVENTS.radioMonsterRepelSuccess3]: {
+    src: "/object_13/sound/repel_monster/radio_monster_repel_success_3.mp3",
+    volume: 0.85,
+    loop: false,
+  },
+  [AUDIO_EVENTS.radioMonsterRepelStay0]: {
+    src: "/object_13/sound/repel_monster/radio_monster_repel_stay_0.mp3",
+    volume: 0.85,
+    loop: false,
+  },
+  [AUDIO_EVENTS.radioMonsterRepelStay1]: {
+    src: "/object_13/sound/repel_monster/radio_monster_repel_stay_1.mp3",
+    volume: 0.85,
+    loop: false,
+  },
+  [AUDIO_EVENTS.radioMonsterRepelStay2]: {
+    src: "/object_13/sound/repel_monster/radio_monster_repel_stay_2.mp3",
+    volume: 0.85,
+    loop: false,
+  },
+  [AUDIO_EVENTS.radioMonsterRepelFail0]: {
+    src: "/object_13/sound/repel_monster/radio_monster_repel_fail_0.mp3",
+    volume: 0.85,
+    loop: false,
+  },
+  [AUDIO_EVENTS.radioMonsterRepelFail1]: {
+    src: "/object_13/sound/repel_monster/radio_monster_repel_fail_1.mp3",
+    volume: 0.85,
+    loop: false,
+  },
+  [AUDIO_EVENTS.radioMonsterRepelFail2]: {
+    src: "/object_13/sound/repel_monster/radio_monster_repel_fail_2.mp3",
+    volume: 0.85,
+    loop: false,
+  },
+  // Provozní bzučení sonického děla (viz zadání "jemné kontinuální
+  // bzučení... výrazně tišší než rádio/jumpscare/ostatní důležité audio") —
+  // ŽÁDNÝ finální asset zatím neexistuje (cesta níže je jen očekávané
+  // budoucí umístění, stejná konvence jako ostatní `/assets/audio/*.mp3`
+  // loopy výše) — vždy spadne na fallbackSynth: jedna dlouhá (1s) nízká
+  // sawtooth nota opakovaná donekonečna (viz audioManager.ts#startFallbackSynthLoop),
+  // zní jako hluboké elektrické "bzzz", ne pípání/melodie. Hlasitost
+  // záměrně nízká (0.14 vs. 0.85 u rádiových hlášek) — má jen potvrzovat,
+  // že zařízení běží, ne rušit.
+  [AUDIO_EVENTS.sonicCannonHum]: {
+    src: "/assets/audio/sonic_cannon_hum.mp3",
+    volume: 0.14,
+    loop: true,
+    fallbackSynth: {
+      notes: [{ frequency: 95, durationMs: 1000 }],
+      volume: 0.12,
+      waveform: "sawtooth",
+    },
+  },
 };

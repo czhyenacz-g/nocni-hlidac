@@ -1,5 +1,6 @@
 import { GameState, NightDefinition } from "./types";
 import { NightScaling } from "../difficulty/nightScaling";
+import { isSonicCannonRunning } from "./sonicCannon";
 
 /**
  * Rozpad spotřeby/dobíjení energie za sekundu — jediné místo pravdy, které
@@ -11,16 +12,21 @@ import { NightScaling } from "../difficulty/nightScaling";
  * potřeba — viz TECH_DESIGN.md "Power drain diagnostika").
  *
  * Dvě neslučitelné větve (stejné jako v `applyPowerDelta`):
- * - `watchingCameras` (cameraOpen && playerView === "desk"): jen drain
- *   (idle + cameraOpen + generatorExtra), žádné dobíjení.
+ * - `sonicCannonActive` (viz `isSonicCannonRunning` — aktivní sonické dělo v
+ *   detailu kamery na stole): jen drain (idle + cameraOpen rate +
+ *   generatorExtra), žádné dobíjení. BĚŽNÉ sledování kamery (detail otevřený,
+ *   dělo VYPNUTÉ) do týhle větve NESPADÁ (na žádost "sledování kamer je
+ *   zdarma a bez vlivu na monstrum") — drain z pouhého sledování byl PŘESUNUT
+ *   sem, na aktivní dělo, beze změny samotné sazby.
  * - jinak: drain jen z toho, co je skutečně aktivní (zavřené dveře/rozsvícené
- *   světlo/kritický generátor), proti tomu dobíjení `rechargePerSecondWhenIdle`.
+ *   světlo/kritický generátor), proti tomu dobíjení `rechargePerSecondWhenIdle`
+ *   — teď včetně "detail kamery otevřený, ale sonické dělo vypnuté".
  */
 export interface PowerDrainBreakdown {
-  watchingCameras: boolean;
-  /** rates.idle — jen ve `watchingCameras` větvi, jinak 0 (mimo kamery žádný "idle" drain neexistuje). */
+  sonicCannonActive: boolean;
+  /** rates.idle — jen ve `sonicCannonActive` větvi, jinak 0 (mimo ni žádný "idle" drain neexistuje). */
   idleDrain: number;
-  /** rates.cameraOpen — jen když je skutečně otevřený DETAIL kamery (ne overview). */
+  /** rates.cameraOpen — jen když je sonické dělo skutečně aktivní (viz sonicCannonActive výše). */
   cameraDrain: number;
   /** rates.doorClosed — jen když jsou dveře skutečně zavřené. */
   doorDrain: number;
@@ -34,7 +40,7 @@ export interface PowerDrainBreakdown {
   drainBeforeMultiplier: number;
   /** `drainBeforeMultiplier * nightScalingMultiplier` — skutečná spotřeba za sekundu. */
   totalDrainPerSecond: number;
-  /** `night.rechargePerSecondWhenIdle`, pokud se vůbec může uplatnit (mimo watchingCameras), jinak 0. */
+  /** `night.rechargePerSecondWhenIdle`, pokud se vůbec může uplatnit (mimo sonicCannonActive), jinak 0. */
   rechargePerSecondWhenIdle: number;
   /** Výsledná změna power za sekundu — kladná = dobíjení, záporná = čistý úbytek. */
   netPerSecond: number;
@@ -46,20 +52,20 @@ export function computePowerDrainBreakdown(
   nightScaling: NightScaling,
 ): PowerDrainBreakdown {
   const rates = night.powerDrainPerSecond;
-  const watchingCameras = state.cameraOpen && state.playerView === "desk";
+  const sonicCannonActive = isSonicCannonRunning(state);
   const generatorExtraDrain =
     state.generatorState === "criticalBeeping" || state.generatorState === "restarting"
       ? 2 * rates.doorClosed + rates.lightOn
       : 0;
   const multiplier = nightScaling.energyDrainMultiplier;
 
-  if (watchingCameras) {
+  if (sonicCannonActive) {
     const idleDrain = rates.idle;
     const cameraDrain = rates.cameraOpen;
     const drainBeforeMultiplier = idleDrain + cameraDrain + generatorExtraDrain;
     const totalDrainPerSecond = drainBeforeMultiplier * multiplier;
     return {
-      watchingCameras: true,
+      sonicCannonActive: true,
       idleDrain,
       cameraDrain,
       doorDrain: 0,
@@ -80,7 +86,7 @@ export function computePowerDrainBreakdown(
   const rechargePerSecondWhenIdle = night.rechargePerSecondWhenIdle;
 
   return {
-    watchingCameras: false,
+    sonicCannonActive: false,
     idleDrain: 0,
     cameraDrain: 0,
     doorDrain,

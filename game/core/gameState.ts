@@ -96,6 +96,17 @@ export function createInitialGameState(
     enemyForcedRetreatUntilMs: null,
     enemyForcedRetreatChance: null,
     enemyForcedRetreatNextStepAtMs: null,
+    // Monstrum "vstupuje" do "outside" přesně v okamžiku 0 (viz enemyStage
+    // výše) — 0 je tedy správný počáteční timestamp, ne placeholder.
+    enemyLocationEnteredAtMs: 0,
+
+    // Nikdy persistentní, vždy začíná vypnuté (viz zadání "nemá se ukládat
+    // do profilu ani serveru") — stejná konvence jako bulbReplacement výše.
+    sonicCannonActive: false,
+    sonicCannonResultSeq: 0,
+    lastSonicCannonResult: null,
+    sonicCannonToggleSeq: 0,
+    lastSonicCannonToggleReason: null,
 
     deathReason: null,
     doorDeathRevealUntilMs: null,

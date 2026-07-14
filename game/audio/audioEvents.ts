@@ -97,6 +97,27 @@ export const AUDIO_EVENTS = {
   radioReleaseMonster09: "radio_release_monster_09",
   radioReleaseMonster10: "radio_release_monster_10",
   radioReleaseMonster11: "radio_release_monster_11",
+  // ── Rádiová hláška "reakce na sonické dělo" (viz zadání, game/core/sonicCannon.ts,
+  // game/radio/monsterRepelRadioMessages.ts) — tři kanonické kategorie
+  // (success/stay/fail podle GameState.lastSonicCannonResult), každá s
+  // vlastní sadou variant, stejný "1 event = 1 předem načtený <audio>
+  // element" důvod jako radioReleaseMonster* výše.
+  radioMonsterRepelSuccess0: "radio_monster_repel_success_0",
+  radioMonsterRepelSuccess1: "radio_monster_repel_success_1",
+  radioMonsterRepelSuccess2: "radio_monster_repel_success_2",
+  radioMonsterRepelSuccess3: "radio_monster_repel_success_3",
+  radioMonsterRepelStay0: "radio_monster_repel_stay_0",
+  radioMonsterRepelStay1: "radio_monster_repel_stay_1",
+  radioMonsterRepelStay2: "radio_monster_repel_stay_2",
+  radioMonsterRepelFail0: "radio_monster_repel_fail_0",
+  radioMonsterRepelFail1: "radio_monster_repel_fail_1",
+  radioMonsterRepelFail2: "radio_monster_repel_fail_2",
+  // Provozní bzučení sonického děla, dokud state.sonicCannonActive === true
+  // (viz zadání "doladit sonické dělo") — vlastní loop event, žádné sdílení
+  // s ambienceLoop/heartbeat*. Cvaknutí při zapnutí/vypnutí ZÁMĚRNĚ NEMÁ
+  // vlastní event — znovupoužívá existující `lightClick` (viz
+  // app/dev-sound/soundRegistry.ts, "Cvaknutí vypínače" sedí i sem).
+  sonicCannonHum: "sonic_cannon_hum",
 } as const;
 
 export type AudioEventId = (typeof AUDIO_EVENTS)[keyof typeof AUDIO_EVENTS];

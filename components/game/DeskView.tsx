@@ -15,6 +15,7 @@ interface DeskViewProps {
   onToggleLight: () => void;
   onSelectCamera: (id: CameraId) => void;
   onCloseCameras: () => void;
+  onToggleSonicCannon: () => void;
   onLookAtDoor: () => void;
   onLookAtGenerator: () => void;
   onLookAtLeftWall: () => void;
@@ -29,6 +30,7 @@ export default function DeskView({
   onToggleLight,
   onSelectCamera,
   onCloseCameras,
+  onToggleSonicCannon,
   onLookAtDoor,
   onLookAtGenerator,
   onLookAtLeftWall,
@@ -51,6 +53,8 @@ export default function DeskView({
           lastEnemyDecision={state.lastEnemyDecision}
           enemyStageVisitSeq={state.enemyStageVisitSeq}
           showAdminDoorAlerts={isAdmin}
+          sonicCannonActive={state.sonicCannonActive}
+          onToggleSonicCannon={onToggleSonicCannon}
           onSelectCamera={onSelectCamera}
           onCloseCameras={onCloseCameras}
         />

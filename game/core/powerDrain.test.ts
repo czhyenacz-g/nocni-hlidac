@@ -21,7 +21,7 @@ describe("computePowerDrainBreakdown — safe idle state", () => {
     const state = stateAtDesk();
     const breakdown = computePowerDrainBreakdown(state, NIGHT_01, NO_SCALING);
 
-    expect(breakdown.watchingCameras).toBe(false);
+    expect(breakdown.sonicCannonActive).toBe(false);
     expect(breakdown.doorDrain).toBe(0);
     expect(breakdown.lightDrain).toBe(0);
     expect(breakdown.generatorExtraDrain).toBe(0);
@@ -31,36 +31,72 @@ describe("computePowerDrainBreakdown — safe idle state", () => {
   });
 });
 
-describe("computePowerDrainBreakdown — camera overview vs detail", () => {
-  it("camera overview (cameraOpen false) on desk does not drain like a detail camera", () => {
-    const state = stateAtDesk({ cameraOpen: false, cameraViewMode: "overview", activeCameraId: null });
+describe("computePowerDrainBreakdown — plain camera watching is free (no sonic cannon)", () => {
+  it("camera overview (cameraOpen false) on desk does not drain like an active sonic cannon", () => {
+    const state = stateAtDesk({ cameraOpen: false, cameraViewMode: "overview", activeCameraId: null, sonicCannonActive: false });
     const breakdown = computePowerDrainBreakdown(state, NIGHT_01, NO_SCALING);
 
-    expect(breakdown.watchingCameras).toBe(false);
+    expect(breakdown.sonicCannonActive).toBe(false);
     expect(breakdown.cameraDrain).toBe(0);
   });
 
-  it("camera detail (cameraOpen true) on desk drains at the cameraOpen rate", () => {
-    const state = stateAtDesk({ cameraOpen: true, cameraViewMode: "detail", activeCameraId: NIGHT_01.defaultCameraId });
+  it("camera detail open (cameraOpen true) on desk WITHOUT the sonic cannon draws NO camera drain and still recharges — on request: 'watching alone is free'", () => {
+    const state = stateAtDesk({
+      cameraOpen: true,
+      cameraViewMode: "detail",
+      activeCameraId: NIGHT_01.defaultCameraId,
+      sonicCannonActive: false,
+    });
     const breakdown = computePowerDrainBreakdown(state, NIGHT_01, NO_SCALING);
 
-    expect(breakdown.watchingCameras).toBe(true);
-    expect(breakdown.cameraDrain).toBe(NIGHT_01.powerDrainPerSecond.cameraOpen);
-    expect(breakdown.idleDrain).toBe(NIGHT_01.powerDrainPerSecond.idle);
-    expect(breakdown.netPerSecond).toBeLessThan(0);
+    expect(breakdown.sonicCannonActive).toBe(false);
+    expect(breakdown.cameraDrain).toBe(0);
+    expect(breakdown.idleDrain).toBe(0);
+    expect(breakdown.netPerSecond).toBeCloseTo(NIGHT_01.rechargePerSecondWhenIdle, 10);
+    expect(breakdown.netPerSecond).toBeGreaterThan(0);
   });
 
-  it("a detail camera left open while NOT on desk (playerView door/generator) never counts as watchingCameras", () => {
+  it("camera detail open while NOT on desk (playerView door/generator) never counts as sonicCannonActive, even if the flag were somehow true", () => {
     const state = stateAtDesk({
       playerView: "door",
       cameraOpen: true,
       cameraViewMode: "detail",
       activeCameraId: NIGHT_01.defaultCameraId,
+      sonicCannonActive: true,
     });
     const breakdown = computePowerDrainBreakdown(state, NIGHT_01, NO_SCALING);
 
-    expect(breakdown.watchingCameras).toBe(false);
+    expect(breakdown.sonicCannonActive).toBe(false);
     expect(breakdown.cameraDrain).toBe(0);
+  });
+});
+
+describe("computePowerDrainBreakdown — active sonic cannon drains exactly the old camera-watching rate", () => {
+  it("sonic cannon active + camera detail open on desk: same idle+cameraOpen drain the old 'watching cameras' branch used, no recharge", () => {
+    const state = stateAtDesk({
+      cameraOpen: true,
+      cameraViewMode: "detail",
+      activeCameraId: NIGHT_01.defaultCameraId,
+      sonicCannonActive: true,
+    });
+    const breakdown = computePowerDrainBreakdown(state, NIGHT_01, NO_SCALING);
+
+    expect(breakdown.sonicCannonActive).toBe(true);
+    expect(breakdown.cameraDrain).toBe(NIGHT_01.powerDrainPerSecond.cameraOpen);
+    expect(breakdown.idleDrain).toBe(NIGHT_01.powerDrainPerSecond.idle);
+    expect(breakdown.rechargePerSecondWhenIdle).toBe(0);
+    expect(breakdown.netPerSecond).toBeLessThan(0);
+  });
+
+  it("sonic cannon active drains regardless of WHICH camera is aimed (even an empty one)", () => {
+    const state = stateAtDesk({
+      cameraOpen: true,
+      cameraViewMode: "detail",
+      activeCameraId: "door_hallway",
+      sonicCannonActive: true,
+    });
+    const breakdown = computePowerDrainBreakdown(state, NIGHT_01, NO_SCALING);
+    expect(breakdown.cameraDrain).toBe(NIGHT_01.powerDrainPerSecond.cameraOpen);
   });
 });
 

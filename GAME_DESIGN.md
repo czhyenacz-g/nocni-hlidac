@@ -70,12 +70,43 @@ to je stav pro DoorView, ne kameru. (Existuje ještě `breach` — připravená 
 
 - Každé ~2 s (viz `night.enemyTickMs`) se vyhodnocuje, co nepřítel udělá — tři
   nezávislé možnosti:
-  - **postoupí** o krok dál (`advanceChance`, zpomalené sledováním na kameře přes
-    `watchedAdvanceMultiplier`)
+  - **postoupí** o krok dál (`advanceChance`, výchozí 16 %)
   - **ustoupí** o krok zpět (`retreatChance`, výchozí 10 %) — na první pozici
     (`outside`) ustoupit nemá kam, bere se to jako setrvání
   - jinak **zůstává** na místě
   - Poslední rozhodnutí (`advance`/`stay`/`retreat`/...) je vidět v DebugPanelu.
+  - **Běžné sledování kamery samo o sobě tyhle pravděpodobnosti NEOVLIVŇUJE**
+    (a nestojí energii) — je to čistě informační nástroj. Jediné, co je
+    dočasně nahradí, je aktivní **sonické dělo** namířené na kameru, kde se
+    monstrum skutečně nachází — viz "Sonické dělo" níže.
+  - Monstrum navíc musí v každé lokaci setrvat aspoň minimální dobu
+    (`MONSTER_MIN_LOCATION_STAY_MS`: `outside` 6 s, boční chodby 5 s,
+    `door_hallway` 4 s), než se vůbec provede další hod — ať má hráč reálnou
+    šanci ho najít a zareagovat, ne aby proletělo celou trasu za pár tiků.
+    Neplatí pro `at_door` (vlastní standoff, viz níže) ani pro scriptované
+    přesuny (repely, vzdání se, zásah brokovnicí).
+
+### Sonické dělo
+
+V detailu právě otevřené kamery jde ručně zapnout "SONICKÉ DĚLO" — aktivní režim (ne
+jednorázový hod), který běží, dokud ho hráč nevypne (nebo dokud se sám nevypne, viz
+níže), spotřebovává energii (stejnou sazbou, jakou dřív brala pouhá otevřená kamera) a
+lehce zabarví obraz namodralo s jemným pulzováním (~1,15 s cyklus). Dokud je aktivní a
+míří na kameru, kde se monstrum skutečně nachází, PŘÍŠTÍ relevantní hod místo běžných
+pravděpodobností použije: 32 % ústup, 60 % zůstane, 8 % postoupí (vs. výchozích
+16 %/10 %). Na prázdné kameře dělo jen žere energii, monstrum nijak neovlivní. Dělo se
+samo vypne při zavření detailu, přepnutí na jinou kameru, výpadku proudu, konci směny
+nebo smrti — nikdy neběží skrytě dál na jiné kameře.
+
+**Jedno použití = jeden pokus.** Jakmile dělo skutečně vyhodnotí sonic-modified rozhodnutí
+(ústup/zůstane/postoupí — po uplynutí minimálního pobytu, s monstrem na aktivní kameře),
+okamžitě se samo vypne. Hráč se musí rozhodnout znovu, jestli ho zapne pro další pokus —
+nejde o trvalý "vždy zapnutý" nástroj. Zapnutí i vypnutí (ruční i automatické) doprovází
+krátké mechanické cvaknutí, po dobu běhu hraje tiché elektrické bzučení.
+
+Výsledek se hlásí rádiem — ústup přehraje "úspěšnou" hlášku, setrvání "neutrální",
+postup "neúspěšnou" (viz `game/radio/monsterRepelRadioMessages.ts`).
+
 - Když je u dveří (`at_door`):
   - dveře zavřené → po náhodné době 6–8 s se vzdá a odejde na jednu z chodeb
     (`right_hallway`/`left_hallway`) nebo na venkovní vstup (`outer_yard`) —

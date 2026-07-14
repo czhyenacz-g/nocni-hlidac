@@ -1,4 +1,7 @@
 import { DIFFICULTY_RULES, Difficulty } from "../difficulty/difficultyConfig";
+import { MONSTER_MIN_LOCATION_STAY_MS } from "../balancing/constants";
+import { isMonsterMinStayBlocking } from "./monsterMinStay";
+import { isSonicCannonAffectingEnemy, isSonicCannonRunning } from "./sonicCannon";
 import { CameraId, EnemyMoveDecision, EnemyStage, GameState, NightDefinition } from "./types";
 
 export interface EnemyDebugInfo {
@@ -14,8 +17,16 @@ export interface EnemyDebugInfo {
    * je hráč skutečně v detailu (viz `isBeingWatched` níže pro tenhle rozdíl).
    */
   visibleOnActiveCamera: boolean;
-  /** Plná podmínka z gameReducer.ts#isEnemyBeingWatched (playerView desk + cameraOpen + shoda). */
+  /** Hráč se dívá na detail kamery, na které je monstrum vidět — čistě informativní, na movement/energii dnes nemá žádný vliv (viz sonicCannonRunning/sonicCannonAffectingEnemy níže). */
   isBeingWatched: boolean;
+  /** Viz GameState.sonicCannonActive + game/core/sonicCannon.ts#isSonicCannonRunning — dělo fyzicky běží (spotřebovává energii), bez ohledu na to, jestli zrovna míří na monstrum. */
+  sonicCannonRunning: boolean;
+  /** Viz game/core/sonicCannon.ts#isSonicCannonAffectingEnemy — dělo běží A míří přesně na kameru, kde se monstrum nachází (tenhle tik by použil SONIC_CANNON_*_CHANCE). */
+  sonicCannonAffectingEnemy: boolean;
+  /** Viz game/core/monsterMinStay.ts#isMonsterMinStayBlocking — příští ENEMY_ADVANCE hod je zablokovaný minimálním pobytem v lokaci. */
+  minStayBlocking: boolean;
+  /** `MONSTER_MIN_LOCATION_STAY_MS[stage]`, `null` pro stage bez omezení (viz balancing/constants.ts). */
+  minStayMs: number | null;
   lastDecision: EnemyMoveDecision;
   difficulty: Difficulty;
   /** rules.monster_check_or_return pro aktuální obtížnost (viz difficultyConfig.ts). */
@@ -69,6 +80,10 @@ export function buildEnemyDebugInfo(state: GameState, night: NightDefinition, di
     cameraViewMode: state.cameraViewMode,
     visibleOnActiveCamera,
     isBeingWatched,
+    sonicCannonRunning: isSonicCannonRunning(state),
+    sonicCannonAffectingEnemy: isSonicCannonAffectingEnemy(state, night),
+    minStayBlocking: isMonsterMinStayBlocking(state),
+    minStayMs: MONSTER_MIN_LOCATION_STAY_MS[state.enemyStage] ?? null,
     lastDecision: state.lastEnemyDecision,
     difficulty,
     monsterCheckOrReturnActive: rules.monster_check_or_return,

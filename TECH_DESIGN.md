@@ -228,10 +228,61 @@ jen ona, neřeší se to znovu při každém kroku. Reducer (`ENEMY_ADVANCE`) pr
 `ENEMY_ADVANCE` (mimo standoff u dveří, viz níže) vygeneruje jeden náhodný roll a rozhodne
 mezi třemi možnostmi porovnáním s kumulativní pravděpodobností:
 
-- `roll < advanceChance` (po zohlednění `watchedAdvanceMultiplier`) → postup o index dál
+- `roll < advanceChance` → postup o index dál
 - `roll < advanceChance + retreatChance` → ústup o index zpět, s `Math.max(currentIndex - 1,
   0)` — na první pozici trasy tedy nemá kam ustoupit a `decision` se přepíše na `"stay"`
 - jinak → zůstává na místě
+
+`advanceChance`/`retreatChance` jsou buď `night.enemy.advanceChance`/`retreatChance` (běžný
+hod), nebo — pokud `game/core/sonicCannon.ts#isSonicCannonAffectingEnemy` vrátí `true` —
+`SONIC_CANNON_ADVANCE_CHANCE`/`SONIC_CANNON_RETREAT_CHANCE` (0.08/0.32, viz
+balancing/constants.ts) PŘESNĚ pro tenhle jeden hod. Pouhé sledování kamery (bez aktivního
+`state.sonicCannonActive`) na tenhle výpočet nemá žádný vliv — dřívější
+`watchedAdvanceMultiplier` byl odstraněn.
+
+Než k tomuhle hodu vůbec dojde, `game/core/monsterMinStay.ts#isMonsterMinStayBlocking`
+zkontroluje, jestli monstrum ve svém `enemyStage` setrvalo aspoň
+`MONSTER_MIN_LOCATION_STAY_MS[enemyStage]` (viz balancing/constants.ts) — pokud ne, hod se
+vůbec neprovede (`lastEnemyDecision: "stay"`, žádný roll, žádný sonický rádiový event).
+Timestamp posledního skutečného přesunu (`GameState.enemyLocationEnteredAtMs`) se
+aktualizuje centrálně ve `withEnemyStageVisitSeed` (stejná funkce, která zvyšuje
+`enemyStageVisitSeq`), takže funguje automaticky pro VŠECHNY cesty, které `enemyStage`
+nastavují — normální postup i explicitní repely/gave_up/brokovnici/office threat, které
+`isMonsterMinStayBlocking` samy nikdy nevolají (nejsou jím blokovatelné).
+
+Sonický výsledek (`retreat`→`"success"`, `stay`→`"stay"`, `advance`→`"fail"`) se zapisuje do
+`GameState.lastSonicCannonResult` + `sonicCannonResultSeq` (seq-counter vzor, reducer sám
+žádné audio nevolá) — VÝHRADNĚ když `isSonicCannonAffectingEnemy` bylo `true` pro tenhle
+konkrétní hod. `game/radio/useMonsterRepelRadioMessage.ts` podle změny seq přehraje náhodnou
+variantu z `game/radio/monsterRepelRadioMessages.ts`.
+
+`GameState.sonicCannonActive` (viz `game/core/sonicCannon.ts`) se zapíná/vypíná akcí
+`TOGGLE_SONIC_CANNON` (aktivace vyžaduje otevřený DETAIL kamery na stole a `power > 0`) a
+automaticky vypíná dvěma nezávislými cestami:
+- centrální wrapper `withSonicCannonAutoOff` (stejné místo jako `withEnemyStageVisitSeed`)
+  — kdykoliv přestanou platit podmínky (zavření detailu, přepnutí kamery, blackout, konec
+  směny/smrt), TICHÝM způsobem (beze změny `sonicCannonToggleSeq`, viz níže);
+- PŘÍMO v `ENEMY_ADVANCE`, jako součást `sonicResultUpdate` (viz zadání "doladit
+  sonické dělo... automaticky vypnulo po prvním skutečně vyhodnoceném movement decision
+  ticku") — pokaždé, když `sonicEffective` bylo `true` (bez ohledu na výsledek
+  success/stay/fail), `sonicCannonActive: false` je součástí STEJNÉHO update objektu jako
+  `sonicCannonResultSeq`/`lastSonicCannonResult`, takže radio výsledek a vypnutí dorazí do
+  UI atomicky spolu, nikdy odděleně.
+
+Energie: `game/core/powerDrain.ts` má drain vázaný na `isSonicCannonRunning(state)` místo
+dřívějšího "cameraOpen && playerView desk" — stejná sazba (`idle` + `cameraOpen` rate), jen
+přesunutá z pouhého sledování na aktivní dělo.
+
+`GameState.sonicCannonToggleSeq`/`lastSonicCannonToggleReason` ("manual_on" |
+"manual_off" | "result_auto_off") rozlišují ZÁMĚRNOU změnu (ruční toggle i auto-off po
+výsledku) od tiché `withSonicCannonAutoOff` cesty — zvyšují se JEN u té první. `app/play/page.tsx`
+efekt na `sonicCannonToggleSeq` (přes čistou `game/core/sonicCannon.ts#shouldPlaySonicCannonToggleClick`)
+podle toho přehraje přesně jedno mechanické cvaknutí (znovupoužitý `AUDIO_EVENTS.lightClick`,
+žádný nový click event) — nikdy pro reset/menu (seq zpátky na 0), nikdy pro tiché
+auto-off přes kameru/blackout. Samostatný efekt na `sonicCannonActive` (jediný zdroj
+pravdy, viz zadání "nevytvářej paralelní lokální boolean") spouští/zastavuje loop
+`AUDIO_EVENTS.sonicCannonHum` (`startLoop`/`stopLoop`) — pokrývá tak úplně VŠECHNY cesty k
+`false` stejně, plus `unmount` cleanup navíc jako tvrdá pojistka.
 
 Výsledek (`"advance" | "stay" | "retreat"`, plus `"waiting_at_door"` / `"gave_up"` /
 `"attack"` ze standoff větve) se ukládá do `state.lastEnemyDecision` — čistě pro

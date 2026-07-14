@@ -63,6 +63,11 @@ export type GameAction =
   | { type: "RESTART_GENERATOR" }
   | { type: "OPEN_CAMERA"; cameraId: CameraId }
   | { type: "CLOSE_CAMERAS" }
+  // Přepínač "SONICKÉ DĚLO" v detailu právě otevřené kamery (viz zadání) —
+  // beze změny cameraId/výběru kamery. Reducer sám kontroluje, jestli
+  // aktivace vůbec dává smysl (detail otevřený, hráč u stolu, energie > 0);
+  // vypnutí funguje vždy. Viz GameState.sonicCannonActive.
+  | { type: "TOGGLE_SONIC_CANNON" }
   | { type: "TOGGLE_AUDIO_MUTED" }
   // Posuvník na LeftWallView.tsx (jen s brokovnicí) — viz
   // game/minigame/config.ts#OFFICE_DOOR_LOCK_MIN_MS/MAX_MS. Reducer hodnotu

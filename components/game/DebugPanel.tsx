@@ -96,7 +96,7 @@ export default function DebugPanel({
         <div>power: {state.power.toFixed(1)}</div>
         <div className="border-t border-gray-700 pt-2 mt-1">
           <div className="text-gray-400 mb-1">
-            Power drain{drain.watchingCameras ? " (sleduje kamery — jen drain, žádné dobíjení)" : ""}:
+            Power drain{drain.sonicCannonActive ? " (sonické dělo aktivní — jen drain, žádné dobíjení)" : ""}:
           </div>
           <div>idle: {drain.idleDrain.toFixed(3)}/s</div>
           <div>camera: {drain.cameraDrain.toFixed(3)}/s</div>
@@ -165,6 +165,14 @@ export default function DebugPanel({
           </div>
           <div>Visible on current camera: {enemyDebug.visibleOnActiveCamera ? "yes" : "no"}</div>
           <div>Being watched: {enemyDebug.isBeingWatched ? "yes" : "no"}</div>
+          <div>
+            Sonic cannon: {enemyDebug.sonicCannonRunning ? "running" : "off"}
+            {enemyDebug.sonicCannonRunning && (enemyDebug.sonicCannonAffectingEnemy ? " (aimed at monster)" : " (empty camera)")}
+          </div>
+          <div>
+            Min stay: {enemyDebug.minStayMs !== null ? `${enemyDebug.minStayMs} ms` : "none"}
+            {enemyDebug.minStayBlocking ? " — BLOCKING next decision" : ""}
+          </div>
           <div>
             Difficulty: {enemyDebug.difficulty} (monster_check_or_return:{" "}
             {enemyDebug.monsterCheckOrReturnActive ? "active" : "off"})

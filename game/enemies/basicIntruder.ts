@@ -11,7 +11,6 @@ export const BASIC_INTRUDER: EnemyDefinition = {
     ["outside", "outer_yard", "left_hallway", "door_hallway", "at_door", "attack"],
   ],
   advanceChance: 0.16,
-  watchedAdvanceMultiplier: 0.5,
   // Zbytek pravděpodobnosti (1 - 0.16 - 0.10 = 0.74) znamená, že zůstává na místě.
   retreatChance: 0.1,
   // U dveří se vzdá po náhodných 6–8 s — nezávisle na světle (viz doorLightRepelRequiredMs

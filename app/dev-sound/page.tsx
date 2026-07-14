@@ -5,7 +5,15 @@ import { audioManager } from "@/game/audio/audioManager";
 import { AUDIO_CONFIG } from "@/game/audio/audioConfig";
 import { AudioEventId } from "@/game/audio/audioEvents";
 import { DEBUG_PANEL_ENABLED } from "@/game/balancing/constants";
+import { pickRandomMonsterRepelMessage } from "@/game/radio/monsterRepelRadioMessages";
+import { MonsterRepelRadioResult } from "@/game/core/types";
 import { SOUND_REGISTRY } from "./soundRegistry";
+
+const MONSTER_REPEL_PREVIEW_BUTTONS: { result: MonsterRepelRadioResult; label: string }[] = [
+  { result: "success", label: "Rádio / Sonické dělo / Náhodný úspěch" },
+  { result: "stay", label: "Rádio / Sonické dělo / Náhodné setrvání" },
+  { result: "fail", label: "Rádio / Sonické dělo / Náhodné selhání" },
+];
 
 // Dev nástroj, ne herní obrazovka — přehled všech zvukových eventů z
 // game/audio/ (viz soundRegistry.ts) s tlačítkem na přehrání. Gatované stejnou
@@ -30,6 +38,21 @@ export default function DevSoundPage() {
       setInitialized(true);
     }
     audioManager.play(id);
+  }
+
+  // Přehraje NÁHODNĚ vybranou variantu z jedné kategorie (viz zadání "tři
+  // náhodné preview položky") — na rozdíl od handlePlay výše nejde o jeden
+  // pevný AudioEventId (SOUND_REGISTRY je Record<AudioEventId, ...>, jedna
+  // položka = jeden konkrétní soubor), takže je to samostatné tlačítko
+  // MIMO hlavní tabulku, ne řádek navíc v ní. Pořád stejný audioManager,
+  // žádný druhý dev přehrávač (viz zadání).
+  function handlePlayRandomRepel(result: MonsterRepelRadioResult) {
+    if (!initialized) {
+      audioManager.init();
+      setInitialized(true);
+    }
+    const message = pickRandomMonsterRepelMessage(result);
+    if (message) audioManager.play(message.id);
   }
 
   const entries = Object.values(SOUND_REGISTRY);
@@ -84,6 +107,25 @@ export default function DevSoundPage() {
             })}
           </tbody>
         </table>
+      </div>
+
+      <h2 className="text-lg font-bold text-green-400 mt-8 mb-1">Rádio / Sonické dělo — náhodná varianta</h2>
+      <p className="text-xs text-gray-500 mb-4">
+        Přehraje jednu náhodně vybranou variantu z dané kategorie (viz{" "}
+        <code className="text-gray-400">game/radio/monsterRepelRadioMessages.ts#pickRandomMonsterRepelMessage</code>) —
+        stejná funkce, kterou při hraní volá{" "}
+        <code className="text-gray-400">game/radio/useMonsterRepelRadioMessage.ts</code>.
+      </p>
+      <div className="flex gap-3 mb-4">
+        {MONSTER_REPEL_PREVIEW_BUTTONS.map((button) => (
+          <button
+            key={button.result}
+            className="pixel-button tap-target px-3 py-2 text-xs"
+            onClick={() => handlePlayRandomRepel(button.result)}
+          >
+            ▶ {button.label}
+          </button>
+        ))}
       </div>
 
       <h2 className="text-lg font-bold text-green-400 mt-8 mb-1">Kandidáti — heartbeat (OpenGameArt, CC0)</h2>

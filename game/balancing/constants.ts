@@ -3,7 +3,35 @@
 // Verze v patičce (MainMenuScreen.tsx) je teď plně automatická, viz
 // game/core/buildInfo.ts#APP_VERSION — žádné ruční verzování tady.
 
+import { EnemyStage } from "../core/types";
+
 export const GAME_TICK_MS = 100;
+
+// Minimální doba (ms), po kterou monstrum musí zůstat ve stage, než ho
+// ENEMY_ADVANCE vůbec vezme v úvahu pro běžný pravděpodobnostní hod (viz
+// zadání "hráč má reálnou šanci monstrum najít, zapnout sonické dělo a
+// reagovat", game/core/monsterMinStay.ts). Chybějící klíč (`outer_yard`,
+// `at_door`, `breach`, `attack`) = žádné omezení — `outer_yard` záměrně
+// vynechané (zadání explicitně vyjmenovává jen tyhle čtyři), `at_door` má
+// svoje vlastní standoff/door chování beze změny (viz doorHoldRangeMs).
+// NEBLOKUJE explicitní scriptované přesuny (repely, gave_up, brokovnice,
+// office threat, forced-retreat okna) — ty žijí ve vlastních větvích
+// gameReducer.ts, které tuhle konstantu vůbec nečtou.
+export const MONSTER_MIN_LOCATION_STAY_MS: Partial<Record<EnemyStage, number>> = {
+  outside: 6000,
+  left_hallway: 5000,
+  right_hallway: 5000,
+  door_hallway: 4000,
+};
+
+// Pravděpodobnosti PŘESNĚ pro jeden ENEMY_ADVANCE hod, kdy je aktivní
+// sonické dělo namířené na kameru, na které se monstrum skutečně nachází
+// (viz zadání, game/core/sonicCannon.ts#isSonicCannonAffectingEnemy) —
+// NAHRAZUJÍ `night.enemy.advanceChance`/`retreatChance` jen pro TENHLE
+// jeden hod, normální hodnoty se nijak nemění. Součet musí dát 1.
+export const SONIC_CANNON_RETREAT_CHANCE = 0.32;
+export const SONIC_CANNON_STAY_CHANCE = 0.6;
+export const SONIC_CANNON_ADVANCE_CHANCE = 0.08;
 
 export const MAX_POWER = 100;
 

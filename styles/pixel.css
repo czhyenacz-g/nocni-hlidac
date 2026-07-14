@@ -65,6 +65,42 @@
   animation: pixel-blink 0.15s steps(2) infinite;
 }
 
+/* Sonické dělo aktivní na detailu kamery (viz CameraDetailView.tsx, zadání
+ * "lehký modrý filtr s vysokou průhledností... nesmí být výrazně zhoršená
+ * čitelnost monstra", pak "velmi jemně pulzovat... 900-1400ms... opacity
+ * 0.08 -> 0.15 -> 0.08") — `background` je teď PLNĚ sytá modrá, samotnou
+ * intenzitu řídí výhradně `opacity` v keyframes (ne kombinace alfa kanálu
+ * barvy + opacity jako dřív) — jednodušší na doladění přesně na tyhle
+ * hodnoty. `mix-blend-mode: screen` místo neprůhledného pozadí, ať obrázek
+ * pod ním zůstane čitelný, jen mírně "elektronicky" zabarvený — žádný
+ * fullscreen flash ani výrazné blikání. */
+.sonic-cannon-overlay {
+  background: rgba(56, 189, 248, 1);
+  mix-blend-mode: screen;
+  opacity: 0.08;
+  animation: sonic-cannon-pulse 1150ms ease-in-out infinite;
+}
+
+@keyframes sonic-cannon-pulse {
+  0%,
+  100% {
+    opacity: 0.08;
+  }
+  50% {
+    opacity: 0.15;
+  }
+}
+
+/* Reduced motion: žádné pulzování, jen statický jemný modrý nádech (viz
+ * zadání "ponech pouze statický jemný modrý overlay") — střední hodnota
+ * pulzu (0.08-0.15), ne krajní. */
+@media (prefers-reduced-motion: reduce) {
+  .sonic-cannon-overlay {
+    animation: none;
+    opacity: 0.1;
+  }
+}
+
 /* Kontrolka generátoru — jen pomocný vizuál, hlavní signál je zvuk (viz AUDIO_DESIGN.md). */
 .pixel-indicator {
   width: 14px;

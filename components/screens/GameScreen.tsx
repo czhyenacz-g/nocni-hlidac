@@ -42,6 +42,7 @@ interface GameScreenProps {
   onToggleLight: () => void;
   onSelectCamera: (id: CameraId) => void;
   onCloseCameras: () => void;
+  onToggleSonicCannon: () => void;
   onToggleAudio: () => void;
   onLookAtDoor: () => void;
   onLookAtDesk: () => void;
@@ -79,6 +80,7 @@ export default function GameScreen({
   onToggleLight,
   onSelectCamera,
   onCloseCameras,
+  onToggleSonicCannon,
   onToggleAudio,
   onLookAtDoor,
   onLookAtDesk,
@@ -162,7 +164,12 @@ export default function GameScreen({
           OfficeBreachBanner níže), vlastní stav/timer/speechSynthesis si drží
           celé uvnitř sebe (viz useRadioMessage.ts), GameScreen jen předává
           monsterStage/nightNumber. */}
-      <RadioMessageOverlay monsterStage={state.enemyStage} nightNumber={nightNumber} />
+      <RadioMessageOverlay
+        monsterStage={state.enemyStage}
+        nightNumber={nightNumber}
+        sonicCannonResultSeq={state.sonicCannonResultSeq}
+        lastSonicCannonResult={state.lastSonicCannonResult}
+      />
 
       {/* DoorView schválně NENÍ v max-w-[33.6rem] — dveřní scéna (DoorSceneFrame)
           má využít co nejvíc dostupné plochy viewportu (viz .door-scene-frame,
@@ -219,6 +226,7 @@ export default function GameScreen({
                 onToggleLight={onToggleLight}
                 onSelectCamera={onSelectCamera}
                 onCloseCameras={onCloseCameras}
+                onToggleSonicCannon={onToggleSonicCannon}
                 onLookAtDoor={onLookAtDoor}
                 onLookAtGenerator={onLookAtGenerator}
                 onLookAtLeftWall={onLookAtLeftWall}

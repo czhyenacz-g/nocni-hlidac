@@ -65,6 +65,7 @@ import { shouldShowValhalaEndingCinematic } from "@/game/core/valhalaEnding";
 import { Night30EndingKind, resolveNight30Ending } from "@/game/core/night30Ending";
 import { getSurvivedNights, incrementSurvivedNights, resetSurvivedNights } from "@/game/core/survivedNights";
 import { getBulbsRemaining, setBulbsRemaining } from "@/game/core/bulbInventory";
+import { shouldPlaySonicCannonToggleClick } from "@/game/core/sonicCannon";
 import { applyDailyBulbService, getRoomBulbs, setRoomBulbs } from "@/game/core/roomBulbs";
 import { useHeartbeatStress } from "@/game/audio/useHeartbeatStress";
 import { getNightConfig } from "@/game/difficulty/nightConfig";
@@ -231,6 +232,7 @@ export default function PlayPage() {
   const prevGeneratorBeepSeqRef = useRef(state.generatorBeepSeq);
   const prevMonsterRetreatRoarSeqRef = useRef(state.monsterRetreatRoarSeq);
   const prevDoorBangSeqRef = useRef(state.doorBangSeq);
+  const prevSonicCannonToggleSeqRef = useRef(state.sonicCannonToggleSeq);
   // Cooldown proti audio spamu, když doorBangSeq roste tik za tikem
   // (monstrum tlačí na zavřené dveře) — reálný čas (performance.now()), ne
   // herní elapsedMs, protože jde čistě o to, aby zvuk nezněl jako kulomet,
@@ -786,6 +788,48 @@ export default function PlayPage() {
       }, plan.repeatDelayMs);
     }
   }, [state.doorBangSeq]);
+
+  useEffect(() => {
+    // Přesně jedno mechanické cvaknutí sonického děla (viz zadání) — JEDINÉ
+    // místo, které ho přehrává, ať pro ruční zapnutí/vypnutí (viz
+    // handleToggleSonicCannon výše) i pro automatické vypnutí po
+    // sonic-modified decision ticku (viz gameReducer.ts ENEMY_ADVANCE
+    // sonicResultUpdate). Znovupoužitý existující `lightClick` ("cvaknutí
+    // vypínače") — žádný nový click event, sedí přesně na "relé/přepínač",
+    // ne generický webový uiClick.
+    const prevToggleSeq = prevSonicCannonToggleSeqRef.current;
+    prevSonicCannonToggleSeqRef.current = state.sonicCannonToggleSeq;
+    // Čisté rozhodnutí vytažené do game/core/sonicCannon.ts#shouldPlaySonicCannonToggleClick
+    // (testovatelné bez React efektu) — `false` pro čerstvý/resetovaný stav
+    // (nová směna, smrt, menu) i pro beze změny, `true` jen pro skutečný
+    // ruční/auto-off toggle (viz zadání "žádný click při resetu stavu...
+    // pokud by to působilo rušivě").
+    if (!shouldPlaySonicCannonToggleClick(state.sonicCannonToggleSeq, prevToggleSeq)) return;
+    audioManager.play(AUDIO_EVENTS.lightClick);
+  }, [state.sonicCannonToggleSeq]);
+
+  useEffect(() => {
+    // Provozní bzučení sonického děla — ČISTĚ odvozené z
+    // state.sonicCannonActive (viz zadání "sonicCannonActive zůstává
+    // jediný zdroj pravdy... nevytvářej paralelní lokální boolean"), žádný
+    // vlastní isHumPlaying stav. Pokrývá VŠECHNY cesty k `false`
+    // (ruční vypnutí, auto-off po výsledku, přepnutí/zavření kamery,
+    // blackout, smrt/konec směny/menu — viz withSonicCannonAutoOff a
+    // createInitialGameState v gameReducer.ts/gameState.ts) stejně, beze
+    // změny na KAŽDÉ z nich zvlášť.
+    if (state.sonicCannonActive) {
+      audioManager.startLoop(AUDIO_EVENTS.sonicCannonHum);
+    } else {
+      audioManager.stopLoop(AUDIO_EVENTS.sonicCannonHum);
+    }
+  }, [state.sonicCannonActive]);
+
+  // Nezávislé na efektu výše (ten reaguje na ZMĚNU sonicCannonActive) —
+  // tohle je tvrdá pojistka při skutečném odmountování stránky (navigace
+  // pryč z /play), ať bzučení nikdy nezůstane hrát na pozadí jinde v appce.
+  useEffect(() => {
+    return () => audioManager.stopLoop(AUDIO_EVENTS.sonicCannonHum);
+  }, []);
 
   useEffect(() => {
     if (prevBulbBreakSeqRef.current !== state.bulbBreakSeq) {
@@ -1487,6 +1531,15 @@ export default function PlayPage() {
     dispatch({ type: "CLOSE_CAMERAS" });
   }
 
+  function handleToggleSonicCannon() {
+    // Žádné přímé audioManager.play() tady — přesně jedno mechanické
+    // cvaknutí (ruční i automatické po výsledku) řeší JEDINÝ efekt níže na
+    // state.sonicCannonToggleSeq, ať se click nikdy nepřehraje dvakrát (viz
+    // zadání "nesmí se přehrát současně dvakrát kvůli reducer eventu a
+    // React effectu").
+    dispatch({ type: "TOGGLE_SONIC_CANNON" });
+  }
+
   function handleToggleAudio() {
     dispatch({ type: "TOGGLE_AUDIO_MUTED" });
   }
@@ -1536,6 +1589,7 @@ export default function PlayPage() {
           onToggleLight={handleToggleLight}
           onSelectCamera={handleSelectCamera}
           onCloseCameras={handleCloseCameras}
+          onToggleSonicCannon={handleToggleSonicCannon}
           onToggleAudio={handleToggleAudio}
           onLookAtDoor={handleLookAtDoor}
           onLookAtDesk={handleLookAtDesk}

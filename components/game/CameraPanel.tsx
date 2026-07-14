@@ -14,6 +14,9 @@ interface CameraPanelProps {
   enemyStageVisitSeq: number;
   /** Admin-only rychlá testovací pomůcka (viz zadání "rychlejší testování", game/cameras/cameraDoorAlert.ts) — jen v overview (CameraMonitorGrid), detail už skutečný obsah ukazuje sám. */
   showAdminDoorAlerts: boolean;
+  /** Viz GameState.sonicCannonActive — jen v detailu, viz CameraDetailView.tsx. */
+  sonicCannonActive: boolean;
+  onToggleSonicCannon: () => void;
   onSelectCamera: (id: CameraId) => void;
   onCloseCameras: () => void;
 }
@@ -32,6 +35,8 @@ export default function CameraPanel({
   lastEnemyDecision,
   enemyStageVisitSeq,
   showAdminDoorAlerts,
+  sonicCannonActive,
+  onToggleSonicCannon,
   onSelectCamera,
   onCloseCameras,
 }: CameraPanelProps) {
@@ -46,6 +51,8 @@ export default function CameraPanel({
         elapsedMs={elapsedMs}
         lastEnemyDecision={lastEnemyDecision}
         enemyStageVisitSeq={enemyStageVisitSeq}
+        sonicCannonActive={sonicCannonActive}
+        onToggleSonicCannon={onToggleSonicCannon}
         onBack={onCloseCameras}
       />
     );

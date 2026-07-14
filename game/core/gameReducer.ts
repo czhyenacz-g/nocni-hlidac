@@ -1,6 +1,6 @@
 import { GameAction } from "./gameActions";
 import { createInitialGameState } from "./gameState";
-import { EnemyDefinition, EnemyStage, GameState, NightDefinition } from "./types";
+import { EnemyDefinition, EnemyStage, GameState, MonsterRepelRadioResult, NightDefinition } from "./types";
 import {
   BULB_REPLACE_DURATION_MS,
   DOOR_DEATH_REVEAL_DURATION_MS,
@@ -10,6 +10,8 @@ import {
   OFFICE_THREAT_GRACE_HIGH_MS,
   OFFICE_THREAT_GRACE_LOW_MS,
   OFFICE_THREAT_GRACE_MEDIUM_MS,
+  SONIC_CANNON_ADVANCE_CHANCE,
+  SONIC_CANNON_RETREAT_CHANCE,
   THINK_IT_OVER_WINDUP_DURATION_MS,
 } from "../balancing/constants";
 import { getBlackoutPhaseIndex } from "../visuals/blackoutPhase";
@@ -22,6 +24,8 @@ import { computePowerDrainBreakdown } from "./powerDrain";
 import { canStartBatteryEmergencyRun } from "./emergencyMiniGameIntegration";
 import { resolveLivesRemainingAfterDeath } from "./gameMode";
 import { confirmMonsterHit } from "./monsterEnding";
+import { isMonsterMinStayBlocking } from "./monsterMinStay";
+import { isSonicCannonAffectingEnemy } from "./sonicCannon";
 import {
   isDoorAttackBlockedByClosedDoor,
   isDoorAttackGraceActive,
@@ -32,15 +36,6 @@ import {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
-}
-
-function isEnemyBeingWatched(state: GameState, night: NightDefinition): boolean {
-  // playerView !== "desk" (dveře/generátor) nikdy nepočítá jako sledování kamer,
-  // i kdyby cameraOpen zůstalo true — stejná podmínka jako watchingCameras
-  // v applyPowerDelta. LOOK_AT_DOOR/LOOK_AT_GENERATOR navíc kamery rovnou zavírá.
-  if (state.playerView !== "desk" || !state.cameraOpen || !state.activeCameraId) return false;
-  const camera = night.cameras.find((c) => c.id === state.activeCameraId);
-  return camera?.enemyVisibleAtStage === state.enemyStage;
 }
 
 // Vylosuje (jednou na standoff u zavřených dveří) cíl efektivního čekání, než
@@ -88,9 +83,11 @@ const OFFICE_THREAT_GRACE_DURATION_MS: Record<"low" | "medium" | "high", number>
   high: OFFICE_THREAT_GRACE_HIGH_MS,
 };
 
-// Když hráč aktivně sleduje kamery (otevřená kamera v pohledu na stůl), energie
-// jen ubývá. Jinak (dveře/pohled zavřené kamery) se pomalu dobíjí, ale spotřeba
-// zavřených dveří / rozsvíceného světla dobíjení dál přebíjí — viz GAME_DESIGN.md.
+// Když je aktivní SONICKÉ DĚLO (ne pouhé sledování detailu kamery, viz
+// zadání "sledování kamer je zdarma a bez vlivu na monstrum"), energie jen
+// ubývá. Jinak (dveře/pohled zavřené kamery/otevřená kamera bez děla) se
+// pomalu dobíjí, ale spotřeba zavřených dveří / rozsvíceného světla dobíjení
+// dál přebíjí — viz GAME_DESIGN.md.
 // Kritický stav generátoru navrch přidá pevnou extra spotřebu (jako 2x zavřené
 // dveře + rozsvícené světlo), bez ohledu na to, jestli jsou skutečně zapnuté.
 // Skutečný výpočet žije v game/core/powerDrain.ts#computePowerDrainBreakdown —
@@ -908,6 +905,9 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
       case "CLOSE_CAMERAS":
         // Návrat z detailu zpět na overview mřížku (tlačítko "Zpět na přehled")
         // i vynucené zavření kamer jinde v reduceru — vždy stejný cílový stav.
+        // sonicCannonActive se tu NEnuluje explicitně — withSonicCannonAutoOff
+        // (viz konec souboru) to udělá centrálně, stejně jako pro každou jinou
+        // cestu, kterou cameraOpen padne na false.
         return {
           ...state,
           cameraOpen: false,
@@ -915,6 +915,43 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           cameraViewMode: "overview",
           cameraFocusUntilMs: null,
         };
+
+      case "TOGGLE_SONIC_CANNON": {
+        if (!state.isRunning || state.gameStatus === "blackout" || state.doorDeathRevealUntilMs !== null)
+          return state;
+
+        // Vypnutí funguje vždy (i kdyby mezitím accidentally přestaly platit
+        // podmínky pro aktivaci) — jen zrušit `active`. `sonicCannonToggleSeq`
+        // se zvyšuje TADY (ruční akce), na rozdíl od tichého
+        // `withSonicCannonAutoOff` (viz konec souboru), který stejné pole
+        // nuluje beze změny seq — přesně proto, aby UI (viz app/play/page.tsx)
+        // umělo přehrát cvaknutí jen pro tenhle záměrný toggle, ne pro
+        // "kamera se zrovna zavřela" tichý reset.
+        if (state.sonicCannonActive) {
+          return {
+            ...state,
+            sonicCannonActive: false,
+            sonicCannonToggleSeq: state.sonicCannonToggleSeq + 1,
+            lastSonicCannonToggleReason: "manual_off",
+          };
+        }
+
+        // Aktivace vyžaduje otevřený DETAIL kamery na stole (ne overview,
+        // ne dveře/generátor/zeď — stejná podmínka jako dřívější
+        // isEnemyBeingWatched) a nějakou energii (viz zadání "sonické dělo
+        // bez dostatku energie se vypne nebo nejde aktivovat") — bez těchhle
+        // podmínek je TOGGLE tiché no-op, ne pád/výjimka (a tedy i beze
+        // změny sonicCannonToggleSeq — žádné cvaknutí za neúspěšný pokus).
+        if (!state.cameraOpen || state.cameraViewMode !== "detail" || state.playerView !== "desk" || state.power <= 0)
+          return state;
+
+        return {
+          ...state,
+          sonicCannonActive: true,
+          sonicCannonToggleSeq: state.sonicCannonToggleSeq + 1,
+          lastSonicCannonToggleReason: "manual_on",
+        };
+      }
 
       case "TICK": {
         if (!state.isRunning) return state;
@@ -1272,13 +1309,31 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             }
           : { enemyForcedRetreatUntilMs: null, enemyForcedRetreatChance: null, enemyForcedRetreatNextStepAtMs: null };
 
+        // Minimální pobyt v lokaci (viz zadání "hráč má reálnou šanci
+        // monstrum najít, zapnout sonické dělo a reagovat",
+        // game/core/monsterMinStay.ts) — platí JEN pro tenhle běžný
+        // pravděpodobnostní hod, nikdy pro forcedRetreat okno výše (to je
+        // "explicitní retreat window", vlastní nezávislá pacing logika).
+        // Blokovaný tik neprovede žádný roll a nevyprodukuje žádný sonický
+        // rádiový výsledek (viz níže) — čistě "stay", stejně jako
+        // forcedRetreatStepDue gate výše.
+        if (!forcedRetreatActive && isMonsterMinStayBlocking(state)) {
+          return { ...state, ...forcedRetreatFieldsUpdate, lastEnemyDecision: "stay" };
+        }
+
         // Postup/setrvání/ústup — nezávislé pravděpodobnosti, zbytek (1 - advance - retreat)
-        // znamená setrvání. Sledování na kameře jen zpomaluje postup, ústup neovlivňuje.
-        const watched = isEnemyBeingWatched(state, night);
-        const advanceChance = forcedRetreatActive
-          ? 0
-          : night.enemy.advanceChance * (watched ? night.enemy.watchedAdvanceMultiplier : 1);
-        const retreatChance = forcedRetreatActive ? (state.enemyForcedRetreatChance ?? night.enemy.retreatChance) : night.enemy.retreatChance;
+        // znamená setrvání. Běžné sledování kamery samo o sobě NEOVLIVŇUJE
+        // postup (viz zadání "běžné sledování kamer je zdarma a bez vlivu na
+        // monstrum") — jedině aktivní sonické dělo mířící na kameru, kde se
+        // monstrum skutečně nachází, dočasně nahradí výchozí pravděpodobnosti
+        // za SONIC_CANNON_*_CHANCE, PŘESNĚ pro tenhle jeden hod.
+        const sonicEffective = !forcedRetreatActive && isSonicCannonAffectingEnemy(state, night);
+        const advanceChance = forcedRetreatActive ? 0 : sonicEffective ? SONIC_CANNON_ADVANCE_CHANCE : night.enemy.advanceChance;
+        const retreatChance = forcedRetreatActive
+          ? (state.enemyForcedRetreatChance ?? night.enemy.retreatChance)
+          : sonicEffective
+            ? SONIC_CANNON_RETREAT_CHANCE
+            : night.enemy.retreatChance;
         const roll = Math.random();
 
         let nextIndex = currentIndex;
@@ -1293,8 +1348,54 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           decision = nextIndex === currentIndex ? "stay" : "retreat";
         }
 
+        // Sonický rádiový výsledek (viz zadání "reducer má pouze emitovat
+        // výsledek success/stay/fail") — VÝHRADNĚ pro tenhle jeden hod, kdy
+        // `sonicEffective` bylo true. "retreat" -> "success" (monstrum
+        // ustoupilo), "stay" -> "stay", "advance" -> "fail" (z pohledu hráče
+        // dělo selhalo). `decision` tady je vždy PO případném "retreat ->
+        // stay" degradování na hranici trasy výše, ale sonické dělo je
+        // efektivní jen na kamerou viditelných stage (index >= 1), kde tahle
+        // degradace nikdy nenastane.
+        const sonicResult: MonsterRepelRadioResult | null = sonicEffective
+          ? decision === "retreat"
+            ? "success"
+            : decision === "advance"
+              ? "fail"
+              : "stay"
+          : null;
+        // Auto-off (viz zadání "doladit... aby se po prvním skutečně
+        // vyhodnoceném movement decision ticku automaticky vypnulo") — PŘESNĚ
+        // ve stejném update objektu jako sonicResult výše, ať výsledek a
+        // vypnutí dorazí do UI ATOMICKY spolu (žádné riziko, že by
+        // side-effect stihl ztratit jedno nebo druhé, viz zadání "rádio event
+        // vznikne před nebo současně s auto-off"). Platí pro VŠECHNY tři
+        // výsledky (success/stay/fail) stejně — sonické dělo je "jeden
+        // pokus", ne trvalý stav, dokud ho hráč znovu nezapne.
+        // `sonicCannonToggleSeq` se zvyšuje STEJNĚ jako u ručního TOGGLE, ať
+        // UI umí přehrát přesně jedno mechanické cvaknutí i pro tohle
+        // automatické vypnutí (viz app/play/page.tsx).
+        const sonicResultUpdate: Pick<
+          GameState,
+          "sonicCannonResultSeq" | "lastSonicCannonResult" | "sonicCannonActive" | "sonicCannonToggleSeq" | "lastSonicCannonToggleReason"
+        > =
+          sonicResult !== null
+            ? {
+                sonicCannonResultSeq: state.sonicCannonResultSeq + 1,
+                lastSonicCannonResult: sonicResult,
+                sonicCannonActive: false,
+                sonicCannonToggleSeq: state.sonicCannonToggleSeq + 1,
+                lastSonicCannonToggleReason: "result_auto_off",
+              }
+            : {
+                sonicCannonResultSeq: state.sonicCannonResultSeq,
+                lastSonicCannonResult: state.lastSonicCannonResult,
+                sonicCannonActive: state.sonicCannonActive,
+                sonicCannonToggleSeq: state.sonicCannonToggleSeq,
+                lastSonicCannonToggleReason: state.lastSonicCannonToggleReason,
+              };
+
         if (nextIndex === currentIndex) {
-          return { ...state, ...forcedRetreatFieldsUpdate, lastEnemyDecision: decision };
+          return { ...state, ...forcedRetreatFieldsUpdate, ...sonicResultUpdate, lastEnemyDecision: decision };
         }
 
         const nextStage = route[nextIndex];
@@ -1303,6 +1404,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         return {
           ...state,
           ...forcedRetreatFieldsUpdate,
+          ...sonicResultUpdate,
           enemyStage: nextStage,
           lastEnemyDecision: decision,
           enemyAtDoorSinceMs: nextIsAtDoor ? state.elapsedMs : null,
@@ -1539,16 +1641,49 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
       }
     })();
 
-    return withEnemyStageVisitSeed(state, nextState);
+    return withSonicCannonAutoOff(state, withEnemyStageVisitSeed(state, nextState));
   };
 }
 
-// Viz GameState.enemyStageVisitSeq — jediné místo, které ho mění, ať se
-// nemusí opakovat/hlídat ve všech ~15 case větvích, co enemyStage nastavují.
-// `nextState === state` (žádná změna/no-op guard) je běžný případ, `===`
-// srovnání enemyStage samo o sobě stačí, i kdyby nextState byl nový objekt
-// se stejnou hodnotou stage.
+// Viz GameState.enemyStageVisitSeq/enemyLocationEnteredAtMs — jediné místo,
+// které je mění, ať se nemusí opakovat/hlídat ve všech ~15 case větvích, co
+// enemyStage nastavují. `nextState === state` (žádná změna/no-op guard) je
+// běžný případ, `===` srovnání enemyStage samo o sobě stačí, i kdyby
+// nextState byl nový objekt se stejnou hodnotou stage.
+// `enemyLocationEnteredAtMs` se aktualizuje na `nextState.elapsedMs` (ne
+// `previousState.elapsedMs`) — v TICKu se elapsedMs mění ve STEJNÉM
+// dispatchi, ve kterém může dojít i ke skutečnému přesunu (např. door-light
+// repel), takže `nextState.elapsedMs` je vždy ten správný "teď" okamžik
+// přesunu; mimo TICK je `nextState.elapsedMs === previousState.elapsedMs`,
+// beze změny.
 function withEnemyStageVisitSeed(previousState: GameState, nextState: GameState): GameState {
   if (nextState.enemyStage === previousState.enemyStage) return nextState;
-  return { ...nextState, enemyStageVisitSeq: previousState.enemyStageVisitSeq + 1 };
+  return {
+    ...nextState,
+    enemyStageVisitSeq: previousState.enemyStageVisitSeq + 1,
+    enemyLocationEnteredAtMs: nextState.elapsedMs,
+  };
+}
+
+// Viz GameState.sonicCannonActive — sonické dělo se NIKDY nesmí "skrytě"
+// nechat běžet dál, jakmile přestanou platit podmínky, za kterých šlo
+// zapnout (viz zadání, seznam "Sonické dělo se automaticky vypne při").
+// Centrální wrapper kolem CELÉHO reduceru (stejný vzor jako
+// withEnemyStageVisitSeed výše) — pokrývá i cesty, které cameraOpen/
+// isRunning/gameStatus mění MIMO explicitní TOGGLE_SONIC_CANNON/CLOSE_CAMERAS
+// (blackout v TICKu, konec směny, smrt, OPEN_CAMERA na jinou kameru, ...),
+// aniž by je bylo nutné jednotlivě vyjmenovávat a riskovat, že se na
+// některou zapomene. `activeCameraId` porovnání proti PŘEDCHOZÍMU stavu
+// zachytí i "přepnutí na jinou kameru" (cameraOpen/detail/desk zůstávají
+// beze změny, jen se mění, KTERÁ kamera).
+function withSonicCannonAutoOff(previousState: GameState, nextState: GameState): GameState {
+  if (!nextState.sonicCannonActive) return nextState;
+  const stillValid =
+    nextState.isRunning &&
+    nextState.gameStatus !== "blackout" &&
+    nextState.cameraOpen &&
+    nextState.cameraViewMode === "detail" &&
+    nextState.playerView === "desk" &&
+    nextState.activeCameraId === previousState.activeCameraId;
+  return stillValid ? nextState : { ...nextState, sonicCannonActive: false };
 }

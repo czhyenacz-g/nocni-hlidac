@@ -125,13 +125,18 @@ export interface EnemyDefinition {
    * (state.enemyRoute). Pro nepřítele s jedinou trasou stačí pole s jedním prvkem.
    */
   routeVariants: EnemyStage[][];
-  /** Šance na postup na další stage při každém enemy tick (0–1). */
+  /**
+   * Šance na postup na další stage při každém enemy tick (0–1) — BEZ ohledu
+   * na to, jestli hráč zrovna sleduje kameru (na žádost "běžné sledování
+   * kamer je zdarma a bez vlivu na monstrum"). Jediné, co tyhle výchozí
+   * pravděpodobnosti dočasně nahradí, je aktivní sonické dělo mířící na
+   * kameru s monstrem — viz `SONIC_CANNON_*_CHANCE` v balancing/constants.ts
+   * a `game/core/sonicCannon.ts`.
+   */
   advanceChance: number;
-  /** Násobitel šance na postup, když ho hráč sleduje na kameře. */
-  watchedAdvanceMultiplier: number;
   /**
    * Šance vrátit se při každém enemy ticku o jeden krok zpět na trase (0–1).
-   * Nezávislá na advanceChance/watchedAdvanceMultiplier — zbytek pravděpodobnosti
+   * Nezávislá na advanceChance — zbytek pravděpodobnosti
    * (1 - advanceChance - retreatChance) znamená, že zůstává na místě.
    */
   retreatChance: number;
@@ -254,6 +259,17 @@ export interface GeneratorDefinition {
  * stejný death flow jako ostatní důvody, jen jiný text na DeathScreen.
  */
 export type DeathReason = "door_open_at_attack" | "blackout_timeout" | "bulb_replacement_attack" | "emergency_run";
+
+/**
+ * Výsledek jednoho ENEMY_ADVANCE hodu ovlivněného aktivním sonickým dělem
+ * (viz zadání, GameState.lastSonicCannonResult, game/core/sonicCannon.ts) —
+ * "success" = monstrum ustoupilo (retreat), "stay" = zůstalo, "fail" =
+ * pokračovalo vpřed (advance). Jméno "fail" (ne "advance") sedí s
+ * kanonickými kategoriemi rádiových hlášek (viz
+ * game/radio/monsterRepelRadioMessages.ts) — z pohledu hráče je postup
+ * monstra vpřed neúspěch použití děla, ne neutrální popis pohybu.
+ */
+export type MonsterRepelRadioResult = "success" | "stay" | "fail";
 
 /**
  * Stav jedné žárovky v místnosti — omezená životnost reálného svícení (viz
@@ -527,6 +543,68 @@ export interface GameState {
    * neběží.
    */
   enemyForcedRetreatNextStepAtMs: number | null;
+
+  /**
+   * `elapsedMs`, kdy monstrum naposledy SKUTEČNĚ vstoupilo do svého
+   * aktuálního `enemyStage` (viz zadání "minimální pobyt monstra v
+   * lokaci") — jediný zdroj pravdy, aktualizovaný centrálně ve
+   * `withEnemyStageVisitSeed` (gameReducer.ts), stejným "stage se skutečně
+   * změnila" testem jako `enemyStageVisitSeq`, takže ho není třeba
+   * duplikovat v ~10 jednotlivých větvích, které `enemyStage` nastavují
+   * (ENEMY_ADVANCE, door-light/UV repel, gave_up, office threat, potvrzený
+   * zásah brokovnicí, ...). `game/core/monsterMinStay.ts#isMonsterMinStayBlocking`
+   * ho porovnává s `MONSTER_MIN_LOCATION_STAY_MS[enemyStage]` — dokud
+   * minimální doba neuplynula, běžný pravděpodobnostní ENEMY_ADVANCE hod se
+   * vůbec neprovede (žádný roll, jen "stay"). NEBLOKUJE explicitní
+   * scriptované přesuny (repely, gave_up, brokovnice, ...) — ty svůj vlastní
+   * přesun provedou vždy, jen se tím (stejně jako každý jiný skutečný
+   * přesun) posune tenhle timestamp dopředu.
+   */
+  enemyLocationEnteredAtMs: number;
+
+  /**
+   * Ruční aktivní režim "SONICKÉ DĚLO" v detailu právě otevřené kamery (viz
+   * zadání) — NENÍ jednorázový hod, dokud běží, mění pravděpodobnosti
+   * DALŠÍHO relevantního ENEMY_ADVANCE hodu (viz
+   * `game/core/sonicCannon.ts#isSonicCannonAffectingEnemy`,
+   * `SONIC_CANNON_*_CHANCE` v balancing/constants.ts) a spotřebovává energii
+   * (viz `game/core/powerDrain.ts`, dřív svázané s pouhým sledováním kamery,
+   * teď jen s tímhle polem). Automaticky se vypíná (nikdy neschovaně dál
+   * neběží na jiné kameře) při zavření detailu/přepnutí kamery/blackoutu/
+   * konci směny — viz `withSonicCannonAutoOff` v gameReducer.ts. Nikdy
+   * persistentní (vždy `false` na `createInitialGameState`).
+   */
+  sonicCannonActive: boolean;
+  /**
+   * Zvyšuje se přesně jednou za KAŽDÝ relevantní ENEMY_ADVANCE hod, který
+   * použil `SONIC_CANNON_*_CHANCE` (tj. sonické dělo bylo aktivní a mířilo
+   * na kameru, kde se monstrum skutečně nachází) — stejný "seq counter,
+   * reducer nikdy nevolá audio" vzor jako `monsterRetreatRoarSeq`/
+   * `doorBangSeq`. `app/play/page.tsx` podle změny přehraje odpovídající
+   * rádiovou hlášku (viz `game/radio/monsterRepelRadioMessages.ts`) —
+   * VÝHRADNĚ pro tenhle jeden hod, nikdy pro běžný hod bez sonického děla
+   * ani pro hod zablokovaný minimálním pobytem (ten se vůbec neprovede).
+   */
+  sonicCannonResultSeq: number;
+  /** Výsledek POSLEDNÍHO sonicCannonResultSeq hodu — `null`, dokud žádný neproběhl. Viz sonicCannonResultSeq výše. */
+  lastSonicCannonResult: MonsterRepelRadioResult | null;
+
+  /**
+   * Zvyšuje se PŘESNĚ při skutečné, záměrné změně `sonicCannonActive` (viz
+   * zadání "dolaď sonické dělo... jasná zvuková odezva") — ruční
+   * `TOGGLE_SONIC_CANNON` (zapnutí i vypnutí) A automatické vypnutí po
+   * prvním skutečném sonic-modified decision ticku (viz ENEMY_ADVANCE).
+   * ZÁMĚRNĚ SE NEZVYŠUJE, když `sonicCannonActive` spadne na `false` "potichu"
+   * přes `withSonicCannonAutoOff` (zavření detailu/přepnutí kamery/blackout/
+   * konec směny — viz zadání "žádný click při resetu stavu... pokud by to
+   * působilo rušivě") — jen tahle tichá cesta by jinak měnila
+   * `sonicCannonActive` beze změny tohohle seq. `app/play/page.tsx` podle
+   * změny přehraje PRÁVĚ JEDNO mechanické cvaknutí (viz
+   * `AUDIO_EVENTS.lightClick`, znovupoužitý — žádný nový click event).
+   */
+  sonicCannonToggleSeq: number;
+  /** Důvod POSLEDNÍ změny `sonicCannonToggleSeq` — `null`, dokud k žádné nedošlo. Viz sonicCannonToggleSeq výše. */
+  lastSonicCannonToggleReason: "manual_on" | "manual_off" | "result_auto_off" | null;
 
   deathReason: DeathReason | null;
   /**

@@ -163,6 +163,10 @@ export const COPY = {
     // (viz ViewSwitchArrow.tsx#ViewSwitchIcon "arrow-left"), text zůstává čistý.
     backToOverviewLabel: "Zpět na přehled",
     cameraFocusingLabel: "LADÍM SIGNÁL...",
+    // Sonické dělo (viz zadání, CameraDetailView.tsx) — tlačítko/přepínač
+    // viditelný jen v detailu právě otevřené kamery.
+    sonicCannonOffLabel: "ZAPNOUT SONICKÉ DĚLO",
+    sonicCannonOnLabel: "SONICKÉ DĚLO: AKTIVNÍ",
     audioOnLabel: "Zvuk: zapnutý",
     audioOffLabel: "Zvuk: vypnutý",
     // Dominantní navigace v control roomu — šipka dolů, ne doprava, ať
