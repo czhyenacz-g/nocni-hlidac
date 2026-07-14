@@ -425,6 +425,13 @@
 - Skutečná vrstva inzerce nočních provozů (nabídky práce, partnerství, sponzoring) —
   `/about` zatím jen textově avizuje, žádný formulář/portál/databáze
 - Skutečný kontaktní formulář na `/about` místo `mailto:` odkazu
+- Rádiová hláška (`game/radio/`) je teď dočasně vypnutá (`RADIO_MESSAGES_DISABLED` v
+  `useRadioMessage.ts`) a zatím jede přes browser `speechSynthesis` (viz
+  `speakRadioMessage.ts`) — Hynek plánuje hlas místo toho zpracovat přes
+  [voicechanger.io](https://voicechanger.io/) (víc "roboticky"/rádiově znějící), než se
+  rádio zase zapne. Až bude hotový soubor, nejspíš přejde na předgenerovaný audio soubor
+  přes `audioManager` místo živé syntézy (viz komentář "první prototyp" v
+  `speakRadioMessage.ts`, proč tam dnes žádný soubor není).
 
 ## Explicitně odložené věci
 
