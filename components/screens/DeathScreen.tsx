@@ -10,6 +10,20 @@ import SceneBackground from "@/components/SceneBackground";
 import { BACKGROUND_SCENES, getPlayOnceLastFrameDelayMs } from "@/game/visuals/backgroundImages";
 import AchievementResultPanel from "@/components/achievements/AchievementResultPanel";
 import { DEATH_SCREEN_REVEAL_DELAY_MS } from "@/game/balancing/constants";
+import { useShakeOffset } from "@/game/death/useShakeOffset";
+
+/**
+ * Krátký "doznívající" shake NA odhalení ghoula (viz zadání "zkus ten shake
+ * i na tu animaci ghoula") — `DeathSequenceOverlay.tsx`'s shake doběhne
+ * PŘESNĚ v okamžiku, kdy se DeathScreen mountuje (viz
+ * game/death/liveDeathSequenceConfig.ts komentář u shakeAtMs/gameOverAtMs),
+ * tenhle hook úder prodlouží ještě chvíli do samotného odhalení. Kratší a
+ * jemnější (300ms/18px) než overlay's shake (350ms/28px) — tam se třásla
+ * jen černá plocha, tady už skutečný obrázek, silnější intenzita by
+ * působila rušivě/lacině.
+ */
+const GHOUL_REVEAL_SHAKE_DURATION_MS = 300;
+const GHOUL_REVEAL_SHAKE_INTENSITY_PX = 18;
 
 interface DeathScreenProps {
   reason: DeathReason | null;
@@ -85,8 +99,16 @@ export default function DeathScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [skipReveal, scene]);
 
+  // `emergency_run` nemá žádnou předcházející DeathSequenceOverlay shake
+  // fázi na navázání (viz skipReveal výše) — bez ní by tenhle shake působil
+  // nemotivovaně, ne jako pokračování úderu.
+  const shakeOffset = useShakeOffset(!skipReveal, GHOUL_REVEAL_SHAKE_DURATION_MS, GHOUL_REVEAL_SHAKE_INTENSITY_PX);
+
   return (
-    <main className="relative min-h-screen flex items-center justify-center p-4">
+    <main
+      className="relative min-h-screen flex items-center justify-center p-4"
+      style={{ transform: `translate(${shakeOffset.x}px, ${shakeOffset.y}px)` }}
+    >
       <SceneBackground scene={scene} />
 
       {dialogRevealed && (
