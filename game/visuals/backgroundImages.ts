@@ -177,16 +177,16 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
   // statický `death_bg_0.webp`. Assety žijí v `public/object_13/monster/ghoul/`
   // (ne pod OBJECT_13_BACKGROUND_PATH jako většina scén tady) — stejný důvod
   // jako `monsterDefeated` níže: patří k monstru, ne k "pozadí objektu".
-  // `holdMs: 100` na každém snímku + `playOnce: true` (viz SceneBackground.tsx)
+  // `holdMs: 50` na každém snímku + `playOnce: true` (viz SceneBackground.tsx)
   // = přehraje se jednou (0 → 1 → 2) a zůstane stát na posledním, žádná
-  // smyčka zpátky na první snímek. Krátký `crossfadeMs` (150ms) je tu teď
+  // smyčka zpátky na první snímek. `crossfadeMs` (150ms) je tu teď 3×
   // delší než samotné `holdMs` — sousední crossfady se tak plynule
-  // překrývají, ne vada, jen rychlejší/plynulejší "trhnutí" snímků.
+  // překrývají (ne vada), snímky se prolínají skoro jako jedna animace.
   death: {
     frames: [
-      { src: "/object_13/monster/ghoul/ghoul_death_0.webp", holdMs: 100 },
-      { src: "/object_13/monster/ghoul/ghoul_death_1.webp", holdMs: 100 },
-      { src: "/object_13/monster/ghoul/ghoul_death_2.webp", holdMs: 100 },
+      { src: "/object_13/monster/ghoul/ghoul_death_0.webp", holdMs: 50 },
+      { src: "/object_13/monster/ghoul/ghoul_death_1.webp", holdMs: 50 },
+      { src: "/object_13/monster/ghoul/ghoul_death_2.webp", holdMs: 50 },
     ],
     holdMs: DEFAULT_HOLD_MS,
     crossfadeMs: 150,
@@ -203,9 +203,9 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
   // zůstala nečekaně statická).
   deathDoorAttack: {
     frames: [
-      { src: "/object_13/monster/ghoul/ghoul_death_0.webp", holdMs: 100 },
-      { src: "/object_13/monster/ghoul/ghoul_death_1.webp", holdMs: 100 },
-      { src: "/object_13/monster/ghoul/ghoul_death_2.webp", holdMs: 100 },
+      { src: "/object_13/monster/ghoul/ghoul_death_0.webp", holdMs: 50 },
+      { src: "/object_13/monster/ghoul/ghoul_death_1.webp", holdMs: 50 },
+      { src: "/object_13/monster/ghoul/ghoul_death_2.webp", holdMs: 50 },
     ],
     holdMs: DEFAULT_HOLD_MS,
     crossfadeMs: 150,
