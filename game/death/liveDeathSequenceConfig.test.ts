@@ -33,14 +33,18 @@ describe("getLiveDeathSequenceConfig", () => {
     expect(config.glitchVolume).toBe(0);
   });
 
-  it("reaches the 'complete' phase (DeathSequenceOverlay.onComplete) shortly after the white flash ends, not ~1.2s later", () => {
+  it("reaches the 'complete' phase (DeathSequenceOverlay.onComplete) right after the white flash ends, no visible black gap", () => {
     const config = getLiveDeathSequenceConfig(null);
     expect(config.gameOverAtMs).toBe(0);
 
     const whiteFlashEndsAtMs = config.preDeathDelayMs + config.whiteFlashAtMs + config.whiteFlashDurationMs;
     const completeAtMs = config.preDeathDelayMs + config.gameOverAtMs + DEATH_SEQUENCE_COMPLETE_AFTER_MS;
-    expect(completeAtMs).toBeGreaterThan(whiteFlashEndsAtMs);
-    expect(completeAtMs - whiteFlashEndsAtMs).toBeLessThan(500);
+    expect(completeAtMs).toBeGreaterThanOrEqual(whiteFlashEndsAtMs);
+    // Dřív bylo 1500-1190=310ms viditelné černé mezery mezi koncem záblesku
+    // a odhalením ghula (viz zadání "připadá mi, že je tam mezera") — teď
+    // je záblesk naplánovaný těsně před pevnou DEATH_SEQUENCE_COMPLETE_AFTER_MS
+    // hranicí, takže mezera je prakticky nulová.
+    expect(completeAtMs - whiteFlashEndsAtMs).toBeLessThan(50);
     expect(resolveDeathSequencePhase(completeAtMs, config)).toBe("complete");
   });
 
@@ -51,12 +55,19 @@ describe("getLiveDeathSequenceConfig", () => {
     expect(shakeEndsAtMs).toBeLessThanOrEqual(completeAtMs);
   });
 
+  it("halves preDeathDelayMs to 400ms (from the /death-test default of 800ms)", () => {
+    const config = getLiveDeathSequenceConfig(null);
+    expect(config.preDeathDelayMs).toBe(DEATH_SEQUENCE_DEFAULT_CONFIG.preDeathDelayMs / 2);
+  });
+
   it("leaves every other field at the /death-test default", () => {
     const config = getLiveDeathSequenceConfig(null);
     const {
       deathImageEnabled,
       gameOverOverlayEnabled,
+      preDeathDelayMs,
       gameOverAtMs,
+      whiteFlashAtMs,
       shakeAtMs,
       shakeDurationMs,
       deathSoundPlaybackRate,
@@ -68,7 +79,9 @@ describe("getLiveDeathSequenceConfig", () => {
     const {
       deathImageEnabled: _die,
       gameOverOverlayEnabled: _goe,
+      preDeathDelayMs: _pdd,
       gameOverAtMs: _goa,
+      whiteFlashAtMs: _wfa,
       shakeAtMs: _sam,
       shakeDurationMs: _sdm,
       deathSoundPlaybackRate: _dr,

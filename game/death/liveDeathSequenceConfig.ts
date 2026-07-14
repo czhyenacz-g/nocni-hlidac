@@ -36,19 +36,32 @@ export function isDoorAttackDeath(reason: DeathReason | null): boolean {
  * `"complete"` (= `DeathSequenceOverlay.onComplete`, viz app/play/page.tsx)
  * `DEATH_SEQUENCE_COMPLETE_AFTER_MS` (1500 ms, deathSequenceTiming.ts) PO
  * `gameOverAtMs` — s `0` je to nejdřív, kdy může "complete" nastat, takže
- * ghoul_death animace naskočí `preDeathDelayMs + 1500` ms od smrti, těsně
- * (~300 ms) po konci bílého záblesku (`whiteFlashAtMs + whiteFlashDurationMs`
- * = 1190 ms), ne až o dalších ~1.2 s později. `shakeAtMs`/`shakeDurationMs`
- * jsou zkrácené/posunuté tak, aby shake doběhl PŘED touhle hranicí (ne aby
- * ho `DeathScreen` mount uprostřed usekl).
+ * ghoul_death animace naskočí `preDeathDelayMs + 1500` ms od smrti, PEVNĚ
+ * (`DEATH_SEQUENCE_COMPLETE_AFTER_MS` není per-config, je to sdílená
+ * konstanta). `whiteFlashAtMs`/`shakeAtMs`/`shakeDurationMs` jsou proto
+ * posunuté tak, aby záblesk i shake doběhly TĚSNĚ PŘED touhle pevnou
+ * hranicí (1500 ms), ne dřív — jinak zůstává mezi koncem efektů a
+ * odhalením ghula viditelná černá pauza (viz zadání "připadá mi, že je tam
+ * mezera" — bylo jich reálně ~300 ms).
+ *
+ * `preDeathDelayMs: 400` (poloviční oproti defaultním 800, na žádost "zkrať
+ * tu počáteční tmu" / "třeba na polovinu") — `resolveDarknessOpacity` už na
+ * tomhle poli VŮBEC nezávisí (ztmavuje hned od `elapsedMs = 0`, viz
+ * deathSequenceTiming.ts), takže tenhle "delay" dnes jen natahoval dobu
+ * MEZI plným zčernáním (~600 ms, `blackoutDurationMs`) a začátkem
+ * shake/záblesku (dřív dalších ~1350 ms čisté černé pauzy navíc). Na
+ * polovině je ta pauza ~950 ms, pořád citelný "nádech" před úderem, ale ne
+ * zbytečně natažený.
  */
 export function getLiveDeathSequenceConfig(reason: DeathReason | null): DeathSequenceConfig {
   return clampDeathSequenceConfig({
     ...DEATH_SEQUENCE_DEFAULT_CONFIG,
     deathImageEnabled: false,
     gameOverOverlayEnabled: false,
+    preDeathDelayMs: 400,
     gameOverAtMs: 0,
-    shakeAtMs: 1100,
+    whiteFlashAtMs: 1400,
+    shakeAtMs: 1150,
     shakeDurationMs: 350,
     deathSoundPlaybackRate: 2.2,
     roarVolume: 0,
