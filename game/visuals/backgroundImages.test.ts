@@ -98,9 +98,9 @@ describe("BACKGROUND_SCENES.death", () => {
     ]);
   });
 
-  it("holds each frame for ~100ms", () => {
+  it("holds each frame for ~120ms", () => {
     for (const frame of BACKGROUND_SCENES.death.frames) {
-      expect(frame.holdMs).toBe(100);
+      expect(frame.holdMs).toBe(120);
     }
   });
 
@@ -123,9 +123,9 @@ describe("BACKGROUND_SCENES.deathDoorAttack", () => {
     expect(srcs).toEqual(BACKGROUND_SCENES.death.frames.map((f) => f.src));
   });
 
-  it("holds each frame for ~100ms and is marked playOnce", () => {
+  it("holds each frame for ~120ms and is marked playOnce", () => {
     for (const frame of BACKGROUND_SCENES.deathDoorAttack.frames) {
-      expect(frame.holdMs).toBe(100);
+      expect(frame.holdMs).toBe(120);
     }
     expect(BACKGROUND_SCENES.deathDoorAttack.playOnce).toBe(true);
   });
