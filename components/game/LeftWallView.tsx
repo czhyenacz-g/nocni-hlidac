@@ -187,7 +187,16 @@ export default function LeftWallView({
             src={wallImageSrc}
             alt=""
             aria-hidden="true"
-            className="absolute inset-0 h-full w-full object-contain"
+            // `object-cover`, NE `object-contain` (na žádost "ať je obrázek
+            // velký aspoň jako dveře") — zdrojové obrázky zdi (1448×1086,
+            // poměr 4:3) jsou "hranatější" než pevný 16:9 `.door-scene-frame`
+            // (stejný rám jako DoorView, kde ho ale 16:9 obrázky dveří
+            // vyplní přesně). S `object-contain` tak zbyly prázdné pruhy po
+            // stranách a zbraň působila menší než dveře. `object-cover`
+            // zdrojový obrázek ořízne nahoře/dole (brokovnice je na obrázku
+            // vertikálně vycentrovaná, takže oříznutí nepřijde o nic
+            // podstatného), ale vyplní celý rám stejně jako dveře.
+            className="absolute inset-0 h-full w-full object-cover"
             onError={() => setImageFailed(true)}
           />
         ) : (
