@@ -113,8 +113,10 @@ export const HEARTBEAT_STRESS_RISE_MS = 1000;
 export const HEARTBEAT_STRESS_FALL_MS = 35000;
 
 // Dočasné dev zobrazení "Stres: X" v HUDu vedle energie (viz PowerMeter.tsx,
-// app/play/page.tsx) — jde vypnout jedním přepnutím, až logika bude ověřená.
-export const STRESS_DEV_HUD_ENABLED = true;
+// app/play/page.tsx) — vázané na DEBUG_PANEL_ENABLED (na žádost "pokud není
+// zapnutý debug mod, schovej ukazatel stresu"), ať nejde o druhý nezávislý
+// přepínač, který by šlo omylem rozejít od DebugPanelu.
+export const STRESS_DEV_HUD_ENABLED = DEBUG_PANEL_ENABLED;
 
 // Playtest feedback: heartbeat byl pořád moc tichý i po +12dB boostu souborů
 // (viz assets/audio/README.md) — o 20 % hlasitěji, pak po dalším kole ještě o
