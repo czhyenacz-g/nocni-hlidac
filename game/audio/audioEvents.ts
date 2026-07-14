@@ -79,6 +79,24 @@ export const AUDIO_EVENTS = {
   deathSequenceGlitch: "death_sequence_glitch",
   // Finální "je konec" stinger na "game_over" fázi (kdy se zobrazí "GAME OVER").
   deathSequenceFinal: "death_sequence_final",
+  // ── Rádiová hláška "vypuštění monstra" (viz zadání "první jednoduchá verze
+  // rádia", game/radio/releaseMonsterMessages.ts, game/radio/useRadioMessage.ts) ──
+  // 11 samostatných eventů, ne jeden sdílený s dynamickým src — AudioManager
+  // mapuje id na PŘEDEM načtený <audio> element 1:1 (viz audioManager.ts#init),
+  // žádné přepínání src za běhu. Náhodný výběr jednoho z nich řeší
+  // game/radio/releaseMonsterMessages.ts#pickRandomReleaseMonsterMessage,
+  // TADY je jen samotná sada eventů/souborů.
+  radioReleaseMonster01: "radio_release_monster_01",
+  radioReleaseMonster02: "radio_release_monster_02",
+  radioReleaseMonster03: "radio_release_monster_03",
+  radioReleaseMonster04: "radio_release_monster_04",
+  radioReleaseMonster05: "radio_release_monster_05",
+  radioReleaseMonster06: "radio_release_monster_06",
+  radioReleaseMonster07: "radio_release_monster_07",
+  radioReleaseMonster08: "radio_release_monster_08",
+  radioReleaseMonster09: "radio_release_monster_09",
+  radioReleaseMonster10: "radio_release_monster_10",
+  radioReleaseMonster11: "radio_release_monster_11",
 } as const;
 
 export type AudioEventId = (typeof AUDIO_EVENTS)[keyof typeof AUDIO_EVENTS];

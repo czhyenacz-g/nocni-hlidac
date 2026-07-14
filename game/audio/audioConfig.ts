@@ -402,4 +402,69 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
       waveform: "sawtooth",
     },
   },
+  // ── Rádiová hláška "vypuštění monstra" (viz zadání, game/radio/) ──
+  // Skutečné namluvené soubory (ne CC0 placeholder) — zpracované z
+  // public/object_13/sound/release_monster/source/release_monster_raw.wav
+  // (ticho detekováno přes ffmpeg silencedetect, viz report), NEPOD
+  // `/assets/audio/` jako ostatní eventy výše, ale pod
+  // `/object_13/sound/release_monster/` — záměrně, na explicitní žádost
+  // zadání (výstupní cesta pro tenhle úkol byla daná předem). Bez
+  // fallbackSynth — syntetizovaná náhrada namluvené věty nedává smysl,
+  // pokud soubor chybí, hláška se prostě tiše nepřehraje (viz
+  // audioManager.ts#play).
+  [AUDIO_EVENTS.radioReleaseMonster01]: {
+    src: "/object_13/sound/release_monster/release_monster_01.mp3",
+    volume: 0.85,
+    loop: false,
+  },
+  [AUDIO_EVENTS.radioReleaseMonster02]: {
+    src: "/object_13/sound/release_monster/release_monster_02.mp3",
+    volume: 0.85,
+    loop: false,
+  },
+  [AUDIO_EVENTS.radioReleaseMonster03]: {
+    src: "/object_13/sound/release_monster/release_monster_03.mp3",
+    volume: 0.85,
+    loop: false,
+  },
+  [AUDIO_EVENTS.radioReleaseMonster04]: {
+    src: "/object_13/sound/release_monster/release_monster_04.mp3",
+    volume: 0.85,
+    loop: false,
+  },
+  [AUDIO_EVENTS.radioReleaseMonster05]: {
+    src: "/object_13/sound/release_monster/release_monster_05.mp3",
+    volume: 0.85,
+    loop: false,
+  },
+  [AUDIO_EVENTS.radioReleaseMonster06]: {
+    src: "/object_13/sound/release_monster/release_monster_06.mp3",
+    volume: 0.85,
+    loop: false,
+  },
+  [AUDIO_EVENTS.radioReleaseMonster07]: {
+    src: "/object_13/sound/release_monster/release_monster_07.mp3",
+    volume: 0.85,
+    loop: false,
+  },
+  [AUDIO_EVENTS.radioReleaseMonster08]: {
+    src: "/object_13/sound/release_monster/release_monster_08.mp3",
+    volume: 0.85,
+    loop: false,
+  },
+  [AUDIO_EVENTS.radioReleaseMonster09]: {
+    src: "/object_13/sound/release_monster/release_monster_09.mp3",
+    volume: 0.85,
+    loop: false,
+  },
+  [AUDIO_EVENTS.radioReleaseMonster10]: {
+    src: "/object_13/sound/release_monster/release_monster_10.mp3",
+    volume: 0.85,
+    loop: false,
+  },
+  [AUDIO_EVENTS.radioReleaseMonster11]: {
+    src: "/object_13/sound/release_monster/release_monster_11.mp3",
+    volume: 0.85,
+    loop: false,
+  },
 };
