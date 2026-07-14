@@ -181,7 +181,7 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
   // Číslování snímků (1-4, ne 0-3) sedí se zdrojovými PNG, ze kterých se
   // konvertovaly (`ghoul_death_1.png..4.png` přes `cwebp`), záměrně beze
   // změny — přejmenování by jen matlo párování se zdrojem.
-  // `holdMs: 50` na každém snímku + `playOnce: true` (viz SceneBackground.tsx)
+  // `holdMs: 100` na každém snímku + `playOnce: true` (viz SceneBackground.tsx)
   // = přehraje se jednou (1 → 2 → 3 → 4) a zůstane stát na posledním, žádná
   // smyčka zpátky na první snímek. `crossfadeMs` je záměrně KRATŠÍ než
   // `holdMs` (na žádost "snímky moc zanikají, dej rozumně menší crossfade" —
@@ -189,10 +189,10 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
   // jednoho), ať je každý snímek ještě chvíli čistě vidět, ne jen v prolnutí.
   death: {
     frames: [
-      { src: "/object_13/monster/ghoul/ghoul_death_1.webp", holdMs: 50 },
-      { src: "/object_13/monster/ghoul/ghoul_death_2.webp", holdMs: 50 },
-      { src: "/object_13/monster/ghoul/ghoul_death_3.webp", holdMs: 50 },
-      { src: "/object_13/monster/ghoul/ghoul_death_4.webp", holdMs: 50 },
+      { src: "/object_13/monster/ghoul/ghoul_death_1.webp", holdMs: 100 },
+      { src: "/object_13/monster/ghoul/ghoul_death_2.webp", holdMs: 100 },
+      { src: "/object_13/monster/ghoul/ghoul_death_3.webp", holdMs: 100 },
+      { src: "/object_13/monster/ghoul/ghoul_death_4.webp", holdMs: 100 },
     ],
     holdMs: DEFAULT_HOLD_MS,
     crossfadeMs: 40,
@@ -209,10 +209,10 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
   // zůstala nečekaně statická).
   deathDoorAttack: {
     frames: [
-      { src: "/object_13/monster/ghoul/ghoul_death_1.webp", holdMs: 50 },
-      { src: "/object_13/monster/ghoul/ghoul_death_2.webp", holdMs: 50 },
-      { src: "/object_13/monster/ghoul/ghoul_death_3.webp", holdMs: 50 },
-      { src: "/object_13/monster/ghoul/ghoul_death_4.webp", holdMs: 50 },
+      { src: "/object_13/monster/ghoul/ghoul_death_1.webp", holdMs: 100 },
+      { src: "/object_13/monster/ghoul/ghoul_death_2.webp", holdMs: 100 },
+      { src: "/object_13/monster/ghoul/ghoul_death_3.webp", holdMs: 100 },
+      { src: "/object_13/monster/ghoul/ghoul_death_4.webp", holdMs: 100 },
     ],
     holdMs: DEFAULT_HOLD_MS,
     crossfadeMs: 40,
