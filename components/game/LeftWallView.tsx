@@ -85,6 +85,17 @@ interface LeftWallViewProps {
    */
   officeDoorLockMs: number;
   onChangeOfficeDoorLockMs: (value: number) => void;
+  /**
+   * Tlačítko "ZAŽÁDAT O MUNICI" (viz zadání "systém brokovnice a
+   * přebíjení", game/core/shotgunEquipment.ts#requestSingleAmmo) — na rozdíl
+   * od ostatních brokovnicových prvků výše (hasShotgun && ...) se dávkovač
+   * zobrazuje VŽDY, i bez brokovnice (jen vizuálně ztlumený, ne HTML
+   * disabled — stejný "klik dá zpětnou vazbu, ne ticho" vzor jako emergency
+   * run tlačítko se zavřenými dveřmi). O tom, jestli klik skutečně přidá
+   * náboj nebo jen zahraje zvuk odmítnutí, rozhoduje
+   * app/play/page.tsx#handleRequestAmmo PŘED dispatchem.
+   */
+  onRequestAmmo: () => void;
 }
 
 /** Prázdný stojan na zbraň — beze změny oproti dřívějšku, dokud hráč brokovnici nemá (viz hasShotgun). */
@@ -126,6 +137,7 @@ export default function LeftWallView({
   hasWoundedMonsterToday,
   officeDoorLockMs,
   onChangeOfficeDoorLockMs,
+  onRequestAmmo,
 }: LeftWallViewProps) {
   const [imageFailed, setImageFailed] = useState(false);
   const wallImageSrc = !hasShotgun
@@ -133,7 +145,13 @@ export default function LeftWallView({
     : hasDoubleBarrelShotgun
       ? DOUBLE_BARREL_LEFT_WALL_IMAGE_SRC
       : SHOTGUN_LEFT_WALL_IMAGE_SRC;
-  const shotgunMaxAmmo = hasDoubleBarrelShotgun ? DOUBLE_BARREL_SHOTGUN_MAX_AMMO : SHOTGUN_MAX_AMMO;
+  // 0 bez brokovnice (viz zadání "0/0 nebo dávkovač skrytý" — zvolili jsme
+  // "viditelný, ale neaktivní" variantu, proto 0/0 tady i v requestAmmoLabel
+  // níže), jinak podle typu zbraně — jediné místo, kde tenhle výpočet dělá
+  // rozdíl i BEZ hasShotgun (na rozdíl od shotgunMaxAmmo použití níže, které
+  // je vždy uvnitř `hasShotgun &&` bloku).
+  const shotgunMaxAmmo = !hasShotgun ? 0 : hasDoubleBarrelShotgun ? DOUBLE_BARREL_SHOTGUN_MAX_AMMO : SHOTGUN_MAX_AMMO;
+  const canRequestAmmoNow = hasShotgun && shotgunAmmo < shotgunMaxAmmo;
   // hasShotgun mění, KTERÝ soubor se má načíst — dřívější selhání jednoho z
   // nich (imageFailed) nesmí trvale skrýt i ten druhý, jakmile hráč
   // brokovnici získá (nebo v dev/testu naopak).
@@ -294,6 +312,19 @@ export default function LeftWallView({
                 : COPY.game.shotgunAmmoEmptyLabel}
           </div>
         )}
+
+        {/* "ZAŽÁDAT O MUNICI" (viz zadání) — vidět VŽDY, i bez brokovnice
+            (jen vizuálně ztlumené), ať hráč ví, že dávkovač existuje, dřív
+            než zbraň najde. Přidá přesně jeden náboj na klik, nikdy nad
+            kapacitu — druhý klik na plné kapacitě/bez zbraně jen zahraje
+            zvuk odmítnutí (viz app/play/page.tsx#handleRequestAmmo). */}
+        <button
+          type="button"
+          className={`pixel-button console-button tap-target flex items-center gap-2 px-3 py-2 text-xs touch-none select-none w-full justify-center ${canRequestAmmoNow ? "" : "opacity-50"}`}
+          onClick={onRequestAmmo}
+        >
+          <span>{COPY.game.requestAmmoLabel.replace("{ammo}", String(shotgunAmmo)).replace("{max}", String(shotgunMaxAmmo))}</span>
+        </button>
 
         {/* Posuvník "za jak dlouho se dveře do kanceláře samy odemknou" (viz
             zadání "kompenzovat horší mobilní ovládání") — jen s brokovnicí. */}

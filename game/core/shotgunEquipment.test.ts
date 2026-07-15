@@ -3,11 +3,13 @@ import {
   DOUBLE_BARREL_SHOTGUN_MAX_AMMO,
   SHOTGUN_MAX_AMMO,
   applyShotgunEmergencyReturn,
+  canRequestAmmo,
   createFreshRunShotgunEquipment,
   getRechargedShotgunAmmo,
   getShotgunMaxAmmo,
   hasAnyShotgun,
   isDoubleBarrelShotgun,
+  requestSingleAmmo,
 } from "./shotgunEquipment";
 
 describe("SHOTGUN_MAX_AMMO / DOUBLE_BARREL_SHOTGUN_MAX_AMMO", () => {
@@ -76,55 +78,108 @@ describe("getRechargedShotgunAmmo", () => {
   });
 });
 
+describe("canRequestAmmo", () => {
+  it("false without a shotgun, even if shotgunAmmo is (invalidly) > 0", () => {
+    expect(canRequestAmmo({ hasShotgun: false, hasDoubleBarrelShotgun: false, shotgunAmmo: 0 })).toBe(false);
+  });
+
+  it("true with a single-barrel shotgun at 0/1", () => {
+    expect(canRequestAmmo({ hasShotgun: true, hasDoubleBarrelShotgun: false, shotgunAmmo: 0 })).toBe(true);
+  });
+
+  it("false with a single-barrel shotgun already at capacity (1/1)", () => {
+    expect(canRequestAmmo({ hasShotgun: true, hasDoubleBarrelShotgun: false, shotgunAmmo: 1 })).toBe(false);
+  });
+
+  it("true with a double-barrel shotgun at 1/2", () => {
+    expect(canRequestAmmo({ hasShotgun: true, hasDoubleBarrelShotgun: true, shotgunAmmo: 1 })).toBe(true);
+  });
+
+  it("false with a double-barrel shotgun already at capacity (2/2)", () => {
+    expect(canRequestAmmo({ hasShotgun: true, hasDoubleBarrelShotgun: true, shotgunAmmo: 2 })).toBe(false);
+  });
+});
+
+describe("requestSingleAmmo", () => {
+  it("adds exactly one round: 0/1 -> 1/1", () => {
+    expect(requestSingleAmmo({ hasShotgun: true, hasDoubleBarrelShotgun: false, shotgunAmmo: 0 })).toBe(1);
+  });
+
+  it("double-barrel needs two clicks to fully load: 0/2 -> 1/2", () => {
+    expect(requestSingleAmmo({ hasShotgun: true, hasDoubleBarrelShotgun: true, shotgunAmmo: 0 })).toBe(1);
+  });
+
+  it("double-barrel second click: 1/2 -> 2/2", () => {
+    expect(requestSingleAmmo({ hasShotgun: true, hasDoubleBarrelShotgun: true, shotgunAmmo: 1 })).toBe(2);
+  });
+
+  it("never exceeds capacity — clicking again at 1/1 stays at 1/1", () => {
+    expect(requestSingleAmmo({ hasShotgun: true, hasDoubleBarrelShotgun: false, shotgunAmmo: 1 })).toBe(1);
+  });
+
+  it("never exceeds capacity — clicking again at 2/2 stays at 2/2", () => {
+    expect(requestSingleAmmo({ hasShotgun: true, hasDoubleBarrelShotgun: true, shotgunAmmo: 2 })).toBe(2);
+  });
+
+  it("without a shotgun, dispensing never accumulates stock ahead of finding a weapon", () => {
+    expect(requestSingleAmmo({ hasShotgun: false, hasDoubleBarrelShotgun: false, shotgunAmmo: 0 })).toBe(0);
+  });
+});
+
 describe("applyShotgunEmergencyReturn", () => {
   it("returning without the shotgun and without acquiring it leaves state unchanged", () => {
     const result = applyShotgunEmergencyReturn(
       { hasShotgun: false, hasDoubleBarrelShotgun: false },
+      0,
       0,
       [{ type: "energy_recharged", amount: 35 }],
     );
     expect(result).toEqual({ hasShotgun: false, hasDoubleBarrelShotgun: false, shotgunAmmo: 0 });
   });
 
-  it("returning with shotgun_acquired grants a single-barrel shotgun and a full ammo recharge", () => {
-    const result = applyShotgunEmergencyReturn({ hasShotgun: false, hasDoubleBarrelShotgun: false }, 0, [
+  it("returning with shotgun_acquired grants a single-barrel shotgun, but it starts EMPTY (no automatic recharge)", () => {
+    const result = applyShotgunEmergencyReturn({ hasShotgun: false, hasDoubleBarrelShotgun: false }, 0, 0, [
       { type: "shotgun_acquired" },
     ]);
-    expect(result).toEqual({ hasShotgun: true, hasDoubleBarrelShotgun: false, shotgunAmmo: 1 });
+    expect(result).toEqual({ hasShotgun: true, hasDoubleBarrelShotgun: false, shotgunAmmo: 0 });
   });
 
-  it("returning while already owning a single-barrel shotgun always recharges ammo to 1, regardless of what was collected", () => {
-    const result = applyShotgunEmergencyReturn(
-      { hasShotgun: true, hasDoubleBarrelShotgun: false },
-      0,
-      [{ type: "energy_recharged", amount: 35 }],
-    );
-    expect(result).toEqual({ hasShotgun: true, hasDoubleBarrelShotgun: false, shotgunAmmo: 1 });
+  it("no longer auto-recharges on return: entering with 2/2, firing once, returns with 1/2", () => {
+    const result = applyShotgunEmergencyReturn({ hasShotgun: true, hasDoubleBarrelShotgun: true }, 2, 1, []);
+    expect(result).toEqual({ hasShotgun: true, hasDoubleBarrelShotgun: true, shotgunAmmo: 1 });
   });
 
-  it("returning while already owning a double-barrel shotgun recharges ammo to 2, and never downgrades to single-barrel", () => {
-    const result = applyShotgunEmergencyReturn(
-      { hasShotgun: true, hasDoubleBarrelShotgun: true },
-      1,
-      [{ type: "energy_recharged", amount: 35 }],
-    );
-    expect(result).toEqual({ hasShotgun: true, hasDoubleBarrelShotgun: true, shotgunAmmo: 2 });
+  it("firing both barrels returns with 0/2, not recharged", () => {
+    const result = applyShotgunEmergencyReturn({ hasShotgun: true, hasDoubleBarrelShotgun: true }, 2, 2, []);
+    expect(result).toEqual({ hasShotgun: true, hasDoubleBarrelShotgun: true, shotgunAmmo: 0 });
+  });
+
+  it("shotsUsed is clamped so it can never push ammo below 0", () => {
+    const result = applyShotgunEmergencyReturn({ hasShotgun: true, hasDoubleBarrelShotgun: false }, 1, 5, []);
+    expect(result.shotgunAmmo).toBe(0);
+  });
+
+  it("an ammo_acquired pickup adds rounds on top of what's left, capped at capacity", () => {
+    const result = applyShotgunEmergencyReturn({ hasShotgun: true, hasDoubleBarrelShotgun: true }, 0, 0, [
+      { type: "ammo_acquired", amount: 5 },
+    ]);
+    expect(result.shotgunAmmo).toBe(2);
   });
 
   it("shotgun_acquired while already owning a double-barrel shotgun never downgrades it", () => {
-    const result = applyShotgunEmergencyReturn({ hasShotgun: true, hasDoubleBarrelShotgun: true }, 0, [
+    const result = applyShotgunEmergencyReturn({ hasShotgun: true, hasDoubleBarrelShotgun: true }, 2, 0, [
       { type: "shotgun_acquired" },
     ]);
     expect(result).toEqual({ hasShotgun: true, hasDoubleBarrelShotgun: true, shotgunAmmo: 2 });
   });
 
   it("is a no-op-safe when effects is undefined", () => {
-    expect(applyShotgunEmergencyReturn({ hasShotgun: false, hasDoubleBarrelShotgun: false }, 0, undefined)).toEqual({
+    expect(applyShotgunEmergencyReturn({ hasShotgun: false, hasDoubleBarrelShotgun: false }, 0, 0, undefined)).toEqual({
       hasShotgun: false,
       hasDoubleBarrelShotgun: false,
       shotgunAmmo: 0,
     });
-    expect(applyShotgunEmergencyReturn({ hasShotgun: true, hasDoubleBarrelShotgun: false }, 0, undefined)).toEqual({
+    expect(applyShotgunEmergencyReturn({ hasShotgun: true, hasDoubleBarrelShotgun: false }, 1, 0, undefined)).toEqual({
       hasShotgun: true,
       hasDoubleBarrelShotgun: false,
       shotgunAmmo: 1,

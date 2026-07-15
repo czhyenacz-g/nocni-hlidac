@@ -142,6 +142,14 @@ export type GameAction =
   // nedispatchne, takže brokovnice/náboj se tímhle nikdy nezíská bez
   // skutečného návratu do kanceláře.
   | { type: "APPLY_SHOTGUN_EFFECTS"; hasShotgun: boolean; shotgunAmmo: number }
+  // Tlačítko "ZAŽÁDAT O MUNICI" na LeftWallView.tsx (viz zadání "systém
+  // brokovnice a přebíjení") — přidá přesně JEDEN náboj, nikdy nad kapacitu
+  // aktuální zbraně (viz game/core/shotgunEquipment.ts#requestSingleAmmo).
+  // Bez brokovnice nebo na plné kapacitě je no-op (canRequestAmmo) — reducer
+  // sám nehraje žádný zvuk, o odmítnutí/úspěch se stará
+  // app/play/page.tsx#handleRequestAmmo PŘED dispatchem (zná stav ještě
+  // před akcí, stejný vzor jako ostatní přímo klikací handlery).
+  | { type: "REQUEST_AMMO" }
   // Skrytý true ending (viz zadání, game/core/monsterEnding.ts) — dva kroky,
   // stejné rozdělení jako "sebrání věci" vs. "dokončení mise" v minihře:
   // MARK_PENDING_MONSTER_HIT se dispatchne HNED, jak hráč venku trefí

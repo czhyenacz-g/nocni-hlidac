@@ -26,6 +26,7 @@ import { resolveLivesRemainingAfterDeath } from "./gameMode";
 import { confirmMonsterHit } from "./monsterEnding";
 import { isMonsterMinStayBlocking } from "./monsterMinStay";
 import { isSonicCannonAffectingEnemy } from "./sonicCannon";
+import { canRequestAmmo, requestSingleAmmo } from "./shotgunEquipment";
 import {
   isDoorAttackBlockedByClosedDoor,
   isDoorAttackGraceActive,
@@ -1530,6 +1531,15 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         // je jen zapíše.
         if (!state.isRunning) return state;
         return { ...state, hasShotgun: action.hasShotgun, shotgunAmmo: action.shotgunAmmo };
+
+      // "ZAŽÁDAT O MUNICI" na LeftWallView.tsx (viz zadání) — přidá přesně
+      // jeden náboj, nikdy nad kapacitu (viz
+      // game/core/shotgunEquipment.ts#requestSingleAmmo). Bez brokovnice
+      // nebo na plné kapacitě je no-op — zvuk odmítnutí řeší
+      // app/play/page.tsx#handleRequestAmmo ještě před dispatchem.
+      case "REQUEST_AMMO":
+        if (!state.isRunning || !canRequestAmmo(state)) return state;
+        return { ...state, shotgunAmmo: requestSingleAmmo(state) };
 
       // Hráč venku PRÁVĚ TEĎ trefil monstrum brokovnicí (viz
       // EmergencyMiniGame.tsx#fireShot, app/play/page.tsx#onMonsterHit) —

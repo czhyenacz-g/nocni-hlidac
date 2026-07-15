@@ -2043,3 +2043,45 @@ baterii, ale přivedl jsem si to za sebou". Nikdy nezpůsobuje okamžitou smrt.
   dveře!") se zobrazí ve stejném transient `emergencyRunMessage` boxu jako recharge
   hláška; box teď má `whitespace-pre-line`, ať se `\n` skutečně zalomí. Víc zpráv
   najednou (recharge + threat) se spojí `\n` (`messages.join("\n")`), ne mezerou.
+
+## Brokovnice — munice bez automatického dobíjení (`game/core/shotgunEquipment.ts`)
+
+Jediný zdroj pravdy pro nabitou munici je `GameState.shotgunAmmo` — kapacita se NIKDY
+neukládá zvlášť, vždy se odvozuje z `hasShotgun`/`hasDoubleBarrelShotgun` přes
+`getShotgunMaxAmmo()`. Dřívější chování ("po každém bezpečném návratu se munice dobije na
+max") bylo záměrně odstraněno — `getRechargedShotgunAmmo()` zůstává v kódu jen pro dobíjení
+na ZAČÁTKU noci (`app/play/page.tsx#handleBeginShift`, `RESTART_SHIFT`/`START_SHIFT` fresh
+run větev), na návrat z minihry se už nepoužívá.
+
+- **`canRequestAmmo(state)`** / **`requestSingleAmmo(state)`** — čisté funkce, `false`/beze
+  změny bez brokovnice nebo na plné kapacitě, jinak `shotgunAmmo + 1` (nikdy víc, dvouhlavňovku
+  je tak potřeba dvěma kliknutími). Jediné místo, které rozhoduje, jestli dávkovač smí přidat
+  náboj — reducer (`REQUEST_AMMO` case) i `app/play/page.tsx#handleRequestAmmo` (pro výběr
+  zvuku PŘED dispatchem) je volají, žádná duplicitní logika.
+- **`gameReducer.ts` `REQUEST_AMMO`** — guard `isRunning && canRequestAmmo(state)`, jinak
+  no-op (`return state`), stejný "pure helper rozhoduje, reducer jen zapíše" vzor jako zbytek
+  souboru. Bez zvuku — o tom rozhoduje volající (`app/play/page.tsx`), protože jde vždy jen o
+  přímý klik, nikdy o vedlejší efekt jiné akce (na rozdíl od `TOGGLE_SONIC_CANNON`, které
+  potřebovalo `xSeq` vzor kvůli auto-off z reduceru).
+- **`LeftWallView.tsx`** — tlačítko "ZAŽÁDAT O MUNICI" je vidět VŽDY (i bez brokovnice,
+  `{ammo}/{max}` = `0/0`), jen vizuálně ztlumené (`opacity-50`), NE HTML `disabled` — stejná
+  "klik dá zpětnou vazbu, ne ticho" konvence jako emergency-run tlačítko se zavřenými dveřmi.
+- **`applyShotgunEmergencyReturn(current, shotgunAmmoBeforeRun, shotsUsed, effects)`** — nový
+  parametr `shotsUsed` (z `EmergencyMiniGameResult["returned"].shotsUsed`, minihra ho už dřív
+  počítala pro true ending, teď se použije i tady). Výsledná munice:
+  `clamp(shotgunAmmoBeforeRun - shotsUsed + ammoAcquired, 0, capacity aktuální zbraně)`, kde
+  `ammoAcquired` je součet `amount` ze všech `ammo_acquired` worldEffects (existující, dřív
+  nevyužitý loot typ — `game/minigame/logic.ts#worldEffectsForItem("ammo")`, zatím se nikde
+  reálně nespawnuje, ale efekt teď má skutečný dopad, kdyby se objevil v budoucím loot layoutu).
+  Nová brokovnice (`shotgun_acquired` bez předchozí `hasShotgun`) tak začíná PRÁZDNÁ (`0/1`),
+  ne nabitá — pokud hráč cestou nesebral i `ammo_acquired`.
+- **Minihra (`EmergencyMiniGame.tsx`)** — vstupní `equipment.ammo` je vždy `state.shotgunAmmo`
+  (`app/play/page.tsx`, žádná samostatná ammo evidence), `applyShot`/`canFireWeapon`
+  (`game/minigame/logic.ts`, beze změny) už dřív správně odečítaly náboj za výstřel a
+  odmítaly střelbu na nule — jediné chybějící propojení bylo, že se výsledek při návratu
+  zahazoval (blunt recharge). `fireShot()` teď navíc při `!result.fired` (a `status ===
+  "playing"`) přehraje `AUDIO_EVENTS.weaponEmptyClick` ("cvak naprázdno") — dřív bylo ticho.
+- **Nové audio eventy** (`game/audio/audioEvents.ts`/`audioConfig.ts`, zatím jen fallback
+  synth, žádné reálné soubory): `ammoDispenseClick` (úspěšné dávkování), `ammoRequestRejected`
+  (sdílený pro OBA odmítací případy — plná zbraň i žádná zbraň zatím nenalezená),
+  `weaponEmptyClick` (prázdná zbraň v minihře).

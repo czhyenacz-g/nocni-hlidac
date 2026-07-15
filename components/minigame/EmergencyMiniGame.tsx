@@ -660,7 +660,16 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
       status: game.status,
       shotFlashDurationMs: SHOT_FLASH_DURATION_MS,
     });
-    if (!result.fired) return;
+    if (!result.fired) {
+      // Prázdno (viz zadání "systém brokovnice a přebíjení" — bez náboje se
+      // hráč nemůže bránit, musí se fyzicky vrátit do kanceláře a dobít
+      // přes ZAŽÁDAT O MUNICI). Stejný zvuk i bez brokovnice vůbec. Jen
+      // během aktivní hry (`status === "playing"`) — mimo ni (výherní/
+      // prohraná obrazovka) by mezerník stejně neměl žádný jiný efekt a
+      // zvuk by tam jen rušil.
+      if (game.status === "playing") audioManager.play(AUDIO_EVENTS.weaponEmptyClick);
+      return;
+    }
 
     game.player.ammo = result.ammo;
     game.shotsUsed += result.shotsUsedDelta;

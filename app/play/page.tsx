@@ -82,6 +82,7 @@ import {
 } from "@/game/core/emergencyMiniGameIntegration";
 import {
   applyShotgunEmergencyReturn,
+  canRequestAmmo,
   createFreshRunShotgunEquipment,
   getRechargedShotgunAmmo,
 } from "@/game/core/shotgunEquipment";
@@ -1313,6 +1314,22 @@ export default function PlayPage() {
     dispatch({ type: "SET_OFFICE_DOOR_LOCK_MS", value });
   }
 
+  // "ZAŽÁDAT O MUNICI" na LeftWallView.tsx (viz zadání "systém brokovnice a
+  // přebíjení") — canRequestAmmo se čte ze SOUČASNÉHO state PŘED dispatchem
+  // (stejný "zvol zvuk podle stavu, co znám teď" vzor jako
+  // handleStartThinkItOverWindup výše), ať se zvuk úspěchu/odmítnutí přesně
+  // shoduje s tím, co REQUEST_AMMO v reduceru samo o sobě udělá (nebo
+  // neudělá). Dva různé odmítací případy (plná zbraň / žádná zbraň zatím
+  // nenalezená) sdílí jeden zvuk (viz audioEvents.ts#ammoRequestRejected).
+  function handleRequestAmmo() {
+    if (!canRequestAmmo(state)) {
+      audioManager.play(AUDIO_EVENTS.ammoRequestRejected);
+      return;
+    }
+    audioManager.play(AUDIO_EVENTS.ammoDispenseClick);
+    dispatch({ type: "REQUEST_AMMO" });
+  }
+
   // Jediné místo, které zpracuje EmergencyMiniGameResult (viz
   // EmergencyMiniGame onComplete kontrakt) — vždy zavře minihru, pak podle
   // outcome buď dobije energii (returned + worldEffects), spustí existující
@@ -1373,15 +1390,18 @@ export default function PlayPage() {
         dispatch({ type: "LOOK_AT_DOOR" });
       }
 
-      // Brokovnice/náboj (viz zadání "první krok k true endingu",
-      // game/core/shotgunEquipment.ts) — KAŽDÝ bezpečný návrat dobije náboj
-      // na plno, pokud hráč brokovnici má (ať už ji přinesl teď, nebo už ji
-      // měl dřív), bez ohledu na to, co přesně sebral/kolik nábojů cestou
-      // vystřelil. "dead"/"failed" výše tenhle dispatch vůbec nezavolají —
-      // brokovnice/náboj se tedy nikdy nezíská bez skutečného návratu.
+      // Brokovnice/náboj (viz zadání "systém brokovnice a přebíjení",
+      // game/core/shotgunEquipment.ts) — KAŽDÝ bezpečný návrat přenese SKUTEČNĚ
+      // zbylou munici (state.shotgunAmmo před výpravou minus result.shotsUsed
+      // vystřelené cestou, plus případný ammo_acquired loot), NE plné dobití
+      // (zadání "to je záměrné nové herní chování" — zapomene-li hráč
+      // dobít před dalším výjezdem, vyrazí i s 0 náboji). "dead"/"failed"
+      // výše tenhle dispatch vůbec nezavolají — brokovnice/náboj se tedy
+      // nikdy nezíská bez skutečného návratu.
       const shotgunResult = applyShotgunEmergencyReturn(
         { hasShotgun: state.hasShotgun, hasDoubleBarrelShotgun: state.hasDoubleBarrelShotgun },
         state.shotgunAmmo,
+        result.shotsUsed,
         result.worldEffects,
       );
       if (shotgunResult.hasShotgun !== state.hasShotgun || shotgunResult.shotgunAmmo !== state.shotgunAmmo) {
@@ -1602,6 +1622,7 @@ export default function PlayPage() {
           onSetDebugNight={handleSetDebugNight}
           onStartBulbReplacement={handleStartBulbReplacement}
           onCancelBulbReplacement={handleCancelBulbReplacement}
+          onRequestAmmo={handleRequestAmmo}
           onStartEmergencyRunWindup={handleStartEmergencyRunWindup}
           onCancelEmergencyRunWindup={handleCancelEmergencyRunWindup}
           onStartThinkItOverWindup={handleStartThinkItOverWindup}

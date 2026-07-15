@@ -410,4 +410,25 @@ export const SOUND_REGISTRY: Record<AudioEventId, SoundRegistryEntry> = {
     guess: "Hluboké elektrické 'bzzz' (95Hz sawtooth), velmi tiché, bez melodie.",
     usedIn: "app/play/page.tsx — efekt na state.sonicCannonActive (startLoop/stopLoop).",
   },
+  [AUDIO_EVENTS.ammoDispenseClick]: {
+    id: AUDIO_EVENTS.ammoDispenseClick,
+    label: "Dávkovač munice / Úspěšné dávkování",
+    description: "Hraje při každém úspěšném přidání jednoho náboje přes tlačítko ZAŽÁDAT O MUNICI. Žádný finální asset zatím neexistuje — vždy fallback synth.",
+    guess: "Dvě krátké stoupající noty (520Hz -> 780Hz square), 'cvak-cvak' nabíjení.",
+    usedIn: "app/play/page.tsx#handleRequestAmmo, jen když canRequestAmmo(state) je true.",
+  },
+  [AUDIO_EVENTS.ammoRequestRejected]: {
+    id: AUDIO_EVENTS.ammoRequestRejected,
+    label: "Dávkovač munice / Odmítnutí",
+    description: "Sdílený zvuk pro OBA případy, kdy kliknutí na ZAŽÁDAT O MUNICI nic nepřidá: zbraň už je plně nabitá, nebo hráč ještě žádnou zbraň nenašel.",
+    guess: "Jedna krátká nízká tupá nota (180Hz square).",
+    usedIn: "app/play/page.tsx#handleRequestAmmo, když canRequestAmmo(state) je false.",
+  },
+  [AUDIO_EVENTS.weaponEmptyClick]: {
+    id: AUDIO_EVENTS.weaponEmptyClick,
+    label: "Brokovnice / Prázdno",
+    description: "Hraje v EmergencyMiniGame, když hráč zkusí vystřelit bez náboje (applyShot#fired === false) — musí se fyzicky vrátit do kanceláře a dobít.",
+    guess: "Suchý vysoký cvak bez rezonance (1400Hz square, 25ms).",
+    usedIn: "components/minigame/EmergencyMiniGame.tsx#fireShot.",
+  },
 };

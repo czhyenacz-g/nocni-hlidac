@@ -541,4 +541,44 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
       waveform: "sawtooth",
     },
   },
+  // Dávkovač munice (viz zadání) — žádné soubory zatím nedodané, vždy
+  // spadne na fallbackSynth. Dvě stoupající noty ("cvak-cvak" nabíjení).
+  [AUDIO_EVENTS.ammoDispenseClick]: {
+    src: "/assets/audio/ammo_dispense_click.mp3",
+    volume: 0.6,
+    loop: false,
+    fallbackSynth: {
+      notes: [
+        { frequency: 520, durationMs: 40, gapMs: 15 },
+        { frequency: 780, durationMs: 60 },
+      ],
+      volume: 0.5,
+      waveform: "square",
+    },
+  },
+  // Odmítnutí (plná zbraň i žádná zbraň zatím nenalezená) — jedna krátká,
+  // nízká tupá nota, ať je jasně odlišná od úspěšného dávkování výše.
+  [AUDIO_EVENTS.ammoRequestRejected]: {
+    src: "/assets/audio/ammo_request_rejected.mp3",
+    volume: 0.5,
+    loop: false,
+    fallbackSynth: {
+      notes: [{ frequency: 180, durationMs: 90 }],
+      volume: 0.45,
+      waveform: "square",
+    },
+  },
+  // "Cvak" na prázdno v EmergencyMiniGame.tsx#fireShot (viz applyShot#fired
+  // === false) — suchý, vyšší cvak bez žádné rezonance, ať je jasně "kov o
+  // kov", ne výstřel.
+  [AUDIO_EVENTS.weaponEmptyClick]: {
+    src: "/assets/audio/weapon_empty_click.mp3",
+    volume: 0.55,
+    loop: false,
+    fallbackSynth: {
+      notes: [{ frequency: 1400, durationMs: 25 }],
+      volume: 0.4,
+      waveform: "square",
+    },
+  },
 };

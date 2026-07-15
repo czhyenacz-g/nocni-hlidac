@@ -59,6 +59,29 @@ export function getRechargedShotgunAmmo(state: ShotgunEquipmentState): number {
   return getShotgunMaxAmmo(state);
 }
 
+/**
+ * Munice, kterou hráč aktuálně má oproti kapacitě AKTUÁLNÍ zbraně (viz
+ * getShotgunMaxAmmo) — `false` bez brokovnice (dávkovač nemá co dávkovat) i
+ * na plné kapacitě (žádné "přeplnění"). Jediné místo, které rozhoduje, jestli
+ * dávkovač na LeftWallView smí přidat náboj (viz requestSingleAmmo,
+ * app/play/page.tsx#handleRequestAmmo).
+ */
+export function canRequestAmmo(state: ShotgunEquipmentState & { shotgunAmmo: number }): boolean {
+  return state.hasShotgun && state.shotgunAmmo < getShotgunMaxAmmo(state);
+}
+
+/**
+ * Jedno kliknutí na "ZAŽÁDAT O MUNICI" = přesně jeden náboj navíc, nikdy nad
+ * kapacitu aktuální zbraně (viz zadání "dvouhlavňovku musí hráč nabít dvěma
+ * kliknutími"). Bez brokovnice nebo na plné kapacitě vrací munici beze změny
+ * — volající (canRequestAmmo) rozhoduje, jestli má kliknutí vůbec smysl
+ * (jinak jen zvuk odmítnutí), tahle funkce sama o sobě nikdy nepřekročí strop.
+ */
+export function requestSingleAmmo(state: ShotgunEquipmentState & { shotgunAmmo: number }): number {
+  if (!canRequestAmmo(state)) return state.shotgunAmmo;
+  return state.shotgunAmmo + 1;
+}
+
 export interface AppliedShotgunReturnResult {
   hasShotgun: boolean;
   hasDoubleBarrelShotgun: boolean;
@@ -66,11 +89,14 @@ export interface AppliedShotgunReturnResult {
 }
 
 /**
- * Aplikuje `shotgun_acquired` z worldEffects + dobíjecí pravidlo výše na
- * aktuální stav brokovnice — volá se při KAŽDÉM bezpečném návratu do
- * kanceláře z emergency výpravy (viz
- * app/play/page.tsx#handleEmergencyMiniGameComplete), bez ohledu na to, co
- * přesně hráč přinesl a kolik nábojů cestou spotřeboval. `shotgun_acquired`
+ * Aplikuje `shotgun_acquired`/`ammo_acquired` z worldEffects na aktuální stav
+ * brokovnice — volá se při KAŽDÉM bezpečném návratu do kanceláře z emergency
+ * výpravy (viz app/play/page.tsx#handleEmergencyMiniGameComplete). NA ROZDÍL
+ * od dřívějšího chování (getRechargedShotgunAmmo) se munice po návratu už
+ * NEDOBÍJÍ na max — hráč se vrací s tím, co mu reálně zbylo (`shotgunAmmo`
+ * před výpravou, minus `shotsUsed` vystřelené v EmergencyMiniGame.tsx#fireShot,
+ * plus případný `ammo_acquired` loot), clampnuté do 0..kapacita AKTUÁLNÍ
+ * zbraně (viz zadání "to je záměrné nové herní chování"). `shotgun_acquired`
  * worldEffect vždy znamená BĚŽNOU brokovnici (loot v minihře nikdy
  * nenabízí dvouhlavňovku, viz canStartShotgunEmergencyRun — ta se
  * nespawnuje, jakmile `hasShotgun` už je `true`, ať už jednohlavňová nebo
@@ -83,13 +109,19 @@ export interface AppliedShotgunReturnResult {
  */
 export function applyShotgunEmergencyReturn(
   current: ShotgunEquipmentState,
-  shotgunAmmo: number,
+  shotgunAmmoBeforeRun: number,
+  shotsUsed: number,
   effects: EmergencyWorldEffect[] | undefined,
 ): AppliedShotgunReturnResult {
   const shotgunAcquired = (effects ?? []).some((effect) => effect.type === "shotgun_acquired");
+  const ammoAcquired = (effects ?? [])
+    .filter((effect): effect is Extract<EmergencyWorldEffect, { type: "ammo_acquired" }> => effect.type === "ammo_acquired")
+    .reduce((sum, effect) => sum + effect.amount, 0);
   const nextHasShotgun = current.hasShotgun || shotgunAcquired;
   const next: ShotgunEquipmentState = { hasShotgun: nextHasShotgun, hasDoubleBarrelShotgun: current.hasDoubleBarrelShotgun };
-  return { ...next, shotgunAmmo: getRechargedShotgunAmmo(next) };
+  const capacity = getShotgunMaxAmmo(next);
+  const nextAmmo = Math.max(0, Math.min(capacity, shotgunAmmoBeforeRun - shotsUsed + ammoAcquired));
+  return { ...next, shotgunAmmo: nextAmmo };
 }
 
 export interface FreshRunShotgunEquipment {

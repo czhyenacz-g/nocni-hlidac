@@ -507,6 +507,28 @@ beze změny, smrt přijde stejně instantně jako dřív.
 Když `remainingMs` klesne na 0 a hráč je stále naživu (i uprostřed blackoutu — viz
 výše), zobrazí se `WinScreen`.
 
+## Brokovnice a munice
+
+Trvalé vlastnictví brokovnice pro aktuální run (`GameState.hasShotgun`/`hasDoubleBarrelShotgun`,
+viz `game/core/shotgunEquipment.ts`) — první krok k true endingu. Kapacita se odvozuje od
+typu zbraně, nikdy neuklá zvlášť: bez zbraně 0, jednohlavňovka 1, dvouhlavňovka 2.
+
+### Žádné automatické dobíjení
+
+Munice se **nedobíjí automaticky** ani při návratu z nouzové výpravy (lovecké minihry), ani
+uprostřed noci. Jediný způsob, jak náboj doplnit, je tlačítko **"ZAŽÁDAT O MUNICI"** na
+`LeftWallView` — každé kliknutí přidá přesně jeden náboj, nikdy nad kapacitu (dvouhlavňovku
+je tak potřeba nabít dvěma kliknutími). Dávkovač je na stěně vidět vždy, i než hráč zbraň
+vůbec najde (`0/0`) — jen vizuálně ztlumený, ne nedostupný; klik bez zbraně nebo na plné
+kapacitě munici nepřidá, jen zahraje zvuk odmítnutí.
+
+Munice v lovecké minihře (`EmergencyMiniGame`) je **stejné sdílené číslo** jako `shotgunAmmo`
+v hlavní hře — hráč do výpravy vstupuje přesně s tím, co měl nabité v kanceláři, a vrací se
+s tím, co mu reálně zbylo (spotřeba za každý výstřel, případný `ammo_acquired` loot navrch).
+Pokud hráč zapomene dobít před dalším výjezdem, vyrazí i s prázdnou zbraní — to je záměrné.
+Dojde-li munice uprostřed minihry, další stisk mezerníku nevystřelí (jen zahraje "cvak
+naprázdno") a hráč se musí fyzicky vrátit do kanceláře.
+
 ## Žárovky (základ)
 
 První krok budoucího systému náhradních žárovek: hlídač na začátku kampaně dostane **10**

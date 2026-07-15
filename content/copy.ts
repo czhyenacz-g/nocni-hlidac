@@ -269,6 +269,13 @@ export const COPY = {
     // "Náboj: prázdno").
     doubleBarrelAmmoReadyLabel: "Dvouhlavňovka: {ammo}/{max}",
     doubleBarrelAmmoEmptyLabel: "Dvouhlavňovka: prázdná",
+    // Tlačítko dávkovače munice na LeftWallView (viz zadání "systém
+    // brokovnice a přebíjení") — zobrazuje se VŽDY (i bez brokovnice, viz
+    // "Preferuji, aby byl dávkovač na stěně viditelný, ale neaktivní"),
+    // {ammo}/{max} je 0/0 bez zbraně (game/core/shotgunEquipment.ts#getShotgunMaxAmmo).
+    // Žádné automatické dobíjení už neexistuje (viz applyShotgunEmergencyReturn) —
+    // tohle je jediná cesta, jak munici doplnit.
+    requestAmmoLabel: "ZAŽÁDAT O MUNICI ({ammo}/{max})",
     // Vedlejší tlačítko na left_wall, vidět jen s brokovnicí (viz zadání,
     // GameState.hasShotgun) — stejný "drž tlačítko" vzor jako
     // startEmergencyRunLabel výše, jen delší (THINK_IT_OVER_WINDUP_DURATION_MS)

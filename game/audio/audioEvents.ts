@@ -118,6 +118,19 @@ export const AUDIO_EVENTS = {
   // vlastní event — znovupoužívá existující `lightClick` (viz
   // app/dev-sound/soundRegistry.ts, "Cvaknutí vypínače" sedí i sem).
   sonicCannonHum: "sonic_cannon_hum",
+  // ── Dávkovač munice na LeftWallView.tsx (viz zadání "systém brokovnice a
+  // přebíjení") — tři samostatné eventy. ammoDispenseClick = úspěšné přidání
+  // náboje. ammoRequestRejected = kliknutí bez efektu (sdílený pro OBA
+  // odmítací případy — plná zbraň i žádná zbraň zatím nalezená — stejná
+  // "click dá zvukovou odezvu, ne ticho" konvence jako emergency-run
+  // tlačítko se zavřenými dveřmi, ale funkčně jde o stejné "nic se
+  // nestalo" odmítnutí, ne dva různé stavy hodné vlastního zvuku).
+  // weaponEmptyClick = pokus o výstřel v EmergencyMiniGame.tsx#fireShot bez
+  // náboje (viz applyShot#fired === false) — hráč zůstává v minihře, musí
+  // se fyzicky vrátit a dobít.
+  ammoDispenseClick: "ammo_dispense_click",
+  ammoRequestRejected: "ammo_request_rejected",
+  weaponEmptyClick: "weapon_empty_click",
 } as const;
 
 export type AudioEventId = (typeof AUDIO_EVENTS)[keyof typeof AUDIO_EVENTS];

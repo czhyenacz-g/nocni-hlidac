@@ -64,6 +64,8 @@ interface GameScreenProps {
   onSetDebugNight: (night: number) => void;
   onStartBulbReplacement: () => void;
   onCancelBulbReplacement: () => void;
+  /** "ZAŽÁDAT O MUNICI" na LeftWallView.tsx (viz zadání "systém brokovnice a přebíjení"). */
+  onRequestAmmo: () => void;
 }
 
 export default function GameScreen({
@@ -98,6 +100,7 @@ export default function GameScreen({
   onSetDebugNight,
   onStartBulbReplacement,
   onCancelBulbReplacement,
+  onRequestAmmo,
 }: GameScreenProps) {
   // Pozadí pro desk/generator (BACKGROUND_SCENES.play) — jen mimo blackout,
   // kdy BlackoutView stejně celou obrazovku nahrazuje vlastní atmosférou.
@@ -279,6 +282,7 @@ export default function GameScreen({
                 hasWoundedMonsterToday={state.monsterHitsToday > 0}
                 officeDoorLockMs={state.officeDoorLockMs}
                 onChangeOfficeDoorLockMs={onChangeOfficeDoorLockMs}
+                onRequestAmmo={onRequestAmmo}
               />
             )}
             {state.playerView === "object_map" && <ObjectMapView onLookAtDesk={onLookAtDesk} />}
