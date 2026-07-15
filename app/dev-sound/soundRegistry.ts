@@ -431,4 +431,25 @@ export const SOUND_REGISTRY: Record<AudioEventId, SoundRegistryEntry> = {
     guess: "Suchý vysoký cvak bez rezonance (1400Hz square, 25ms).",
     usedIn: "components/minigame/EmergencyMiniGame.tsx#fireShot.",
   },
+  [AUDIO_EVENTS.cameraDamageStart]: {
+    id: AUDIO_EVENTS.cameraDamageStart,
+    label: "Kamera / Ghoul útočí",
+    description: "Hraje přesně jednou, když Ghoul zahájí vzácný útok na aktivní kameru (GameState.cameraAttackStartedSeq). Žádný finální asset zatím neexistuje — vždy fallback synth.",
+    guess: "Dvě rychlé nesouhlasné noty (220Hz -> 90Hz sawtooth), 'prasknutí'.",
+    usedIn: "app/play/page.tsx — efekt na state.cameraAttackStartedSeq.",
+  },
+  [AUDIO_EVENTS.cameraSignalLost]: {
+    id: AUDIO_EVENTS.cameraSignalLost,
+    label: "Kamera / Signál ztracen",
+    description: "Hraje přesně jednou, když se přechod poškození kamery dokončí (GameState.cameraOfflineSeq) — souběžně se zobrazí i textová rádiová hláška.",
+    guess: "Nízký delší tón (60Hz sawtooth, 260ms).",
+    usedIn: "app/play/page.tsx — efekt na state.cameraOfflineSeq.",
+  },
+  [AUDIO_EVENTS.disabledCameraFootsteps]: {
+    id: AUDIO_EVENTS.disabledCameraFootsteps,
+    label: "Kamera / Kroky z mikrofonu (offline kamera)",
+    description: "Hraje, když Ghoul vstoupí do lokace s offline kamerou (nebo tam už stojí, když se kamera dokončí vyřadit) — GameState.disabledCameraFootstepsSeq, respektuje DISABLED_CAMERA_FOOTSTEPS_COOLDOWN_MS.",
+    guess: "Kroky — člověk, kámen (7 s), CC0, freesound.org/people/SecureSubset/sounds/813622/.",
+    usedIn: "app/play/page.tsx — efekt na state.disabledCameraFootstepsSeq. Stejný soubor jako /dev-sound candidate 'footsteps_human/footsteps_stone_securesubset.mp3', beze změny/kopie.",
+  },
 };

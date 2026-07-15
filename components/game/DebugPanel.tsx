@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { BULB_REPLACE_DURATION_MS, DEBUG_PANEL_ENABLED } from "@/game/balancing/constants";
-import { GameState, NightDefinition } from "@/game/core/types";
+import { GameState, GhoulCameraAttackAnimationId, NightDefinition } from "@/game/core/types";
 import { getBlackoutPhaseIndex } from "@/game/visuals/blackoutPhase";
 import { buildEnemyDebugInfo } from "@/game/core/enemyDebugInfo";
 import { resolveDoorMonsterEncounter } from "@/game/core/doorEncounter";
@@ -8,7 +8,18 @@ import { isNearRoomLightActive } from "@/game/core/roomBulbs";
 import { computePowerDrainBreakdown } from "@/game/core/powerDrain";
 import { DEFAULT_DIFFICULTY } from "@/game/difficulty/difficultyConfig";
 import { computeNightScaling } from "@/game/difficulty/nightScaling";
+import { getMaxDisabledCamerasForNight } from "@/game/core/cameraDamage";
+import { GHOUL_CAMERA_ATTACK_FRAMES_DURATION_MS } from "@/game/core/cameraDamageConfig";
+import { getGhoulCameraAttackAnimation } from "@/game/cameras/cameraAttackAnimation.object13";
+import { resolveGhoulCameraAttackFrameState } from "@/game/cameras/cameraAttackAnimation";
 import DoorControl from "./DoorControl";
+
+const GHOUL_CAMERA_ATTACK_ANIMATION_IDS: GhoulCameraAttackAnimationId[] = [
+  "left_hallway",
+  "right_hallway",
+  "door_hallway",
+  "door_hallway_light",
+];
 
 // Rychlé volby pro admin-only "Test noci" sekci níže (viz zadání "testovací
 // nástroj pro late-run scény") — přesně nocí, které zajímají Valhala
@@ -31,6 +42,18 @@ interface DebugPanelProps {
   onDebugRestartGenerator: () => void;
   /** Viz GameState.debugNightOverride, gameActions.ts SET_DEBUG_NIGHT. */
   onSetDebugNight: (night: number) => void;
+  /** Viz GameState.cameraDamage, game/core/cameraDamage.ts — ruční spuštění útoku Ghoula na aktuální kameru / reset poškození kamer. `animationId` (viz zadání "vybrat konkrétní sekvenci") je volitelný override. */
+  onDebugTriggerGhoulCameraAttack: (animationId?: GhoulCameraAttackAnimationId) => void;
+  onDebugResetCameraDamage: () => void;
+  /** Viz zadání "přeskočit na poslední frame" / "přeskočit rovnou do offline stavu". */
+  onDebugSkipCameraAttackToLastFrame: () => void;
+  onDebugSkipCameraAttackToOffline: () => void;
+  /** Teleportuje Ghoula na lokaci první vyřazené kamery (viz zadání "otestovat mikrofon"). */
+  onDebugMoveEnemyToDisabledCamera: () => void;
+  /** Ručně přehraje zvuk kroků z mikrofonu bez ohledu na cooldown. */
+  onDebugPlayDisabledCameraFootsteps: () => void;
+  /** Viz GameState.debugGhoulCameraAttackChanceOverride — `null` = produkční 5 %. */
+  onSetDebugGhoulCameraAttackChance: (chance: number | null) => void;
 }
 
 export default function DebugPanel({
@@ -44,7 +67,18 @@ export default function DebugPanel({
   onDebugToggleDoor,
   onDebugRestartGenerator,
   onSetDebugNight,
+  onDebugTriggerGhoulCameraAttack,
+  onDebugResetCameraDamage,
+  onDebugMoveEnemyToDisabledCamera,
+  onDebugPlayDisabledCameraFootsteps,
+  onSetDebugGhoulCameraAttackChance,
+  onDebugSkipCameraAttackToLastFrame,
+  onDebugSkipCameraAttackToOffline,
 }: DebugPanelProps) {
+  // Vybraná sekvence pro "DEV: Vyřadit s konkrétní sekvencí" (viz zadání
+  // "vybrat konkrétní sekvenci") — čistě UI výběr PŘED odesláním, ne
+  // GameState (stejný vzor jako debugNightInput níže).
+  const [selectedAnimationId, setSelectedAnimationId] = useState<GhoulCameraAttackAnimationId>("left_hallway");
   // Lokální text inputu — ne GameState (je to jen rozepsaná hodnota PŘED
   // odesláním, viz handleSetDebugNightSubmit níže), samostatné od
   // state.debugNightOverride.
@@ -187,6 +221,104 @@ export default function DebugPanel({
           <div>
             Opening door consequence:{" "}
             {enemyDebug.openingDoorWouldReturnMonster ? "monster returns to door_hallway (unverified)" : "safe"}
+          </div>
+        </div>
+
+        {/* Vzácný útok Ghoula na kameru (viz zadání, game/core/cameraDamage.ts)
+            — produkční šance (GHOUL_CAMERA_ATTACK_CHANCE, 5 %) zůstává beze
+            změny; "100 %"/"5 %" tlačítka jen nastavují
+            debugGhoulCameraAttackChanceOverride, ostatní tlačítka ji vůbec
+            nečtou (viz canDebugTriggerGhoulCameraAttack/debugTriggerGhoulCameraAttack). */}
+        <div className="border-t border-gray-700 pt-2 mt-1">
+          <div className="text-gray-400 mb-1">Ghoul camera attack debug:</div>
+          <div>disabledCameraIds: {state.cameraDamage.disabledCameraIds.join(", ") || "—"}</div>
+          <div>
+            limit tuhle noc: {state.cameraDamage.disabledCameraIds.length} / {getMaxDisabledCamerasForNight(nightNumber ?? 1)}
+          </div>
+          <div>
+            activeAttack: {state.cameraDamage.activeAttack ? `${state.cameraDamage.activeAttack.cameraId} (started ${state.cameraDamage.activeAttack.startedAtMs}, animationId ${state.cameraDamage.activeAttack.animationId ?? "— (CSS fallback)"})` : "—"}
+          </div>
+          {state.cameraDamage.activeAttack &&
+            (() => {
+              const animation = getGhoulCameraAttackAnimation(state.cameraDamage.activeAttack.animationId);
+              const elapsedSinceAttackMs = state.elapsedMs - state.cameraDamage.activeAttack.startedAtMs;
+              if (!animation) return <div>animation: none (CSS darken/grain fallback)</div>;
+              const frameState = resolveGhoulCameraAttackFrameState(animation.frames.length, GHOUL_CAMERA_ATTACK_FRAMES_DURATION_MS, elapsedSinceAttackMs);
+              return (
+                <div>
+                  animation: {animation.frames.length} frames, frameDurationMs {animation.frameDurationMs.toFixed(1)}, elapsedMs{" "}
+                  {elapsedSinceAttackMs.toFixed(0)}, frameIndex {frameState.frameIndex}, holdingLastFrame{" "}
+                  {frameState.isHoldingLastFrame ? "yes" : "no"}
+                </div>
+              );
+            })()}
+          <div>
+            startedSeq: {state.cameraAttackStartedSeq} — offlineSeq: {state.cameraOfflineSeq} — footstepsSeq:{" "}
+            {state.disabledCameraFootstepsSeq}
+          </div>
+          <div>
+            chance override: {state.debugGhoulCameraAttackChanceOverride !== null ? `${state.debugGhoulCameraAttackChanceOverride * 100}%` : "off (5%)"}
+          </div>
+          <div className="flex gap-1.5 mt-1">
+            <button type="button" className="pixel-button px-2 py-1 text-xs flex-1" onClick={() => onDebugTriggerGhoulCameraAttack()}>
+              DEV: Vyřadit aktuální kameru
+            </button>
+            <button type="button" className="pixel-button px-2 py-1 text-xs flex-1" onClick={onDebugResetCameraDamage}>
+              DEV: Reset poškození kamer
+            </button>
+          </div>
+          {/* Konkrétní sekvence (viz zadání "vybrat konkrétní sekvenci") — obchází normální kamera+světlo výběr, jinak stejné podmínky jako "Vyřadit aktuální kameru". */}
+          <div className="flex gap-1.5 mt-1 items-center">
+            <select
+              className="pixel-button px-1.5 py-1 text-xs"
+              value={selectedAnimationId}
+              onChange={(e) => setSelectedAnimationId(e.target.value as GhoulCameraAttackAnimationId)}
+            >
+              {GHOUL_CAMERA_ATTACK_ANIMATION_IDS.map((id) => (
+                <option key={id} value={id}>
+                  {id}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="pixel-button px-2 py-1 text-xs flex-1"
+              onClick={() => onDebugTriggerGhoulCameraAttack(selectedAnimationId)}
+            >
+              DEV: Vyřadit s vybranou sekvencí
+            </button>
+          </div>
+          <div className="flex gap-1.5 mt-1">
+            <button type="button" className="pixel-button px-2 py-1 text-xs flex-1" onClick={onDebugSkipCameraAttackToLastFrame}>
+              DEV: Skok na poslední frame
+            </button>
+            <button type="button" className="pixel-button px-2 py-1 text-xs flex-1" onClick={onDebugSkipCameraAttackToOffline}>
+              DEV: Skok do offline
+            </button>
+          </div>
+          <div className="flex gap-1.5 mt-1">
+            <button type="button" className="pixel-button px-2 py-1 text-xs flex-1" onClick={onDebugMoveEnemyToDisabledCamera}>
+              DEV: Ghoul -&gt; offline kamera
+            </button>
+            <button type="button" className="pixel-button px-2 py-1 text-xs flex-1" onClick={onDebugPlayDisabledCameraFootsteps}>
+              DEV: Přehrát kroky
+            </button>
+          </div>
+          <div className="flex gap-1.5 mt-1">
+            <button
+              type="button"
+              className="pixel-button px-2 py-1 text-xs flex-1"
+              onClick={() => onSetDebugGhoulCameraAttackChance(1)}
+            >
+              DEV: Šance 100 %
+            </button>
+            <button
+              type="button"
+              className="pixel-button px-2 py-1 text-xs flex-1"
+              onClick={() => onSetDebugGhoulCameraAttackChance(null)}
+            >
+              DEV: Šance zpět na 5 %
+            </button>
           </div>
         </div>
 

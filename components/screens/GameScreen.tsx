@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CameraId, GameState, NightDefinition } from "@/game/core/types";
+import { CameraId, GameState, GhoulCameraAttackAnimationId, NightDefinition } from "@/game/core/types";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 import { STRESS_DEV_HUD_ENABLED } from "@/game/balancing/constants";
 import { COPY } from "@/content/copy";
@@ -66,6 +66,14 @@ interface GameScreenProps {
   onCancelBulbReplacement: () => void;
   /** "ZAŽÁDAT O MUNICI" na LeftWallView.tsx (viz zadání "systém brokovnice a přebíjení"). */
   onRequestAmmo: () => void;
+  /** Dev-only ruční spuštění útoku Ghoula na aktuální kameru (viz zadání "spolehlivě otestovat", DebugPanel.tsx). */
+  onDebugTriggerGhoulCameraAttack: (animationId?: GhoulCameraAttackAnimationId) => void;
+  onDebugResetCameraDamage: () => void;
+  onDebugMoveEnemyToDisabledCamera: () => void;
+  onDebugPlayDisabledCameraFootsteps: () => void;
+  onSetDebugGhoulCameraAttackChance: (chance: number | null) => void;
+  onDebugSkipCameraAttackToLastFrame: () => void;
+  onDebugSkipCameraAttackToOffline: () => void;
 }
 
 export default function GameScreen({
@@ -101,6 +109,13 @@ export default function GameScreen({
   onStartBulbReplacement,
   onCancelBulbReplacement,
   onRequestAmmo,
+  onDebugTriggerGhoulCameraAttack,
+  onDebugResetCameraDamage,
+  onDebugMoveEnemyToDisabledCamera,
+  onDebugPlayDisabledCameraFootsteps,
+  onSetDebugGhoulCameraAttackChance,
+  onDebugSkipCameraAttackToLastFrame,
+  onDebugSkipCameraAttackToOffline,
 }: GameScreenProps) {
   // Pozadí pro desk/generator (BACKGROUND_SCENES.play) — jen mimo blackout,
   // kdy BlackoutView stejně celou obrazovku nahrazuje vlastní atmosférou.
@@ -172,6 +187,7 @@ export default function GameScreen({
         nightNumber={nightNumber}
         sonicCannonResultSeq={state.sonicCannonResultSeq}
         lastSonicCannonResult={state.lastSonicCannonResult}
+        cameraOfflineSeq={state.cameraOfflineSeq}
       />
 
       {/* DoorView schválně NENÍ v max-w-[33.6rem] — dveřní scéna (DoorSceneFrame)
@@ -302,6 +318,13 @@ export default function GameScreen({
               onDebugToggleDoor={onDebugToggleDoor}
               onDebugRestartGenerator={onDebugRestartGenerator}
               onSetDebugNight={onSetDebugNight}
+              onDebugTriggerGhoulCameraAttack={onDebugTriggerGhoulCameraAttack}
+              onDebugResetCameraDamage={onDebugResetCameraDamage}
+              onDebugMoveEnemyToDisabledCamera={onDebugMoveEnemyToDisabledCamera}
+              onDebugPlayDisabledCameraFootsteps={onDebugPlayDisabledCameraFootsteps}
+              onSetDebugGhoulCameraAttackChance={onSetDebugGhoulCameraAttackChance}
+              onDebugSkipCameraAttackToLastFrame={onDebugSkipCameraAttackToLastFrame}
+              onDebugSkipCameraAttackToOffline={onDebugSkipCameraAttackToOffline}
             />
           </div>
         )}

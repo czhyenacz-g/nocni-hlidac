@@ -59,7 +59,13 @@ export type EnemyMoveDecision =
   // monstrum se stáhne zpátky na night.enemy.monsterRetreatStage, ať hráče
   // hned po návratu nezabije stejné monstrum, které právě trefil. Nikdy na
   // 10. (posledním) zásahu — ten místo toho spustí "monsterDefeated".
-  | "monster_hit_confirmed";
+  | "monster_hit_confirmed"
+  // Útok Ghoula na kameru PŘEVZAL kontrolu nad výsledným pohybem tohohle
+  // hodu (viz zadání "nepřidávej navíc druhý retreat ze sonického děla") —
+  // Ghoul ustoupil o jeden krok směrem ven (stejný `stepBackOneStage` helper
+  // jako gave_up/light_repelled), bez ohledu na to, co by jinak udělal
+  // normální/sonic-modified hod. Nikdy neznamená "blíž ke kanceláři".
+  | "ghoul_camera_attack";
 
 // "briefing" = krátký panel před START_SHIFT/RESTART_SHIFT (viz
 // components/screens/BriefingScreen.tsx, game/difficulty/nightConfig.ts) —
@@ -270,6 +276,53 @@ export type DeathReason = "door_open_at_attack" | "blackout_timeout" | "bulb_rep
  * monstra vpřed neúspěch použití děla, ne neutrální popis pohybu.
  */
 export type MonsterRepelRadioResult = "success" | "stay" | "fail";
+
+/**
+ * Identifikátor obrázkové sekvence útoku Ghoula na kameru (viz zadání,
+ * game/core/cameraDamage.ts#resolveGhoulCameraAttackAnimationId,
+ * game/cameras/cameraAttackAnimation.object13.ts#GHOUL_CAMERA_ATTACK_ANIMATIONS) —
+ * typ žije v `game/core` (výběr sekvence podle kamery je herní rozhodnutí),
+ * skutečné snímky/cesty k WebP souborům žijí v `game/cameras` (vizuální
+ * data), stejné směřování závislosti jako `CameraId`/`CameraDefinition`
+ * (cameras závisí na core, nikdy naopak).
+ */
+export type GhoulCameraAttackAnimationId = "left_hallway" | "right_hallway" | "door_hallway" | "door_hallway_light";
+
+/**
+ * Vizuální fáze útoku Ghoula na JEDNU konkrétní kameru (viz zadání) — čistě
+ * ODVOZENÁ hodnota (viz game/core/cameraDamage.ts#resolveCameraAttackVisualPhase),
+ * NIKDE se neukládá přímo v GameState.cameraDamage (ten drží jen
+ * `activeAttack`/`disabledCameraIds`, ze kterých se tahle fáze pro
+ * konkrétní kameru+elapsedMs dopočítá). `"approaching-camera"` renderuje
+ * skutečnou obrázkovou sekvenci (frames přehrávají se + hold posledního
+ * snímku, viz game/cameras/cameraAttackAnimation.object13.ts) nebo CSS
+ * fallback, pokud sekvence pro danou kameru neexistuje (`outer_yard`).
+ * `"signal-failing"` je krátký závěrečný CSS "ztmavni/zrnění" ohon PO
+ * doběhnutí sekvence+hold, těsně před `"offline"` (viz
+ * GHOUL_CAMERA_ATTACK_FRAMES_DURATION_MS + GHOUL_CAMERA_ATTACK_LAST_FRAME_HOLD_MS
+ * < CAMERA_FAILURE_TRANSITION_MS v cameraDamageConfig.ts).
+ */
+export type CameraAttackVisualPhase = "idle" | "approaching-camera" | "signal-failing" | "offline";
+
+/**
+ * Stav vyřazení kamer Ghoulem (viz zadání, game/core/cameraDamage.ts,
+ * game/core/cameraDamageConfig.ts) — podporuje VÍCE vyřazených kamer za
+ * noc (limit podle čísla noci, viz getMaxDisabledCamerasForNight), proto
+ * pole, ne skalár. `activeAttack` drží nejvýš JEDEN právě probíhající
+ * pětisekundový přechod najednou (druhý útok nemůže začít, dokud první
+ * neskončí — viz CAMERA_ATTACK_COOLDOWN_MS, delší než samotný přechod).
+ * `animationId` se vybere JEDNOU při spuštění útoku (viz
+ * game/core/cameraDamage.ts#resolveGhoulCameraAttackAnimationId, "door_hallway"
+ * podle světla v okamžiku spuštění) a dál se po dobu útoku NEMĚNÍ, i kdyby
+ * se mezitím světlo přepnulo. `lastAttackAtMs`/`lastFootstepsAtMs` jsou
+ * nezávislé cooldowny (útok na kameru vs. přehrání mikrofonních kroků).
+ */
+export interface CameraDamageState {
+  disabledCameraIds: CameraId[];
+  activeAttack: { cameraId: CameraId; startedAtMs: number; animationId: GhoulCameraAttackAnimationId | null } | null;
+  lastAttackAtMs: number | null;
+  lastFootstepsAtMs: number | null;
+}
 
 /**
  * Stav jedné žárovky v místnosti — omezená životnost reálného svícení (viz
@@ -606,6 +659,49 @@ export interface GameState {
   /** Důvod POSLEDNÍ změny `sonicCannonToggleSeq` — `null`, dokud k žádné nedošlo. Viz sonicCannonToggleSeq výše. */
   lastSonicCannonToggleReason: "manual_on" | "manual_off" | "result_auto_off" | null;
 
+  /**
+   * Vzácná reakce Ghoula na sonické dělo (viz zadání "finální chování",
+   * game/core/cameraDamage.ts) — hod na útok kamery proběhne PŘI KAŽDÉM
+   * použití sonického děla na Ghoula (bez ohledu na `sonicResult`), v
+   * ENEMY_ADVANCE. Podporuje víc vyřazených kamer za noc (limit podle čísla
+   * noci, viz cameraDamageConfig.ts#MAX_DISABLED_CAMERAS_BY_NIGHT). Nikdy
+   * persistentní mezi nocemi — vždy čerstvé `{ disabledCameraIds: [],
+   * activeAttack: null, lastAttackAtMs: null, lastFootstepsAtMs: null }` na
+   * `createInitialGameState` (žádný override parametr, stejná konvence jako
+   * `monsterHitsToday`). Save uprostřed noci s už vyřazenými kamerami
+   * zůstává zachovaný beze změny (žádná časovaná obnova mimo start noci).
+   */
+  cameraDamage: CameraDamageState;
+  /**
+   * Zvyšuje se PŘESNĚ jednou, když se spustí NOVÝ útok na kameru (idle ->
+   * activeAttack) — stejný "seq counter, reducer nikdy nevolá audio" vzor
+   * jako `sonicCannonResultSeq`. `app/play/page.tsx` podle změny přehraje
+   * `AUDIO_EVENTS.cameraDamageStart`.
+   */
+  cameraAttackStartedSeq: number;
+  /**
+   * Zvyšuje se PŘESNĚ jednou, když se právě probíhající útok (activeAttack)
+   * v TICKu dokončí přechodem do `disabledCameraIds` (ne jeho začátek — viz
+   * `cameraAttackStartedSeq` výše). `app/play/page.tsx` podle změny přehraje
+   * `AUDIO_EVENTS.cameraSignalLost` A spustí textovou rádiovou hlášku (viz
+   * `game/radio/useCameraDisabledRadioMessage.ts`) — teprve TEĎ, ne už při
+   * začátku ztmavování (viz zadání "zpráva se nesmí spustit už při začátku
+   * pětisekundového ztmavování"). Při více vyřazeních za noc se zvyšuje
+   * znovu při KAŽDÉM novém dokončeném vyřazení.
+   */
+  cameraOfflineSeq: number;
+  /**
+   * Zvyšuje se, když Ghoul VSTOUPÍ do lokace s už offline kamerou (nebo tam
+   * už stojí ve chvíli, kdy se kamera na tomhle místě dokončí vyřadit) — viz
+   * zadání "mikrofon zůstává funkční", `game/core/cameraDamage.ts`
+   * `isEnemyOnDisabledCameraStage`. Respektuje
+   * `DISABLED_CAMERA_FOOTSTEPS_COOLDOWN_MS` (viz `cameraDamage.lastFootstepsAtMs`)
+   * — needávkuje se donekonečna, dokud Ghoul na místě zůstává.
+   * `app/play/page.tsx` podle změny přehraje existující zvuk kroků (viz
+   * `AUDIO_EVENTS.disabledCameraFootsteps`).
+   */
+  disabledCameraFootstepsSeq: number;
+
   deathReason: DeathReason | null;
   /**
    * elapsedMs, kdy se má finalizovat smrt "door_open_at_attack" — null mimo
@@ -797,6 +893,17 @@ export interface GameState {
    * nastaví znovu.
    */
   debugNightOverride: number | null;
+  /**
+   * Dev-only override efektivní šance útoku Ghoula na kameru (viz zadání
+   * "nastavit šanci na 100 procent", DebugPanel.tsx) — `null` = použij
+   * produkční `GHOUL_CAMERA_ATTACK_CHANCE` (0.05) beze změny.
+   * `game/core/cameraDamageConfig.ts#GHOUL_CAMERA_ATTACK_CHANCE` SAMOTNÁ se
+   * tímhle nikdy nepřepisuje — jen efektivní hodnota, kterou
+   * `attemptGhoulCameraAttack` použije pro `rollGhoulCameraAttack`. Stejná
+   * "resetuje se jako kterékoliv jiné per-run pole" konvence jako
+   * `debugNightOverride` výše (createInitialGameState default `null`).
+   */
+  debugGhoulCameraAttackChanceOverride: number | null;
 
   isRunning: boolean;
   audioMuted: boolean;

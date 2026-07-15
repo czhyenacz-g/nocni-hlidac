@@ -131,6 +131,18 @@ export const AUDIO_EVENTS = {
   ammoDispenseClick: "ammo_dispense_click",
   ammoRequestRejected: "ammo_request_rejected",
   weaponEmptyClick: "weapon_empty_click",
+  // ── Vzácný útok Ghoula na kameru (viz zadání, game/core/cameraDamage.ts) ──
+  // Dva samostatné eventy podle dvou seq počítadel (GameState.cameraAttackStartedSeq/
+  // cameraOfflineSeq) — začátek poškozování (idle -> attacking) a úplné
+  // přerušení signálu (attacking -> offline), stejný "jeden event na jednu
+  // diskrétní událost" vzor jako doorBang/bulbBreak/monsterRetreatRoar.
+  cameraDamageStart: "camera_damage_start",
+  cameraSignalLost: "camera_signal_lost",
+  // Kroky Ghoula z mikrofonu offline kamery (viz zadání "vyřazení kamery
+  // znamená pouze ztrátu obrazu, ne zvuku") — existující candidate asset
+  // (freesound.org/people/SecureSubset/sounds/813622/, CC0, dosud jen v
+  // /dev-sound candidate listu, žádný duplicitní soubor, viz audioConfig.ts).
+  disabledCameraFootsteps: "disabled_camera_footsteps",
 } as const;
 
 export type AudioEventId = (typeof AUDIO_EVENTS)[keyof typeof AUDIO_EVENTS];

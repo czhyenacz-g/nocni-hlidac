@@ -167,6 +167,13 @@ export const COPY = {
     // viditelný jen v detailu právě otevřené kamery.
     sonicCannonOffLabel: "ZAPNOUT SONICKÉ DĚLO",
     sonicCannonOnLabel: "SONICKÉ DĚLO: AKTIVNÍ",
+    // Kamera vyřazená Ghoulem (viz zadání "systém útoku na kameru",
+    // CameraDamageOverlay.tsx) — obraz je pryč, mikrofon zůstává aktivní
+    // (poslední řádek to hráči výslovně potvrzuje).
+    cameraOfflineSignalLostLabel: "SIGNÁL ZTRACEN",
+    cameraOfflineOutOfServiceLabel: "KAMERA MIMO PROVOZ",
+    cameraOfflineServiceAtLabel: "SERVIS V 06:00",
+    cameraOfflineMicActiveLabel: "MIKROFON: AKTIVNÍ",
     audioOnLabel: "Zvuk: zapnutý",
     audioOffLabel: "Zvuk: vypnutý",
     // Dominantní navigace v control roomu — šipka dolů, ne doprava, ať

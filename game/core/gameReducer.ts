@@ -28,6 +28,18 @@ import { isMonsterMinStayBlocking } from "./monsterMinStay";
 import { isSonicCannonAffectingEnemy } from "./sonicCannon";
 import { canRequestAmmo, requestSingleAmmo } from "./shotgunEquipment";
 import {
+  attemptGhoulCameraAttack,
+  canDebugTriggerGhoulCameraAttack,
+  debugSkipActiveAttackToOffline,
+  debugSkipToLastFrame,
+  debugTriggerGhoulCameraAttack,
+  INACTIVE_CAMERA_DAMAGE,
+  isCameraFullyOffline,
+  isEnemyOnDisabledCameraStage,
+  updateCameraDamagePhase,
+} from "./cameraDamage";
+import { DISABLED_CAMERA_FOOTSTEPS_COOLDOWN_MS, GHOUL_CAMERA_ATTACK_RETREAT_PAUSE_MS } from "./cameraDamageConfig";
+import {
   isDoorAttackBlockedByClosedDoor,
   isDoorAttackGraceActive,
   isMonsterAtDoor,
@@ -946,6 +958,12 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         if (!state.cameraOpen || state.cameraViewMode !== "detail" || state.playerView !== "desk" || state.power <= 0)
           return state;
 
+        // Kamera, kterou Ghoul vyřadil, je do rána úplně mimo provoz (viz
+        // zadání "sonické dělo na ní nesmí fungovat") — tiché no-op, stejný
+        // vzor jako ostatní aktivační guardy výše (žádné cvaknutí za
+        // neúspěšný pokus).
+        if (isCameraFullyOffline(state.cameraDamage, state.activeCameraId)) return state;
+
         return {
           ...state,
           sonicCannonActive: true,
@@ -1079,6 +1097,11 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         // "Nechat si to projít hlavou"), stejný "nanejvýš jedna active"
         // vzor (LOOK_AT_* mezi nimi zruší tu druhou).
         const thinkItOverWindupUpdate = updateThinkItOverWindup(state, action.deltaMs);
+        // Postupné ztmavování/zrnění po útoku Ghoula na kameru (viz zadání) —
+        // čistě časová věc (attackStartedAtMs -> elapsedMs), nezávislá na
+        // deltaMs stejně jako blackoutElapsedMs výše. cameraOfflineSeq se tu
+        // zvýší PŘESNĚ v tiku, kdy "attacking" poprvé přejde na "offline".
+        const cameraDamageUpdate = updateCameraDamagePhase(state, elapsedMs);
         const power = applyPowerDelta({ ...state, ...generatorUpdate }, night, action.deltaMs, nightScaling);
 
         if (power <= 0) {
@@ -1120,6 +1143,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             ...bulbReplacementUpdate,
             ...emergencyRunWindupUpdate,
             ...thinkItOverWindupUpdate,
+            ...cameraDamageUpdate,
             elapsedMs,
             remainingMs: 0,
             power,
@@ -1153,6 +1177,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           ...bulbReplacementUpdate,
           ...emergencyRunWindupUpdate,
           ...thinkItOverWindupUpdate,
+          ...cameraDamageUpdate,
           elapsedMs,
           remainingMs,
           power,
@@ -1161,6 +1186,11 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
       }
 
       case "ENEMY_ADVANCE": {
+        // Kolikátá noc v řadě (viz game/core/survivedNights.ts) — jediné
+        // místo, kde ji ENEMY_ADVANCE potřebuje (limit vyřazených kamer
+        // podle čísla noci, viz cameraDamageConfig.ts#MAX_DISABLED_CAMERAS_BY_NIGHT).
+        // Stejný `?? 1` fallback jako TICK.currentNight.
+        const currentNightNumber = action.currentNight ?? 1;
         // V blackoutu je pozice nepřítele zamrzlá — hrozbu odteď representuje
         // blackoutElapsedMs v TICKu, ne další postup po trase. Během
         // doorDeathReveal je útok už rozhodnutý (viz níže) — žádný další
@@ -1395,8 +1425,64 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
                 lastSonicCannonToggleReason: state.lastSonicCannonToggleReason,
               };
 
+        // Vzácná reakce Ghoula na sonické dělo (viz zadání "finální
+        // chování") — hod proběhne PŘI KAŽDÉM použití sonického děla na
+        // Ghoula (sonicEffective), BEZ OHLEDU na sonicResult (i po
+        // úspěšném odražení). Vrací `state.cameraDamage` beze změny, když
+        // útok nenastal (guardy + 5% hod), takže spread níže je bezpečný
+        // no-op v drtivé většině tiků.
+        const cameraDamage = sonicEffective
+          ? attemptGhoulCameraAttack(
+              state,
+              night,
+              currentNightNumber,
+              isNearRoomLightActive(state),
+              state.debugGhoulCameraAttackChanceOverride,
+            )
+          : state.cameraDamage;
+        const cameraAttackTriggered = cameraDamage !== state.cameraDamage;
+        const cameraAttackUpdate: Pick<GameState, "cameraDamage" | "cameraAttackStartedSeq"> = {
+          cameraDamage,
+          cameraAttackStartedSeq: cameraAttackTriggered ? state.cameraAttackStartedSeq + 1 : state.cameraAttackStartedSeq,
+        };
+
+        // Útok na kameru PŘEBÍRÁ kontrolu nad výsledným pohybem tohohle
+        // hodu (viz zadání "nepřidávej navíc druhý retreat ze sonického
+        // děla") — normální `nextIndex`/`decision`/`forcedRetreatFieldsUpdate`
+        // spočítané výše se v tomhle případě ZAHODÍ, ať k pohybu dojde jen
+        // JEDNOU, ať už by normální hod řekl cokoliv (advance/stay/retreat).
+        // Ghoul ustoupí přesně o jeden krok směrem VEN (stejný `stepBackOneStage`
+        // helper jako gave_up/light_repelled — respektuje skutečnou
+        // levou/pravou větev aktuální trasy, ne obecné odečtení indexu), pak
+        // dostane krátkou pauzu (GHOUL_CAMERA_ATTACK_RETREAT_PAUSE_MS,
+        // advance/retreat chance 0 — stejný "forced retreat window"
+        // mechanismus jako po light/UV repelu, jen s `chance: 0` = žádný
+        // další vynucený pohyb, čisté čekání), než pokračuje normální AI.
+        if (cameraAttackTriggered) {
+          const retreatedTo = stepBackOneStage(route, state.enemyStage);
+          const cameraAttackMovementUpdate: Pick<
+            GameState,
+            "enemyForcedRetreatUntilMs" | "enemyForcedRetreatChance" | "enemyForcedRetreatNextStepAtMs"
+          > = {
+            enemyForcedRetreatUntilMs: state.elapsedMs + GHOUL_CAMERA_ATTACK_RETREAT_PAUSE_MS,
+            enemyForcedRetreatChance: 0,
+            enemyForcedRetreatNextStepAtMs: state.elapsedMs + night.enemyTickMs,
+          };
+          return {
+            ...state,
+            ...sonicResultUpdate,
+            ...cameraAttackUpdate,
+            ...cameraAttackMovementUpdate,
+            enemyStage: retreatedTo,
+            lastEnemyDecision: "ghoul_camera_attack",
+            enemyAtDoorSinceMs: null,
+            enemyDoorHoldTargetMs: null,
+            enemyDoorHoldProgressMs: 0,
+          };
+        }
+
         if (nextIndex === currentIndex) {
-          return { ...state, ...forcedRetreatFieldsUpdate, ...sonicResultUpdate, lastEnemyDecision: decision };
+          return { ...state, ...forcedRetreatFieldsUpdate, ...sonicResultUpdate, ...cameraAttackUpdate, lastEnemyDecision: decision };
         }
 
         const nextStage = route[nextIndex];
@@ -1406,6 +1492,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           ...state,
           ...forcedRetreatFieldsUpdate,
           ...sonicResultUpdate,
+          ...cameraAttackUpdate,
           enemyStage: nextStage,
           lastEnemyDecision: decision,
           enemyAtDoorSinceMs: nextIsAtDoor ? state.elapsedMs : null,
@@ -1646,12 +1733,70 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         if (action.amount <= 0 || !state.isRunning) return state;
         return { ...state, bulbsRemaining: state.bulbsRemaining + action.amount };
 
+      // Dev-only ruční spuštění (viz zadání "spolehlivě otestovat",
+      // game/core/cameraDamage.ts#canDebugTriggerGhoulCameraAttack) —
+      // obchází JEN náhodný hod, ne ostatní podmínky. Mimo běžící směnu
+      // (např. hráč už zemřel) je no-op, stejný guard jako ostatní akce.
+      case "DEBUG_TRIGGER_GHOUL_CAMERA_ATTACK":
+        if (!state.isRunning || !canDebugTriggerGhoulCameraAttack(state, night, action.currentNight ?? 1)) return state;
+        return {
+          ...state,
+          cameraDamage: debugTriggerGhoulCameraAttack(state, isNearRoomLightActive(state), action.animationId),
+          cameraAttackStartedSeq: state.cameraAttackStartedSeq + 1,
+        };
+
+      // Dev-only reset bez čekání na novou noc (viz zadání "resetovat stav
+      // poškození kamer"). `cameraAttackStartedSeq`/`cameraOfflineSeq`
+      // zůstávají beze změny (monotónní počítadla, stejná konvence jako
+      // `sonicCannonToggleSeq` — nikdy se ručně nevrací zpět).
+      case "DEBUG_RESET_CAMERA_DAMAGE":
+        return { ...state, cameraDamage: INACTIVE_CAMERA_DAMAGE };
+
+      // Dev-only: teleportuje Ghoula na lokaci PRVNÍ vyřazené kamery (viz
+      // zadání "otestovat mikrofon") — no-op bez žádné vyřazené kamery.
+      // `enemyStage` změna sama spustí withDisabledCameraFootsteps na konci
+      // reduceru (stejný wrapper jako u produkčního pohybu).
+      case "DEBUG_MOVE_ENEMY_TO_DISABLED_CAMERA": {
+        const [firstDisabledCameraId] = state.cameraDamage.disabledCameraIds;
+        if (!firstDisabledCameraId) return state;
+        const targetCamera = night.cameras.find((c) => c.id === firstDisabledCameraId);
+        if (!targetCamera) return state;
+        return { ...state, enemyStage: targetCamera.enemyVisibleAtStage };
+      }
+
+      // Dev-only: ručně přehraje zvuk kroků z mikrofonu bez ohledu na
+      // cooldown (viz zadání).
+      case "DEBUG_PLAY_DISABLED_CAMERA_FOOTSTEPS":
+        return { ...state, disabledCameraFootstepsSeq: state.disabledCameraFootstepsSeq + 1 };
+
+      case "SET_DEBUG_GHOUL_CAMERA_ATTACK_CHANCE_OVERRIDE":
+        return { ...state, debugGhoulCameraAttackChanceOverride: action.chance };
+
+      // Dev-only: skočí přímo na hold posledního snímku (viz zadání
+      // "přeskočit na poslední frame") — nemění cameraOfflineSeq/disabledCameraIds,
+      // jen posune activeAttack.startedAtMs do minulosti.
+      case "DEBUG_SKIP_CAMERA_ATTACK_TO_LAST_FRAME":
+        if (state.cameraDamage.activeAttack === null) return state;
+        return { ...state, cameraDamage: debugSkipToLastFrame(state) };
+
+      // Dev-only: okamžitě dokončí právě probíhající útok (viz zadání
+      // "přeskočit rovnou do offline stavu") — stejný cameraOfflineSeq bump
+      // jako produkční přechod v TICKu, jen bez čekání.
+      case "DEBUG_SKIP_CAMERA_ATTACK_TO_OFFLINE": {
+        if (state.cameraDamage.activeAttack === null) return state;
+        return {
+          ...state,
+          cameraDamage: debugSkipActiveAttackToOffline(state),
+          cameraOfflineSeq: state.cameraOfflineSeq + 1,
+        };
+      }
+
       default:
         return state;
       }
     })();
 
-    return withSonicCannonAutoOff(state, withEnemyStageVisitSeed(state, nextState));
+    return withDisabledCameraFootsteps(night, state, withSonicCannonAutoOff(state, withEnemyStageVisitSeed(state, nextState)));
   };
 }
 
@@ -1696,4 +1841,33 @@ function withSonicCannonAutoOff(previousState: GameState, nextState: GameState):
     nextState.playerView === "desk" &&
     nextState.activeCameraId === previousState.activeCameraId;
   return stillValid ? nextState : { ...nextState, sonicCannonActive: false };
+}
+
+// Mikrofon offline kamery (viz zadání "vyřazení kamery znamená pouze ztrátu
+// obrazu, ne zvuku") — centrální wrapper kolem CELÉHO reduceru (stejný vzor
+// jako withEnemyStageVisitSeed/withSonicCannonAutoOff výše), ať pokryje
+// VŠECHNY cesty, kterými se Ghoul může ocitnout v lokaci s offline kamerou
+// (normální postup, gave_up, light/UV repel, office threat, CONFIRM_MONSTER_HIT
+// retreat, i vlastní ústup po útoku na kameru), aniž by je bylo nutné
+// jednotlivě vyjmenovávat. Trigger je průnik DVOU nezávislých příčin do
+// jedné podmínky — "byl Ghoul na lokaci s offline kamerou" přešlo z false na
+// true — což správně pokryje jak "Ghoul vstoupil do už offline lokace", tak
+// "kamera se v TÉHLE lokaci, kde Ghoul už stál, právě teď dokončila vyřadit"
+// (viz zadání "nebo pokud je již v lokaci v momentě úplného vyřazení
+// kamery"), bez dvou samostatných kontrolních míst.
+function withDisabledCameraFootsteps(night: NightDefinition, previousState: GameState, nextState: GameState): GameState {
+  const wasOnDisabledCamera = isEnemyOnDisabledCameraStage(previousState, night);
+  const isOnDisabledCamera = isEnemyOnDisabledCameraStage(nextState, night);
+  if (wasOnDisabledCamera || !isOnDisabledCamera) return nextState;
+
+  const cooldownExpired =
+    nextState.cameraDamage.lastFootstepsAtMs === null ||
+    nextState.elapsedMs - nextState.cameraDamage.lastFootstepsAtMs >= DISABLED_CAMERA_FOOTSTEPS_COOLDOWN_MS;
+  if (!cooldownExpired) return nextState;
+
+  return {
+    ...nextState,
+    cameraDamage: { ...nextState.cameraDamage, lastFootstepsAtMs: nextState.elapsedMs },
+    disabledCameraFootstepsSeq: nextState.disabledCameraFootstepsSeq + 1,
+  };
 }

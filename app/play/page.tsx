@@ -15,7 +15,7 @@ import { NIGHT_01 } from "@/game/nights/night01";
 import { createInitialGameState } from "@/game/core/gameState";
 import { canStartThinkItOverWindup, createGameReducer, willGeneratorRestartSucceed } from "@/game/core/gameReducer";
 import { useGameLoop } from "@/game/core/gameLoop";
-import { CameraId } from "@/game/core/types";
+import { CameraId, GhoulCameraAttackAnimationId } from "@/game/core/types";
 import { audioManager } from "@/game/audio/audioManager";
 import { AUDIO_EVENTS } from "@/game/audio/audioEvents";
 import { computeTensionLevel } from "@/game/visuals/atmosphereState";
@@ -249,6 +249,9 @@ export default function PlayPage() {
   const prevBlackoutPhaseSeqRef = useRef(state.blackoutPhaseSeq);
   const prevBlackoutRoarSeqRef = useRef(state.blackoutRoarSeq);
   const prevBulbBreakSeqRef = useRef(state.bulbBreakSeq);
+  const prevCameraAttackStartedSeqRef = useRef(state.cameraAttackStartedSeq);
+  const prevCameraOfflineSeqRef = useRef(state.cameraOfflineSeq);
+  const prevDisabledCameraFootstepsSeqRef = useRef(state.disabledCameraFootstepsSeq);
   const prevBulbReplaceSuccessSeqRef = useRef(state.bulbReplaceSuccessSeq);
   const prevEmergencyRunReadySeqRef = useRef(state.emergencyRunReadySeq);
   const prevThinkItOverReadySeqRef = useRef(state.thinkItOverReadySeq);
@@ -838,6 +841,36 @@ export default function PlayPage() {
       prevBulbBreakSeqRef.current = state.bulbBreakSeq;
     }
   }, [state.bulbBreakSeq]);
+
+  // Vzácný útok Ghoula na kameru (viz zadání, game/core/cameraDamage.ts) —
+  // dva samostatné seq eventy: začátek útoku (idle -> attacking) a úplná
+  // ztráta signálu (attacking -> offline, viz GameState.cameraOfflineSeq).
+  // Rádiová hláška na cameraOfflineSeq řeší RadioMessageOverlay.tsx/
+  // useCameraDisabledRadioMessage.ts samostatně, tady jen zvuk.
+  useEffect(() => {
+    if (prevCameraAttackStartedSeqRef.current !== state.cameraAttackStartedSeq) {
+      audioManager.play(AUDIO_EVENTS.cameraDamageStart);
+      prevCameraAttackStartedSeqRef.current = state.cameraAttackStartedSeq;
+    }
+  }, [state.cameraAttackStartedSeq]);
+
+  useEffect(() => {
+    if (prevCameraOfflineSeqRef.current !== state.cameraOfflineSeq) {
+      audioManager.play(AUDIO_EVENTS.cameraSignalLost);
+      prevCameraOfflineSeqRef.current = state.cameraOfflineSeq;
+    }
+  }, [state.cameraOfflineSeq]);
+
+  // Mikrofon offline kamery (viz zadání "vyřazení kamery znamená pouze
+  // ztrátu obrazu, ne zvuku") — GameState.disabledCameraFootstepsSeq se
+  // zvyšuje výhradně v gameReducer.ts#withDisabledCameraFootsteps (vstup
+  // Ghoula do lokace s offline kamerou, respektuje cooldown), tady jen zvuk.
+  useEffect(() => {
+    if (prevDisabledCameraFootstepsSeqRef.current !== state.disabledCameraFootstepsSeq) {
+      audioManager.play(AUDIO_EVENTS.disabledCameraFootsteps);
+      prevDisabledCameraFootstepsSeqRef.current = state.disabledCameraFootstepsSeq;
+    }
+  }, [state.disabledCameraFootstepsSeq]);
 
   useEffect(() => {
     if (prevBulbReplaceSuccessSeqRef.current !== state.bulbReplaceSuccessSeq) {
@@ -1523,6 +1556,38 @@ export default function PlayPage() {
     dispatch({ type: "SET_DEBUG_NIGHT", night });
   }
 
+  // DEV-ONLY: ručně spustí útok Ghoula na PRÁVĚ AKTIVNÍ kameru (viz zadání
+  // "spolehlivě otestovat", game/core/cameraDamage.ts) — obchází jen
+  // náhodný hod, ne ostatní podmínky (reducer si je ověří sám).
+  // `currentNight` stejná hodnota jako ENEMY_ADVANCE (limit podle čísla noci).
+  function handleDebugTriggerGhoulCameraAttack(animationId?: GhoulCameraAttackAnimationId) {
+    dispatch({ type: "DEBUG_TRIGGER_GHOUL_CAMERA_ATTACK", currentNight, animationId });
+  }
+
+  function handleDebugResetCameraDamage() {
+    dispatch({ type: "DEBUG_RESET_CAMERA_DAMAGE" });
+  }
+
+  function handleDebugMoveEnemyToDisabledCamera() {
+    dispatch({ type: "DEBUG_MOVE_ENEMY_TO_DISABLED_CAMERA" });
+  }
+
+  function handleDebugPlayDisabledCameraFootsteps() {
+    dispatch({ type: "DEBUG_PLAY_DISABLED_CAMERA_FOOTSTEPS" });
+  }
+
+  function handleSetDebugGhoulCameraAttackChance(chance: number | null) {
+    dispatch({ type: "SET_DEBUG_GHOUL_CAMERA_ATTACK_CHANCE_OVERRIDE", chance });
+  }
+
+  function handleDebugSkipCameraAttackToLastFrame() {
+    dispatch({ type: "DEBUG_SKIP_CAMERA_ATTACK_TO_LAST_FRAME" });
+  }
+
+  function handleDebugSkipCameraAttackToOffline() {
+    dispatch({ type: "DEBUG_SKIP_CAMERA_ATTACK_TO_OFFLINE" });
+  }
+
   function handleToggleLight() {
     dispatch({ type: "TOGGLE_LIGHT" });
   }
@@ -1620,6 +1685,13 @@ export default function PlayPage() {
           onDebugToggleDoor={handleDebugToggleDoor}
           onDebugRestartGenerator={handleDebugRestartGenerator}
           onSetDebugNight={handleSetDebugNight}
+          onDebugTriggerGhoulCameraAttack={handleDebugTriggerGhoulCameraAttack}
+          onDebugResetCameraDamage={handleDebugResetCameraDamage}
+          onDebugMoveEnemyToDisabledCamera={handleDebugMoveEnemyToDisabledCamera}
+          onDebugPlayDisabledCameraFootsteps={handleDebugPlayDisabledCameraFootsteps}
+          onSetDebugGhoulCameraAttackChance={handleSetDebugGhoulCameraAttackChance}
+          onDebugSkipCameraAttackToLastFrame={handleDebugSkipCameraAttackToLastFrame}
+          onDebugSkipCameraAttackToOffline={handleDebugSkipCameraAttackToOffline}
           onStartBulbReplacement={handleStartBulbReplacement}
           onCancelBulbReplacement={handleCancelBulbReplacement}
           onRequestAmmo={handleRequestAmmo}

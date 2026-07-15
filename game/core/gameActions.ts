@@ -1,4 +1,4 @@
-import { CameraId, RoomBulbsState } from "./types";
+import { CameraId, GhoulCameraAttackAnimationId, RoomBulbsState } from "./types";
 import { NightFeatureFlags } from "../difficulty/nightConfig";
 import { GameMode } from "./gameMode";
 
@@ -92,7 +92,13 @@ export type GameAction =
   // chybí-li, bere se jako noc 1 (žádné ztěžování). Ani jedno pole nezajímá
   // zbytek herní logiky/audia.
   | { type: "TICK"; deltaMs: number; stressLevel?: number; currentNight?: number }
-  | { type: "ENEMY_ADVANCE" }
+  // `currentNight` (survivedNights + 1, viz game/core/survivedNights.ts) —
+  // stejná hodnota jako TICK.currentNight výše, poslaná i sem (viz
+  // game/core/gameLoop.ts), protože ENEMY_ADVANCE ji potřebuje pro
+  // GHOUL_CAMERA_ATTACK limit podle čísla noci (viz
+  // game/core/cameraDamage.ts#getMaxDisabledCamerasForNight). Chybí-li,
+  // bere se jako noc 1 (stejný fallback jako TICK).
+  | { type: "ENEMY_ADVANCE"; currentNight?: number }
   | { type: "GO_TO_MENU" }
   // Efekt z nouzové minihry (viz EmergencyMiniGame, game/minigame/types.ts
   // EmergencyWorldEffect "energy_recharged") po returned resultu —
@@ -173,4 +179,38 @@ export type GameAction =
   // app/play/page.tsx#handleEmergencyMiniGameComplete) — přičte se do
   // existujícího GameState.bulbsRemaining skladu, žádný nový paralelní
   // systém (viz zadání "ověřit napojení žárovky do hlavní hry").
-  | { type: "ADD_BULBS_REMAINING"; amount: number };
+  | { type: "ADD_BULBS_REMAINING"; amount: number }
+  // Admin/dev-only ruční spuštění útoku Ghoula na PRÁVĚ AKTIVNÍ kameru (viz
+  // zadání "spolehlivě otestovat", DebugPanel.tsx) — obchází JEN náhodný hod
+  // (GHOUL_CAMERA_ATTACK_CHANCE zůstává produkčně beze změny, viz
+  // game/core/cameraDamage.ts#canDebugTriggerGhoulCameraAttack), ne ostatní
+  // podmínky (platná kamera, limit podle čísla noci, kamera zatím není
+  // offline/v aktivním útoku). `currentNight` stejná hodnota jako
+  // ENEMY_ADVANCE — potřeba pro getMaxDisabledCamerasForNight.
+  // `animationId` (viz zadání "vybrat konkrétní sekvenci") je volitelný
+  // debug override — chybí-li, reducer vybere sekvenci normálně podle
+  // aktivní kamery + světla (viz cameraAttackAnimation.object13.ts).
+  | { type: "DEBUG_TRIGGER_GHOUL_CAMERA_ATTACK"; currentNight?: number; animationId?: GhoulCameraAttackAnimationId }
+  // Vrátí GameState.cameraDamage na klidový stav bez čekání na novou noc
+  // (viz zadání "resetovat stav poškození kamer" v debug režimu).
+  | { type: "DEBUG_RESET_CAMERA_DAMAGE" }
+  // Dev-only: přesune Ghoula přímo na lokaci PRVNÍ aktuálně vyřazené kamery
+  // (viz zadání "přesunout Ghoula do lokace s vyřazenou kamerou a otestovat
+  // mikrofon") — no-op bez žádné vyřazené kamery. `enemyStage` změna
+  // projde centrálním withDisabledCameraFootsteps wrapperem stejně jako
+  // jakýkoliv jiný přesun, takže zvuk kroků z mikrofonu se spustí sám.
+  | { type: "DEBUG_MOVE_ENEMY_TO_DISABLED_CAMERA" }
+  // Dev-only: ručně přehraje zvuk kroků z mikrofonu bez ohledu na cooldown
+  // (viz zadání "ručně přehrát použitý zvuk kroků") — jen zvýší
+  // disabledCameraFootstepsSeq, stejný event jako produkční trigger.
+  | { type: "DEBUG_PLAY_DISABLED_CAMERA_FOOTSTEPS" }
+  // Dev-only override efektivní šance útoku Ghoula na kameru (viz zadání
+  // "nastavit šanci na 100 procent", GameState.debugGhoulCameraAttackChanceOverride)
+  // — `chance: null` vrátí produkční GHOUL_CAMERA_ATTACK_CHANCE (0.05).
+  | { type: "SET_DEBUG_GHOUL_CAMERA_ATTACK_CHANCE_OVERRIDE"; chance: number | null }
+  // Dev-only: přeskočí právě probíhající útok rovnou na hold posledního
+  // snímku (viz zadání "přeskočit na poslední frame") — no-op bez aktivního útoku.
+  | { type: "DEBUG_SKIP_CAMERA_ATTACK_TO_LAST_FRAME" }
+  // Dev-only: okamžitě dokončí právě probíhající útok (viz zadání
+  // "přeskočit rovnou do offline stavu") — no-op bez aktivního útoku.
+  | { type: "DEBUG_SKIP_CAMERA_ATTACK_TO_OFFLINE" };

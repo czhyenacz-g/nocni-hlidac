@@ -610,3 +610,93 @@
     opacity: 1;
   }
 }
+
+/* ── Útok Ghoula na kameru (viz game/core/cameraDamage.ts, CameraDamageOverlay.tsx) ──
+ * Tři stackované vrstvy nad živým obrazem po dobu CAMERA_FAILURE_TRANSITION_MS
+ * (5000ms, viz cameraDamageConfig.ts) — `forwards` fill mode, ať zůstane na
+ * poslední hodnotě, dokud TICK fázi nepřepne na "offline" (kde tenhle blok
+ * stejně zmizí, nahrazený .camera-offline-screen níže). Fáze podle zadání:
+ * 0-1s lehké bliknutí + slabé zrnění + malý pokles jasu, 1-4s postupné
+ * tmavnutí + silnější šum + občasný výpadek, 4-5s téměř černo + výrazné zrnění. */
+.camera-attack-darken {
+  background: #000;
+  opacity: 0;
+  animation: camera-attack-darken 5000ms ease-in forwards;
+}
+
+@keyframes camera-attack-darken {
+  0% { opacity: 0; }
+  10% { opacity: 0.12; }
+  20% { opacity: 0.15; }
+  55% { opacity: 0.55; }
+  80% { opacity: 0.8; }
+  100% { opacity: 0.95; }
+}
+
+.camera-attack-grain {
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.09) 0px,
+    rgba(255, 255, 255, 0.09) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  opacity: 0.05;
+  animation: camera-attack-grain 5000ms steps(2) forwards;
+}
+
+@keyframes camera-attack-grain {
+  0% { opacity: 0.05; }
+  20% { opacity: 0.25; }
+  45% { opacity: 0.4; }
+  /* Krátký výpadek obrazu (viz zadání "občasný krátký výpadek") kolem poloviny přechodu. */
+  50% { opacity: 0.05; }
+  55% { opacity: 0.5; }
+  80% { opacity: 0.75; }
+  100% { opacity: 0.95; }
+}
+
+/* Lehké bliknutí hned na začátku (0-1s, viz zadání) — bílý flash, rychle odezní. */
+.camera-attack-blink {
+  background: #fff;
+  opacity: 0;
+  animation: camera-attack-blink-flash 5000ms steps(1) forwards;
+}
+
+@keyframes camera-attack-blink-flash {
+  0% { opacity: 0; }
+  2% { opacity: 0.45; }
+  4% { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .camera-attack-darken {
+    animation: none;
+    opacity: 0.9;
+  }
+  .camera-attack-grain,
+  .camera-attack-blink {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+/* Kamera plně mimo provoz (viz zadání "SIGNÁL ZTRACEN / KAMERA MIMO PROVOZ /
+ * SERVIS V 06:00") — PLNĚ neprůhledné pozadí (žádná alfa), ať pod ním
+ * nemůže prosvítat živý obraz/pozice monstra, ani kdyby CameraView pod
+ * touhle vrstvou zůstal vykreslený. */
+.camera-offline-screen {
+  background: #050505;
+}
+
+.camera-offline-grain {
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.06) 0px,
+    rgba(255, 255, 255, 0.06) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  animation: pixel-blink 0.4s steps(2) infinite;
+}

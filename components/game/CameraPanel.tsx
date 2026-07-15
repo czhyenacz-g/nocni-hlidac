@@ -1,4 +1,4 @@
-import { CameraDefinition, CameraId, CameraViewMode, EnemyMoveDecision, EnemyStage } from "@/game/core/types";
+import { CameraDamageState, CameraDefinition, CameraId, CameraViewMode, EnemyMoveDecision, EnemyStage } from "@/game/core/types";
 import CameraMonitorGrid from "./CameraMonitorGrid";
 import CameraDetailView from "./CameraDetailView";
 
@@ -19,6 +19,8 @@ interface CameraPanelProps {
   onToggleSonicCannon: () => void;
   onSelectCamera: (id: CameraId) => void;
   onCloseCameras: () => void;
+  /** Viz GameState.cameraDamage — vzácný útok Ghoula na kameru (game/core/cameraDamage.ts). */
+  cameraDamage: CameraDamageState;
 }
 
 // Wrapper podle GameState.cameraViewMode: overview = mřížka monitorů
@@ -39,6 +41,7 @@ export default function CameraPanel({
   onToggleSonicCannon,
   onSelectCamera,
   onCloseCameras,
+  cameraDamage,
 }: CameraPanelProps) {
   if (cameraViewMode === "detail") {
     const activeCamera = cameras.find((c) => c.id === activeCameraId) ?? null;
@@ -54,6 +57,7 @@ export default function CameraPanel({
         sonicCannonActive={sonicCannonActive}
         onToggleSonicCannon={onToggleSonicCannon}
         onBack={onCloseCameras}
+        cameraDamage={cameraDamage}
       />
     );
   }
@@ -64,6 +68,7 @@ export default function CameraPanel({
       enemyStage={enemyStage}
       showAdminDoorAlerts={showAdminDoorAlerts}
       onSelectCamera={onSelectCamera}
+      disabledCameraIds={cameraDamage.disabledCameraIds}
     />
   );
 }

@@ -2085,3 +2085,55 @@ run větev), na návrat z minihry se už nepoužívá.
   synth, žádné reálné soubory): `ammoDispenseClick` (úspěšné dávkování), `ammoRequestRejected`
   (sdílený pro OBA odmítací případy — plná zbraň i žádná zbraň zatím nenalezená),
   `weaponEmptyClick` (prázdná zbraň v minihře).
+
+## Útok Ghoula na kameru (`game/core/cameraDamage.ts`, `game/core/cameraDamageConfig.ts`)
+
+Hod proběhne PŘI KAŽDÉM použití sonického děla na Ghoula (`sonicEffective` v
+`gameReducer.ts#ENEMY_ADVANCE`), nezávisle na `sonicResult` — 5% šance
+(`GHOUL_CAMERA_ATTACK_CHANCE`). Zasáhne-li útok, PŘEVEZME kontrolu nad výsledným pohybem
+tohohle hodu (Ghoul ustoupí přesně o jeden krok přes existující `stepBackOneStage`, nikdy
+dvojitý retreat), nastaví "forced retreat" okno se `chance: 0` na
+`GHOUL_CAMERA_ATTACK_RETREAT_PAUSE_MS` (7 s) — znovupoužitý mechanismus z light/UV repelu,
+jen s nulovou šancí = čisté čekání.
+
+- **Stav** — `GameState.cameraDamage: CameraDamageState { disabledCameraIds: CameraId[];
+  activeAttack: { cameraId, startedAtMs, animationId } | null; lastAttackAtMs: number | null;
+  lastFootstepsAtMs: number | null }`. Víc vyřazených kamer za noc, limit podle čísla noci
+  (`getMaxDisabledCamerasForNight`, `MAX_DISABLED_CAMERAS_BY_NIGHT`: noc 1–10 → 1, 11–19 → 2,
+  20+ → 3, nikdy uložené v GameState). `CAMERA_ATTACK_COOLDOWN_MS` (15 s) mezi útoky.
+  `activeAttack` drží nejvýš jeden útok najednou — nový útok nemůže začít, dokud
+  `activeAttack !== null` (přechod trvá jen 5 s, kratší než cooldown, ale kontrola je
+  navíc explicitní). Reset na `INACTIVE_CAMERA_DAMAGE` při každém `createInitialGameState`
+  (nová/opakovaná noc) — starší uložený stav bez těchhle polí se tak vždy bezpečně načte.
+- **Seq countery** (`cameraAttackStartedSeq`, `cameraOfflineSeq`, `disabledCameraFootstepsSeq`)
+  — stejný "reducer nikdy nevolá audio" vzor jako zbytek projektu, `app/play/page.tsx`
+  podle změny přehraje zvuk.
+- **Mikrofon zůstává funkční** — `withDisabledCameraFootsteps` (centrální wrapper na konci
+  `gameReducer.ts`, stejný vzor jako `withEnemyStageVisitSeed`/`withSonicCannonAutoOff`)
+  detekuje přechod "Ghoul je na lokaci offline kamery" z `false` na `true` (pokrývá JAK
+  vstup Ghoula do už offline lokace, TAK dokončení vyřazení kamery, na které Ghoul už
+  stojí, jedním sjednoceným porovnáním) a přehraje existující candidate zvuk kroků
+  (`AUDIO_EVENTS.disabledCameraFootsteps`, `/dev-sound-candidates/footsteps_human/
+  footsteps_stone_securesubset.mp3`, CC0, žádná kopie souboru), respektuje
+  `DISABLED_CAMERA_FOOTSTEPS_COOLDOWN_MS` (10 s).
+- **Sonické dělo na offline kameře** — `TOGGLE_SONIC_CANNON` guard
+  (`isCameraFullyOffline`) tiše odmítne aktivaci.
+- **Obrázková animace** (`game/cameras/cameraAttackAnimation.ts` obecný typ +
+  `cameraAttackAnimation.object13.ts` konkrétní data) — 4 sekvence po 25 snímcích
+  (`left_hallway`/`right_hallway`/`door_hallway`/`door_hallway_light`, vybrané
+  `game/core/cameraDamage.ts#resolveGhoulCameraAttackAnimationId` podle kamery + světla
+  V OKAMŽIKU spuštění, zamrzlé do `activeAttack.animationId`). `outer_yard` sekvenci nemá
+  — `CameraDamageOverlay.tsx` spadne na CSS ztmavnutí/zrnění (fallback funguje i při
+  chybějícím/prázdném poli snímků). `resolveGhoulCameraAttackFrameState` čistě odvozuje
+  index snímku z `nowMs - startedAtMs` (žádný lokální timer) — `frameDurationMs =
+  GHOUL_CAMERA_ATTACK_FRAMES_DURATION_MS / frames.length` (2500ms / 25 = 100ms), po
+  `GHOUL_CAMERA_ATTACK_LAST_FRAME_HOLD_MS` (2000ms) drží poslední snímek, nikdy smyčka.
+  Snímky zdrojově PNG → WebP převedeny skriptem `scripts/convert-ghoul-camera-attack-assets.py`
+  (numerické řazení podle čísla v názvu, ne lexikografické), PNG i WebP koexistují ve
+  stejné složce (stejná konvence jako zbytek `public/object_13/camera/`). Preload všech
+  4 sekvencí (~1,2 MB) na `LoadingScreen.tsx` (`preloadGhoulCameraAttackAnimations`).
+- **Debug** (`DebugPanel.tsx`) — ruční spuštění útoku (i s vybranou konkrétní sekvencí),
+  reset stavu poškození, teleport Ghoula na offline kameru (test mikrofonu), ruční
+  přehrání zvuku kroků, override efektivní šance na 100 % (`debugGhoulCameraAttackChanceOverride`,
+  produkční `GHOUL_CAMERA_ATTACK_CHANCE` beze změny), skok na poslední snímek, skok rovnou
+  do offline stavu.

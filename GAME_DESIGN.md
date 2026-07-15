@@ -334,6 +334,27 @@ pozadí — cyklus tam a zpátky trvá ~25 sekund (~12,6 s na směr, po playtest
 z původních ~18 s). Konfigurovatelné/vypnutelné na jednom místě,
 případně jde nastavit jinak per kamera (zatím žádná výjimka).
 
+### Útok Ghoula na kameru (vzácná reakce na sonické dělo)
+
+Při **každém** použití sonického děla na Ghoula (bez ohledu na to, jestli dělo Ghoula
+odradilo, `game/core/cameraDamage.ts`) proběhne dodatečný 5% hod. Uspěje-li:
+
+1. Ghoul si všimne aktivní kamery — kamera přejde do útoku (obrázková sekvence Ghoula
+   běžícího ke kameře, ~2,5 s, `left_hallway`/`right_hallway`/`door_hallway`/
+   `door_hallway_light` podle kamery a stavu chodbového světla V OKAMŽIKU spuštění —
+   pozdější přepnutí světla sekvenci už nemění).
+2. Poslední snímek zůstane vidět další ~2 s, pak krátké závěrečné ztmavnutí/zrnění.
+3. Kamera přejde do trvalého stavu **offline** (obraz pryč) až do rána — "SIGNÁL ZTRACEN /
+   KAMERA MIMO PROVOZ / SERVIS V 06:00 / MIKROFON: AKTIVNÍ". **Mikrofon zůstává funkční** —
+   vejde-li Ghoul do lokace offline kamery, ozvou se z reproduktoru jeho kroky.
+4. Ghoul po útoku ustoupí přesně o jeden krok směrem ven (nikdy blíž ke kanceláři) a na
+   chvíli (~7 s) jen čeká, než pokračuje normální AI.
+
+Kolik kamer lze za noc takhle ztratit, roste s obtížností nocí: 1 (noci 1–10), 2 (11–19),
+3 (od noci 20) — počítáno vždy z aktuálního čísla noci, nikdy neukládáno. Mezi dvěma útoky
+je navíc ~15 s cooldown, ať se dvě kamery neztratí prakticky najednou. Sonické dělo na
+offline kameře nejde použít; přepínání na ostatní kamery zůstává funkční.
+
 ## Stres a heartbeat
 
 Interní hladina stresu/adrenalinu (0–100, `game/audio/useHeartbeatStress.ts`), zatím s

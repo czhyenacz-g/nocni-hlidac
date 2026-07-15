@@ -1,6 +1,8 @@
 import { COPY } from "@/content/copy";
-import { CameraDefinition, EnemyMoveDecision, EnemyStage } from "@/game/core/types";
+import { CameraDamageState, CameraDefinition, EnemyMoveDecision, EnemyStage } from "@/game/core/types";
+import { resolveCameraAttackVisualPhase } from "@/game/core/cameraDamage";
 import CameraView from "./CameraView";
+import CameraDamageOverlay from "./camera/CameraDamageOverlay";
 import ViewSwitchArrow from "./ViewSwitchArrow";
 
 interface CameraDetailViewProps {
@@ -15,6 +17,8 @@ interface CameraDetailViewProps {
   sonicCannonActive: boolean;
   onToggleSonicCannon: () => void;
   onBack: () => void;
+  /** Viz GameState.cameraDamage — vzácný útok Ghoula (game/core/cameraDamage.ts), vykreslený přes CameraDamageOverlay.tsx jen když se týká PRÁVĚ TÉHLE kamery. */
+  cameraDamage: CameraDamageState;
 }
 
 // Zvětšený detail jedné kamery (viz GameState.cameraViewMode === "detail").
@@ -31,12 +35,20 @@ export default function CameraDetailView({
   sonicCannonActive,
   onToggleSonicCannon,
   onBack,
+  cameraDamage,
 }: CameraDetailViewProps) {
+  // Vizuální fáze PRO PRÁVĚ TUHLE kameru (viz
+  // game/core/cameraDamage.ts#resolveCameraAttackVisualPhase) — čistě
+  // odvozená z cameraDamage + elapsedMs, může se týkat víc kamer za noc
+  // (limit podle čísla noci), ale nejvýš JEDNA smí být zrovna "attacking".
+  const attackPhase = camera !== null ? resolveCameraAttackVisualPhase(cameraDamage, camera.id, elapsedMs) : "idle";
+  const isFullyOffline = attackPhase === "offline";
+
   return (
     <div className="camera-detail-zoom-in flex flex-col gap-2">
-      {/* `relative` obal jen kvůli sonic-cannon overlayi níže — CameraView
-          samo o sobě zůstává beze změny (žádný nový prop pro obrázek/motion
-          pan, ten zůstává čistě uvnitř CameraView.tsx). */}
+      {/* `relative` obal jen kvůli sonic-cannon/camera-damage overlayům níže
+          — CameraView samo o sobě zůstává beze změny (žádný nový prop pro
+          obrázek/motion pan, ten zůstává čistě uvnitř CameraView.tsx). */}
       <div className="relative">
         <CameraView
           camera={camera}
@@ -52,14 +64,26 @@ export default function CameraDetailView({
             vrstva NAD obrázkem, nezasahuje do CameraView/manual pan motion
             animace pod sebou. `sonic-cannon-overlay` (styles/pixel.css) drží
             jemné vlnění/rušení — žádný fullscreen flash, žádné silné
-            blikání (viz zadání). */}
-        {sonicCannonActive && (
+            blikání (viz zadání). Vypnuto na plně offline kameře (viz
+            TOGGLE_SONIC_CANNON guard v gameReducer.ts — dělo tam beztak
+            nejde zapnout, overlay by tak zůstal navždy vidět zbytečně). */}
+        {sonicCannonActive && !isFullyOffline && (
           <div className="absolute inset-0 pointer-events-none sonic-cannon-overlay" aria-hidden="true">
             <span className="absolute bottom-1 right-2 text-[9px] tracking-widest text-cyan-300">
               {COPY.game.sonicCannonOnLabel}
             </span>
           </div>
         )}
+        {/* Útok Ghoula na kameru (viz zadání) — `"offline"` je PLNĚ
+            neprůhledná (viz CameraDamageOverlay.tsx), takže "nesmí být
+            vidět aktuální pozice monstra" platí i s CameraView pod ní
+            pořád vykresleným. */}
+        <CameraDamageOverlay
+          phase={attackPhase}
+          animationId={camera !== null && cameraDamage.activeAttack?.cameraId === camera.id ? cameraDamage.activeAttack.animationId : null}
+          attackStartedAtMs={camera !== null && cameraDamage.activeAttack?.cameraId === camera.id ? cameraDamage.activeAttack.startedAtMs : null}
+          nowMs={elapsedMs}
+        />
       </div>
 
       <button

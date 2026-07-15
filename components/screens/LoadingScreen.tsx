@@ -6,6 +6,7 @@ import { selectLoadingHints } from "@/content/loadingHints";
 import { LOADING_SCREEN_DURATION_MS, LOADING_SCREEN_HINT_COUNT } from "@/game/balancing/constants";
 import { preloadBackgroundImages, BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 import { preloadCameraImages } from "@/game/cameras/cameraAssets.object13";
+import { preloadGhoulCameraAttackAnimations } from "@/game/cameras/cameraAttackAnimation.object13";
 import SceneBackground from "@/components/SceneBackground";
 import { GameMode } from "@/game/core/gameMode";
 
@@ -41,6 +42,7 @@ export default function LoadingScreen({ gameMode }: LoadingScreenProps) {
   useEffect(() => {
     preloadBackgroundImages();
     preloadCameraImages();
+    preloadGhoulCameraAttackAnimations();
   }, []);
 
   useEffect(() => {

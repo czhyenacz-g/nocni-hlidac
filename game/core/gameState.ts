@@ -1,5 +1,6 @@
 import { EnemyStage, GameState, NightDefinition, RoomBulbsState } from "./types";
 import { createDefaultRoomBulbs } from "./roomBulbs";
+import { INACTIVE_CAMERA_DAMAGE } from "./cameraDamage";
 import { BULBS_CONFIG } from "./bulbsConfig";
 import { DEFAULT_NIGHT_FEATURES, NightFeatureFlags } from "../difficulty/nightConfig";
 import { DEFAULT_GAME_MODE, GAME_MODE_CONFIG, GameMode } from "./gameMode";
@@ -108,6 +109,15 @@ export function createInitialGameState(
     sonicCannonToggleSeq: 0,
     lastSonicCannonToggleReason: null,
 
+    // Nikdy persistentní mezi nocemi (viz zadání "reset ráno") — vždy
+    // čerstvý klidový stav, žádný override parametr (stejná konvence jako
+    // monsterHitsToday). Starší uložený běh bez těchhle polí se tak vždy
+    // bezpečně "načte" jako čerstvý stav (viz report).
+    cameraDamage: INACTIVE_CAMERA_DAMAGE,
+    cameraAttackStartedSeq: 0,
+    cameraOfflineSeq: 0,
+    disabledCameraFootstepsSeq: 0,
+
     deathReason: null,
     doorDeathRevealUntilMs: null,
 
@@ -154,6 +164,7 @@ export function createInitialGameState(
     // (nastavuje se výhradně SET_DEBUG_NIGHT akcí, ne při startu/restartu
     // směny).
     debugNightOverride: null,
+    debugGhoulCameraAttackChanceOverride: null,
 
     isRunning: false,
     audioMuted: false,

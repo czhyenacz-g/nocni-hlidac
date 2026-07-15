@@ -10,6 +10,8 @@ interface CameraMonitorGridProps {
   /** Admin-only rychlá testovací pomůcka (viz zadání "rychlejší testování", game/cameras/cameraDoorAlert.ts) — normální hráč tohle nikdy nedostane, overview nesmí prozrazovat živou polohu nepřítele. */
   showAdminDoorAlerts: boolean;
   onSelectCamera: (id: CameraId) => void;
+  /** Viz GameState.cameraDamage.disabledCameraIds (game/core/cameraDamage.ts) — jen malý "OFFLINE" štítek, overview beztak nikdy neukazuje živý obraz, takže tu nehrozí prozrazení pozice monstra. Může jich být víc najednou (limit podle čísla noci). */
+  disabledCameraIds: CameraId[];
 }
 
 // Lehké střídavé naklopení horní řady desktop racku (viz zadání "trochu
@@ -27,7 +29,13 @@ const UPPER_TILT_SEQUENCE = ["-rotate-1", "rotate-1", "-rotate-2", "rotate-2"];
 // "2+2". Klik na monitor v OBOU variantách otevře detail dané kamery
 // (OPEN_CAMERA -> cameraViewMode: "detail") — vizuální varianta nemění nic
 // na tom, co se stane po kliknutí.
-export default function CameraMonitorGrid({ cameras, enemyStage, showAdminDoorAlerts, onSelectCamera }: CameraMonitorGridProps) {
+export default function CameraMonitorGrid({
+  cameras,
+  enemyStage,
+  showAdminDoorAlerts,
+  onSelectCamera,
+  disabledCameraIds,
+}: CameraMonitorGridProps) {
   // Pořadí podle order (kamery bez order jdou na konec) — stejné řazení jako
   // dřív u tlačítek, teď jen bez levo/pravo zarovnání podle position (mřížka
   // monitorů je jednotná 2×2, ne diagram fyzického rozložení chodeb).
@@ -41,7 +49,12 @@ export default function CameraMonitorGrid({ cameras, enemyStage, showAdminDoorAl
       {/* Mobil — beze změny oproti dřívějšku (viz zadání). */}
       <div className="grid grid-cols-2 gap-2 lg:hidden">
         {sortedCameras.map((camera) => (
-          <CameraMonitorTile key={camera.id} camera={camera} onClick={() => onSelectCamera(camera.id)} />
+          <CameraMonitorTile
+            key={camera.id}
+            camera={camera}
+            offline={disabledCameraIds.includes(camera.id)}
+            onClick={() => onSelectCamera(camera.id)}
+          />
         ))}
       </div>
 
@@ -59,6 +72,7 @@ export default function CameraMonitorGrid({ cameras, enemyStage, showAdminDoorAl
               size="upper"
               tiltClassName={UPPER_TILT_SEQUENCE[index % UPPER_TILT_SEQUENCE.length]}
               alertActive={showAdminDoorAlerts && isCameraDoorAlertActive(camera, enemyStage)}
+              offline={disabledCameraIds.includes(camera.id)}
               onClick={() => onSelectCamera(camera.id)}
             />
           ))}
@@ -71,6 +85,7 @@ export default function CameraMonitorGrid({ cameras, enemyStage, showAdminDoorAl
               camIndex={upperRow.length + index + 1}
               size="lower"
               alertActive={showAdminDoorAlerts && isCameraDoorAlertActive(camera, enemyStage)}
+              offline={disabledCameraIds.includes(camera.id)}
               onClick={() => onSelectCamera(camera.id)}
             />
           ))}

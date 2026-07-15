@@ -57,6 +57,7 @@ export default function DeskView({
           onToggleSonicCannon={onToggleSonicCannon}
           onSelectCamera={onSelectCamera}
           onCloseCameras={onCloseCameras}
+          cameraDamage={state.cameraDamage}
         />
       </div>
 

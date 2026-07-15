@@ -41,7 +41,7 @@ export function useGameLoop({ isRunning, enemyTickMs, dispatch, stressLevelRef, 
     }, GAME_TICK_MS);
 
     const enemyInterval = setInterval(() => {
-      dispatch({ type: "ENEMY_ADVANCE" });
+      dispatch({ type: "ENEMY_ADVANCE", currentNight });
     }, enemyTickMs);
 
     return () => {

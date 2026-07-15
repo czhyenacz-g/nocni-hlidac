@@ -581,4 +581,46 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
       waveform: "square",
     },
   },
+  // Začátek poškozování kamery (viz zadání "existující zvuky kamerového
+  // šumu/elektrického rušení, pokud existují" — projekt žádný takový
+  // obecný event nemá, deathSequenceGlitch je záměrně izolovaný jen pro
+  // death sekvenci, viz jeho komentář v tomhle souboru, proto nový event).
+  // Krátký nepravidelný "prasknutí" zvuk — dvě rychlé nesouhlasné noty.
+  [AUDIO_EVENTS.cameraDamageStart]: {
+    src: "/assets/audio/camera_damage_start.mp3",
+    volume: 0.6,
+    loop: false,
+    fallbackSynth: {
+      notes: [
+        { frequency: 220, durationMs: 60, gapMs: 20 },
+        { frequency: 90, durationMs: 100 },
+      ],
+      volume: 0.5,
+      waveform: "sawtooth",
+    },
+  },
+  // Úplné přerušení signálu (attackPhase -> "offline") — nižší, delší tón,
+  // ať je jasně odlišný od cameraDamageStart výše ("začátek" vs. "konec").
+  [AUDIO_EVENTS.cameraSignalLost]: {
+    src: "/assets/audio/camera_signal_lost.mp3",
+    volume: 0.6,
+    loop: false,
+    fallbackSynth: {
+      notes: [{ frequency: 60, durationMs: 260 }],
+      volume: 0.5,
+      waveform: "sawtooth",
+    },
+  },
+  // Kroky Ghoula z mikrofonu offline kamery (viz zadání) — existující
+  // candidate soubor (7s, CC0, freesound.org/people/SecureSubset/sounds/813622/,
+  // viz app/dev-sound/page.tsx CANDIDATE_LIST "Kroky — člověk, kámen"),
+  // znovupoužitý přímo ze své dosavadní cesty — ŽÁDNÁ kopie souboru (viz
+  // zadání "Nevytvářej druhou kopii stejného souboru"). Mírně ztišené oproti
+  // preview hlasitosti, ať to zní jako vzdálený mikrofonní přenos, ne
+  // zvuk "v místnosti".
+  [AUDIO_EVENTS.disabledCameraFootsteps]: {
+    src: "/dev-sound-candidates/footsteps_human/footsteps_stone_securesubset.mp3",
+    volume: 0.5,
+    loop: false,
+  },
 };
