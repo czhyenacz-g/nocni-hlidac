@@ -226,7 +226,9 @@ export default function GameScreen({
             <PowerMeter
               power={state.power}
               rechargeSeq={state.powerRechargeSeq}
-              stressPercent={STRESS_DEV_HUD_ENABLED ? Math.round(heartbeatStress * 100) : undefined}
+              stressPercent={
+                STRESS_DEV_HUD_ENABLED && debugPanelVisible ? Math.round(heartbeatStress * 100) : undefined
+              }
               bulbsRemaining={bulbsRemaining}
               nearRoomBulbLabel={nearRoomBulbLabel}
               nearRoomBulbCountingDown={nearRoomBulbLabel !== undefined && !nearRoomBulb.broken}
