@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { COPY } from "@/content/copy";
 import { CameraDamageState, CameraDefinition, EnemyMoveDecision, EnemyStage } from "@/game/core/types";
 import { resolveCameraAttackVisualPhase } from "@/game/core/cameraDamage";
@@ -44,12 +45,24 @@ export default function CameraDetailView({
   const attackPhase = camera !== null ? resolveCameraAttackVisualPhase(cameraDamage, camera.id, elapsedMs) : "idle";
   const isFullyOffline = attackPhase === "offline";
 
+  // Klik na obraz ho zvětší 2.5x (viz zadání) — čistě lokální UI stav, žádný
+  // GameState — netýká se herní logiky, jen zvětšeného náhledu. Druhý klik
+  // zase zmenší zpátky.
+  const [zoomed, setZoomed] = useState(false);
+
   return (
     <div className="camera-detail-zoom-in flex flex-col gap-2">
       {/* `relative` obal jen kvůli sonic-cannon/camera-damage overlayům níže
           — CameraView samo o sobě zůstává beze změny (žádný nový prop pro
-          obrázek/motion pan, ten zůstává čistě uvnitř CameraView.tsx). */}
-      <div className="relative">
+          obrázek/motion pan, ten zůstává čistě uvnitř CameraView.tsx).
+          `camera-detail-zoomed` (styles/pixel.css) škáluje CELÝ obal
+          (obraz + overlaye společně), ne jen <img> — ať se sonic-cannon/
+          damage overlay zvětší spolu s obrazem, ne zůstane v původní
+          velikosti přes zvětšený obraz. */}
+      <div
+        className={`relative cursor-pointer camera-detail-zoom-toggle ${zoomed ? "camera-detail-zoomed" : ""}`}
+        onClick={() => setZoomed((prev) => !prev)}
+      >
         <CameraView
           camera={camera}
           enemyStage={enemyStage}

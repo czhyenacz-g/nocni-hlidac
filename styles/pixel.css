@@ -170,6 +170,22 @@
   100% { transform: scale(1); opacity: 1; }
 }
 
+/* Klik na obraz v detailu kamery ho zvětší 2.5x (viz zadání) — samostatné od
+ * camera-detail-zoom-in výše (ten je jen jednorázová mount animace).
+ * `transform-origin: center` + `transition` na wrapperu, ať zvětšení/zmenšení
+ * plynule animuje; vyšší z-index, ať zvětšený obraz překryje okolní UI
+ * (tlačítko zvukového děla, šipka zpět) místo aby s nimi kolidoval layoutem. */
+.camera-detail-zoom-toggle {
+  transform-origin: center;
+  transition: transform 0.2s ease-out;
+}
+
+.camera-detail-zoomed {
+  transform: scale(2.5);
+  position: relative;
+  z-index: 20;
+}
+
 /* Velmi jemný "kamera není úplně statická" drift v detailu kamery —
  * viz game/cameras/cameraMotionConfig.ts, CameraView.tsx. Jen na <img>,
  * ne na wrapperu (ten má overflow:hidden, aby drift nikdy neodkryl okraj).
