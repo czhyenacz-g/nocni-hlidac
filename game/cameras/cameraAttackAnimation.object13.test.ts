@@ -30,9 +30,9 @@ describe("GHOUL_CAMERA_ATTACK_ANIMATIONS", () => {
     }
   });
 
-  it("has 25 frames per hallway/door sequence (exact count found in the source project)", () => {
+  it("has 26 frames per hallway/door sequence (25 original + 1 added later as the new last frame)", () => {
     for (const id of ["left_hallway", "right_hallway", "door_hallway", "door_hallway_light"] as const) {
-      expect(GHOUL_CAMERA_ATTACK_ANIMATIONS[id].frames).toHaveLength(25);
+      expect(GHOUL_CAMERA_ATTACK_ANIMATIONS[id].frames).toHaveLength(26);
     }
   });
 

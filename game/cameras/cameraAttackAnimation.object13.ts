@@ -12,7 +12,9 @@ import { CameraAttackAnimationDefinition } from "./cameraAttackAnimation";
  * změna světla přepnout sekvenci"). `outer_yard` sekvence má jen 4 snímky
  * (dodáno dodatečně, viz report) — frameDurationMs se odvozuje z počtu, ať
  * celková délka (GHOUL_CAMERA_ATTACK_FRAMES_DURATION_MS) zůstane stejná pro
- * všechny sekvence bez ohledu na počet snímků.
+ * všechny sekvence bez ohledu na počet snímků. Stejný důvod umožnil
+ * dodatečně přidat 26. snímek do všech čtyř hallway/door sekvencí (viz
+ * report) beze změny celkové délky — je to prostě nový poslední snímek.
  */
 
 /**
@@ -33,13 +35,14 @@ function defineAnimation(id: GhoulCameraAttackAnimationId, frames: string[]): Ca
   };
 }
 
-// Přesné počty/názvy zjištěné z projektu (viz report) — 25 snímků ve čtyřech
-// hallway/door složkách, 4 snímky ve outdoor složce (dodáno později).
-const LEFT_HALLWAY_FRAMES = buildFrameList("left_hallway/left_hallway_ghoul_attack", "left_hallway", 25);
-const RIGHT_HALLWAY_FRAMES = buildFrameList("right_hallway/right_hallway_ghoul_attack", "right_hallway", 25);
-const DOOR_HALLWAY_FRAMES = buildFrameList("door_hallway/door_hallway_ghoul_attack", "door_hallway", 25);
+// Přesné počty/názvy zjištěné z projektu (viz report) — 26 snímků ve čtyřech
+// hallway/door složkách (25 + dodatečně přidaný 26. jako nový poslední
+// snímek), 4 snímky ve outdoor složce (ta zůstává beze změny).
+const LEFT_HALLWAY_FRAMES = buildFrameList("left_hallway/left_hallway_ghoul_attack", "left_hallway", 26);
+const RIGHT_HALLWAY_FRAMES = buildFrameList("right_hallway/right_hallway_ghoul_attack", "right_hallway", 26);
+const DOOR_HALLWAY_FRAMES = buildFrameList("door_hallway/door_hallway_ghoul_attack", "door_hallway", 26);
 // Zdrojové soubory používají "bright" (ne "light") v názvu — viz report.
-const DOOR_HALLWAY_LIGHT_FRAMES = buildFrameList("door_hallway_light/door_hallway_light_ghoul_attack", "door_hallway_bright", 25);
+const DOOR_HALLWAY_LIGHT_FRAMES = buildFrameList("door_hallway_light/door_hallway_light_ghoul_attack", "door_hallway_bright", 26);
 const OUTER_YARD_FRAMES = buildFrameList("outdoor/outdoor_ghoul_attack", "outdoor", 4);
 
 export const GHOUL_CAMERA_ATTACK_ANIMATIONS: Record<GhoulCameraAttackAnimationId, CameraAttackAnimationDefinition> = {

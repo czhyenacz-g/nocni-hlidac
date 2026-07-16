@@ -2122,13 +2122,15 @@ jen s nulovou šancí = čisté čekání.
   `cameraAttackAnimation.object13.ts` konkrétní data) — 5 sekvencí, jedna na kameru
   (`outer_yard`/`left_hallway`/`right_hallway`/`door_hallway`/`door_hallway_light`, vybrané
   `game/core/cameraDamage.ts#resolveGhoulCameraAttackAnimationId` podle kamery + světla
-  V OKAMŽIKU spuštění, zamrzlé do `activeAttack.animationId`). 25 snímků ve čtyřech
-  hallway/door sekvencích, 4 snímky ve `outer_yard` (dodáno později — počet snímků se
-  smí lišit, `frameDurationMs` se odvozuje z délky pole). `CameraDamageOverlay.tsx` má i
-  tak CSS ztmavnutí/zrnění fallback pro případ chybějící/prázdné sekvence.
+  V OKAMŽIKU spuštění, zamrzlé do `activeAttack.animationId`). 26 snímků ve čtyřech
+  hallway/door sekvencích (25 původních + 1 dodatečně přidaný jako nový poslední snímek,
+  viz report), 4 snímky ve `outer_yard` (dodáno později — počet snímků se smí lišit,
+  `frameDurationMs` se odvozuje z délky pole, takže přidání/ubrání snímku nikdy nemění
+  celkovou délku sekvence). `CameraDamageOverlay.tsx` má i tak CSS ztmavnutí/zrnění
+  fallback pro případ chybějící/prázdné sekvence.
   `resolveGhoulCameraAttackFrameState` čistě odvozuje index snímku z `nowMs - startedAtMs`
   (žádný lokální timer) — `frameDurationMs = GHOUL_CAMERA_ATTACK_FRAMES_DURATION_MS /
-  frames.length` (2500ms / 25 = 100ms), po `GHOUL_CAMERA_ATTACK_LAST_FRAME_HOLD_MS`
+  frames.length` (2500ms / 26 ≈ 96ms), po `GHOUL_CAMERA_ATTACK_LAST_FRAME_HOLD_MS`
   (2000ms) drží poslední snímek, nikdy smyčka. Snímky zdrojově PNG → WebP převedeny
   skriptem `scripts/convert-ghoul-camera-attack-assets.py` (numerické řazení podle čísla
   v názvu, ne lexikografické), PNG i WebP koexistují ve stejné složce (stejná konvence
