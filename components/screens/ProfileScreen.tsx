@@ -18,6 +18,7 @@ import {
   serverHardcoreProfileToPlayerProfileStats,
   serverHardcoreProfileToReward,
 } from "@/game/core/hardcorePlayerProfileSnapshot";
+import { Object13PlayerProfileProvider, useObject13PlayerProfile } from "@/components/playerProfile/Object13PlayerProfileProvider";
 
 // Profil hlídače (viz zadání) — první verze budoucího účtu/profilu. Lokální
 // data (game/core/monsterDefeatReward.ts, game/core/playerProfileStats.ts)
@@ -30,8 +31,25 @@ import {
 // "use client" komponenta (localStorage čtení/fetch může běžet jen v
 // prohlížeči) — stránka app/profile/page.tsx zůstává Server Component kvůli
 // metadata exportu, stejný vzor jako MainMenuScreen.tsx pod app/play/page.tsx.
+// Object13PlayerProfileProvider (viz zadání "krok 1B") obaluje celý obsah
+// stránky, ale `useObject13PlayerProfile()` smí volat jen POTOMEK
+// Provideru, ne stejná komponenta, která ho vykresluje — proto je skutečný
+// obsah v `ProfileScreenContent` níže, `ProfileScreen` je jen tenký wrapper.
 export default function ProfileScreen() {
+  return (
+    <Object13PlayerProfileProvider>
+      <ProfileScreenContent />
+    </Object13PlayerProfileProvider>
+  );
+}
+
+function ProfileScreenContent() {
   const authStatus = useAuthStatus();
+  // Zatím jen development-only diagnostika (viz zadání "9. Minimální
+  // viditelné ověření") — `profileData` je v týhle fázi prázdné, žádná
+  // reálná herní hodnota z něj nikde nečte ani nezapisuje (viz
+  // game/core/object13PlayerProfile.ts).
+  const object13Profile = useObject13PlayerProfile();
   // Čte se jednou při mountu (stejný vzor jako MainMenuScreen.tsx#reward) —
   // "Resetovat lokální profil" níže vynutí remount přes location.reload(),
   // ať se nemusí ručně sestavovat druhý zdroj pravdy pro live re-render.
@@ -323,6 +341,34 @@ export default function ProfileScreen() {
             >
               {COPY.profile.resetButtonLabel}
             </button>
+
+            {/* Object13PlayerProfile diagnostika (viz zadání "krok 1B",
+                "9. Minimální viditelné ověření") — VÝHRADNĚ development,
+                nikdy v produkčním buildu (process.env.NODE_ENV je Next.js
+                vždy inlinuje, i do klientského bundlu, žádný extra
+                NEXT_PUBLIC_ prefix potřeba). Čistě diagnostický výpis —
+                žádné tlačítko, které by cokoliv zapisovalo (to je jen v
+                DebugPanel.tsx "TEST PROFILE WRITE", dostupném jen z herní
+                obrazovky). `profileData` se tu zobrazuje jen jako počet
+                klíčů, ne obsah — v týhle fázi je vždy prázdný, ale i
+                kdyby nebyl, nechceme ho tu vypisovat naslepo (viz zadání
+                "žádná osobní data nejsou logována"). */}
+            {process.env.NODE_ENV !== "production" && (
+              <div className="mt-6 pixel-panel p-3 text-[10px] text-gray-500 font-mono">
+                <p className="text-gray-400 mb-1">Object13 profile (dev only):</p>
+                <p>status: {object13Profile.loadState.status}</p>
+                {object13Profile.loadState.status === "ready" && (
+                  <>
+                    <p>revision: {object13Profile.loadState.profile.revision}</p>
+                    <p>profileVersion: {object13Profile.loadState.profile.profileVersion}</p>
+                    <p>profileData keys: {Object.keys(object13Profile.loadState.profile.profileData).length}</p>
+                  </>
+                )}
+                {object13Profile.loadState.status === "unavailable" && object13Profile.loadState.error && (
+                  <p>error: {object13Profile.loadState.error}</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

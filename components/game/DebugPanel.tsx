@@ -12,7 +12,17 @@ import { getMaxDisabledCamerasForNight } from "@/game/core/cameraDamage";
 import { GHOUL_CAMERA_ATTACK_FRAMES_DURATION_MS } from "@/game/core/cameraDamageConfig";
 import { getGhoulCameraAttackAnimation } from "@/game/cameras/cameraAttackAnimation.object13";
 import { resolveGhoulCameraAttackFrameState } from "@/game/cameras/cameraAttackAnimation";
+import { useObject13PlayerProfile } from "@/components/playerProfile/Object13PlayerProfileProvider";
 import DoorControl from "./DoorControl";
+
+/**
+ * Development-only klíč pro "TEST PROFILE WRITE" (viz zadání "krok 1B",
+ * "10. Technický test zápisu") — jasně označený jako dočasný/technický,
+ * NIKDY herní data. Jediné, co tahle akce dělá s `profileData`, je přidat/
+ * přepsat přesně TENHLE jeden klíč — zbytek existujícího `profileData`
+ * (v týhle fázi vždy `{}`, ale kód na to nespoléhá) se zachová beze změny.
+ */
+const DEV_PROFILE_WRITE_TEST_KEY = "_devConnectionTest";
 
 const GHOUL_CAMERA_ATTACK_ANIMATION_IDS: GhoulCameraAttackAnimationId[] = [
   "outer_yard",
@@ -85,7 +95,29 @@ export default function DebugPanel({
   // state.debugNightOverride.
   const [debugNightInput, setDebugNightInput] = useState(() => String(nightNumber ?? 1));
 
+  // "TEST PROFILE WRITE" (viz zadání "krok 1B", "10. Technický test
+  // zápisu") — čte se VŽDY (Rules of Hooks), i když se DEBUG_PANEL_ENABLED
+  // guard níže rovnou vrátí `null` — komponenta samotná se v produkčním
+  // buildu i tak vůbec nevykreslí (DEBUG_PANEL_ENABLED je jen build-time
+  // konstanta, ne runtime env, viz balancing/constants.ts), ale samotné
+  // tlačítko je navíc podmíněné `process.env.NODE_ENV !== "production"`
+  // (viz JSX níže) — dvojitá pojistka, ne spoléhání na jediný gate.
+  const object13Profile = useObject13PlayerProfile();
+
   if (!DEBUG_PANEL_ENABLED) return null;
+
+  function handleTestProfileWrite() {
+    if (object13Profile.loadState.status !== "ready") return;
+    const current = object13Profile.loadState.profile;
+    void object13Profile.save({
+      expectedRevision: current.revision,
+      profileVersion: current.profileVersion,
+      profileData: {
+        ...current.profileData,
+        [DEV_PROFILE_WRITE_TEST_KEY]: { updatedAt: new Date().toISOString() },
+      },
+    });
+  }
 
   function handleSetDebugNightSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -354,6 +386,56 @@ export default function DebugPanel({
             {state.hasDoubleBarrelShotgun ? "ano" : "ne"}
           </div>
         </div>
+
+        {/* Object13PlayerProfile (viz zadání "krok 1B") — VÝHRADNĚ
+            development, nikdy v produkčním buildu, i kdyby měl hráč
+            DebugPanel nějak otevřený (viz zadání "nesmí být dostupná v
+            produkčním běžném UI... nesmí existovat mimo development/debug
+            režim"). "TEST PROFILE WRITE" zapisuje VÝHRADNĚ dočasný
+            DEV_PROFILE_WRITE_TEST_KEY klíč — žádná herní hodnota
+            (žárovky/zbraně/nastavení) se sem v týhle fázi vůbec nepřidává,
+            viz game/core/object13PlayerProfile.ts. */}
+        {process.env.NODE_ENV !== "production" && (
+          <div className="border-t border-gray-700 pt-2 mt-1">
+            <div className="text-gray-400 mb-1">Object13 profile (dev only):</div>
+            <div>status: {object13Profile.loadState.status}</div>
+            {object13Profile.loadState.status === "ready" && (
+              <>
+                <div>revision: {object13Profile.loadState.profile.revision}</div>
+                <div>profileVersion: {object13Profile.loadState.profile.profileVersion}</div>
+                <div>profileData keys: {Object.keys(object13Profile.loadState.profile.profileData).length}</div>
+              </>
+            )}
+            <div>save status: {object13Profile.saveState.status}</div>
+            {object13Profile.saveState.status === "conflict" && (
+              <div className="text-amber-400">
+                conflict — server revision {object13Profile.saveState.currentProfile.revision}
+              </div>
+            )}
+            {object13Profile.saveState.status === "error" && (
+              <div className="text-red-400">error: {object13Profile.saveState.error}</div>
+            )}
+            <div className="flex gap-1.5 mt-1.5">
+              <button
+                type="button"
+                className="pixel-button px-2 py-1 text-xs flex-1"
+                onClick={handleTestProfileWrite}
+                disabled={object13Profile.loadState.status !== "ready" || object13Profile.saveState.status === "saving"}
+              >
+                TEST PROFILE WRITE
+              </button>
+              {object13Profile.saveState.status === "conflict" && (
+                <button
+                  type="button"
+                  className="pixel-button px-2 py-1 text-xs flex-1"
+                  onClick={object13Profile.reloadAfterConflict}
+                >
+                  Reload after conflict
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Admin-only "Test noci" (viz zadání "testovací nástroj pro
             late-run scény, Valhala/Night 30 endingy") — regulérní hráč

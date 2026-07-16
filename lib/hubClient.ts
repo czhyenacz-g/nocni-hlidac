@@ -40,8 +40,22 @@ export function isHubConfigured(): boolean {
  * loguje jen cestu a status/chybu, nikdy hlavičky/token, ať jde v Vercel
  * logu vidět, že se konkrétní volání (např. upsert po loginu) nepovedlo.
  */
-async function hubFetch<T>(path: string, init?: RequestInit): Promise<T | null> {
-  if (!isHubConfigured()) return null;
+/**
+ * Detailní varianta pro volající, které potřebují rozlišit KONKRÉTNÍ HTTP
+ * status (viz lib/playerProfile/remoteObject13PlayerProfile.ts — PUT profilu
+ * musí umět odlišit 200/404/409/413 od sebe, ne jen "ok, nebo null" jako
+ * hubGet/hubPost níže). `status: 0` znamená "žádná skutečná HTTP odpověď"
+ * (chybějící config, network chyba, timeout) — nikdy se nepřekrývá se
+ * skutečným HTTP statusem. `body` je `null`, když odpověď nebyla (platný)
+ * JSON — volající si podle `status` i tak může rozhodnout, co to znamená.
+ */
+export interface HubResponse<T> {
+  status: number;
+  body: T | null;
+}
+
+async function hubFetchDetailed<T>(path: string, init?: RequestInit): Promise<HubResponse<T>> {
+  if (!isHubConfigured()) return { status: 0, body: null };
 
   try {
     const res = await fetch(`${getApiUrl()}${path}`, {
@@ -52,15 +66,26 @@ async function hubFetch<T>(path: string, init?: RequestInit): Promise<T | null> 
       },
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
+    let body: T | null = null;
+    try {
+      body = (await res.json()) as T;
+    } catch {
+      body = null;
+    }
     if (!res.ok) {
       console.error(`[hubClient] ${init?.method ?? "GET"} ${path} failed: HTTP ${res.status}`);
-      return null;
     }
-    return (await res.json()) as T;
+    return { status: res.status, body };
   } catch (err) {
     console.error(`[hubClient] ${init?.method ?? "GET"} ${path} failed:`, err instanceof Error ? err.message : err);
-    return null;
+    return { status: 0, body: null };
   }
+}
+
+/** `null` na cokoliv, co se dá pokazit (viz hubFetchDetailed) — tenká "kolabuj na null" obálka pro volající, kterým na přesném statusu nezáleží. */
+async function hubFetch<T>(path: string, init?: RequestInit): Promise<T | null> {
+  const { status, body } = await hubFetchDetailed<T>(path, init);
+  return status >= 200 && status < 300 ? body : null;
 }
 
 export async function hubGet<T>(path: string): Promise<T | null> {
@@ -70,6 +95,22 @@ export async function hubGet<T>(path: string): Promise<T | null> {
 export async function hubPost<T>(path: string, body: unknown): Promise<T | null> {
   return hubFetch<T>(path, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+/**
+ * Jediný dnešní volající, který potřebuje víc než "ok, nebo null" —
+ * `putRemoteObject13PlayerProfile` (viz lib/playerProfile/remoteObject13PlayerProfile.ts)
+ * musí odlišit 200 (uloženo) od 409 (revision conflict, VPS vrací i
+ * `currentRevision`/`profile` v těle) od 413/404/jiné. Stejná auth/timeout/
+ * base-URL logika jako hubGet/hubPost výše (sdílené přes hubFetchDetailed),
+ * ne druhý nezávislý HTTP klient.
+ */
+export async function hubPutDetailed<T>(path: string, body: unknown): Promise<HubResponse<T>> {
+  return hubFetchDetailed<T>(path, {
+    method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });

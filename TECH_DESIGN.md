@@ -1693,6 +1693,114 @@ profil, death reason posílaný na survive-night/death, `guard_runs` historie, v
 hlídačů, admin/moderace, detailní statistiky, mode-segmentované lokální countery (viz
 výše), veteránský Hardcore run (dvouhlavňovka) jako oddělený leaderboard track.
 
+## Obecný serverový profil (Object13PlayerProfile) — krok 1B, zatím prázdná infrastruktura
+
+TŘETÍ, nezávislý kanál na stejné VPS API (`lib/hubClient.ts`) vedle leaderboardu a
+Hardcore profilu výše — obecný, verzovaný `Object13PlayerProfile` s optimistickým
+zamykáním přes `revision`. Na rozdíl od Hardcore profilu tenhle krok **nepřesouvá žádná
+skutečná herní data** — `profileData` je zatím prázdný/technický obsah, žárovky, zbraně,
+nastavení a veškerá dosavadní persistence (localStorage, `bulbInventory.ts`,
+`roomBulbs.ts`, `playerProfileStats.ts`, `survivedNights.ts`, Hardcore profil, leaderboard)
+zůstávají beze změny a jsou dál jediným zdrojem pravdy pro herní hodnoty. Tenhle profil je
+záměrná dočasná výjimka z pravidla "jeden zdroj pravdy" — souběžný, zatím nevyužitý kanál,
+dokud nepřijde další krok s prvním skutečným obsahem `profileData` a migrací žárovek.
+
+DB objekt (`Object13PlayerProfile`, project-hub-api, mimo tento repozitář) a jeho REST
+endpointy (`GET`/`PUT /nocni-hlidac/player-profile`) vznikly v předchozím serverovém kroku
+(1A) — validace, blokování nebezpečných klíčů (`__proto__`/`constructor`/`prototype`),
+32 KB limit velikosti a atomické `updateMany`-based zamykání přes `revision` žijí tam.
+
+### Vrstvy (klientská strana, tento repozitář)
+
+1. **`lib/hubClient.ts`** — sdílený server-to-server HTTP klient k VPS (Bearer token,
+   `NOCNI_HLIDAC_API_URL`/`NOCNI_HLIDAC_API_TOKEN`). Přibyl `hubPutDetailed<T>` (a interní
+   `hubFetchDetailed`), který vrací `{status, body}` místo dosavadního "zkolabuj na `null`"
+   chování `hubGet`/`hubPost` — potřeba k rozlišení 200/409/413/404/500 na volajícím místě.
+   `hubFetch` zůstal beze změny (deleguje na `hubFetchDetailed` a zkolabuje na `null`),
+   všech 7 původních testů `hubClient.test.ts` prochází beze změny.
+2. **`lib/playerProfile/remoteObject13PlayerProfile.ts`** (server-only) —
+   `Object13PlayerProfileDto`, `fetchRemoteObject13PlayerProfile(discordUserId)`,
+   `putRemoteObject13PlayerProfile(payload)`. Přejmenovává VPS pole `profile` (uvnitř 409
+   těla) na `currentProfile`, aby vyšší vrstvy neznaly přesný tvar VPS odpovědi.
+3. **`lib/playerProfile/playerProfileRequestHandlers.ts`** (server-only) —
+   `handleGetPlayerProfileRequest(session)`/`handlePutPlayerProfileRequest(session, rawBody)`
+   berou session jako explicitní parametr (nikdy nevolají `getSession()` samy, stejný vzor
+   jako `hardcoreProfileRequestHandlers.ts`/`guardRunRequestHandlers.ts`) — testovatelné bez
+   mockování Next.js `Request`/cookies. Mapují VPS chyby na `{error: "profile_unavailable"}`
+   (nikdy neprosakuje stack trace/token/interní VPS tělo ven).
+4. **`app/api/player/profile/route.ts`** — tenký Next.js proxy (`GET`/`PUT`), čte
+   `discordUserId` VÝHRADNĚ ze session (nikdy z query parametru ani z browser payloadu).
+5. **`lib/playerProfile/object13PlayerProfileClient.ts`** (client-safe) —
+   `fetchObject13PlayerProfile()`/`saveObject13PlayerProfile(payload)`, volá výhradně
+   vlastní `/api/player/profile`, nikdy VPS přímo. Typované výsledky, ne generické stringy.
+6. **`components/playerProfile/Object13PlayerProfileProvider.tsx`** — `"use client"`
+   Provider + `useObject13PlayerProfile()` hook. Načítání a ukládání profilu drží
+   `Object13PlayerProfileLoadState`/`Object13PlayerProfileSaveState`
+   (`game/core/object13PlayerProfile.ts`), viz "Stavy" níže.
+7. **`game/core/object13PlayerProfile.ts`** (pure, žádné React ani server-only importy) —
+   `Object13PlayerProfileDto`, validace (`isValidObject13PlayerProfileDto`,
+   `validateIncomingObject13PlayerProfilePutBody`), a čisté odvozovací funkce
+   `deriveLoadStateFromFetchResult`/`deriveSaveStateFromSaveResult`, které mapují
+   fetch/save výsledek na React stav — vytažené mimo komponentu právě proto, aby šly plně
+   otestovat i bez jsdom (viz "Testování" níže).
+
+Provider je zapojený jednou v `app/play/page.tsx` (obaluje celý strom
+menu/loading/briefing/hraní/smrt/výhra — jeden persistentní React strom, ne oddělené route
+mounty), a znovu v `ProfileScreen.tsx` pro `/profile`. Dedup souběžných/Strict-Mode
+duplicitních `load()` volání řeší `loadInFlightRef`, `mountedRef` hlídá `setState` po
+unmountu (stejný vzor jako `useAuthStatus.ts`).
+
+### Stavy
+
+```
+LoadState: idle | loading | ready(profile) | unauthorized | unavailable(error?)
+SaveState: idle | saving | saved | conflict(currentProfile) | error(error)
+```
+
+Load se spouští jen po přihlášení (`useAuthStatus()` hlásí přihlášeného hráče) — anonymní
+hráč nikdy nevyvolá `GET`, zůstává v `unauthorized`, hra běží dál beze změny. Výpadek VPS
+→ `unavailable`, lokální data (localStorage) se NIKDY nepřepíšou ani nevynulují,
+`unavailable` se nikdy neustanoví jako nový zdroj pravdy.
+
+### 409 konflikt
+
+Klient pošle `expectedRevision`. Pokud server mezitím drží vyšší `revision`, proxy vrátí
+`409 {error: "profile_conflict", currentRevision, currentProfile?}`, hook přejde do stavu
+`conflict` a **nikdy automaticky nepřepíše ani neopakuje PUT** — lokální stav zůstává
+neměnný, dokud si volající explicitně nevyžádá `reloadAfterConflict()` (natáhne aktuální
+serverový profil a nahradí jím `ready` stav). Žádné merge UI, žádné vynucené přepsání.
+
+### Dev-only ověření (`DebugPanel.tsx`, `ProfileScreen.tsx`)
+
+Gate `process.env.NODE_ENV !== "production"` (Next.js `NODE_ENV` je vždy inlinovaný do
+klientského bundlu, bez potřeby `NEXT_PUBLIC_` prefixu) navíc k existujícímu
+`DEBUG_PANEL_ENABLED`/pravému-tlačítku-na-"Noc {n}" mechanismu. Tlačítko "TEST PROFILE
+WRITE" načte aktuální `profileData`, přidá/aktualizuje výhradně dev-only klíč
+`_devConnectionTest: {updatedAt: <ISO timestamp>}` a uloží s aktuálním `expectedRevision`
+— nikde mimo tenhle dev nástroj se `profileData` nečte ani nezapisuje (viz "profileData je
+pořád jen opaque blob" níže).
+
+### `profileData` je pořád jen opaque blob
+
+Herní logika k němu v tomhle kroku NEPŘISTUPUJE vůbec — žádné
+`profileData.inventory`/`.bulbs`/`.weapons`/`.office` nikde v kódu. Načítá/ukládá se jen
+jako celek přes klientskou service vrstvu (bod 5 výše). Skutečný obsah a napojení na
+žárovky/zbraně/nastavení je vyloženě mimo rozsah kroku 1B — přijde jako samostatný
+následující krok.
+
+### Testování
+
+`game/core/object13PlayerProfile.test.ts` (26 testů, čisté funkce), a tři
+mock-`fetch`-based sady bez potřeby jsdom:
+`lib/playerProfile/remoteObject13PlayerProfile.test.ts` (12),
+`lib/playerProfile/playerProfileRequestHandlers.test.ts` (16),
+`lib/playerProfile/object13PlayerProfileClient.test.ts` (13). Provider/hook samotný
+(`Object13PlayerProfileProvider.tsx`) nemá jak být nezávisle otestovaný — repozitář nemá
+testing-library/jsdom infrastrukturu — takže Strict-Mode dedup, cleanup po unmountu a
+hook-level dedup souběžných `load()` volání jsou správné konstrukcí (stejný ověřený
+`cancelled`/ref-guard vzor jako `useAuthStatus.ts`), ne nezávisle ověřené automatickým
+testem.
+
 ## Power drain diagnostika (audit podezřele rychlého vybití energie)
 
 Podnět: hlášení "brutálně rychlého" vybití energie s debug logem, který v okamžiku snímku

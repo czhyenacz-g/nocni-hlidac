@@ -95,6 +95,7 @@ import { isAdminUsername } from "@/lib/auth/adminUsers";
 import type { GuardRunState } from "@/lib/leaderboard/types";
 import type { GuardRunResponse } from "@/lib/leaderboard/guardRunRequestHandlers";
 import { DEFAULT_GAME_MODE, GAME_MODE_CONFIG, GameMode, resolveGameMode } from "@/game/core/gameMode";
+import { Object13PlayerProfileProvider } from "@/components/playerProfile/Object13PlayerProfileProvider";
 
 const night = NIGHT_01;
 const gameReducer = createGameReducer(night);
@@ -1673,6 +1674,14 @@ export default function PlayPage() {
   const atmosphereVars = atmosphereStyleToCssVars(atmosphereStyle);
 
   return (
+    // Object13PlayerProfileProvider (viz zadání "krok 1B") obaluje CELOU
+    // stránku (menu/loading/briefing/playing/death/win jsou všechno jeden
+    // React strom, ne samostatné route mounty) — profil se tak načte jednou
+    // hned, jak je hráč přihlášený, bez ohledu na to, kterou obrazovku zrovna
+    // vidí (viz zadání "napojit herní aplikaci"). Zatím ho čte jen
+    // DebugPanel.tsx (dev-only "TEST PROFILE WRITE"), ale je připravený i
+    // pro budoucí obrazovky beze změny tohohle místa.
+    <Object13PlayerProfileProvider>
     <>
     <div
       className="atmosphere-root"
@@ -1865,5 +1874,6 @@ export default function PlayPage() {
       </div>
     )}
     </>
+    </Object13PlayerProfileProvider>
   );
 }
