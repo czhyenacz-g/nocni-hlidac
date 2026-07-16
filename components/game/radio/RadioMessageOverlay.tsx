@@ -4,6 +4,7 @@ import { EnemyStage, MonsterRepelRadioResult } from "@/game/core/types";
 import { useRadioMessage } from "@/game/radio/useRadioMessage";
 import { useMonsterRepelRadioMessage } from "@/game/radio/useMonsterRepelRadioMessage";
 import { useCameraDisabledRadioMessage } from "@/game/radio/useCameraDisabledRadioMessage";
+import { useGhoulCameraAttackWarningMessage } from "@/game/radio/useGhoulCameraAttackWarningMessage";
 import RadioWaveform from "./RadioWaveform";
 
 interface RadioMessageOverlayProps {
@@ -15,6 +16,8 @@ interface RadioMessageOverlayProps {
   lastSonicCannonResult: MonsterRepelRadioResult | null;
   /** Viz GameState.cameraOfflineSeq — třetí, nezávislý zdroj rádiové zprávy (viz useCameraDisabledRadioMessage.ts). */
   cameraOfflineSeq: number;
+  /** Viz GameState.cameraAttackStartedSeq — čtvrtý, nezávislý zdroj rádiové zprávy, VAROVÁNÍ před samotným útokem (viz useGhoulCameraAttackWarningMessage.ts). */
+  cameraAttackStartedSeq: number;
 }
 
 /**
@@ -26,18 +29,21 @@ interface RadioMessageOverlayProps {
  * `pointer-events-none` na celém bloku (viz zadání), ať nikdy neblokuje
  * klikání na herní prvky pod/kolem sebe.
  *
- * Kombinuje TŘI nezávislé zdroje zprávy (viz zadání "použij existující
+ * Kombinuje ČTYŘI nezávislé zdroje zprávy (viz zadání "použij existující
  * rádiový informační blok, pokud už existuje... rozšiř ho minimálně") —
  * "vypuštění monstra" (useRadioMessage, trigger = první vstup do outer_yard),
  * "reakce na sonické dělo" (useMonsterRepelRadioMessage, trigger =
- * sonicCannonResultSeq) a "Ghoul vyřadil kameru" (useCameraDisabledRadioMessage,
- * trigger = cameraOfflineSeq) — a vykresluje, který je zrovna `visible`.
- * Kamera-offline zpráva má nejvyšší prioritu (nejvzácnější/narativně
- * nejvýznamnější), pak sonic-cannon reakce, pak vypuštění monstra. V praxi
- * ke skutečnému souběhu kamera-offline a sonic-cannon zprávy nedochází —
- * sonic-cannon zpráva zmizí po ~1-1.5s, zatímco cameraOfflineSeq se zvýší
- * až PO celém pětisekundovém přechodu (viz zadání), takže první už dávno
- * skončila.
+ * sonicCannonResultSeq), "Ghoul vyřadil kameru" (useCameraDisabledRadioMessage,
+ * trigger = cameraOfflineSeq) a "Ghoul útočí na kameru" — VAROVÁNÍ PŘED
+ * útokem (useGhoulCameraAttackWarningMessage, trigger = cameraAttackStartedSeq)
+ * — a vykresluje, který je zrovna `visible`. Útočné varování má nejvyšší
+ * prioritu (může nastat PŘESNĚ ve stejném tiku jako sonic-cannon reakce,
+ * viz gameReducer.ts#attemptGhoulCameraAttack, a je narativně
+ * naléhavější), pak kamera-offline (nejvzácnější/narativně nejvýznamnější
+ * z klidových zpráv), pak sonic-cannon reakce, pak vypuštění monstra. V
+ * praxi ke skutečnému souběhu kamera-offline a sonic-cannon/útočné zprávy
+ * nedochází — obě zmizí do ~2.5s, zatímco cameraOfflineSeq se zvýší až PO
+ * celém pětisekundovém přechodu (viz zadání), takže první už dávno skončila.
  */
 export default function RadioMessageOverlay({
   monsterStage,
@@ -45,15 +51,19 @@ export default function RadioMessageOverlay({
   sonicCannonResultSeq,
   lastSonicCannonResult,
   cameraOfflineSeq,
+  cameraAttackStartedSeq,
 }: RadioMessageOverlayProps) {
   const releaseMessage = useRadioMessage(monsterStage, nightNumber);
   const repelMessage = useMonsterRepelRadioMessage(sonicCannonResultSeq, lastSonicCannonResult);
   const cameraDisabledMessage = useCameraDisabledRadioMessage(cameraOfflineSeq);
-  const { visible, text } = cameraDisabledMessage.visible
-    ? cameraDisabledMessage
-    : repelMessage.visible
-      ? repelMessage
-      : releaseMessage;
+  const attackWarningMessage = useGhoulCameraAttackWarningMessage(cameraAttackStartedSeq);
+  const { visible, text } = attackWarningMessage.visible
+    ? attackWarningMessage
+    : cameraDisabledMessage.visible
+      ? cameraDisabledMessage
+      : repelMessage.visible
+        ? repelMessage
+        : releaseMessage;
 
   if (!visible || !text) return null;
 

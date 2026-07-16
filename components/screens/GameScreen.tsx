@@ -188,6 +188,7 @@ export default function GameScreen({
         sonicCannonResultSeq={state.sonicCannonResultSeq}
         lastSonicCannonResult={state.lastSonicCannonResult}
         cameraOfflineSeq={state.cameraOfflineSeq}
+        cameraAttackStartedSeq={state.cameraAttackStartedSeq}
       />
 
       {/* DoorView schválně NENÍ v max-w-[33.6rem] — dveřní scéna (DoorSceneFrame)
