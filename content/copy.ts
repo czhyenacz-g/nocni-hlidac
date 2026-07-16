@@ -568,4 +568,66 @@ export const COPY = {
     // components/achievements/AchievementResultPanel.tsx) — přesný text ze zadání.
     newResultsHeading: "NOVÝ ÚSPĚCH",
   },
+  // Veřejná MVP databáze Objektu 13 (/database, viz zadání,
+  // docs/database-mvp.md) — jen krátké "chrome" popisky/labely (hlavička,
+  // stavy přihlášení, badge, placeholdery). Rozsáhlý strukturovaný obsah
+  // (karty subjektů/vybavení/manuálů, ukázkový report) žije v
+  // lib/database/databaseContent.ts, ne tady — tohle je UI text, ne
+  // databázový obsah.
+  database: {
+    seoTitle: "Databáze Objektu 13",
+    seoDescription: "Interní databáze subjektů, vybavení, incidentů a provozních manuálů Objektu 13.",
+    facilityLabel: "OBJEKT 13",
+    databaseLabel: "INTERNÍ DATABÁZE",
+    accessLevelLabel: "Přístupová úroveň",
+    accessLevelPublic: "VEŘEJNÝ NÁHLED",
+    accessLevelStaff: "HLÍDACÍ PERSONÁL",
+    connectionStatusLabel: "Stav spojení",
+    connectionStatusOnline: "ONLINE",
+    introText:
+      "Tato databáze obsahuje záznamy o testovacích subjektech, obranném vybavení, nočních incidentech a provozních postupech Objektu 13.",
+    introTextAuth: "Část informací je dostupná veřejně. Osobní záznamy a postup hráče se zobrazují pouze po přihlášení.",
+    /** {name} nahrazuje display name přihlášeného hráče. */
+    staffLabel: "Přihlášený pracovník:",
+    staffFallback: "AUTORIZOVANÝ UŽIVATEL",
+
+    publicAccessHeading: "VEŘEJNÝ PŘÍSTUP",
+    publicAccessIntro: "Prohlížíte veřejnou část databáze Objektu 13.",
+    publicAccessFutureIntro: "Po přihlášení zde budou v budoucnu dostupné například:",
+    publicAccessFutureItems: [
+      "objevené druhy subjektů",
+      "osobní statistiky střetů",
+      "potvrzené slabiny",
+      "vlastní hlášení z nočních směn",
+      "historie incidentů",
+      "odemčené manuály",
+      "statistiky vybavení",
+      "postup výzkumu",
+    ],
+    loginButtonLabel: "PŘIHLÁSIT SE",
+
+    personalRecordsHeading: "OSOBNÍ ZÁZNAMY",
+    personalRecordsGuestText: "Přihlaste se pro zobrazení vlastního postupu, hlášení a objevených poznatků.",
+    personalRecordHeading: "OSOBNÍ ZÁZNAM",
+    highestNightLabel: "Nejvyšší dosažená noc:",
+    discoveredSubjectsLabel: "Objevené subjekty:",
+    completedReportsLabel: "Dokončená hlášení:",
+    confirmedKillsLabel: "Potvrzené likvidace:",
+    disabledCamerasLabel: "Vyřazené kamery:",
+    notConnectedValue: "ZATÍM NENAPOJENO",
+    notTrackedValue: "NEEVIDOVÁNO",
+    personalRecordTodo:
+      "Později se zde zobrazí skutečná data přihlášeného hráče. Data budou vycházet z centrálního herního postupu, nikoliv z lokálního stavu této stránky.",
+
+    tabSubjectsLabel: "Subjekty",
+    tabEquipmentLabel: "Výbava",
+    tabReportsLabel: "Hlášení",
+    tabManualsLabel: "Manuály",
+
+    todoBadgeTodo: "TODO",
+    todoBadgePlanned: "PLÁNOVANÁ FUNKCE",
+    todoDefaultDescription: "Tato část je připravena jako návrh budoucí funkce. Zatím není napojena na herní stav ani databázi hráče.",
+
+    backToGameLabel: "← Zpět do hry",
+  },
 } as const;
