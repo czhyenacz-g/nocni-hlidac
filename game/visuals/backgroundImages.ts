@@ -85,7 +85,8 @@ export const DOOR_CLOSED_FRAME_START_INDEX = 1;
 // Pomalé, sotva postřehnutelné cyklení (ne rychlá animace) — dveře mají
 // působit jako "skoro nehybné, jen občas se něco jemně mihne", ne jako
 // zjevná smyčka. Podobný řád velikosti jako camera "dýchání" (~25s cyklus).
-export const DOOR_CLOSED_FRAME_HOLD_MS = 5000;
+// 2x rychlejší než původních 5000ms (na žádost).
+export const DOOR_CLOSED_FRAME_HOLD_MS = 2500;
 
 /**
  * Which door_closed_* frame offset (0..DOOR_CLOSED_FRAME_COUNT-1) to show for
