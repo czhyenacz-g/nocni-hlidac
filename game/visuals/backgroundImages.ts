@@ -75,6 +75,18 @@ const DEFAULT_OVERLAY = "linear-gradient(rgba(0,0,0,0.05), rgba(0,0,0,0.25))";
 // vzorem (vlastní `<MAP>_BACKGROUND_PATH` konstanta + vlastní frames).
 const OBJECT_13_BACKGROUND_PATH = "/object_13/background";
 
+// Zavřené dveře v BACKGROUND_SCENES.door mají 4 snímky (door_closed_0..3,
+// idle animace — dveře nejsou úplně statické, i když zavřené) na indexech
+// 1-4 (index 0 = otevřené, poslední = death reveal, viz BACKGROUND_SCENES.door
+// níže) — DoorView.tsx mezi nimi cykluje vlastním pomalým časovačem, dokud
+// jsou dveře zavřené a neběží doorDeathReveal.
+export const DOOR_CLOSED_FRAME_COUNT = 4;
+export const DOOR_CLOSED_FRAME_START_INDEX = 1;
+// Pomalé, sotva postřehnutelné cyklení (ne rychlá animace) — dveře mají
+// působit jako "skoro nehybné, jen občas se něco jemně mihne", ne jako
+// zjevná smyčka. Podobný řád velikosti jako camera "dýchání" (~25s cyklus).
+export const DOOR_CLOSED_FRAME_HOLD_MS = 5000;
+
 export type BackgroundSceneId =
   | "menu"
   | "menuFirstWin"
@@ -158,14 +170,20 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
     crossfadeMs: DEFAULT_CROSSFADE_MS,
     overlay: "linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.3))",
   },
-  // Index 0 = otevřené, index 1 = zavřené, index 2 = monstrum ve dveřích
-  // (jen během krátkého doorDeathReveal, viz gameReducer ENEMY_ADVANCE/TICK a
-  // GameScreen.tsx). crossfadeMs je tu kratší než jinde — reveal má trvat jen
-  // DOOR_DEATH_REVEAL_DURATION_MS (700 ms) celkem, ať se stihne doprolínat.
+  // Index 0 = otevřené, indexy 1-4 = zavřené (4-snímková idle animace, viz
+  // DOOR_CLOSED_FRAME_COUNT/DoorView.tsx níže), poslední index = monstrum ve
+  // dveřích (jen během krátkého doorDeathReveal, viz gameReducer
+  // ENEMY_ADVANCE/TICK a GameScreen.tsx). crossfadeMs je tu kratší než jinde
+  // — reveal má trvat jen DOOR_DEATH_REVEAL_DURATION_MS (700 ms) celkem, ať
+  // se stihne doprolínat; DoorView.tsx pro cyklení mezi zavřenými snímky
+  // používá vlastní pomalejší DOOR_CLOSED_FRAME_HOLD_MS, ne tenhle crossfadeMs.
   door: {
     frames: [
       { src: `${OBJECT_13_BACKGROUND_PATH}/door_open_0.webp` },
       { src: `${OBJECT_13_BACKGROUND_PATH}/door_closed_0.webp` },
+      { src: `${OBJECT_13_BACKGROUND_PATH}/door_closed_1.webp` },
+      { src: `${OBJECT_13_BACKGROUND_PATH}/door_closed_2.webp` },
+      { src: `${OBJECT_13_BACKGROUND_PATH}/door_closed_3.webp` },
       { src: `${OBJECT_13_BACKGROUND_PATH}/door_open_death_0.webp` },
     ],
     holdMs: DEFAULT_HOLD_MS,

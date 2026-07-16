@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { COPY } from "@/content/copy";
-import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
+import {
+  BACKGROUND_SCENES,
+  DOOR_CLOSED_FRAME_COUNT,
+  DOOR_CLOSED_FRAME_HOLD_MS,
+  DOOR_CLOSED_FRAME_START_INDEX,
+} from "@/game/visuals/backgroundImages";
 import { BULB_REPLACE_DURATION_MS, BULB_REPLACE_SUCCESS_MESSAGE_MS } from "@/game/balancing/constants";
 import { computeBulbReplacementProgressRatio } from "@/game/core/bulbReplacementProgress";
 import DoorSceneFrame from "./DoorSceneFrame";
@@ -64,9 +69,33 @@ export default function DoorView({
   onCancelBulbReplacement,
 }: DoorViewProps) {
   const doorScene = BACKGROUND_SCENES.door;
-  // Stejné pořadí snímků jako dřív v GameScreen.tsx: 0 = otevřené, 1 = zavřené,
-  // 2 = monstrum ve dveřích (jen během doorDeathReveal).
-  const activeIndex = isDoorDeathReveal ? 2 : doorClosed ? 1 : 0;
+  // Pořadí snímků (viz BACKGROUND_SCENES.door): 0 = otevřené, 1-4 = zavřené
+  // (idle animace, viz closedFrameOffset níže), poslední = monstrum ve
+  // dveřích (jen během doorDeathReveal).
+  const deathRevealIndex = doorScene.frames.length - 1;
+  // Pomalé cyklení mezi zavřenými snímky, dokud dveře zůstávají zavřené —
+  // řetězec setTimeoutů stejným vzorem jako SceneBackground.tsx#autoIndex
+  // (žádný pevný setInterval, ať jde snadno měnit hold jednotlivě, kdyby
+  // některý snímek měl v budoucnu vydržet jinak dlouho). Reset na 0 při
+  // otevření/zavření dveří, ať animace vždycky začíná od prvního zavřeného
+  // snímku, ne odkudsi uprostřed.
+  const [closedFrameOffset, setClosedFrameOffset] = useState(0);
+  useEffect(() => {
+    if (!doorClosed || isDoorDeathReveal) {
+      setClosedFrameOffset(0);
+      return;
+    }
+    const timeout = setTimeout(
+      () => setClosedFrameOffset((offset) => (offset + 1) % DOOR_CLOSED_FRAME_COUNT),
+      DOOR_CLOSED_FRAME_HOLD_MS,
+    );
+    return () => clearTimeout(timeout);
+  }, [doorClosed, isDoorDeathReveal, closedFrameOffset]);
+  const activeIndex = isDoorDeathReveal
+    ? deathRevealIndex
+    : doorClosed
+      ? DOOR_CLOSED_FRAME_START_INDEX + closedFrameOffset
+      : 0;
   // Ikonka výměny je v DoorView trvale vidět (na rozdíl od dřívějšího "jen
   // po prasknutí") — jedinou výjimkou je krátký doorDeathReveal (monstrum ve
   // dveřích těsně před smrtí), kde by ikonka jen rušila. Vlastní menší
