@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { GHOUL_CAMERA_ATTACK_WARNING_DURATION_MS, GHOUL_CAMERA_ATTACK_WARNING_TEXT } from "./ghoulCameraAttackWarningMessage";
+import { audioManager } from "../audio/audioManager";
+import {
+  GHOUL_CAMERA_ATTACK_WARNING_DURATION_MS,
+  GHOUL_CAMERA_ATTACK_WARNING_TEXT,
+  pickRandomGhoulCameraAttackWarningSound,
+} from "./ghoulCameraAttackWarningMessage";
 import { RadioMessageState } from "./radioTypes";
 
 /**
@@ -11,10 +16,10 @@ import { RadioMessageState } from "./radioTypes";
  * zvyšuje PŘESNĚ jednou při ZAČÁTKU útoku Ghoula na kameru (viz
  * gameReducer.ts#attemptGhoulCameraAttack), tedy dřív, než
  * `cameraOfflineSeq` (dokončení o ~5s později). Text je pevný (viz
- * ghoulCameraAttackWarningMessage.ts), žádné namluvené audio — zvukovou
- * stránku útoku už řeší `AUDIO_EVENTS.cameraDamageStart` v
- * app/play/page.tsx, tenhle hook proto NEvolá `audioManager.play` znovu,
- * jen řídí viditelnost textu.
+ * ghoulCameraAttackWarningMessage.ts), náhodně vybraný řev (ghoul_appear_0/1)
+ * hraje SOUČASNĚ s `AUDIO_EVENTS.cameraDamageStart` (elektronický zvuk
+ * poškození, viz app/play/page.tsx) — dvě nezávislé vrstvy, stejný "výběr v
+ * místě audio side-effectu" vzor jako ostatní radio hooks.
  */
 export function useGhoulCameraAttackWarningMessage(cameraAttackStartedSeq: number): RadioMessageState {
   const prevSeqRef = useRef(cameraAttackStartedSeq);
@@ -23,6 +28,9 @@ export function useGhoulCameraAttackWarningMessage(cameraAttackStartedSeq: numbe
   useEffect(() => {
     if (prevSeqRef.current === cameraAttackStartedSeq) return;
     prevSeqRef.current = cameraAttackStartedSeq;
+
+    const sound = pickRandomGhoulCameraAttackWarningSound();
+    if (sound) audioManager.play(sound);
 
     setState({ visible: true, text: GHOUL_CAMERA_ATTACK_WARNING_TEXT });
 

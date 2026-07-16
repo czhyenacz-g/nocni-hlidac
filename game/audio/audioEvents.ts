@@ -151,6 +151,14 @@ export const AUDIO_EVENTS = {
   radioCameraDestroyed0: "radio_camera_destroyed_0",
   radioCameraDestroyed1: "radio_camera_destroyed_1",
   radioCameraDestroyed2: "radio_camera_destroyed_2",
+  // Krátký řev/zavytí Ghoula PŘESNĚ v okamžiku, kdy začne útočit na kameru
+  // (viz GameState.cameraAttackStartedSeq, game/radio/ghoulCameraAttackWarningMessage.ts)
+  // — dvě varianty, náhodný výběr jedné při každém útoku (stejný "1 event =
+  // 1 předem načtený <audio> element" vzor jako radioCameraDestroyed*/
+  // radioMonsterRepel*), hraje SOUČASNĚ s cameraDamageStart (elektronický
+  // "začátek poškození" zvuk výše) — vrstva stvůry navrch vrstvy techniky.
+  ghoulCameraAttackWarning0: "ghoul_camera_attack_warning_0",
+  ghoulCameraAttackWarning1: "ghoul_camera_attack_warning_1",
 } as const;
 
 export type AudioEventId = (typeof AUDIO_EVENTS)[keyof typeof AUDIO_EVENTS];

@@ -473,4 +473,18 @@ export const SOUND_REGISTRY: Record<AudioEventId, SoundRegistryEntry> = {
     guess: 'Přesný přepis: "Zbývá už jenom mikrofon."',
     usedIn: "game/radio/useCameraDisabledRadioMessage.ts — pickRandomCameraDisabledMessage() po dokončeném přechodu kamery do offline.",
   },
+  [AUDIO_EVENTS.ghoulCameraAttackWarning0]: {
+    id: AUDIO_EVENTS.ghoulCameraAttackWarning0,
+    label: "Ghoul útočí na kameru 01",
+    description: "Jedna ze 2 variant řevu Ghoula (ghoul_appear_0.wav), náhodně vybraná PŘESNĚ v okamžiku zahájení útoku na kameru.",
+    guess: "Krátké zavytí/řev, hraje současně s camera_damage_start.",
+    usedIn: "game/radio/useGhoulCameraAttackWarningMessage.ts — pickRandomGhoulCameraAttackWarningSound() na cameraAttackStartedSeq.",
+  },
+  [AUDIO_EVENTS.ghoulCameraAttackWarning1]: {
+    id: AUDIO_EVENTS.ghoulCameraAttackWarning1,
+    label: "Ghoul útočí na kameru 02",
+    description: "Jedna ze 2 variant řevu Ghoula (ghoul_appear_1.wav), náhodně vybraná PŘESNĚ v okamžiku zahájení útoku na kameru.",
+    guess: "Krátké zavytí/řev, hraje současně s camera_damage_start.",
+    usedIn: "game/radio/useGhoulCameraAttackWarningMessage.ts — pickRandomGhoulCameraAttackWarningSound() na cameraAttackStartedSeq.",
+  },
 };
