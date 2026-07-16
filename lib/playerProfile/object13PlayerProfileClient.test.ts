@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { addBulbsToProfile, consumeBulbsFromProfile, fetchObject13PlayerProfile, saveObject13PlayerProfile } from "./object13PlayerProfileClient";
+import {
+  addBulbsToProfile,
+  consumeBulbsFromProfile,
+  fetchObject13PlayerProfile,
+  saveObject13PlayerProfile,
+  unlockWeaponOnProfile,
+} from "./object13PlayerProfileClient";
 import { Object13PlayerProfileDto } from "../../game/core/object13PlayerProfile";
 
 // Testuje jen samotnou klientskou service vrstvu (fetch("/api/player/profile")
@@ -18,7 +24,7 @@ afterEach(() => {
 const VALID_DTO: Object13PlayerProfileDto = {
   discordUserId: "123456789012345678",
   profileVersion: 1,
-  profileData: { inventory: { items: { bulb: 10 } } },
+  profileData: { inventory: { items: { bulb: 10 } }, equipment: { ownedWeapons: [], equippedWeaponId: null } },
   revision: 1,
   createdAt: "2026-07-16T12:00:00.000Z",
   updatedAt: "2026-07-16T12:00:00.000Z",
@@ -63,7 +69,7 @@ describe("fetchObject13PlayerProfile", () => {
   });
 });
 
-const SAVE_PAYLOAD = { expectedRevision: 1, profileVersion: 1, profileData: { inventory: { items: { bulb: 15 } } } };
+const SAVE_PAYLOAD = { expectedRevision: 1, profileVersion: 1, profileData: { inventory: { items: { bulb: 15 } }, equipment: { ownedWeapons: [], equippedWeaponId: null } } };
 
 describe("saveObject13PlayerProfile", () => {
   it("4. a successful save returns the new profile with its revision", async () => {
@@ -145,7 +151,7 @@ describe("addBulbsToProfile", () => {
   });
 
   it("a successful add returns 'updated' with the new profile", async () => {
-    const updated = { ...VALID_DTO, revision: 2, profileData: { inventory: { items: { bulb: 11 } } } };
+    const updated = { ...VALID_DTO, revision: 2, profileData: { inventory: { items: { bulb: 11 } }, equipment: { ownedWeapons: [], equippedWeaponId: null } } };
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify(updated), { status: 200 }))));
 
     const result = await addBulbsToProfile(INVENTORY_PAYLOAD);
@@ -189,6 +195,61 @@ describe("consumeBulbsFromProfile", () => {
   it("a network failure returns status: error, never throws", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new Error("network error"))));
     const result = await consumeBulbsFromProfile(INVENTORY_PAYLOAD);
+    expect(result).toEqual({ status: "error", error: "network_error" });
+  });
+});
+
+const WEAPON_UNLOCK_PAYLOAD = { weaponId: "single_shotgun" as const, expectedRevision: 1 };
+
+describe("unlockWeaponOnProfile", () => {
+  it("only POSTs to the same-origin equipment/weapon/unlock proxy with the exact payload", async () => {
+    const fetchSpy = vi.fn<typeof fetch>(() => Promise.resolve(new Response(JSON.stringify(VALID_DTO), { status: 200 })));
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await unlockWeaponOnProfile(WEAPON_UNLOCK_PAYLOAD);
+
+    const [url, init] = fetchSpy.mock.calls[0];
+    expect(url).toBe("/api/player/profile/equipment/weapon/unlock");
+    expect(init?.method).toBe("POST");
+    expect(init?.body).toBe(JSON.stringify(WEAPON_UNLOCK_PAYLOAD));
+  });
+
+  it("a successful unlock returns 'updated' with the new (now weapon-owning) profile", async () => {
+    const updated = {
+      ...VALID_DTO,
+      revision: 2,
+      profileData: { inventory: { items: { bulb: 10 } }, equipment: { ownedWeapons: ["single_shotgun"], equippedWeaponId: "single_shotgun" } },
+    };
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify(updated), { status: 200 }))));
+
+    const result = await unlockWeaponOnProfile(WEAPON_UNLOCK_PAYLOAD);
+    expect(result).toEqual({ status: "updated", profile: updated });
+  });
+
+  it("an idempotent no-op unlock (already owned+equipped) still returns 'updated' with the current profile — the server's 200 doesn't distinguish updated vs unchanged", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify(VALID_DTO), { status: 200 }))));
+
+    const result = await unlockWeaponOnProfile(WEAPON_UNLOCK_PAYLOAD);
+    expect(result).toEqual({ status: "updated", profile: VALID_DTO });
+  });
+
+  it("a 409 revision conflict returns status: conflict with currentRevision/currentProfile — optimistic locking surfaces to the caller", async () => {
+    const conflictBody = { error: "profile_conflict", currentRevision: 4, currentProfile: { ...VALID_DTO, revision: 4 } };
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify(conflictBody), { status: 409 }))));
+
+    const result = await unlockWeaponOnProfile(WEAPON_UNLOCK_PAYLOAD);
+    expect(result).toEqual({ status: "conflict", currentRevision: 4, currentProfile: { ...VALID_DTO, revision: 4 } });
+  });
+
+  it("returns status: unauthorized on 401", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 }))));
+    const result = await unlockWeaponOnProfile(WEAPON_UNLOCK_PAYLOAD);
+    expect(result).toEqual({ status: "unauthorized" });
+  });
+
+  it("a network failure returns status: error, never throws — caller (Provider) never auto-retries on this", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new Error("network error"))));
+    const result = await unlockWeaponOnProfile(WEAPON_UNLOCK_PAYLOAD);
     expect(result).toEqual({ status: "error", error: "network_error" });
   });
 });

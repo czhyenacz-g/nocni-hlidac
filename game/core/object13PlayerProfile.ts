@@ -9,25 +9,43 @@
 // components/playerProfile/Object13PlayerProfileProvider.tsx) — žádné React,
 // žádný fetch, žádný side effect tady.
 //
-// `profileData` má od kroku "profilový kontrakt V1 + inventář žárovek"
-// přesný, validovaný tvar (Object13PlayerProfileDataV1, viz
-// object13PlayerProfileInventory.ts) — první skutečná položka je `bulb`
-// (náhradní žárovka). Žádné zbraně/munice/baterie/vybavení kanceláře zatím.
+// `profileData` má od kroku "profilový kontrakt V2 + equipment" přesný,
+// validovaný tvar (Object13PlayerProfileDataV2, viz
+// object13PlayerProfileContractV2.ts) — `inventory` (počet žárovek) PLUS
+// `equipment` (trvalé vlastnictví zbraní: ownedWeapons/equippedWeaponId).
+// Nabité náboje/probíhající střelba/lovecká minihra zůstávají v runtime
+// GameState, nikdy tady. Žádná munice/baterie/vybavení kanceláře zatím.
 
-import {
-  Object13PlayerProfileDataV1,
-  validateObject13PlayerProfileDataV1,
-} from "./object13PlayerProfileInventory";
+import { Object13PlayerProfileDataV2, validateObject13PlayerProfileDataV2 } from "./object13PlayerProfileContractV2";
+import { WeaponId, isWeaponId, hasOwnedWeapon, getEquippedWeaponAmmoCapacity as getEquipmentAmmoCapacity } from "./object13PlayerProfileEquipment";
 
 /** Sdílený tvar s VPS `Object13PlayerProfileDto` (project-hub-api) — beze změny napříč server proxy i klientem. */
 export interface Object13PlayerProfileDto {
   discordUserId: string;
   profileVersion: number;
-  profileData: Object13PlayerProfileDataV1;
+  profileData: Object13PlayerProfileDataV2;
   revision: number;
   createdAt: string;
   updatedAt: string;
   lastSeenAt: string;
+}
+
+// ── Selectory (viz zadání "12. Klientská služba a Provider") ────────────
+
+export function getOwnedWeapons(profile: Object13PlayerProfileDto): WeaponId[] {
+  return profile.profileData.equipment.ownedWeapons;
+}
+
+export function getEquippedWeaponId(profile: Object13PlayerProfileDto): WeaponId | null {
+  return profile.profileData.equipment.equippedWeaponId;
+}
+
+export function profileHasWeapon(profile: Object13PlayerProfileDto, weaponId: WeaponId): boolean {
+  return hasOwnedWeapon(profile.profileData.equipment, weaponId);
+}
+
+export function getEquippedWeaponAmmoCapacity(profile: Object13PlayerProfileDto): number {
+  return getEquipmentAmmoCapacity(profile.profileData.equipment);
 }
 
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -47,10 +65,14 @@ function isValidTimestampString(value: unknown): value is string {
  * Bezpečné ověření CELÉHO tvaru odpovědi z project-hub-api (přes Next.js
  * proxy, nebo přímo z VPS na server-side straně) — `false` na cokoliv, co
  * neodpovídá přesně `Object13PlayerProfileDto`. `profileData` se ověřuje
- * přísně proti V1 kontraktu (`validateObject13PlayerProfileDataV1`,
- * object13PlayerProfileInventory.ts) — server sám garantuje jen validní V1
- * tvar (normalizuje starý/poškozený profil při GET), tahle validace je tu
- * jako defense-in-depth pro volající, které nedůvěřuje syrové odpovědi.
+ * přísně proti V2 kontraktu (`validateObject13PlayerProfileDataV2`,
+ * object13PlayerProfileContractV2.ts) — server sám garantuje jen validní V2
+ * tvar (migruje starý V1/normalizuje poškozený profil při GET), tahle
+ * validace je tu jako defense-in-depth pro volající, které nedůvěřuje
+ * syrové odpovědi. Odpověď ve starém V1 tvaru (bez `equipment`) se tu
+ * záměrně NEPOVAŽUJE za validní/ready V2 — migraci dělá výhradně server
+ * (viz zadání "3. ... V1 server response se na klientovi nepovažuje za
+ * ready V2, pokud migraci má dělat server").
  */
 export function isValidObject13PlayerProfileDto(value: unknown): value is Object13PlayerProfileDto {
   if (!isPlainObject(value)) return false;
@@ -58,7 +80,7 @@ export function isValidObject13PlayerProfileDto(value: unknown): value is Object
     typeof value.discordUserId === "string" &&
     value.discordUserId.length > 0 &&
     isFiniteInteger(value.profileVersion) &&
-    validateObject13PlayerProfileDataV1(value.profileData).ok &&
+    validateObject13PlayerProfileDataV2(value.profileData).ok &&
     isFiniteInteger(value.revision) &&
     isValidTimestampString(value.createdAt) &&
     isValidTimestampString(value.updatedAt) &&
@@ -77,7 +99,7 @@ export function isValidObject13PlayerProfileDto(value: unknown): value is Object
 export interface IncomingObject13PlayerProfilePutBody {
   expectedRevision: number;
   profileVersion: number;
-  profileData: Object13PlayerProfileDataV1;
+  profileData: Object13PlayerProfileDataV2;
 }
 
 export type ValidateIncomingPutBodyResult =
@@ -88,8 +110,8 @@ export type ValidateIncomingPutBodyResult =
  * Přísná validace (žádný lenientní silent fallback) — neplatný tvar/typ
  * vrátí `{ ok: false }`, volající (viz playerProfileRequestHandlers.ts) na
  * tom pozná "400, VPS se vůbec nevolá" (test "Neplatný browser payload
- * vrátí 400 bez volání VPS"). `profileData` se ověřuje přísně proti V1
- * kontraktu (`validateObject13PlayerProfileDataV1`) — VPS validuje tentýž
+ * vrátí 400 bez volání VPS"). `profileData` se ověřuje přísně proti V2
+ * kontraktu (`validateObject13PlayerProfileDataV2`) — VPS validuje tentýž
  * tvar znovu nezávisle (playerProfileValidation.ts), duplicitní kontrola je
  * tu záměrná (fail fast, bez zbytečného round-tripu na VPS), ne jediný
  * zdroj pravdy.
@@ -99,7 +121,7 @@ export function validateIncomingObject13PlayerProfilePutBody(raw: unknown): Vali
   const { expectedRevision, profileVersion, profileData } = raw;
   if (!isFiniteInteger(expectedRevision) || expectedRevision <= 0) return { ok: false };
   if (!isFiniteInteger(profileVersion) || profileVersion <= 0) return { ok: false };
-  const validated = validateObject13PlayerProfileDataV1(profileData);
+  const validated = validateObject13PlayerProfileDataV2(profileData);
   if (!validated.ok) return { ok: false };
   return { ok: true, data: { expectedRevision, profileVersion, profileData: validated.data } };
 }
@@ -125,6 +147,28 @@ export function validateIncomingObject13PlayerProfileInventoryOperationBody(
   if (!isFiniteInteger(amount) || amount <= 0) return { ok: false };
   if (!isFiniteInteger(expectedRevision) || expectedRevision <= 0) return { ok: false };
   return { ok: true, data: { amount, expectedRevision } };
+}
+
+// ── Equipment operace (unlock) tělo requestu (klient -> Next.js proxy) ──
+
+/** Co hráčův prohlížeč smí poslat na `POST /api/player/profile/equipment/weapon/unlock` — bez `discordUserId`, stejný princip jako inventářová operace výše. */
+export interface IncomingObject13PlayerProfileWeaponOperationBody {
+  weaponId: WeaponId;
+  expectedRevision: number;
+}
+
+export type ValidateIncomingWeaponOperationBodyResult =
+  | { ok: true; data: IncomingObject13PlayerProfileWeaponOperationBody }
+  | { ok: false };
+
+export function validateIncomingObject13PlayerProfileWeaponOperationBody(
+  raw: unknown,
+): ValidateIncomingWeaponOperationBodyResult {
+  if (!isPlainObject(raw)) return { ok: false };
+  const { weaponId, expectedRevision } = raw;
+  if (typeof weaponId !== "string" || !isWeaponId(weaponId)) return { ok: false };
+  if (!isFiniteInteger(expectedRevision) || expectedRevision <= 0) return { ok: false };
+  return { ok: true, data: { weaponId, expectedRevision } };
 }
 
 // ── Klientský load/save state (viz components/playerProfile/Object13PlayerProfileProvider.tsx) ──
@@ -262,6 +306,43 @@ export function deriveSaveStateFromInventoryOperationResult(
   }
   if (result.status === "insufficient_inventory") {
     return { saveState: { status: "insufficient_inventory" } };
+  }
+  if (result.status === "unauthorized") {
+    return { saveState: { status: "error", error: "unauthorized" } };
+  }
+  return { saveState: { status: "error", error: result.error } };
+}
+
+// ── Equipment operace (unlock) — klientský výsledek + odvození stavu ──
+
+/** Výsledek `unlockWeapon()` (viz lib/playerProfile/object13PlayerProfileClient.ts). `"unchanged"` = zbraň už byla vlastněná a správně vybavená (idempotentní no-op, revision beze změny) — pořád úspěch, jen bez skutečné mutace. */
+export type Object13PlayerProfileWeaponUnlockResult =
+  | { status: "updated"; profile: Object13PlayerProfileDto }
+  | { status: "unchanged"; profile: Object13PlayerProfileDto }
+  | { status: "conflict"; currentRevision: number; currentProfile?: Object13PlayerProfileDto }
+  | { status: "unauthorized" }
+  | { status: "error"; error: string };
+
+/**
+ * Čistá projekce `Object13PlayerProfileWeaponUnlockResult` -> nový
+ * `saveState` (+ volitelně nový `loadState`) — stejný princip jako
+ * `deriveSaveStateFromInventoryOperationResult` výše. `"updated"` i
+ * `"unchanged"` OBOJE nahradí `loadState` čerstvým profilem ze serveru (i
+ * `"unchanged"` vrací aktuální profil, i když ho technicky nezměnilo) — ať
+ * je `loadState` vždy v souladu s tím, co server právě potvrdil.
+ */
+export function deriveSaveStateFromWeaponUnlockResult(result: Object13PlayerProfileWeaponUnlockResult): DeriveSaveStateResult {
+  if (result.status === "updated" || result.status === "unchanged") {
+    return {
+      saveState: { status: "saved" },
+      nextLoadState: { status: "ready", profile: result.profile },
+    };
+  }
+  if (result.status === "conflict") {
+    if (!result.currentProfile) {
+      return { saveState: { status: "error", error: "conflict_without_profile" } };
+    }
+    return { saveState: { status: "conflict", currentProfile: result.currentProfile } };
   }
   if (result.status === "unauthorized") {
     return { saveState: { status: "error", error: "unauthorized" } };

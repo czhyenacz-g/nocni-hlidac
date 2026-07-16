@@ -5,6 +5,8 @@ import {
   applyShotgunEmergencyReturn,
   canRequestAmmo,
   createFreshRunShotgunEquipment,
+  createFreshRunShotgunEquipmentFromWeaponId,
+  deriveShotgunEquipmentFromWeaponId,
   getRechargedShotgunAmmo,
   getShotgunMaxAmmo,
   hasAnyShotgun,
@@ -201,6 +203,51 @@ describe("createFreshRunShotgunEquipment", () => {
 
   it("with doubleBarrelUnlocked: starts with a fully-loaded double-barrel shotgun", () => {
     expect(createFreshRunShotgunEquipment(true)).toEqual({
+      hasShotgun: true,
+      hasDoubleBarrelShotgun: true,
+      shotgunAmmo: DOUBLE_BARREL_SHOTGUN_MAX_AMMO,
+    });
+  });
+});
+
+// Equipment model (viz zadání "profilový kontrakt V2 + equipment") — jediné
+// místo, které mapuje profilový WeaponId na starou hasShotgun/
+// hasDoubleBarrelShotgun dvojici, a jediné místo, které z toho odvozuje
+// výchozí výbavu nového runu pro Hardcore (viz
+// game/equipment/weaponAcquisitionController.ts#resolveFreshRunShotgunEquipment).
+describe("deriveShotgunEquipmentFromWeaponId", () => {
+  it("null -> no weapon", () => {
+    expect(deriveShotgunEquipmentFromWeaponId(null)).toEqual({ hasShotgun: false, hasDoubleBarrelShotgun: false });
+  });
+
+  it("single_shotgun -> hasShotgun true, hasDoubleBarrelShotgun false", () => {
+    expect(deriveShotgunEquipmentFromWeaponId("single_shotgun")).toEqual({ hasShotgun: true, hasDoubleBarrelShotgun: false });
+  });
+
+  it("double_barrel_shotgun -> both true", () => {
+    expect(deriveShotgunEquipmentFromWeaponId("double_barrel_shotgun")).toEqual({ hasShotgun: true, hasDoubleBarrelShotgun: true });
+  });
+});
+
+describe("createFreshRunShotgunEquipmentFromWeaponId", () => {
+  it("null -> no weapon, 0 ammo", () => {
+    expect(createFreshRunShotgunEquipmentFromWeaponId(null)).toEqual({
+      hasShotgun: false,
+      hasDoubleBarrelShotgun: false,
+      shotgunAmmo: 0,
+    });
+  });
+
+  it("single_shotgun -> fully loaded at capacity 1", () => {
+    expect(createFreshRunShotgunEquipmentFromWeaponId("single_shotgun")).toEqual({
+      hasShotgun: true,
+      hasDoubleBarrelShotgun: false,
+      shotgunAmmo: SHOTGUN_MAX_AMMO,
+    });
+  });
+
+  it("double_barrel_shotgun -> fully loaded at capacity 2", () => {
+    expect(createFreshRunShotgunEquipmentFromWeaponId("double_barrel_shotgun")).toEqual({
       hasShotgun: true,
       hasDoubleBarrelShotgun: true,
       shotgunAmmo: DOUBLE_BARREL_SHOTGUN_MAX_AMMO,

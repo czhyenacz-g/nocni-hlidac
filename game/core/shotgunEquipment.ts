@@ -1,4 +1,5 @@
 import { EmergencyWorldEffect } from "../minigame/types";
+import { WeaponId } from "./object13PlayerProfileEquipment";
 
 // Trvalé vlastnictví brokovnice (viz GameState.hasShotgun/hasDoubleBarrelShotgun/
 // shotgunAmmo) — první skutečný krok k true endingu (viz zadání). Persistuje
@@ -145,5 +146,32 @@ export interface FreshRunShotgunEquipment {
 export function createFreshRunShotgunEquipment(doubleBarrelUnlocked: boolean): FreshRunShotgunEquipment {
   if (!doubleBarrelUnlocked) return { hasShotgun: false, hasDoubleBarrelShotgun: false, shotgunAmmo: 0 };
   const equipment: ShotgunEquipmentState = { hasShotgun: true, hasDoubleBarrelShotgun: true };
+  return { ...equipment, shotgunAmmo: getShotgunMaxAmmo(equipment) };
+}
+
+/**
+ * Mapuje profilový `equippedWeaponId` (viz zadání "equipment systém",
+ * Object13PlayerProfileDto.profileData.equipment) na starou dvojici
+ * hasShotgun/hasDoubleBarrelShotgun — JEDINÉ místo, které tenhle převod
+ * dělá (viz zadání "15. Inicializace nové mise" — buď plná náhrada
+ * `equippedWeaponId`, nebo booleany odvozené VÝHRADNĚ odsud, nikdy zapsané
+ * nezávisle). `null` (nic vybaveno) mapuje na "žádná brokovnice".
+ */
+export function deriveShotgunEquipmentFromWeaponId(weaponId: WeaponId | null): ShotgunEquipmentState {
+  if (weaponId === "double_barrel_shotgun") return { hasShotgun: true, hasDoubleBarrelShotgun: true };
+  if (weaponId === "single_shotgun") return { hasShotgun: true, hasDoubleBarrelShotgun: false };
+  return { hasShotgun: false, hasDoubleBarrelShotgun: false };
+}
+
+/**
+ * Výchozí výbava brokovnice na ÚPLNĚM ZAČÁTKU nového runu, odvozená z
+ * profilového `equippedWeaponId` — Hardcore ekvivalent
+ * `createFreshRunShotgunEquipment` výše (ten zůstává pro Training/anonymní
+ * lokální fallback, viz zadání "9. Odstranění paralelní autority").
+ * Nabíjí se vždy na plnou kapacitu AKTUÁLNĚ vybavené zbraně, stejně jako
+ * `createFreshRunShotgunEquipment`.
+ */
+export function createFreshRunShotgunEquipmentFromWeaponId(weaponId: WeaponId | null): FreshRunShotgunEquipment {
+  const equipment = deriveShotgunEquipmentFromWeaponId(weaponId);
   return { ...equipment, shotgunAmmo: getShotgunMaxAmmo(equipment) };
 }

@@ -566,6 +566,22 @@ Pokud hráč zapomene dobít před dalším výjezdem, vyrazí i s prázdnou zbr
 Dojde-li munice uprostřed minihry, další stisk mezerníku nevystřelí (jen zahraje "cvak
 naprázdno") a hráč se musí fyzicky vrátit do kanceláře.
 
+### Odkud se vlastnictví brokovnice bere (přihlášený hráč)
+
+Munice nabitá v aktuální zbrani (výše) je čistě věc PROBÍHAJÍCÍ směny. Samotné
+vlastnictví brokovnice — jestli hráč VŮBEC nějakou má, a jestli je to jednohlavňovka nebo
+vysloužená dvouhlavňovka — je dlouhodobá věc profilu hlídače, stejně jako počet náhradních
+žárovek:
+- Anonymní hráč a Trénink (Normal): beze změny — čistě lokální, uloženo v prohlížeči.
+- Hardcore s Discord účtem: kterou zbraň (pokud vůbec nějakou) hráč vlastní se ukládá na
+  serveru. Když ji hráč v nouzové výpravě najde, nebo když poprvé přemůže bestii a vyslouží
+  si dvouhlavňovku, zapíše se to na server HNED, ne až na konci směny — a příští směna vždy
+  začíná přesně s tím, co server potvrdil. Dřívější bug ("Hardcore hráč přišel o
+  vysloužené brokovnici hned v příští misi") byl přesně tohle: vlastnictví se dřív drželo
+  jen v paměti běžící směny, takže nová směna začínala vždycky od nuly.
+- Nalezení běžné brokovnice zůstává vlastní, i po vysloužení dvouhlavňovky — hráč tak
+  nikdy nepřijde o historii svého postupu, i když ve výbavě používá jen tu lepší zbraň.
+
 ## Žárovky (základ)
 
 První krok budoucího systému náhradních žárovek: hlídač na začátku kampaně dostane **10**

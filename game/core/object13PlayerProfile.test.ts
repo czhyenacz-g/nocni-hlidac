@@ -3,17 +3,23 @@ import {
   deriveLoadStateFromFetchResult,
   deriveSaveStateFromInventoryOperationResult,
   deriveSaveStateFromSaveResult,
+  deriveSaveStateFromWeaponUnlockResult,
+  getEquippedWeaponAmmoCapacity,
+  getEquippedWeaponId,
+  getOwnedWeapons,
   isPlainObject,
   isValidObject13PlayerProfileDto,
   Object13PlayerProfileDto,
+  profileHasWeapon,
   validateIncomingObject13PlayerProfileInventoryOperationBody,
   validateIncomingObject13PlayerProfilePutBody,
+  validateIncomingObject13PlayerProfileWeaponOperationBody,
 } from "./object13PlayerProfile";
 
 const VALID_DTO: Object13PlayerProfileDto = {
   discordUserId: "123456789012345678",
   profileVersion: 1,
-  profileData: { inventory: { items: { bulb: 10 } } },
+  profileData: { inventory: { items: { bulb: 10 } }, equipment: { ownedWeapons: [], equippedWeaponId: null } },
   revision: 1,
   createdAt: "2026-07-16T12:00:00.000Z",
   updatedAt: "2026-07-16T12:00:00.000Z",
@@ -72,7 +78,7 @@ describe("isValidObject13PlayerProfileDto", () => {
 });
 
 describe("validateIncomingObject13PlayerProfilePutBody", () => {
-  const VALID_BODY = { expectedRevision: 1, profileVersion: 1, profileData: { inventory: { items: { bulb: 10 } } } };
+  const VALID_BODY = { expectedRevision: 1, profileVersion: 1, profileData: { inventory: { items: { bulb: 10 } }, equipment: { ownedWeapons: [], equippedWeaponId: null } } };
 
   it("accepts a well-formed body", () => {
     const result = validateIncomingObject13PlayerProfilePutBody(VALID_BODY);
@@ -199,6 +205,108 @@ describe("deriveSaveStateFromSaveResult", () => {
 
   it("maps a generic error through with its message", () => {
     const result = deriveSaveStateFromSaveResult({ status: "error", error: "network_error" });
+    expect(result.saveState).toEqual({ status: "error", error: "network_error" });
+  });
+});
+
+describe("equipment selectors (getOwnedWeapons/getEquippedWeaponId/profileHasWeapon/getEquippedWeaponAmmoCapacity)", () => {
+  const WITH_SINGLE: Object13PlayerProfileDto = {
+    ...VALID_DTO,
+    profileData: { inventory: { items: { bulb: 10 } }, equipment: { ownedWeapons: ["single_shotgun"], equippedWeaponId: "single_shotgun" } },
+  };
+  const WITH_DOUBLE: Object13PlayerProfileDto = {
+    ...VALID_DTO,
+    profileData: {
+      inventory: { items: { bulb: 10 } },
+      equipment: { ownedWeapons: ["single_shotgun", "double_barrel_shotgun"], equippedWeaponId: "double_barrel_shotgun" },
+    },
+  };
+
+  it("getOwnedWeapons returns the profile's ownedWeapons list", () => {
+    expect(getOwnedWeapons(VALID_DTO)).toEqual([]);
+    expect(getOwnedWeapons(WITH_DOUBLE)).toEqual(["single_shotgun", "double_barrel_shotgun"]);
+  });
+
+  it("getEquippedWeaponId returns null when nothing is equipped, else the equipped WeaponId", () => {
+    expect(getEquippedWeaponId(VALID_DTO)).toBeNull();
+    expect(getEquippedWeaponId(WITH_SINGLE)).toBe("single_shotgun");
+    expect(getEquippedWeaponId(WITH_DOUBLE)).toBe("double_barrel_shotgun");
+  });
+
+  it("profileHasWeapon reflects ownership regardless of what's equipped", () => {
+    expect(profileHasWeapon(VALID_DTO, "single_shotgun")).toBe(false);
+    expect(profileHasWeapon(WITH_DOUBLE, "single_shotgun")).toBe(true);
+    expect(profileHasWeapon(WITH_DOUBLE, "double_barrel_shotgun")).toBe(true);
+  });
+
+  it("getEquippedWeaponAmmoCapacity derives 0/1/2 from the equipped weapon, not a duplicated literal", () => {
+    expect(getEquippedWeaponAmmoCapacity(VALID_DTO)).toBe(0);
+    expect(getEquippedWeaponAmmoCapacity(WITH_SINGLE)).toBe(1);
+    expect(getEquippedWeaponAmmoCapacity(WITH_DOUBLE)).toBe(2);
+  });
+});
+
+describe("validateIncomingObject13PlayerProfileWeaponOperationBody", () => {
+  const VALID_BODY = { weaponId: "single_shotgun", expectedRevision: 1 };
+
+  it("accepts a well-formed body for each known weapon", () => {
+    const single = validateIncomingObject13PlayerProfileWeaponOperationBody(VALID_BODY);
+    expect(single.ok).toBe(true);
+    if (single.ok) expect(single.data).toEqual(VALID_BODY);
+
+    const double = validateIncomingObject13PlayerProfileWeaponOperationBody({ ...VALID_BODY, weaponId: "double_barrel_shotgun" });
+    expect(double.ok).toBe(true);
+  });
+
+  it("rejects an unknown weaponId", () => {
+    expect(validateIncomingObject13PlayerProfileWeaponOperationBody({ ...VALID_BODY, weaponId: "rocket_launcher" }).ok).toBe(false);
+  });
+
+  it("rejects a non-string weaponId", () => {
+    expect(validateIncomingObject13PlayerProfileWeaponOperationBody({ ...VALID_BODY, weaponId: 1 }).ok).toBe(false);
+  });
+
+  it("rejects expectedRevision <= 0 or non-integer", () => {
+    expect(validateIncomingObject13PlayerProfileWeaponOperationBody({ ...VALID_BODY, expectedRevision: 0 }).ok).toBe(false);
+    expect(validateIncomingObject13PlayerProfileWeaponOperationBody({ ...VALID_BODY, expectedRevision: 1.5 }).ok).toBe(false);
+  });
+
+  it("rejects a non-object body", () => {
+    expect(validateIncomingObject13PlayerProfileWeaponOperationBody(null).ok).toBe(false);
+    expect(validateIncomingObject13PlayerProfileWeaponOperationBody("x").ok).toBe(false);
+  });
+});
+
+describe("deriveSaveStateFromWeaponUnlockResult", () => {
+  it("maps updated -> saved + nextLoadState ready with the new profile", () => {
+    const result = deriveSaveStateFromWeaponUnlockResult({ status: "updated", profile: VALID_DTO });
+    expect(result.saveState).toEqual({ status: "saved" });
+    expect(result.nextLoadState).toEqual({ status: "ready", profile: VALID_DTO });
+  });
+
+  it("maps unchanged (idempotent no-op) -> saved + nextLoadState ready, same as updated", () => {
+    const result = deriveSaveStateFromWeaponUnlockResult({ status: "unchanged", profile: VALID_DTO });
+    expect(result.saveState).toEqual({ status: "saved" });
+    expect(result.nextLoadState).toEqual({ status: "ready", profile: VALID_DTO });
+  });
+
+  it("maps conflict WITH a currentProfile -> conflict state", () => {
+    const result = deriveSaveStateFromWeaponUnlockResult({ status: "conflict", currentRevision: 4, currentProfile: VALID_DTO });
+    expect(result.saveState).toEqual({ status: "conflict", currentProfile: VALID_DTO });
+  });
+
+  it("maps conflict WITHOUT a currentProfile -> error, never a fabricated conflict state", () => {
+    const result = deriveSaveStateFromWeaponUnlockResult({ status: "conflict", currentRevision: 4 });
+    expect(result.saveState).toEqual({ status: "error", error: "conflict_without_profile" });
+  });
+
+  it("maps unauthorized -> error", () => {
+    const result = deriveSaveStateFromWeaponUnlockResult({ status: "unauthorized" });
+    expect(result.saveState).toEqual({ status: "error", error: "unauthorized" });
+  });
+
+  it("maps a generic error through with its message", () => {
+    const result = deriveSaveStateFromWeaponUnlockResult({ status: "error", error: "network_error" });
     expect(result.saveState).toEqual({ status: "error", error: "network_error" });
   });
 });

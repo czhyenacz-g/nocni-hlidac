@@ -9,15 +9,19 @@ import {
   InventoryOperationPayload,
   saveObject13PlayerProfile,
   SaveObject13PlayerProfilePayload,
+  unlockWeaponOnProfile,
 } from "@/lib/playerProfile/object13PlayerProfileClient";
 import {
   deriveLoadStateFromFetchResult,
   deriveSaveStateFromInventoryOperationResult,
   deriveSaveStateFromSaveResult,
+  deriveSaveStateFromWeaponUnlockResult,
   Object13PlayerProfileInventoryOperationResult,
   Object13PlayerProfileLoadState,
   Object13PlayerProfileSaveState,
+  Object13PlayerProfileWeaponUnlockResult,
 } from "@/game/core/object13PlayerProfile";
+import { WeaponId } from "@/game/core/object13PlayerProfileEquipment";
 
 interface Object13PlayerProfileContextValue {
   loadState: Object13PlayerProfileLoadState;
@@ -39,6 +43,13 @@ interface Object13PlayerProfileContextValue {
    */
   addBulbs: (amount: number) => Promise<Object13PlayerProfileInventoryOperationResult>;
   consumeBulbs: (amount: number) => Promise<Object13PlayerProfileInventoryOperationResult>;
+  /**
+   * Doménová operace pro trvalé odemčení zbraně (viz zadání "profilový
+   * kontrakt V2 + equipment", "12. Klientská služba a Provider") — stejný
+   * princip jako addBulbs/consumeBulbs výše (aktuální revision, nikdy slepý
+   * retry, žádná lokální trvalá změna bez potvrzení serverem).
+   */
+  unlockWeapon: (weaponId: WeaponId) => Promise<Object13PlayerProfileWeaponUnlockResult>;
 }
 
 const Object13PlayerProfileContext = createContext<Object13PlayerProfileContextValue | null>(null);
@@ -148,9 +159,26 @@ export function Object13PlayerProfileProvider({ children }: { children: ReactNod
     [performInventoryOperation],
   );
 
+  const unlockWeapon = useCallback(
+    async (weaponId: WeaponId): Promise<Object13PlayerProfileWeaponUnlockResult> => {
+      if (loadState.status !== "ready") {
+        return { status: "error", error: "profile_not_ready" };
+      }
+      setSaveState({ status: "saving" });
+      const result = await unlockWeaponOnProfile({ weaponId, expectedRevision: loadState.profile.revision });
+      if (!mountedRef.current) return result;
+
+      const { saveState: nextSaveState, nextLoadState } = deriveSaveStateFromWeaponUnlockResult(result);
+      setSaveState(nextSaveState);
+      if (nextLoadState) setLoadState(nextLoadState);
+      return result;
+    },
+    [loadState],
+  );
+
   return (
     <Object13PlayerProfileContext.Provider
-      value={{ loadState, saveState, reload: load, reloadAfterConflict, save, addBulbs, consumeBulbs }}
+      value={{ loadState, saveState, reload: load, reloadAfterConflict, save, addBulbs, consumeBulbs, unlockWeapon }}
     >
       {children}
     </Object13PlayerProfileContext.Provider>

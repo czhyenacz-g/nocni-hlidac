@@ -7,7 +7,7 @@ import {
 } from "@/game/balancing/constants";
 import { computeEmergencyRunWindupProgressRatio } from "@/game/core/emergencyRunWindupProgress";
 import { computeThinkItOverWindupProgressRatio } from "@/game/core/thinkItOverWindupProgress";
-import { DOUBLE_BARREL_SHOTGUN_MAX_AMMO, SHOTGUN_MAX_AMMO } from "@/game/core/shotgunEquipment";
+import { getShotgunMaxAmmo } from "@/game/core/shotgunEquipment";
 import { OFFICE_DOOR_LOCK_MAX_MS, OFFICE_DOOR_LOCK_MIN_MS } from "@/game/minigame/config";
 import ViewSwitchArrow from "./ViewSwitchArrow";
 import ConsoleIcon from "./ConsoleIcon";
@@ -171,7 +171,7 @@ export default function LeftWallView({
   // níže), jinak podle typu zbraně — jediné místo, kde tenhle výpočet dělá
   // rozdíl i BEZ hasShotgun (na rozdíl od shotgunMaxAmmo použití níže, které
   // je vždy uvnitř `hasShotgun &&` bloku).
-  const shotgunMaxAmmo = !hasShotgun ? 0 : hasDoubleBarrelShotgun ? DOUBLE_BARREL_SHOTGUN_MAX_AMMO : SHOTGUN_MAX_AMMO;
+  const shotgunMaxAmmo = getShotgunMaxAmmo({ hasShotgun, hasDoubleBarrelShotgun });
   const canRequestAmmoNow = hasShotgun && shotgunAmmo < shotgunMaxAmmo;
   // hasShotgun mění, KTERÝ soubor se má načíst — dřívější selhání jednoho z
   // nich (imageFailed) nesmí trvale skrýt i ten druhý, jakmile hráč

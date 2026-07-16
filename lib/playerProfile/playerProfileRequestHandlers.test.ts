@@ -4,6 +4,7 @@ import {
   handleConsumeBulbInventoryRequest,
   handleGetPlayerProfileRequest,
   handlePutPlayerProfileRequest,
+  handleUnlockWeaponRequest,
 } from "./playerProfileRequestHandlers";
 import { DiscordPlayer } from "../auth/types";
 import { Object13PlayerProfileDto } from "../../game/core/object13PlayerProfile";
@@ -19,7 +20,7 @@ const LOGGED_IN_SESSION: DiscordPlayer = { discordUserId: "123456789012345678", 
 const VALID_DTO: Object13PlayerProfileDto = {
   discordUserId: "123456789012345678",
   profileVersion: 1,
-  profileData: { inventory: { items: { bulb: 10 } } },
+  profileData: { inventory: { items: { bulb: 10 } }, equipment: { ownedWeapons: [], equippedWeaponId: null } },
   revision: 1,
   createdAt: "2026-07-16T12:00:00.000Z",
   updatedAt: "2026-07-16T12:00:00.000Z",
@@ -86,7 +87,7 @@ describe("handleGetPlayerProfileRequest", () => {
   });
 });
 
-const VALID_PUT_BODY = { expectedRevision: 1, profileVersion: 1, profileData: { inventory: { items: { bulb: 10 } } } };
+const VALID_PUT_BODY = { expectedRevision: 1, profileVersion: 1, profileData: { inventory: { items: { bulb: 10 } }, equipment: { ownedWeapons: [], equippedWeaponId: null } } };
 
 describe("handlePutPlayerProfileRequest", () => {
   it("6. returns 401 without calling the VPS when there is no session", async () => {
@@ -115,7 +116,7 @@ describe("handlePutPlayerProfileRequest", () => {
 
   it("9. a successful PUT returns the new profile and revision", async () => {
     configureHub();
-    const saved = { ...VALID_DTO, revision: 2, profileData: { inventory: { items: { bulb: 5 } } } };
+    const saved = { ...VALID_DTO, revision: 2, profileData: { inventory: { items: { bulb: 5 } }, equipment: { ownedWeapons: [], equippedWeaponId: null } } };
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify(saved), { status: 200 }))));
 
     const result = await handlePutPlayerProfileRequest(LOGGED_IN_SESSION, VALID_PUT_BODY);
@@ -186,7 +187,7 @@ describe("handlePutPlayerProfileRequest", () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
 
-    const result = await handlePutPlayerProfileRequest(LOGGED_IN_SESSION, { expectedRevision: -1, profileVersion: 1, profileData: { inventory: { items: { bulb: 10 } } } });
+    const result = await handlePutPlayerProfileRequest(LOGGED_IN_SESSION, { expectedRevision: -1, profileVersion: 1, profileData: { inventory: { items: { bulb: 10 } }, equipment: { ownedWeapons: [], equippedWeaponId: null } } });
 
     expect(result.status).toBe(400);
     expect(result.body).toEqual({ error: "invalid_request" });
@@ -244,7 +245,7 @@ describe("handleAddBulbInventoryRequest", () => {
 
   it("a successful add returns 200 with the updated profile", async () => {
     configureHub();
-    const updated = { ...VALID_DTO, revision: 2, profileData: { inventory: { items: { bulb: 11 } } } };
+    const updated = { ...VALID_DTO, revision: 2, profileData: { inventory: { items: { bulb: 11 } }, equipment: { ownedWeapons: [], equippedWeaponId: null } } };
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify(updated), { status: 200 }))));
 
     const result = await handleAddBulbInventoryRequest(LOGGED_IN_SESSION, VALID_INVENTORY_BODY);
@@ -316,5 +317,102 @@ describe("handleConsumeBulbInventoryRequest", () => {
 
     expect(result.status).toBe(409);
     expect(result.body).toEqual({ error: "insufficient_inventory" });
+  });
+});
+
+const VALID_WEAPON_UNLOCK_BODY = { weaponId: "single_shotgun", expectedRevision: 1 };
+
+describe("handleUnlockWeaponRequest", () => {
+  it("returns 401 without calling the VPS when there is no session", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const result = await handleUnlockWeaponRequest(ANONYMOUS_SESSION, VALID_WEAPON_UNLOCK_BODY);
+
+    expect(result.status).toBe(401);
+    expect(result.body).toEqual({ error: "unauthorized" });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("posts to the equipment/weapon/unlock VPS endpoint with the session's discordUserId, ignoring any in the body", async () => {
+    configureHub();
+    const fetchSpy = vi.fn<typeof fetch>(() => Promise.resolve(new Response(JSON.stringify(VALID_DTO), { status: 200 })));
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await handleUnlockWeaponRequest(LOGGED_IN_SESSION, { ...VALID_WEAPON_UNLOCK_BODY, discordUserId: "attacker-supplied-id" });
+
+    const [url, init] = fetchSpy.mock.calls[0];
+    expect(String(url)).toContain("/nocni-hlidac/player-profile/equipment/weapon/unlock");
+    const sentBody = JSON.parse(String(init?.body));
+    expect(sentBody.discordUserId).toBe(LOGGED_IN_SESSION.discordUserId);
+    expect(sentBody.weaponId).toBe("single_shotgun");
+  });
+
+  it("a successful unlock returns 200 with the updated (now weapon-owning) profile", async () => {
+    configureHub();
+    const updated = {
+      ...VALID_DTO,
+      revision: 2,
+      profileData: { inventory: { items: { bulb: 10 } }, equipment: { ownedWeapons: ["single_shotgun"], equippedWeaponId: "single_shotgun" } },
+    };
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify(updated), { status: 200 }))));
+
+    const result = await handleUnlockWeaponRequest(LOGGED_IN_SESSION, VALID_WEAPON_UNLOCK_BODY);
+
+    expect(result.status).toBe(200);
+    expect(result.body).toEqual(updated);
+  });
+
+  it("an idempotent no-op unlock (already owned+equipped) still returns 200 with the current profile", async () => {
+    configureHub();
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify(VALID_DTO), { status: 200 }))));
+
+    const result = await handleUnlockWeaponRequest(LOGGED_IN_SESSION, VALID_WEAPON_UNLOCK_BODY);
+
+    expect(result.status).toBe(200);
+    expect(result.body).toEqual(VALID_DTO);
+  });
+
+  it("maps a 409 revision conflict, preserving currentRevision/currentProfile — optimistic locking surfaces to the caller", async () => {
+    configureHub();
+    const conflictBody = { currentRevision: 4, profile: { ...VALID_DTO, revision: 4 } };
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify(conflictBody), { status: 409 }))));
+
+    const result = await handleUnlockWeaponRequest(LOGGED_IN_SESSION, VALID_WEAPON_UNLOCK_BODY);
+
+    expect(result.status).toBe(409);
+    expect(result.body).toEqual({ error: "profile_conflict", currentRevision: 4, currentProfile: { ...VALID_DTO, revision: 4 } });
+  });
+
+  it("maps a 404 (profile not found) to its own distinct status", async () => {
+    configureHub();
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify({ error: "profile_not_found" }), { status: 404 }))));
+
+    const result = await handleUnlockWeaponRequest(LOGGED_IN_SESSION, VALID_WEAPON_UNLOCK_BODY);
+
+    expect(result.status).toBe(404);
+    expect(result.body).toEqual({ error: "profile_not_found" });
+  });
+
+  it("an unknown weaponId returns 400 without calling the VPS", async () => {
+    configureHub();
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const result = await handleUnlockWeaponRequest(LOGGED_IN_SESSION, { weaponId: "rocket_launcher", expectedRevision: 1 });
+
+    expect(result.status).toBe(400);
+    expect(result.body).toEqual({ error: "invalid_request" });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("maps a VPS/network failure to profile_unavailable (502)", async () => {
+    configureHub();
+    vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new Error("network error"))));
+
+    const result = await handleUnlockWeaponRequest(LOGGED_IN_SESSION, VALID_WEAPON_UNLOCK_BODY);
+
+    expect(result.status).toBe(502);
+    expect(result.body).toEqual({ error: "profile_unavailable" });
   });
 });

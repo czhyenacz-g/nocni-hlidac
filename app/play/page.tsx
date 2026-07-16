@@ -86,12 +86,7 @@ import {
   resolveOfficeThreatTriggeredFromWorldEffects,
   shouldLaunchEmergencyMiniGame,
 } from "@/game/core/emergencyMiniGameIntegration";
-import {
-  applyShotgunEmergencyReturn,
-  canRequestAmmo,
-  createFreshRunShotgunEquipment,
-  getRechargedShotgunAmmo,
-} from "@/game/core/shotgunEquipment";
+import { applyShotgunEmergencyReturn, canRequestAmmo, getRechargedShotgunAmmo } from "@/game/core/shotgunEquipment";
 import EmergencyMiniGame from "@/components/minigame/EmergencyMiniGame";
 import { EmergencyMiniGameInput, EmergencyMiniGameResult } from "@/game/minigame/types";
 import { COPY } from "@/content/copy";
@@ -107,6 +102,12 @@ import {
   decideBulbReplacementConfirmAction,
   deriveBulbInventoryConfirmOutcome,
 } from "@/game/inventory/bulbInventoryController";
+import {
+  deriveWeaponAcquisitionConfirmOutcome,
+  resolveFreshRunShotgunEquipment,
+  resolveWeaponAcquisitionPersistenceMode,
+} from "@/game/equipment/weaponAcquisitionController";
+import { resolveExistingPlayerWeaponMigrationAction } from "@/game/equipment/existingPlayerWeaponMigration";
 
 const night = NIGHT_01;
 const gameReducer = createGameReducer(night);
@@ -160,6 +161,34 @@ function PlayPageContent() {
     if (object13Profile.loadState.status === "ready") {
       bulbInventoryNeedsReloadRef.current = false;
     }
+  }, [object13Profile.loadState]);
+  // Stejná "jedna probíhající operace blokuje další" ochrana jako
+  // bulbInventoryPendingRef výše, jen pro trvalé odemykání zbraní (viz
+  // zadání "13. nesmí dojít k dvojímu získání... pending operace blokuje").
+  // Žádný needsReload mezistav navíc — na rozdíl od žárovek tu není žádný
+  // rozehraný UI progres, který by bez reloadu zůstal zaseknutý; neúspěšné
+  // odemčení prostě zůstane neodemčené a příští stejná herní událost to
+  // zkusí znovu (žádný automatický retry, viz zadání).
+  const weaponAcquisitionPendingRef = useRef(false);
+  // Jednorázová migrace existujícího hráče se starou (lokální) dvouhlavňovkovou
+  // odměnou do equipment modelu (viz zadání "10. Migrace existujícího
+  // hráče", game/equipment/existingPlayerWeaponMigration.ts) — ref zaručí
+  // NEJVÝŠ JEDEN pokus za mount, i kdyby request selhal
+  // (conflict/unavailable) — žádný automatický retry. Nezávislé na
+  // zvoleném gameMode (běží, jakmile je profil `ready`, ještě před
+  // spuštěním jakékoliv směny).
+  const existingPlayerWeaponMigrationAttemptedRef = useRef(false);
+  useEffect(() => {
+    if (existingPlayerWeaponMigrationAttemptedRef.current) return;
+    const action = resolveExistingPlayerWeaponMigrationAction(object13Profile.loadState, getMonsterDefeatReward());
+    if (action.type !== "unlock_double_barrel") return;
+    existingPlayerWeaponMigrationAttemptedRef.current = true;
+    object13Profile.unlockWeapon("double_barrel_shotgun").then((result) => {
+      const outcome = deriveWeaponAcquisitionConfirmOutcome(result);
+      if (outcome.outcome !== "confirmed") {
+        console.warn("[nocni-hlidac] existing player double barrel migration did not confirm", result.status);
+      }
+    });
   }, [object13Profile.loadState]);
   // Kolik hlídačů už na týhle pozici selhalo — čistě lokální localStorage
   // counter (viz game/core/deathCount.ts), nezávislý na herním stavu/reduceru.
@@ -1241,7 +1270,7 @@ function PlayPageContent() {
       const isFreshRun = rawLivesRemaining <= 0;
       const livesRemaining = isFreshRun ? GAME_MODE_CONFIG[gameMode].startingLives : rawLivesRemaining;
       const shotgunEquipment = isFreshRun
-        ? createFreshRunShotgunEquipment(getMonsterDefeatReward().doubleBarrelUnlocked)
+        ? resolveFreshRunShotgunEquipment(gameMode, object13Profile.loadState, getMonsterDefeatReward().doubleBarrelUnlocked)
         : // Dobití náboje na začátku (opakované i nové) noci (viz zadání
           // "Každý nový den / nová noc dobije 1 náboj") — bez brokovnice
           // zůstává 0, s dvouhlavňovkou dobije na 2.
@@ -1274,7 +1303,11 @@ function PlayPageContent() {
       });
     } else {
       const gameMode = selectedGameModeRef.current;
-      const shotgunEquipment = createFreshRunShotgunEquipment(getMonsterDefeatReward().doubleBarrelUnlocked);
+      const shotgunEquipment = resolveFreshRunShotgunEquipment(
+        gameMode,
+        object13Profile.loadState,
+        getMonsterDefeatReward().doubleBarrelUnlocked,
+      );
       // Profil hlídače (viz zadání, game/core/playerProfileStats.ts) — jen
       // SKUTEČNĚ nový run (START_SHIFT z menu), ne RESTART_SHIFT pokračování
       // stejné směny po smrti s životy navíc.
@@ -1377,6 +1410,21 @@ function PlayPageContent() {
     // "Normal true ending NESMÍ odemknout serverovou dvouhlavňovku/zvýšit
     // hardcoreMonsterDefeatsCount").
     if (state.gameMode !== "hardcore") return;
+
+    // Trvalé odemčení dvouhlavňovky (viz zadání "14. server-confirmed
+    // double barrel acquisition") — server-authoritative domain event,
+    // stejný "fire-and-forget s warning logem" vzor jako survive-night/
+    // hardcore-profile sync níže. Žádný lokální dispatch navíc netřeba
+    // (běžící run tímhle screenem stejně končí) — projeví se až v příští
+    // misi přes resolveFreshRunShotgunEquipment (viz
+    // game/equipment/weaponAcquisitionController.ts), jednou už bude
+    // equippedWeaponId v profilu potvrzené.
+    object13Profile.unlockWeapon("double_barrel_shotgun").then((unlockResult) => {
+      const outcome = deriveWeaponAcquisitionConfirmOutcome(unlockResult);
+      if (outcome.outcome !== "confirmed") {
+        console.warn("[nocni-hlidac] double barrel weapon unlock did not confirm", unlockResult.status);
+      }
+    });
 
     // Stejný survive-night zápis jako běžná výhra (viz `state.screen ===
     // "win"` výše, stejný TODO ohledně dvouhlavňovky v currentRun/bestRun
@@ -1592,9 +1640,36 @@ function PlayPageContent() {
         result.shotsUsed,
         result.worldEffects,
       );
-      if (shotgunResult.hasShotgun !== state.hasShotgun || shotgunResult.shotgunAmmo !== state.shotgunAmmo) {
+      const gainedShotgunOwnership = !state.hasShotgun && shotgunResult.hasShotgun;
+
+      if (gainedShotgunOwnership && resolveWeaponAcquisitionPersistenceMode(state.gameMode, object13Profile.loadState) === "server") {
+        // Hardcore + ready profil (viz zadání "13. server-confirmed single
+        // shotgun acquisition") — vlastnictví zbraně se v runtime GameState
+        // projeví AŽ PO potvrzení serverem, nikdy dřív. `shotgunAmmo` pro
+        // tuhle výpravu se aplikuje spolu s ním (žádné "má munici, ale
+        // nemá zbraň" mezistav) — munice samotná zůstává runtime hodnota,
+        // ale nemá smysl bez potvrzeného vlastnictví zbraně.
+        if (!weaponAcquisitionPendingRef.current) {
+          weaponAcquisitionPendingRef.current = true;
+          object13Profile.unlockWeapon("single_shotgun").then((unlockResult) => {
+            weaponAcquisitionPendingRef.current = false;
+            const outcome = deriveWeaponAcquisitionConfirmOutcome(unlockResult);
+            if (outcome.outcome !== "confirmed") {
+              // conflict/unavailable — trvalé odemčení se NEDOKONČÍ, žádný
+              // automatický retry (viz zadání). Hráč zůstává bez brokovnice
+              // v tomhle runtime stavu, i když ji fyzicky sebral v minihře.
+              return;
+            }
+            dispatch({ type: "APPLY_SHOTGUN_EFFECTS", hasShotgun: shotgunResult.hasShotgun, shotgunAmmo: shotgunResult.shotgunAmmo });
+            setEmergencyRunMessage(COPY.game.shotgunAcquiredLabel);
+          });
+        }
+      } else if (shotgunResult.hasShotgun !== state.hasShotgun || shotgunResult.shotgunAmmo !== state.shotgunAmmo) {
+        // Training/anonymní (lokální mode), nebo jen změna munice (zbraň už
+        // vlastněná) — dokončuje se okamžitě, žádné čekání na server (viz
+        // zadání "munice zůstává runtime stav aktuální mise").
         dispatch({ type: "APPLY_SHOTGUN_EFFECTS", hasShotgun: shotgunResult.hasShotgun, shotgunAmmo: shotgunResult.shotgunAmmo });
-        if (!state.hasShotgun && shotgunResult.hasShotgun) {
+        if (gainedShotgunOwnership) {
           messages.push(COPY.game.shotgunAcquiredLabel);
         }
       }

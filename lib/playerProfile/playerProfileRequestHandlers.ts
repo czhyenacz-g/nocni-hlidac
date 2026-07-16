@@ -3,6 +3,7 @@ import {
   Object13PlayerProfileDto,
   validateIncomingObject13PlayerProfileInventoryOperationBody,
   validateIncomingObject13PlayerProfilePutBody,
+  validateIncomingObject13PlayerProfileWeaponOperationBody,
 } from "../../game/core/object13PlayerProfile";
 import { Object13InventoryItemId } from "../../game/core/object13PlayerProfileInventory";
 import {
@@ -12,6 +13,7 @@ import {
   putRemoteObject13PlayerProfile,
   RemoteObject13PlayerProfileInventoryOperationPayload,
   RemoteObject13PlayerProfileInventoryOperationResult,
+  unlockRemoteObject13PlayerProfileWeapon,
 } from "./remoteObject13PlayerProfile";
 
 /**
@@ -209,4 +211,64 @@ export function handleAddBulbInventoryRequest(session: DiscordPlayer | null, raw
 
 export function handleConsumeBulbInventoryRequest(session: DiscordPlayer | null, rawBody: unknown): Promise<PlayerProfileInventoryOperationResponse> {
   return handleInventoryOperationRequest(session, rawBody, "bulb", consumeRemoteObject13PlayerProfileInventoryItem);
+}
+
+export type PlayerProfileWeaponUnlockErrorBody =
+  | { error: "unauthorized" }
+  | { error: "invalid_request" }
+  | { error: "profile_conflict"; currentRevision: number; currentProfile?: Object13PlayerProfileDto }
+  | { error: "profile_not_found" }
+  | { error: "profile_unavailable" };
+
+export type PlayerProfileWeaponUnlockResponseBody = Object13PlayerProfileDto | PlayerProfileWeaponUnlockErrorBody;
+
+export interface PlayerProfileWeaponUnlockResponse {
+  status: number;
+  body: PlayerProfileWeaponUnlockResponseBody;
+}
+
+/**
+ * `/api/player/profile/equipment/weapon/unlock` — stejný "session-in,
+ * discordUserId odsud, nikdy z browseru" princip jako inventářové operace
+ * výše. `outcome: "updated"`/`"unchanged"` OBĚ vrací 200 s celým profilem —
+ * idempotentní no-op je pořád úspěch z pohledu volajícího.
+ */
+export async function handleUnlockWeaponRequest(session: DiscordPlayer | null, rawBody: unknown): Promise<PlayerProfileWeaponUnlockResponse> {
+  if (!session) {
+    console.warn("[playerProfileRequestHandlers] weapon unlock called without a valid session");
+    return { status: 401, body: { error: "unauthorized" } };
+  }
+
+  const validated = validateIncomingObject13PlayerProfileWeaponOperationBody(rawBody);
+  if (!validated.ok) {
+    return { status: 400, body: { error: "invalid_request" } };
+  }
+
+  const result = await unlockRemoteObject13PlayerProfileWeapon({
+    discordUserId: session.discordUserId,
+    weaponId: validated.data.weaponId,
+    expectedRevision: validated.data.expectedRevision,
+  });
+
+  switch (result.outcome) {
+    case "updated":
+    case "unchanged":
+      return { status: 200, body: result.profile };
+    case "conflict":
+      return {
+        status: 409,
+        body: {
+          error: "profile_conflict",
+          currentRevision: result.currentRevision,
+          ...(result.currentProfile ? { currentProfile: result.currentProfile } : {}),
+        },
+      };
+    case "not_found":
+      return { status: 404, body: { error: "profile_not_found" } };
+    case "unavailable":
+      console.warn(
+        `[playerProfileRequestHandlers] weapon unlock: hub returned no result, discordUserId: ${session.discordUserId}`,
+      );
+      return { status: 502, body: { error: "profile_unavailable" } };
+  }
 }

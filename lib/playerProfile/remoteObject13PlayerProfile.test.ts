@@ -4,6 +4,7 @@ import {
   consumeRemoteObject13PlayerProfileInventoryItem,
   fetchRemoteObject13PlayerProfile,
   putRemoteObject13PlayerProfile,
+  unlockRemoteObject13PlayerProfileWeapon,
 } from "./remoteObject13PlayerProfile";
 import { Object13PlayerProfileDto } from "../../game/core/object13PlayerProfile";
 
@@ -15,7 +16,7 @@ afterEach(() => {
 const VALID_DTO: Object13PlayerProfileDto = {
   discordUserId: "123456789012345678",
   profileVersion: 1,
-  profileData: { inventory: { items: { bulb: 10 } } },
+  profileData: { inventory: { items: { bulb: 10 } }, equipment: { ownedWeapons: [], equippedWeaponId: null } },
   revision: 1,
   createdAt: "2026-07-16T12:00:00.000Z",
   updatedAt: "2026-07-16T12:00:00.000Z",
@@ -79,7 +80,7 @@ const PUT_PAYLOAD = {
   discordUserId: "123456789012345678",
   expectedRevision: 1,
   profileVersion: 1,
-  profileData: { inventory: { items: { bulb: 10 } } },
+  profileData: { inventory: { items: { bulb: 10 } }, equipment: { ownedWeapons: [], equippedWeaponId: null } },
 };
 
 describe("putRemoteObject13PlayerProfile", () => {
@@ -220,5 +221,63 @@ describe("consumeRemoteObject13PlayerProfileInventoryItem", () => {
 
     const result = await consumeRemoteObject13PlayerProfileInventoryItem("bulb", INVENTORY_PAYLOAD);
     expect(result).toEqual({ outcome: "insufficient_inventory" });
+  });
+});
+
+const WEAPON_UNLOCK_PAYLOAD = {
+  discordUserId: "123456789012345678",
+  weaponId: "single_shotgun" as const,
+  expectedRevision: 1,
+};
+
+describe("unlockRemoteObject13PlayerProfileWeapon", () => {
+  it("posts to the VPS unlock endpoint and maps 200 to outcome: updated", async () => {
+    configureHub();
+    const unlocked = {
+      ...VALID_DTO,
+      revision: 2,
+      profileData: { inventory: { items: { bulb: 10 } }, equipment: { ownedWeapons: ["single_shotgun"], equippedWeaponId: "single_shotgun" } },
+    };
+    const fetchSpy = vi.fn<typeof fetch>(() => Promise.resolve(new Response(JSON.stringify(unlocked), { status: 200 })));
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const result = await unlockRemoteObject13PlayerProfileWeapon(WEAPON_UNLOCK_PAYLOAD);
+    expect(result).toEqual({ outcome: "updated", profile: unlocked });
+    const [url, init] = fetchSpy.mock.calls[0];
+    expect(url).toBe("https://hub.example.invalid/nocni-hlidac/player-profile/equipment/weapon/unlock");
+    expect(init?.method).toBe("POST");
+  });
+
+  it("also maps an idempotent no-op 200 (already owned+equipped) to outcome: updated — the client doesn't distinguish updated vs unchanged", async () => {
+    configureHub();
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify(VALID_DTO), { status: 200 }))));
+
+    const result = await unlockRemoteObject13PlayerProfileWeapon(WEAPON_UNLOCK_PAYLOAD);
+    expect(result).toEqual({ outcome: "updated", profile: VALID_DTO });
+  });
+
+  it("maps a 409 revision conflict to outcome: conflict with currentRevision/currentProfile — optimistic locking", async () => {
+    configureHub();
+    const conflictBody = { currentRevision: 4, profile: { ...VALID_DTO, revision: 4 } };
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify(conflictBody), { status: 409 }))));
+
+    const result = await unlockRemoteObject13PlayerProfileWeapon(WEAPON_UNLOCK_PAYLOAD);
+    expect(result).toEqual({ outcome: "conflict", currentRevision: 4, currentProfile: { ...VALID_DTO, revision: 4 } });
+  });
+
+  it("maps a 404 to outcome: not_found", async () => {
+    configureHub();
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify({ error: "profile_not_found" }), { status: 404 }))));
+
+    const result = await unlockRemoteObject13PlayerProfileWeapon(WEAPON_UNLOCK_PAYLOAD);
+    expect(result).toEqual({ outcome: "not_found" });
+  });
+
+  it("maps a network failure to outcome: unavailable", async () => {
+    configureHub();
+    vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new Error("network error"))));
+
+    const result = await unlockRemoteObject13PlayerProfileWeapon(WEAPON_UNLOCK_PAYLOAD);
+    expect(result).toEqual({ outcome: "unavailable" });
   });
 });

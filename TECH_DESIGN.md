@@ -1989,6 +1989,197 @@ pozičních parametrů (identifikované riziko záměny pořadí) nahrazeno jedn
 pojmenovaná místo poziční. Všechna volání v `gameReducer.ts`
 (`SHOW_BRIEFING`/`START_SHIFT`/`RESTART_SHIFT`) i testech přepsána na objektovou formu.
 
+## Profilový kontrakt V2 a equipment (vlastnictví zbraní)
+
+Navazuje na "Profilový kontrakt V1 a inventář žárovek" výše — řeší bug, kdy Hardcore hráč,
+který si vysloužil brokovnici (běžnou nebo dvouhlavňovku), o ni přišel hned v příští misi.
+Příčina: vlastnictví zbraně existovalo JEN jako runtime `GameState` booleany
+(`hasShotgun`/`hasDoubleBarrelShotgun`) plus tři nezávislé, nesynchronizované lokální
+signály (`MonsterDefeatReward.doubleBarrelUnlocked` — mode-agnostic localStorage,
+zapisovaný i Normal true endingem; `LocalHardcoreMonsterProgress.doubleBarrelUnlocked`;
+`ServerHardcorePlayerProfile.hardcoreDoubleBarrelUnlocked` — jen pro zobrazení na
+`/profile`). `app/play/page.tsx#handleBeginShift` četl při startu nového runu VÝHRADNĚ
+`getMonsterDefeatReward().doubleBarrelUnlocked` (čistě lokální, ne server-synced) — nová
+`GameState` instance každé mise runtime booleany vždy resetovala na výchozí "bez
+brokovnice", pokud tenhle jeden konkrétní lokální flag nebyl `true`. Řešení: vlastnictví
+zbraně je od teď DLOUHODOBÝ profilový stav (`ownedWeapons`/`equippedWeaponId` v
+`Object13PlayerProfile.profileData.equipment`) se stejnou server-confirmed architekturou
+jako inventář žárovek — nabité náboje/probíhající střelba/lovecká minihra zůstávají v
+runtime `GameState`, ty se NEUKLÁDAJÍ nikam jinam.
+
+### Tvar (`profileVersion: 2`)
+
+Server (`src/modules/nocniHlidac/playerProfileEquipment.ts`,
+`playerProfileContractV2.ts`) i klient (`game/core/object13PlayerProfileEquipment.ts`,
+`object13PlayerProfileContractV2.ts`) mají KAŽDÝ svou vlastní kopii stejného kontraktu —
+stejný princip jako V1 inventář, žádný sdílený balíček mezi repozitáři:
+
+```ts
+type WeaponId = "single_shotgun" | "double_barrel_shotgun";
+interface Object13EquipmentState {
+  ownedWeapons: WeaponId[];      // trvale vlastněné zbraně, bez duplicit
+  equippedWeaponId: WeaponId | null; // aktuálně vybavená — musí být buď null, nebo prvek ownedWeapons
+}
+type Object13PlayerProfileDataV2 = {
+  inventory: { items: Object13InventoryItems }; // beze změny oproti V1
+  equipment: Object13EquipmentState;
+};
+```
+
+`createDefaultObject13PlayerProfileDataV2()` vrací `{inventory: {items: {bulb: 10}},
+equipment: {ownedWeapons: [], equippedWeaponId: null}}` — nový profil vždy začíná bez
+zbraně, stejně jako dřív.
+
+### Weapon registry — jediný zdroj kapacity munice
+
+`WEAPON_REGISTRY` (oba repozitáře, `WeaponDefinition = {id, ammoCapacity}`):
+`single_shotgun` → kapacita `1`, `double_barrel_shotgun` → kapacita `2`. Jediné místo,
+které tahle dvě čísla definuje — `game/core/shotgunEquipment.ts`
+(`SHOTGUN_MAX_AMMO`/`DOUBLE_BARREL_SHOTGUN_MAX_AMMO`) je s registrem hodnotově shodné, ale
+zůstává nezávislou konstantou (runtime munice je pojmově oddělená od profilu, viz níže) —
+žádný modul kapacitu nepočítá vlastní duplicitní podmínkou (`LeftWallView.tsx` dřív měla
+přesně tenhle duplikát, opraveno na `getShotgunMaxAmmo({hasShotgun, hasDoubleBarrelShotgun})`).
+Přidání třetí zbraně = nový klíč v `WEAPON_REGISTRY` (oba repozitáře) + rozšíření
+`deriveShotgunEquipmentFromWeaponId`/`getShotgunMaxAmmo`, žádná další architektonická změna.
+
+### Validace (server i klient, stejná pravidla)
+
+`validateEquipmentState` — plně whitelistovaná, stejný vzor jako V1 inventář: jediné
+top-level klíče `ownedWeapons`/`equippedWeaponId`, `ownedWeapons` musí být pole známých
+`WeaponId` bez duplicit, `equippedWeaponId` musí být `null` nebo prvek `ownedWeapons`.
+Cokoliv jiné → odmítnutí s konkrétním chybovým kódem (`unknown_weapon_id`,
+`duplicate_weapon_id`, `equipped_weapon_not_owned`, ...), žádný silent fallback.
+`validateObject13PlayerProfileDataV2` (nahrazuje V1 validátor jako aktivní kontrakt)
+skládá inventářovou i equipment validaci do jednoho výsledku.
+
+### V1 → V2 migrace (server, lazy na GET)
+
+Stejný princip jako dřívější "`{}` → V1" oprava: `getOrCreateObject13PlayerProfile`
+(project-hub-api) při GETu profilu s `profileVersion === 1` migruje na V2 — zachová
+PŘESNÝ počet žárovek, přidá prázdný `equipment: {ownedWeapons: [], equippedWeaponId:
+null}`, `revision + 1` (jen jednou, další GET už je no-op). Migrace je idempotentní,
+type-safe, nikdy neztrácí žárovky. Klient NIKDY sám nemigruje — V1 tvar odpovědi (bez
+`equipment`) se na klientovi nepovažuje za platný/`ready` V2 profil
+(`isValidObject13PlayerProfileDto`), i kdyby k němu klient měl přístup.
+
+### Serverová doménová operace — `POST .../equipment/weapon/unlock`
+
+Běžná herní logika NIKDY nepoužívá obecný `PUT`/`saveObject13PlayerProfile()` pro
+odemykání zbraně — jen tuhle jednu dedikovanou operaci (`{weaponId, expectedRevision}`,
+proxováno přes `app/api/player/profile/equipment/weapon/unlock`, server-side
+`playerProfileEquipmentRoutes.ts`/`playerProfileEquipmentService.ts`). Stejný
+optimistic-locking princip jako inventář (atomický `updateMany` na `discordUserId AND
+revision`). Pravidla auto-equipu (`unlockWeapon`, pure funkce, `playerProfileEquipment.ts`):
+- odemčení `single_shotgun` přidá do `ownedWeapons` a vybaví ho JEN pokud nic není
+  vybavené (`equippedWeaponId === null`) — nepřepíše už vybavenou dvouhlavňovku;
+- odemčení `double_barrel_shotgun` přidá do `ownedWeapons` a VŽDY ho rovnou vybaví;
+  `single_shotgun` v `ownedWeapons` zůstává (historie), jen přestává být vybavený.
+
+**Idempotence beze zbytečné revision churny**: pokud je zbraň už vlastněná A správně
+vybavená, `unlockWeapon` vrátí STEJNOU referenci vstupního objektu (žádná mutace) — service
+vrstva na tom pozná no-op a vrátí `outcome: "unchanged"` BEZ zápisu do DB a BEZ inkrementu
+`revision`. Druhé (i N-té) volání se stejným výsledkem tak nikdy zbytečně nezvyšuje
+revision. Klientská vrstva `outcome: "updated"` a `"unchanged"` mapuje na STEJNÉ chování
+(nahradit `loadState` čerstvým profilem) — rozdíl má smysl jen na serveru.
+
+### `Object13PlayerProfileProvider` — `unlockWeapon(weaponId)`
+
+Rozšíření Provideru o `unlockWeapon(weaponId)` — stejný tvar jako `addBulbs`/`consumeBulbs`:
+použije aktuální `revision` z `loadState`, po úspěchu (`updated` i `unchanged`) nahradí CELÝ
+profil odpovědí serveru, při 409 přejde do `saveState: "conflict"`, při `unavailable`/chybě
+NEDOKONČÍ lokální trvalou změnu. Žádný slepý retry.
+
+### Odvození runtime `hasShotgun`/`hasDoubleBarrelShotgun` z profilu
+
+`game/core/shotgunEquipment.ts#deriveShotgunEquipmentFromWeaponId(weaponId)` — JEDINÉ místo,
+které mapuje profilový `equippedWeaponId` na starou runtime dvojici booleanů
+(`null` → nic, `"single_shotgun"` → `hasShotgun` bez dvouhlavňovky, `"double_barrel_shotgun"`
+→ obojí `true`). `createFreshRunShotgunEquipmentFromWeaponId(weaponId)` z toho navíc odvodí
+plně nabitou výchozí výbavu nového runu (stejná "vždy nabito na strop aktuální zbraně"
+konvence jako dřívější `createFreshRunShotgunEquipment`). Booleany samotné v `GameState`
+zůstaly beze změny (žádný širší refactor na `weaponId: WeaponId | null` uvnitř běžícího
+runu — riziko/rozsah takové změny nebyl úměrný přínosu, dokud v UI/minihře není potřeba
+rozlišit VÍC než "má/nemá" a "je/není dvouhlavňovka"), ale JSOU od teď odvozené výhradně
+odsud pro nový run, nikdy zapsané nezávisle jinou cestou.
+
+### Mise vždy startuje z profilu, ne z runtime deltы předchozí mise ani ze staré lokální odměny
+
+`game/equipment/weaponAcquisitionController.ts#resolveFreshRunShotgunEquipment(gameMode,
+loadState, localDoubleBarrelUnlocked)` — JEDINÉ místo, které rozhoduje výchozí výbavu
+nového runu:
+- Hardcore + `ready` profil → čte VÝHRADNĚ `equippedWeaponId` z profilu
+  (`getEquippedWeaponId`), přes `createFreshRunShotgunEquipmentFromWeaponId`. Profil je
+  jediná autorita — stará lokální odměna (`localDoubleBarrelUnlocked`) se v tomhle případě
+  vůbec nečte.
+- Cokoliv jiné (Training, anonymní, Hardcore bez `ready` profilu — poslední případ
+  `MainMenuScreen.tsx#hardcoreBlockedByProfile` normálně vůbec nepustí spustit) → lokální
+  fallback, stejný jako dřív (`createFreshRunShotgunEquipment(localDoubleBarrelUnlocked)`).
+
+`app/play/page.tsx#handleBeginShift` volá tuhle funkci na OBOU fresh-run větvích
+(`START_SHIFT` z menu i `RESTART_SHIFT` po vyčerpání životů) — to je přesně oprava
+nahlášeného bugu. Regresní test proti návratu starého přímého čtení:
+`app/play/weaponEquipmentArchitecture.test.ts`.
+
+### Server-confirmed akvizice zbraně (Hardcore) — stejný princip jako žárovky
+
+`resolveWeaponAcquisitionPersistenceMode(gameMode, loadState)` → `"local"`
+(Training/anonymní — potvrdí se OKAMŽITĚ v runtime) nebo `"server"` (Hardcore + `ready`
+profil — vlastnictví se projeví v runtime AŽ PO potvrzení serverem).
+
+- **Běžná brokovnice** (`app/play/page.tsx#handleEmergencyMiniGameComplete`, přechod
+  `hasShotgun: false → true` po `shotgun_acquired` worldEffectu z nouzové minihry): v
+  Hardcore se `APPLY_SHOTGUN_EFFECTS` dispatch ODLOŽÍ, dokud nedoběhne
+  `object13Profile.unlockWeapon("single_shotgun")`. `weaponAcquisitionPendingRef` (ref, ne
+  state) blokuje druhé souběžné volání. Selhání (`conflict`/`unavailable`) = zbraň se
+  NEPROJEVÍ v runtime, žádný automatický retry — hráč zůstává bez brokovnice v týhle
+  směně, i když ji fyzicky sebral v minihře (další emergency run se dřív jen nespustí,
+  protože `canStartShotgunEmergencyRun` čeká na `!hasShotgun`, takže situace není trvale
+  zaseknutá, jen odložená). Munice (`shotgunAmmo`) se aplikuje SPOLU se zbraní ve stejném
+  dispatchi — nemá smysl bez potvrzeného vlastnictví.
+- **Dvouhlavňovka** (`app/play/page.tsx#handleMonsterDefeatedCinematicComplete`, true
+  ending): volá se `unlockWeapon("double_barrel_shotgun")` VÝHRADNĚ uvnitř existující
+  `if (state.gameMode !== "hardcore") return;` větve — Normal true ending zůstává čistě
+  lokální (`recordMonsterDefeat()` beze změny). Žádný lokální dispatch navíc netřeba (běžící
+  run tímhle screenem stejně končí) — projeví se až v PŘÍŠTÍ misi přes
+  `resolveFreshRunShotgunEquipment` výše.
+
+### Existující hráč se starou (čistě lokální) dvouhlavňovkovou odměnou
+
+`game/equipment/existingPlayerWeaponMigration.ts#resolveExistingPlayerWeaponMigrationAction`
+— jednorázová bezpečná migrace, VÝHRADNĚ `double_barrel_shotgun` (přes reálný `unlockWeapon`
+endpoint, nikdy PUT). `single_shotgun` se NEODHADUJE — `MonsterDefeatReward` nikdy
+netrackoval "hráč má běžnou brokovnici", jen dvouhlavňovku, takže by šlo o čistou spekulaci.
+Podmínky (VŠECHNY musí platit): profil je `ready`, `ownedWeapons.length === 0` (jakmile má
+cokoliv, migrace se už nikdy nespustí znovu — nikdy nepřepíše existující vlastnictví),
+`getMonsterDefeatReward().doubleBarrelUnlocked === true`. `app/play/page.tsx` volá tenhle
+resolver v efektu vázaném na `object13Profile.loadState`, `existingPlayerWeaponMigrationAttemptedRef`
+zaručí NEJVÝŠ JEDEN pokus za mount (i po neúspěchu) — žádný automatický retry v rámci
+stejné session; nová session/reload to zkusí znovu jen proto, že `ownedWeapons` je pořád
+prázdné (přirozený, ne smyčkový retry).
+
+### Training vs Hardcore vs anonymní — shrnutí
+
+Stejná `GAME_MODE_CONFIG[gameMode].persistInventory` konfigurace jako u žárovek (žádné
+druhé, equipment-specifické pole) — vlastnictví zbraně je stejně "trvalý profilový stav"
+jako počet žárovek. Training: profil SMÍ číst existující vlastněnou výbavu jako výchozí
+loadout (přes stejný `resolveFreshRunShotgunEquipment`, jen s `gameMode === "normal"`, což
+ho pošle na lokální větev — Training tedy zatím startovní výbavu z profilu NEČTE, jen
+zůstává neregresní vůči dřívějšímu chování; čtení coby budoucí vylepšení, ne bug), nové
+odemčení se NIKDY neukládá na VPS. Hardcore: profil je autorita, nový unlock je
+server-confirmed událost, run bez `ready` profilu se vůbec nespustí. Anonymní: čistě
+lokální, beze změny oproti stavu před týmhle krokem.
+
+### Stará paralelní autorita — co zůstalo, co přestalo být autoritou
+
+`MonsterDefeatReward.doubleBarrelUnlocked` (localStorage, mode-agnostic) zůstává jako
+zdroj pro Training/anonymní fallback a pro `existingPlayerWeaponMigration` vstup — u
+PŘIHLÁŠENÉHO Hardcore hráče už NIKDY nerozhoduje, kterou zbraň mise nastartuje.
+`ServerHardcorePlayerProfile.hardcoreDoubleBarrelUnlocked` (`game/core/hardcorePlayerProfileSnapshot.ts`)
+zůstává výhradně jako HISTORICKÁ statistika pro `/profile`
+(`serverHardcoreProfileToReward`) — nikdy nebyla a dál není konzultovaná při rozhodování o
+zbrani (ověřeno, jediné volací místo je `ProfileScreen.tsx`). Žádné pole nebylo z DB
+odstraněno (menší rozsah migrace) — jen přestalo být autoritou pro rozhodování o vybavení.
+
 ## Power drain diagnostika (audit podezřele rychlého vybití energie)
 
 Podnět: hlášení "brutálně rychlého" vybití energie s debug logem, který v okamžiku snímku
@@ -2348,6 +2539,13 @@ neukládá zvlášť, vždy se odvozuje z `hasShotgun`/`hasDoubleBarrelShotgun` 
 max") bylo záměrně odstraněno — `getRechargedShotgunAmmo()` zůstává v kódu jen pro dobíjení
 na ZAČÁTKU noci (`app/play/page.tsx#handleBeginShift`, `RESTART_SHIFT`/`START_SHIFT` fresh
 run větev), na návrat z minihry se už nepoužívá.
+
+Munice zůstává čistě runtime stav aktuální mise (beze změny tímhle odstavcem) — SAMOTNÉ
+vlastnictví zbraně (`hasShotgun`/`hasDoubleBarrelShotgun` na začátku nového runu) je od
+kroku "profilový kontrakt V2 a equipment" (viz sekce výše) odvozené z
+`Object13PlayerProfile.profileData.equipment`, ne z lokální odměny — viz
+`game/equipment/weaponAcquisitionController.ts#resolveFreshRunShotgunEquipment` a
+`game/core/shotgunEquipment.ts#createFreshRunShotgunEquipmentFromWeaponId`.
 
 - **`canRequestAmmo(state)`** / **`requestSingleAmmo(state)`** — čisté funkce, `false`/beze
   změny bez brokovnice nebo na plné kapacitě, jinak `shotgunAmmo + 1` (nikdy víc, dvouhlavňovku

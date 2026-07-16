@@ -1,6 +1,8 @@
 import { hubGet, hubPostDetailed, hubPutDetailed } from "../hubClient";
 import { isValidObject13PlayerProfileDto, Object13PlayerProfileDto } from "../../game/core/object13PlayerProfile";
-import { Object13InventoryItemId, Object13PlayerProfileDataV1 } from "../../game/core/object13PlayerProfileInventory";
+import { Object13InventoryItemId } from "../../game/core/object13PlayerProfileInventory";
+import { Object13PlayerProfileDataV2 } from "../../game/core/object13PlayerProfileContractV2";
+import { WeaponId } from "../../game/core/object13PlayerProfileEquipment";
 
 /**
  * GET /nocni-hlidac/player-profile?discordUserId=... (krok 1A, viz
@@ -23,7 +25,7 @@ export interface RemoteObject13PlayerProfilePutPayload {
   discordUserId: string;
   expectedRevision: number;
   profileVersion: number;
-  profileData: Object13PlayerProfileDataV1;
+  profileData: Object13PlayerProfileDataV2;
 }
 
 /**
@@ -124,4 +126,48 @@ export async function consumeRemoteObject13PlayerProfileInventoryItem(
 ): Promise<RemoteObject13PlayerProfileInventoryOperationResult> {
   const { status, body } = await hubPostDetailed<unknown>(`/nocni-hlidac/player-profile/inventory/${itemId}/consume`, payload);
   return mapInventoryOperationResponse(status, body);
+}
+
+/** Co se posílá na VPS `/nocni-hlidac/player-profile/equipment/weapon/unlock` — `discordUserId` opět jen server-side, ze session. */
+export interface RemoteObject13PlayerProfileWeaponUnlockPayload {
+  discordUserId: string;
+  weaponId: WeaponId;
+  expectedRevision: number;
+}
+
+/** `"unchanged"` = zbraň už byla vlastněná a správně vybavená — server nic nezapsal, revision beze změny, ale pořád úspěch (viz playerProfileEquipmentService.ts na VPS). */
+export type RemoteObject13PlayerProfileWeaponUnlockResult =
+  | { outcome: "updated"; profile: Object13PlayerProfileDto }
+  | { outcome: "unchanged"; profile: Object13PlayerProfileDto }
+  | { outcome: "conflict"; currentRevision: number; currentProfile: Object13PlayerProfileDto | null }
+  | { outcome: "not_found" }
+  | { outcome: "unavailable" };
+
+/**
+ * POST /nocni-hlidac/player-profile/equipment/weapon/unlock — doménová
+ * operace, NIKDY obecný PUT celého profilu (stejný princip jako inventářové
+ * operace výše).
+ */
+export async function unlockRemoteObject13PlayerProfileWeapon(
+  payload: RemoteObject13PlayerProfileWeaponUnlockPayload,
+): Promise<RemoteObject13PlayerProfileWeaponUnlockResult> {
+  const { status, body } = await hubPostDetailed<unknown>("/nocni-hlidac/player-profile/equipment/weapon/unlock", payload);
+
+  if (status === 200 && isValidObject13PlayerProfileDto(body)) {
+    // Server odpovídá stejně (200 s celým profilem) na "updated" i
+    // "unchanged" (idempotentní no-op) — od klienta to nejde rozlišit ze
+    // samotné odpovědi, ani to nepotřebuje: `unchanged` by se choval úplně
+    // stejně jako `updated` (nahradit loadState čerstvým profilem), takže
+    // tahle vrstva ho vždy mapuje na `updated`. Rozdíl mezi "updated" a
+    // "unchanged" má smysl jen na VPS straně (revision se nezvýšila).
+    return { outcome: "updated", profile: body };
+  }
+  if (status === 409) {
+    const conflict = body as { currentRevision?: unknown; profile?: unknown } | null;
+    const currentRevision = typeof conflict?.currentRevision === "number" ? conflict.currentRevision : 0;
+    const currentProfile = isValidObject13PlayerProfileDto(conflict?.profile) ? conflict.profile : null;
+    return { outcome: "conflict", currentRevision, currentProfile };
+  }
+  if (status === 404) return { outcome: "not_found" };
+  return { outcome: "unavailable" };
 }

@@ -2,9 +2,11 @@ import {
   FetchObject13PlayerProfileResult,
   isValidObject13PlayerProfileDto,
   Object13PlayerProfileInventoryOperationResult,
+  Object13PlayerProfileWeaponUnlockResult,
   SaveObject13PlayerProfileResult,
 } from "../../game/core/object13PlayerProfile";
-import { Object13PlayerProfileDataV1 } from "../../game/core/object13PlayerProfileInventory";
+import { Object13PlayerProfileDataV2 } from "../../game/core/object13PlayerProfileContractV2";
+import { WeaponId } from "../../game/core/object13PlayerProfileEquipment";
 
 /**
  * Browser-safe klient pro obecný profil Objektu 13 — volá VÝHRADNĚ vlastní
@@ -35,7 +37,7 @@ export async function fetchObject13PlayerProfile(): Promise<FetchObject13PlayerP
 export interface SaveObject13PlayerProfilePayload {
   expectedRevision: number;
   profileVersion: number;
-  profileData: Object13PlayerProfileDataV1;
+  profileData: Object13PlayerProfileDataV2;
 }
 
 export async function saveObject13PlayerProfile(payload: SaveObject13PlayerProfilePayload): Promise<SaveObject13PlayerProfileResult> {
@@ -108,4 +110,36 @@ export function addBulbsToProfile(payload: InventoryOperationPayload): Promise<O
 /** Volá jen vlastní Next.js proxy (`/api/player/profile/inventory/bulb/consume`), nikdy VPS přímo. */
 export function consumeBulbsFromProfile(payload: InventoryOperationPayload): Promise<Object13PlayerProfileInventoryOperationResult> {
   return callInventoryOperationEndpoint("/api/player/profile/inventory/bulb/consume", payload);
+}
+
+/** Přesně to, co proxy `/equipment/weapon/unlock` přijímá — bez `discordUserId` (viz app/api/player/profile/equipment/weapon/unlock/route.ts). */
+export interface WeaponUnlockPayload {
+  weaponId: WeaponId;
+  expectedRevision: number;
+}
+
+/** Volá jen vlastní Next.js proxy (`/api/player/profile/equipment/weapon/unlock`), nikdy VPS přímo. Po úspěchu (i idempotentním no-opu) vrací celý aktuální profil. */
+export async function unlockWeaponOnProfile(payload: WeaponUnlockPayload): Promise<Object13PlayerProfileWeaponUnlockResult> {
+  try {
+    const res = await fetch("/api/player/profile/equipment/weapon/unlock", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const body: unknown = await res.json().catch(() => null);
+
+    if (res.status === 200 && isValidObject13PlayerProfileDto(body)) {
+      return { status: "updated", profile: body };
+    }
+    if (res.status === 401) return { status: "unauthorized" };
+    if (res.status === 409) {
+      const errorBody = body as { currentRevision?: unknown; currentProfile?: unknown } | null;
+      const currentRevision = typeof errorBody?.currentRevision === "number" ? errorBody.currentRevision : 0;
+      const currentProfile = isValidObject13PlayerProfileDto(errorBody?.currentProfile) ? errorBody.currentProfile : undefined;
+      return { status: "conflict", currentRevision, ...(currentProfile ? { currentProfile } : {}) };
+    }
+    return { status: "error", error: `weapon_unlock_failed_${res.status}` };
+  } catch {
+    return { status: "error", error: "network_error" };
+  }
 }

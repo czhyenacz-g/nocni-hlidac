@@ -9,7 +9,7 @@ import { Object13PlayerProfileDto, Object13PlayerProfileLoadState } from "../cor
 const VALID_PROFILE: Object13PlayerProfileDto = {
   discordUserId: "123456789012345678",
   profileVersion: 1,
-  profileData: { inventory: { items: { bulb: 10 } } },
+  profileData: { inventory: { items: { bulb: 10 } }, equipment: { ownedWeapons: [], equippedWeaponId: null } },
   revision: 1,
   createdAt: "2026-07-16T12:00:00.000Z",
   updatedAt: "2026-07-16T12:00:00.000Z",
