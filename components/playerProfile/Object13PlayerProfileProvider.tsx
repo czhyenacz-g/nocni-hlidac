@@ -3,13 +3,18 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useAuthStatus } from "@/components/auth/useAuthStatus";
 import {
+  addBulbsToProfile,
+  consumeBulbsFromProfile,
   fetchObject13PlayerProfile,
+  InventoryOperationPayload,
   saveObject13PlayerProfile,
   SaveObject13PlayerProfilePayload,
 } from "@/lib/playerProfile/object13PlayerProfileClient";
 import {
   deriveLoadStateFromFetchResult,
+  deriveSaveStateFromInventoryOperationResult,
   deriveSaveStateFromSaveResult,
+  Object13PlayerProfileInventoryOperationResult,
   Object13PlayerProfileLoadState,
   Object13PlayerProfileSaveState,
 } from "@/game/core/object13PlayerProfile";
@@ -22,6 +27,18 @@ interface Object13PlayerProfileContextValue {
   /** Po konfliktu (viz zadání "11. Konflikt 409") — vyčistí saveState a znovu načte aktuální serverový profil, žádný merge/force overwrite. */
   reloadAfterConflict: () => void;
   save: (payload: SaveObject13PlayerProfilePayload) => Promise<void>;
+  /**
+   * Doménové operace pro náhradní žárovky (viz zadání "profilový kontrakt V1
+   * + inventář žárovek", "9. Klientská služba inventáře") — NIKDY obecný
+   * `save()` pro tenhle konkrétní účel (viz app/play/page.tsx). Vrací celý
+   * výsledek (ne jen `void`) — volající herní logika (Hardcore) na základě
+   * `status` rozhodne, jestli lokální akci (výměna/nález žárovky) dokončit,
+   * nebo ne (viz zadání "server-authoritative potvrzení pro Hardcore").
+   * Používá aktuální `revision` z `loadState` — volající si žádnou revision
+   * sám nedrží.
+   */
+  addBulbs: (amount: number) => Promise<Object13PlayerProfileInventoryOperationResult>;
+  consumeBulbs: (amount: number) => Promise<Object13PlayerProfileInventoryOperationResult>;
 }
 
 const Object13PlayerProfileContext = createContext<Object13PlayerProfileContextValue | null>(null);
@@ -105,8 +122,36 @@ export function Object13PlayerProfileProvider({ children }: { children: ReactNod
     load();
   }, [load]);
 
+  const performInventoryOperation = useCallback(
+    async (
+      operation: (payload: InventoryOperationPayload) => Promise<Object13PlayerProfileInventoryOperationResult>,
+      amount: number,
+    ): Promise<Object13PlayerProfileInventoryOperationResult> => {
+      if (loadState.status !== "ready") {
+        return { status: "error", error: "profile_not_ready" };
+      }
+      setSaveState({ status: "saving" });
+      const result = await operation({ amount, expectedRevision: loadState.profile.revision });
+      if (!mountedRef.current) return result;
+
+      const { saveState: nextSaveState, nextLoadState } = deriveSaveStateFromInventoryOperationResult(result);
+      setSaveState(nextSaveState);
+      if (nextLoadState) setLoadState(nextLoadState);
+      return result;
+    },
+    [loadState],
+  );
+
+  const addBulbs = useCallback((amount: number) => performInventoryOperation(addBulbsToProfile, amount), [performInventoryOperation]);
+  const consumeBulbs = useCallback(
+    (amount: number) => performInventoryOperation(consumeBulbsFromProfile, amount),
+    [performInventoryOperation],
+  );
+
   return (
-    <Object13PlayerProfileContext.Provider value={{ loadState, saveState, reload: load, reloadAfterConflict, save }}>
+    <Object13PlayerProfileContext.Provider
+      value={{ loadState, saveState, reload: load, reloadAfterConflict, save, addBulbs, consumeBulbs }}
+    >
       {children}
     </Object13PlayerProfileContext.Provider>
   );

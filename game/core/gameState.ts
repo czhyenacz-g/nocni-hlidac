@@ -21,30 +21,43 @@ function pickRouteVariant(night: NightDefinition): EnemyStage[] {
 }
 
 /**
- * `roomBulbsOverride`/`bulbsRemainingOverride`/`nightFeaturesOverride` jsou
- * volitelné — bez nich se použijí čerstvé výchozí hodnoty
- * (`createDefaultRoomBulbs()`, `BULBS_CONFIG.startingCount`,
- * `DEFAULT_NIGHT_FEATURES`), tak jako dřív. Skutečné (persistované, případně
- * denním servisem/ruční výměnou upravené, nebo pro danou noc rozřešené přes
- * `getNightConfig`) hodnoty předává `gameReducer.ts` u
- * `START_SHIFT`/`RESTART_SHIFT` — `app/play/page.tsx` je načte z
- * localStorage (`getRoomBulbs()`/`getBulbsRemaining()`) / spočítá
- * (`getNightConfig(currentNight).features`) a pošle jako součást akce, viz
- * TECH_DESIGN.md "Žárovky".
+ * Objektový parametr (viz zadání "krok 1B" — 11 pozičních parametrů bylo
+ * identifikované jako reálné riziko záměny pořadí) — všechna pole volitelná,
+ * bez nich se použijí čerstvé výchozí hodnoty (`createDefaultRoomBulbs()`,
+ * `BULBS_CONFIG.startingCount`, `DEFAULT_NIGHT_FEATURES`), tak jako dřív.
+ * Skutečné (persistované, případně denním servisem/ruční výměnou upravené,
+ * nebo pro danou noc rozřešené přes `getNightConfig`) hodnoty předává
+ * `gameReducer.ts` u `START_SHIFT`/`RESTART_SHIFT` — `app/play/page.tsx` je
+ * načte (přihlášený hráč s ready profilem: VPS `profile.inventory.items.bulb`;
+ * anonymní: localStorage, viz `roomBulbs.ts`/`bulbInventory.ts`) a pošle jako
+ * součást akce, viz TECH_DESIGN.md "Žárovky".
  */
-export function createInitialGameState(
-  night: NightDefinition,
-  roomBulbsOverride?: RoomBulbsState,
-  bulbsRemainingOverride?: number,
-  nightFeaturesOverride?: NightFeatureFlags,
-  gameModeOverride?: GameMode,
-  livesRemainingOverride?: number,
-  hasShotgunOverride?: boolean,
-  shotgunAmmoOverride?: number,
-  hasDoubleBarrelShotgunOverride?: boolean,
-  officeDoorLockMsOverride?: number,
-  monsterKilledThisRunOverride?: boolean,
-): GameState {
+export interface CreateInitialGameStateOptions {
+  roomBulbs?: RoomBulbsState;
+  bulbsRemaining?: number;
+  nightFeatures?: NightFeatureFlags;
+  gameMode?: GameMode;
+  livesRemaining?: number;
+  hasShotgun?: boolean;
+  shotgunAmmo?: number;
+  hasDoubleBarrelShotgun?: boolean;
+  officeDoorLockMs?: number;
+  monsterKilledThisRun?: boolean;
+}
+
+export function createInitialGameState(night: NightDefinition, options: CreateInitialGameStateOptions = {}): GameState {
+  const {
+    roomBulbs: roomBulbsOverride,
+    bulbsRemaining: bulbsRemainingOverride,
+    nightFeatures: nightFeaturesOverride,
+    gameMode: gameModeOverride,
+    livesRemaining: livesRemainingOverride,
+    hasShotgun: hasShotgunOverride,
+    shotgunAmmo: shotgunAmmoOverride,
+    hasDoubleBarrelShotgun: hasDoubleBarrelShotgunOverride,
+    officeDoorLockMs: officeDoorLockMsOverride,
+    monsterKilledThisRun: monsterKilledThisRunOverride,
+  } = options;
   const gameMode = gameModeOverride ?? DEFAULT_GAME_MODE;
 
   return {

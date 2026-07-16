@@ -349,10 +349,7 @@ function ProfileScreenContent() {
                 NEXT_PUBLIC_ prefix potřeba). Čistě diagnostický výpis —
                 žádné tlačítko, které by cokoliv zapisovalo (to je jen v
                 DebugPanel.tsx "TEST PROFILE WRITE", dostupném jen z herní
-                obrazovky). `profileData` se tu zobrazuje jen jako počet
-                klíčů, ne obsah — v týhle fázi je vždy prázdný, ale i
-                kdyby nebyl, nechceme ho tu vypisovat naslepo (viz zadání
-                "žádná osobní data nejsou logována"). */}
+                obrazovky). */}
             {process.env.NODE_ENV !== "production" && (
               <div className="mt-6 pixel-panel p-3 text-[10px] text-gray-500 font-mono">
                 <p className="text-gray-400 mb-1">Object13 profile (dev only):</p>
@@ -361,7 +358,7 @@ function ProfileScreenContent() {
                   <>
                     <p>revision: {object13Profile.loadState.profile.revision}</p>
                     <p>profileVersion: {object13Profile.loadState.profile.profileVersion}</p>
-                    <p>profileData keys: {Object.keys(object13Profile.loadState.profile.profileData).length}</p>
+                    <p>bulb: {object13Profile.loadState.profile.profileData.inventory.items.bulb ?? 0}</p>
                   </>
                 )}
                 {object13Profile.loadState.status === "unavailable" && object13Profile.loadState.error && (

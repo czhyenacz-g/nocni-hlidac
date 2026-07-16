@@ -6,8 +6,19 @@ export const DEFAULT_GAME_MODE: GameMode = "normal";
 export interface GameModeRules {
   /** Kolik životů má hráč na začátku runu (viz GameState.livesRemaining). */
   startingLives: number;
-  /** Jestli smí tenhle režim vůbec zapsat výsledek do Síně slávy (viz lib/leaderboard). */
+  /** Jestli smí tenhle režim vůbec zapsat výsledek do Síně slávy (viz lib/leaderboard) — odpovídá `submitLeaderboard` ze zadání "10. Training vs Hardcore". */
   leaderboardEligible: boolean;
+  /**
+   * Jestli se změny inventáře (náhradní žárovky, viz
+   * Object13PlayerProfileProvider.tsx#addBulbs/consumeBulbs) během tohohle
+   * režimu ukládají na VPS — Training pracuje jen s lokální pracovní kopií
+   * (viz app/play/page.tsx), Hardcore je server-authoritative. Jediné místo,
+   * které tohle rozhoduje — volající se ptají `GAME_MODE_CONFIG[gameMode].persistInventory`,
+   * ne `if (gameMode === "hardcore")` rozeseté po kódu.
+   */
+  persistInventory: boolean;
+  /** Jestli se statistiky runu (přežité noci, smrti, ...) ukládají — dnes shodné s `leaderboardEligible`, samostatné pole pro budoucí rozjetí (statistiky bez leaderboardu). */
+  persistRunStats: boolean;
 }
 
 /**
@@ -16,8 +27,8 @@ export interface GameModeRules {
  * konvence jako game/difficulty/difficultyConfig.ts#DIFFICULTY_RULES).
  */
 export const GAME_MODE_CONFIG: Record<GameMode, GameModeRules> = {
-  normal: { startingLives: 3, leaderboardEligible: false },
-  hardcore: { startingLives: 1, leaderboardEligible: true },
+  normal: { startingLives: 3, leaderboardEligible: false, persistInventory: false, persistRunStats: false },
+  hardcore: { startingLives: 1, leaderboardEligible: true, persistInventory: true, persistRunStats: true },
 };
 
 /**

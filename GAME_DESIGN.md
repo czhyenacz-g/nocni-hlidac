@@ -614,6 +614,20 @@ chyba v tvém životě.") — nadpis a firemní hláška zůstávají stejné. P
 Nákup žárovek, sponzoring — jinak je základní smyčka (praskne → hráč riskuje výměnu nebo
 počká na denní servis) hotová.
 
+### Odkud se počet náhradních žárovek bere (přihlášený hráč)
+
+Anonymní hráč má počet náhradních žárovek pořád jen lokální (localStorage v prohlížeči,
+beze změny). Přihlášený hráč s Discord účtem má svůj počet žárovek uložený na serveru
+(obecný profil hlídače) — VPS je pro něj autoritativní zdroj, ne prohlížeč. To znamená:
+- Trénink (Normal): počet žárovek se na začátku směny NAČTE ze serveru, ale nálezy ani
+  spotřeba během tréninkové směny se na server NEUKLÁDAJÍ — je to bezpečná zkušební kopie.
+- Hardcore: počet žárovek se ukládá na server stejně jako životy/postup. Hardcore proto
+  NEJDE spustit, když server zrovna není dostupný (jasná hláška místo nejasného offline
+  režimu) — Trénink a hra bez přihlášení zůstávají dostupné vždycky.
+
+Aktivní žárovka u dveří (její životnost, jestli je prasklá) je od počtu NÁHRADNÍCH žárovek
+oddělená věc — zůstává vlastností objektu, ne serverového profilu hráče.
+
 ## Atmosférická pozadí
 
 Menu, loading, hraní (fáze u stolu se 4 monitory), smrt, výhra i `/about` mají vlastní

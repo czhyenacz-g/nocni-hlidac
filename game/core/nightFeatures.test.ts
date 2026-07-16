@@ -7,7 +7,7 @@ import { DEFAULT_NIGHT_FEATURES, NightFeatureFlags } from "../difficulty/nightCo
 
 function stateWithFeatures(features: Partial<NightFeatureFlags>, overrides: Partial<GameState> = {}): GameState {
   return {
-    ...createInitialGameState(NIGHT_01, undefined, undefined, { ...DEFAULT_NIGHT_FEATURES, ...features }),
+    ...createInitialGameState(NIGHT_01, { nightFeatures: { ...DEFAULT_NIGHT_FEATURES, ...features } }),
     isRunning: true,
     ...overrides,
   };

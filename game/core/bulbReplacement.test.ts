@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createGameReducer } from "./gameReducer";
+import { createGameReducer, isBulbReplacementReadyToConfirm } from "./gameReducer";
 import { createInitialGameState } from "./gameState";
 import { NIGHT_01 } from "../nights/night01";
 import { GameState } from "./types";
@@ -70,14 +70,15 @@ describe("START_BULB_REPLACEMENT", () => {
     expect(result.bulbReplacement.progressMs).toBe(0);
   });
 
-  it("discards the old (still fairly fresh) bulb on completion — remainingMs resets to maxMs, not just to its old value", () => {
+  it("discards the old (still fairly fresh) bulb on CONFIRM — remainingMs resets to maxMs, not just to its old value", () => {
     const reducer = createGameReducer(NIGHT_01);
     const state = stateAtDoorWithBrokenBulb({
       roomBulbs: { nearRoom: { remainingMs: 27_000, maxMs: 30_000, broken: false } },
       bulbReplacement: { active: true, startedAtMs: 0, progressMs: BULB_REPLACE_DURATION_MS - 1000 },
     });
 
-    const result = reducer(state, { type: "TICK", deltaMs: 1000 });
+    const ticked = reducer(state, { type: "TICK", deltaMs: 1000 });
+    const result = reducer(ticked, { type: "CONFIRM_BULB_REPLACEMENT" });
     expect(result.roomBulbs.nearRoom.remainingMs).toBe(30_000);
     expect(result.roomBulbs.nearRoom.broken).toBe(false);
   });
@@ -111,7 +112,7 @@ describe("bulbsRemaining — replacement guards and consumption", () => {
     expect(result.bulbsRemaining).toBe(3);
   });
 
-  it("decrements bulbsRemaining by exactly 1 on successful completion", () => {
+  it("does NOT decrement bulbsRemaining on TICK alone, even once progress reaches the full duration — only CONFIRM_BULB_REPLACEMENT does", () => {
     const reducer = createGameReducer(NIGHT_01);
     const state = stateAtDoorWithBrokenBulb({
       bulbsRemaining: 3,
@@ -119,8 +120,41 @@ describe("bulbsRemaining — replacement guards and consumption", () => {
     });
 
     const result = reducer(state, { type: "TICK", deltaMs: 1000 });
+    expect(result.bulbsRemaining).toBe(3);
+    expect(result.roomBulbs.nearRoom.broken).toBe(true);
+    expect(result.bulbReplacement.active).toBe(true);
+  });
+
+  it("decrements bulbsRemaining by exactly 1 on CONFIRM_BULB_REPLACEMENT after progress reached the full duration", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = stateAtDoorWithBrokenBulb({
+      bulbsRemaining: 3,
+      bulbReplacement: { active: true, startedAtMs: 0, progressMs: BULB_REPLACE_DURATION_MS - 1000 },
+    });
+
+    const ticked = reducer(state, { type: "TICK", deltaMs: 1000 });
+    const result = reducer(ticked, { type: "CONFIRM_BULB_REPLACEMENT" });
     expect(result.bulbsRemaining).toBe(2);
     expect(result.roomBulbs.nearRoom.broken).toBe(false);
+  });
+
+  it("CONFIRM_BULB_REPLACEMENT is a no-op if progress has not yet reached the full duration (never called early by orchestration, but defensively safe)", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = stateAtDoorWithBrokenBulb({
+      bulbsRemaining: 3,
+      bulbReplacement: { active: true, startedAtMs: 0, progressMs: 1000 },
+    });
+
+    const result = reducer(state, { type: "CONFIRM_BULB_REPLACEMENT" });
+    expect(result).toBe(state);
+  });
+
+  it("CONFIRM_BULB_REPLACEMENT is a no-op if no replacement is active at all", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = stateAtDoorWithBrokenBulb({ bulbsRemaining: 3 });
+
+    const result = reducer(state, { type: "CONFIRM_BULB_REPLACEMENT" });
+    expect(result).toBe(state);
   });
 
   it("does not decrement bulbsRemaining while replacement is merely in progress", () => {
@@ -166,14 +200,17 @@ describe("bulbsRemaining — replacement guards and consumption", () => {
 });
 
 describe("bulbReplaceSuccessSeq — success feedback trigger", () => {
-  it("increments by exactly 1 on successful completion", () => {
+  it("increments by exactly 1 on CONFIRM_BULB_REPLACEMENT after the full duration, never on TICK alone", () => {
     const reducer = createGameReducer(NIGHT_01);
     const state = stateAtDoorWithBrokenBulb({
       bulbReplaceSuccessSeq: 0,
       bulbReplacement: { active: true, startedAtMs: 0, progressMs: BULB_REPLACE_DURATION_MS - 1000 },
     });
 
-    const result = reducer(state, { type: "TICK", deltaMs: 1000 });
+    const ticked = reducer(state, { type: "TICK", deltaMs: 1000 });
+    expect(ticked.bulbReplaceSuccessSeq).toBe(0);
+
+    const result = reducer(ticked, { type: "CONFIRM_BULB_REPLACEMENT" });
     expect(result.bulbReplaceSuccessSeq).toBe(1);
   });
 
@@ -260,13 +297,27 @@ describe("TICK — bulb replacement progress", () => {
     expect(result.bulbReplacement.active).toBe(true);
   });
 
-  it("repairs the bulb to full lifetime and deactivates after the full hold duration", () => {
+  it("clamps progress at the full duration and stays active+unrepaired, awaiting CONFIRM_BULB_REPLACEMENT", () => {
     const reducer = createGameReducer(NIGHT_01);
     const state = stateAtDoorWithBrokenBulb({
       bulbReplacement: { active: true, startedAtMs: 0, progressMs: BULB_REPLACE_DURATION_MS - 1000 },
     });
 
-    const result = reducer(state, { type: "TICK", deltaMs: 1000 });
+    const result = reducer(state, { type: "TICK", deltaMs: 5000 }); // overshoots on purpose
+    expect(result.bulbReplacement.active).toBe(true);
+    expect(result.bulbReplacement.progressMs).toBe(BULB_REPLACE_DURATION_MS);
+    expect(result.roomBulbs.nearRoom.broken).toBe(true);
+    expect(isBulbReplacementReadyToConfirm(result)).toBe(true);
+  });
+
+  it("repairs the bulb to full lifetime and deactivates only once CONFIRM_BULB_REPLACEMENT is explicitly dispatched", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = stateAtDoorWithBrokenBulb({
+      bulbReplacement: { active: true, startedAtMs: 0, progressMs: BULB_REPLACE_DURATION_MS - 1000 },
+    });
+
+    const ticked = reducer(state, { type: "TICK", deltaMs: 1000 });
+    const result = reducer(ticked, { type: "CONFIRM_BULB_REPLACEMENT" });
     expect(result.bulbReplacement.active).toBe(false);
     expect(result.bulbReplacement.progressMs).toBe(0);
     expect(result.roomBulbs.nearRoom.broken).toBe(false);
@@ -308,6 +359,28 @@ describe("TOGGLE_DOOR / navigating away cancels bulb replacement", () => {
 
     const result = reducer(state, { type: "LOOK_AT_DESK" });
     expect(result.bulbReplacement.active).toBe(false);
+  });
+
+  it("does NOT cancel a ready-to-confirm replacement (progress already at the full duration) — closing the door no longer discards it", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = stateAtDoorWithBrokenBulb({
+      bulbReplacement: { active: true, startedAtMs: 0, progressMs: BULB_REPLACE_DURATION_MS },
+    });
+
+    const result = reducer(state, { type: "TOGGLE_DOOR" });
+    expect(result.doorClosed).toBe(true);
+    expect(result.bulbReplacement.active).toBe(true);
+    expect(result.bulbReplacement.progressMs).toBe(BULB_REPLACE_DURATION_MS);
+  });
+
+  it("does NOT cancel a ready-to-confirm replacement when the player looks away to the desk", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = stateAtDoorWithBrokenBulb({
+      bulbReplacement: { active: true, startedAtMs: 0, progressMs: BULB_REPLACE_DURATION_MS },
+    });
+
+    const result = reducer(state, { type: "LOOK_AT_DESK" });
+    expect(result.bulbReplacement.active).toBe(true);
   });
 });
 

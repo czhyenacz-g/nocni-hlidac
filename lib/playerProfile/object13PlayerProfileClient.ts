@@ -1,8 +1,10 @@
 import {
   FetchObject13PlayerProfileResult,
   isValidObject13PlayerProfileDto,
+  Object13PlayerProfileInventoryOperationResult,
   SaveObject13PlayerProfileResult,
 } from "../../game/core/object13PlayerProfile";
+import { Object13PlayerProfileDataV1 } from "../../game/core/object13PlayerProfileInventory";
 
 /**
  * Browser-safe klient pro obecný profil Objektu 13 — volá VÝHRADNĚ vlastní
@@ -33,7 +35,7 @@ export async function fetchObject13PlayerProfile(): Promise<FetchObject13PlayerP
 export interface SaveObject13PlayerProfilePayload {
   expectedRevision: number;
   profileVersion: number;
-  profileData: Record<string, unknown>;
+  profileData: Object13PlayerProfileDataV1;
 }
 
 export async function saveObject13PlayerProfile(payload: SaveObject13PlayerProfilePayload): Promise<SaveObject13PlayerProfileResult> {
@@ -60,4 +62,50 @@ export async function saveObject13PlayerProfile(payload: SaveObject13PlayerProfi
   } catch {
     return { status: "error", error: "network_error" };
   }
+}
+
+/** Přesně to, co proxy `/inventory/bulb/add|consume` přijímá — bez `discordUserId` (viz app/api/player/profile/inventory/bulb/add/route.ts). */
+export interface InventoryOperationPayload {
+  amount: number;
+  expectedRevision: number;
+}
+
+async function callInventoryOperationEndpoint(
+  path: string,
+  payload: InventoryOperationPayload,
+): Promise<Object13PlayerProfileInventoryOperationResult> {
+  try {
+    const res = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const body: unknown = await res.json().catch(() => null);
+
+    if (res.status === 200 && isValidObject13PlayerProfileDto(body)) {
+      return { status: "updated", profile: body };
+    }
+    if (res.status === 401) return { status: "unauthorized" };
+    if (res.status === 409) {
+      const errorBody = body as { error?: unknown; currentRevision?: unknown; currentProfile?: unknown } | null;
+      if (errorBody?.error === "exceeds_maximum") return { status: "exceeds_maximum" };
+      if (errorBody?.error === "insufficient_inventory") return { status: "insufficient_inventory" };
+      const currentRevision = typeof errorBody?.currentRevision === "number" ? errorBody.currentRevision : 0;
+      const currentProfile = isValidObject13PlayerProfileDto(errorBody?.currentProfile) ? errorBody.currentProfile : undefined;
+      return { status: "conflict", currentRevision, ...(currentProfile ? { currentProfile } : {}) };
+    }
+    return { status: "error", error: `inventory_operation_failed_${res.status}` };
+  } catch {
+    return { status: "error", error: "network_error" };
+  }
+}
+
+/** Volá jen vlastní Next.js proxy (`/api/player/profile/inventory/bulb/add`), nikdy VPS přímo. Po úspěchu vrací celý aktuální profil s novou `revision`. */
+export function addBulbsToProfile(payload: InventoryOperationPayload): Promise<Object13PlayerProfileInventoryOperationResult> {
+  return callInventoryOperationEndpoint("/api/player/profile/inventory/bulb/add", payload);
+}
+
+/** Volá jen vlastní Next.js proxy (`/api/player/profile/inventory/bulb/consume`), nikdy VPS přímo. */
+export function consumeBulbsFromProfile(payload: InventoryOperationPayload): Promise<Object13PlayerProfileInventoryOperationResult> {
+  return callInventoryOperationEndpoint("/api/player/profile/inventory/bulb/consume", payload);
 }

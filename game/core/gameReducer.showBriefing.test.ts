@@ -19,7 +19,7 @@ import { NIGHT_01 } from "../nights/night01";
 describe("SHOW_BRIEFING preserves gameMode/livesRemaining (Part A regression)", () => {
   it("preserves gameMode 'hardcore' and livesRemaining 0 after a Hardcore death", () => {
     const reducer = createGameReducer(NIGHT_01);
-    const state = { ...createInitialGameState(NIGHT_01, undefined, undefined, undefined, "hardcore", 0), screen: "death" as const };
+    const state = { ...createInitialGameState(NIGHT_01, { gameMode: "hardcore", livesRemaining: 0 }), screen: "death" as const };
 
     const result = reducer(state, { type: "SHOW_BRIEFING" });
 
@@ -30,7 +30,7 @@ describe("SHOW_BRIEFING preserves gameMode/livesRemaining (Part A regression)", 
 
   it("preserves gameMode 'normal' and a positive livesRemaining", () => {
     const reducer = createGameReducer(NIGHT_01);
-    const state = { ...createInitialGameState(NIGHT_01, undefined, undefined, undefined, "normal", 2), screen: "death" as const };
+    const state = { ...createInitialGameState(NIGHT_01, { gameMode: "normal", livesRemaining: 2 }), screen: "death" as const };
 
     const result = reducer(state, { type: "SHOW_BRIEFING" });
 
@@ -41,7 +41,7 @@ describe("SHOW_BRIEFING preserves gameMode/livesRemaining (Part A regression)", 
   it("full round trip: Hardcore death -> SHOW_BRIEFING -> RESTART_SHIFT with the (correctly preserved) state still reads as Hardcore, not Normal", () => {
     const reducer = createGameReducer(NIGHT_01);
     let state: GameState = {
-      ...createInitialGameState(NIGHT_01, undefined, undefined, undefined, "hardcore", 1),
+      ...createInitialGameState(NIGHT_01, { gameMode: "hardcore", livesRemaining: 1 }),
       screen: "playing",
       isRunning: true,
     };
@@ -69,7 +69,7 @@ describe("SHOW_BRIEFING preserves shotgun equipment (Part B regression)", () => 
   it("preserves hasShotgun across the briefing transition", () => {
     const reducer = createGameReducer(NIGHT_01);
     const state = {
-      ...createInitialGameState(NIGHT_01, undefined, undefined, undefined, "normal", 3, true, 1, false),
+      ...createInitialGameState(NIGHT_01, { gameMode: "normal", livesRemaining: 3, hasShotgun: true, shotgunAmmo: 1, hasDoubleBarrelShotgun: false }),
       screen: "win" as const,
     };
 
@@ -82,7 +82,7 @@ describe("SHOW_BRIEFING preserves shotgun equipment (Part B regression)", () => 
   it("preserves hasDoubleBarrelShotgun across the briefing transition", () => {
     const reducer = createGameReducer(NIGHT_01);
     const state = {
-      ...createInitialGameState(NIGHT_01, undefined, undefined, undefined, "normal", 3, true, 2, true),
+      ...createInitialGameState(NIGHT_01, { gameMode: "normal", livesRemaining: 3, hasShotgun: true, shotgunAmmo: 2, hasDoubleBarrelShotgun: true }),
       screen: "win" as const,
     };
 
@@ -95,7 +95,7 @@ describe("SHOW_BRIEFING preserves shotgun equipment (Part B regression)", () => 
 
   it("a player without a shotgun stays without one (no accidental grant)", () => {
     const reducer = createGameReducer(NIGHT_01);
-    const state = { ...createInitialGameState(NIGHT_01, undefined, undefined, undefined, "normal", 3), screen: "win" as const };
+    const state = { ...createInitialGameState(NIGHT_01, { gameMode: "normal", livesRemaining: 3 }), screen: "win" as const };
 
     const result = reducer(state, { type: "SHOW_BRIEFING" });
 
@@ -106,7 +106,7 @@ describe("SHOW_BRIEFING preserves shotgun equipment (Part B regression)", () => 
   it("an admin/test-granted shotgun (via APPLY_SHOTGUN_EFFECTS, before the normal night-10 unlock) survives SHOW_BRIEFING", () => {
     const reducer = createGameReducer(NIGHT_01);
     let state: GameState = {
-      ...createInitialGameState(NIGHT_01, undefined, undefined, undefined, "normal", 3),
+      ...createInitialGameState(NIGHT_01, { gameMode: "normal", livesRemaining: 3 }),
       screen: "playing",
       isRunning: true,
     };
@@ -125,7 +125,7 @@ describe("SHOW_BRIEFING preserves shotgun equipment (Part B regression)", () => 
   it("behaves identically for Hardcore as for Normal regarding shotgun preservation (no mode-specific difference in the design)", () => {
     const reducer = createGameReducer(NIGHT_01);
     const state = {
-      ...createInitialGameState(NIGHT_01, undefined, undefined, undefined, "hardcore", 1, true, 1, false),
+      ...createInitialGameState(NIGHT_01, { gameMode: "hardcore", livesRemaining: 1, hasShotgun: true, shotgunAmmo: 1, hasDoubleBarrelShotgun: false }),
       screen: "win" as const,
     };
 

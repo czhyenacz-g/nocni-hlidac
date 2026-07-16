@@ -1,5 +1,6 @@
-import { hubGet, hubPutDetailed } from "../hubClient";
+import { hubGet, hubPostDetailed, hubPutDetailed } from "../hubClient";
 import { isValidObject13PlayerProfileDto, Object13PlayerProfileDto } from "../../game/core/object13PlayerProfile";
+import { Object13InventoryItemId, Object13PlayerProfileDataV1 } from "../../game/core/object13PlayerProfileInventory";
 
 /**
  * GET /nocni-hlidac/player-profile?discordUserId=... (krok 1A, viz
@@ -22,7 +23,7 @@ export interface RemoteObject13PlayerProfilePutPayload {
   discordUserId: string;
   expectedRevision: number;
   profileVersion: number;
-  profileData: Record<string, unknown>;
+  profileData: Object13PlayerProfileDataV1;
 }
 
 /**
@@ -65,4 +66,62 @@ export async function putRemoteObject13PlayerProfile(
   if (status === 413) return { outcome: "too_large" };
   if (status === 404) return { outcome: "not_found" };
   return { outcome: "unavailable" };
+}
+
+/** Co se posílá na VPS `/nocni-hlidac/player-profile/inventory/:itemId/add|consume` — `discordUserId` opět jen server-side, ze session. */
+export interface RemoteObject13PlayerProfileInventoryOperationPayload {
+  discordUserId: string;
+  amount: number;
+  expectedRevision: number;
+}
+
+export type RemoteObject13PlayerProfileInventoryOperationResult =
+  | { outcome: "updated"; profile: Object13PlayerProfileDto }
+  | { outcome: "conflict"; currentRevision: number; currentProfile: Object13PlayerProfileDto | null }
+  | { outcome: "exceeds_maximum" }
+  | { outcome: "insufficient_inventory" }
+  | { outcome: "not_found" }
+  | { outcome: "unavailable" };
+
+function mapInventoryOperationResponse(
+  status: number,
+  body: unknown,
+): RemoteObject13PlayerProfileInventoryOperationResult {
+  if (status === 200 && isValidObject13PlayerProfileDto(body)) {
+    return { outcome: "updated", profile: body };
+  }
+  if (status === 409) {
+    const errorBody = body as { error?: unknown; currentRevision?: unknown; profile?: unknown } | null;
+    if (errorBody?.error === "exceeds_maximum") return { outcome: "exceeds_maximum" };
+    if (errorBody?.error === "insufficient_inventory") return { outcome: "insufficient_inventory" };
+    const currentRevision = typeof errorBody?.currentRevision === "number" ? errorBody.currentRevision : 0;
+    const currentProfile = isValidObject13PlayerProfileDto(errorBody?.profile) ? errorBody.profile : null;
+    return { outcome: "conflict", currentRevision, currentProfile };
+  }
+  if (status === 404) return { outcome: "not_found" };
+  return { outcome: "unavailable" };
+}
+
+/**
+ * POST /nocni-hlidac/player-profile/inventory/:itemId/add — doménová
+ * operace, NIKDY obecný PUT celého profilu (viz zadání "běžná herní logika
+ * nesmí používat obecný PUT pro každou změnu žárovky"). Stejné rozlišení
+ * výsledků jako `putRemoteObject13PlayerProfile`, navíc `exceeds_maximum`/
+ * `insufficient_inventory` (doménové 409 stavy, ne revision konflikt).
+ */
+export async function addRemoteObject13PlayerProfileInventoryItem(
+  itemId: Object13InventoryItemId,
+  payload: RemoteObject13PlayerProfileInventoryOperationPayload,
+): Promise<RemoteObject13PlayerProfileInventoryOperationResult> {
+  const { status, body } = await hubPostDetailed<unknown>(`/nocni-hlidac/player-profile/inventory/${itemId}/add`, payload);
+  return mapInventoryOperationResponse(status, body);
+}
+
+/** POST /nocni-hlidac/player-profile/inventory/:itemId/consume — viz addRemoteObject13PlayerProfileInventoryItem výše. */
+export async function consumeRemoteObject13PlayerProfileInventoryItem(
+  itemId: Object13InventoryItemId,
+  payload: RemoteObject13PlayerProfileInventoryOperationPayload,
+): Promise<RemoteObject13PlayerProfileInventoryOperationResult> {
+  const { status, body } = await hubPostDetailed<unknown>(`/nocni-hlidac/player-profile/inventory/${itemId}/consume`, payload);
+  return mapInventoryOperationResponse(status, body);
 }

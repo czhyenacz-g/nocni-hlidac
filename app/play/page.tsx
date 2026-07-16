@@ -13,7 +13,12 @@ import DeathSequenceOverlay from "@/components/death/DeathSequenceOverlay";
 import { getLiveDeathSequenceConfig, isDoorAttackDeath } from "@/game/death/liveDeathSequenceConfig";
 import { NIGHT_01 } from "@/game/nights/night01";
 import { createInitialGameState } from "@/game/core/gameState";
-import { canStartThinkItOverWindup, createGameReducer, willGeneratorRestartSucceed } from "@/game/core/gameReducer";
+import {
+  canStartThinkItOverWindup,
+  createGameReducer,
+  isBulbReplacementReadyToConfirm,
+  willGeneratorRestartSucceed,
+} from "@/game/core/gameReducer";
 import { isWatchingDisabledCameraFootstepsSource } from "@/game/core/cameraDamage";
 import { useGameLoop } from "@/game/core/gameLoop";
 import { CameraId, GhoulCameraAttackAnimationId } from "@/game/core/types";
@@ -95,7 +100,13 @@ import { isAdminUsername } from "@/lib/auth/adminUsers";
 import type { GuardRunState } from "@/lib/leaderboard/types";
 import type { GuardRunResponse } from "@/lib/leaderboard/guardRunRequestHandlers";
 import { DEFAULT_GAME_MODE, GAME_MODE_CONFIG, GameMode, resolveGameMode } from "@/game/core/gameMode";
-import { Object13PlayerProfileProvider } from "@/components/playerProfile/Object13PlayerProfileProvider";
+import { Object13PlayerProfileProvider, useObject13PlayerProfile } from "@/components/playerProfile/Object13PlayerProfileProvider";
+import { resolveStartingBulbsRemaining } from "@/game/core/bulbInventory";
+import {
+  BulbInventoryOperationState,
+  decideBulbReplacementConfirmAction,
+  deriveBulbInventoryConfirmOutcome,
+} from "@/game/inventory/bulbInventoryController";
 
 const night = NIGHT_01;
 const gameReducer = createGameReducer(night);
@@ -104,8 +115,52 @@ const gameReducer = createGameReducer(night);
 // při výběru kamery, viz handleSelectCamera níže.
 const nearestCamera = [...night.cameras].sort((a, b) => (b.order ?? 0) - (a.order ?? 0))[0];
 
+/**
+ * Object13PlayerProfileProvider (viz zadání "krok 1B" a "profilový kontrakt
+ * V1 + inventář žárovek") obaluje CELOU stránku ZVENKU — `PlayPageContent`
+ * je jeho potomek, takže může volat `useObject13PlayerProfile()` přímo
+ * (Provider nemůže obalovat vlastní komponentu zevnitř jejího vlastního
+ * návratu a zároveň jí dát přístup ke svému kontextu).
+ */
 export default function PlayPage() {
+  return (
+    <Object13PlayerProfileProvider>
+      <PlayPageContent />
+    </Object13PlayerProfileProvider>
+  );
+}
+
+function PlayPageContent() {
+  const object13Profile = useObject13PlayerProfile();
   const [state, dispatch] = useReducer(gameReducer, undefined, () => createInitialGameState(night));
+
+  // Orchestrace inventářových operací se žárovkami (viz zadání "profilový
+  // kontrakt V1" — oprava architektonické odchylky: "KAŽDÁ TRVALÁ
+  // INVENTÁŘOVÁ ZMĚNA V HARDCORE MUSÍ BÝT EXPLICITNĚ POTVRZENA SERVEREM V
+  // OKAMŽIKU, KDY K NÍ DOJDE", ne souhrnnou deltou na konci směny). Reducer
+  // (game/core/gameReducer.ts) je čistě synchronní — žádný fetch/await tam
+  // — orchestrace žije tady a v game/inventory/bulbInventoryController.ts
+  // (čisté rozhodovací/mapovací funkce, testovatelné bez Reactu).
+  //
+  // `bulbInventoryPendingRef`: JEDNA probíhající operace blokuje další (viz
+  // zadání "nesmí dojít k dvojímu consume při opakovaném kliknutí") — ref, ne
+  // state, ať se čte synchronně hned na začátku handleru, ne až po rerenderu.
+  const bulbInventoryPendingRef = useRef(false);
+  // Po nejasném výsledku (timeout/`unavailable`) se žádná další inventářová
+  // operace nesmí spustit, dokud si hráč/orchestrace explicitně nevyžádá
+  // `object13Profile.reload()` — jinak by mohlo dojít ke dvojí spotřebě,
+  // pokud request server ve skutečnosti zpracoval, ale odpověď se ztratila
+  // (viz zadání "13. Výpadek odpovědi po zápisu"). Vyčistí se, jakmile
+  // `object13Profile.loadState` znovu dosáhne "ready" (viz effect níže).
+  const bulbInventoryNeedsReloadRef = useRef(false);
+  const [bulbInventoryOperationState, setBulbInventoryOperationState] = useState<BulbInventoryOperationState>({
+    status: "idle",
+  });
+  useEffect(() => {
+    if (object13Profile.loadState.status === "ready") {
+      bulbInventoryNeedsReloadRef.current = false;
+    }
+  }, [object13Profile.loadState]);
   // Kolik hlídačů už na týhle pozici selhalo — čistě lokální localStorage
   // counter (viz game/core/deathCount.ts), nezávislý na herním stavu/reduceru.
   // Lazy initializer čte aktuální hodnotu jen jednou při prvním mountu.
@@ -486,8 +541,17 @@ export default function PlayPage() {
         setRoomBulbs(state.roomBulbs);
         // Náhradní žárovky patří do campaignu stejně jako roomBulbs — pokud
         // hráč spotřeboval kus dřív v týhle směně (dokončená ruční výměna),
-        // musí to přežít i smrt z jiného důvodu, ne se ztratit.
-        setBulbsRemaining(state.bulbsRemaining);
+        // musí to přežít i smrt z jiného důvodu, ne se ztratit. DŮLEŽITÉ (viz
+        // zadání "profilový kontrakt V1" — oprava architektonické odchylky):
+        // tohle NENÍ souhrnná synchronizace na VPS — Hardcore už každou
+        // spotřebu potvrdil serverem přesně v okamžiku, kdy nastala (viz
+        // CONFIRM_BULB_REPLACEMENT/bulbInventoryActions.ts), takže smrt tady
+        // žádný inventory request neposílá. Jediné, co zbývá, je anonymní
+        // localStorage (přihlášený hráč do něj nikdy nezapisuje, viz
+        // game/core/bulbInventory.ts).
+        if (object13Profile.loadState.status === "unauthorized") {
+          setBulbsRemaining(state.bulbsRemaining);
+        }
 
         // Normal se zbývajícím životem "opakuje noc" — run nekončí, takže
         // survivedNights se NErestuje a server API se vůbec nevolá (viz
@@ -608,13 +672,65 @@ export default function PlayPage() {
       // Denní servis: jen SKUTEČNĚ prasklé žárovky se vymění za náhradní kus
       // ze skladu (viz game/core/roomBulbs.ts#applyDailyBulbService) — slabá,
       // ale neprasklá žárovka se nedotkne. Běží jen tady (přežitá směna),
-      // nikdy na smrt (viz "death" výše).
-      // state.bulbsRemaining (živá hodnota z GameState), ne stará
-      // getBulbsRemaining() z localStorage — jinak by denní servis přebil
-      // spotřebu z ruční výměny dokončené dřív v týhle směně.
-      const serviced = applyDailyBulbService(state.roomBulbs, state.bulbsRemaining);
-      setRoomBulbs(serviced.roomBulbs);
-      setBulbsRemaining(serviced.bulbsRemaining);
+      // nikdy na smrt (viz "death" výše). DŮLEŽITÉ (viz zadání "profilový
+      // kontrakt V1" — oprava architektonické odchylky): servis SPOTŘEBOVÁVÁ
+      // náhradní žárovku stejně jako ruční výměna u dveří, takže v Hardcore
+      // je to TAKÉ potvrzená serverová událost, ne lokální odhad promítnutý
+      // do souhrnné delty. `roomBulbs` (aktivní žárovka) je vždy čistě
+      // lokální bez ohledu na režim — persistuje se v každé větvi níže.
+      if (!state.roomBulbs.nearRoom.broken) {
+        // Nic k servisu — jen zachovat roomBulbs beze změny (idempotentní
+        // localStorage zápis, stejné chování jako dřív).
+        setRoomBulbs(state.roomBulbs);
+      } else if (object13Profile.loadState.status === "unauthorized") {
+        // Anonymní hráč — beze změny oproti dosavadnímu chování, čistě lokální.
+        const serviced = applyDailyBulbService(state.roomBulbs, state.bulbsRemaining);
+        setRoomBulbs(serviced.roomBulbs);
+        setBulbsRemaining(serviced.bulbsRemaining);
+      } else if (!GAME_MODE_CONFIG[state.gameMode].persistInventory) {
+        // Training (přihlášený, ale netrvalý inventář) — servis se provede
+        // jen jako pracovní kopie pro tenhle (už skončený) běh, nic se
+        // nikam neukládá (viz zadání "6. Training" — "nic se na konci
+        // směny neukládá").
+        const serviced = applyDailyBulbService(state.roomBulbs, state.bulbsRemaining);
+        setRoomBulbs(serviced.roomBulbs);
+      } else if (object13Profile.loadState.status === "ready" && state.bulbsRemaining > 0) {
+        // Hardcore + ready profil — server-confirmed spotřeba PŘESNĚ jedné
+        // náhradní žárovky. `RoomBulbsState` má dnes jediný klíč (`nearRoom`,
+        // viz game/core/types.ts), takže je `amount: 1` vždy správně. Až
+        // přibude druhá místnost, správné řešení je JEDNA atomická operace
+        // `consumeBulbs(amount: brokenCount)` (endpoint už `amount` podporuje,
+        // viz TECH_DESIGN.md "Profilový kontrakt V1 a inventář žárovek") —
+        // NIKDY N samostatných `consumeBulbs(1)` volání s mezilehlými
+        // revisemi, to by řešilo čerstvou revizi mezi kroky zbytečně navíc.
+        bulbInventoryPendingRef.current = true;
+        setBulbInventoryOperationState({ status: "consuming" });
+        const roomBulbsAtWin = state.roomBulbs;
+        object13Profile.consumeBulbs(1).then((result) => {
+          bulbInventoryPendingRef.current = false;
+          const outcome = deriveBulbInventoryConfirmOutcome(result);
+          if (outcome.outcome === "confirmed") {
+            setBulbInventoryOperationState({ status: "idle" });
+            setRoomBulbs({
+              ...roomBulbsAtWin,
+              nearRoom: { ...roomBulbsAtWin.nearRoom, remainingMs: roomBulbsAtWin.nearRoom.maxMs, broken: false },
+            });
+            return;
+          }
+          // Server odmítl/neodpověděl — žárovka zůstává prasklá (stejné
+          // chování jako "došly náhradní kusy", viz applyDailyBulbService),
+          // žádná lokální oprava bez potvrzení.
+          if (outcome.outcome === "unavailable") {
+            bulbInventoryNeedsReloadRef.current = true;
+          }
+          setBulbInventoryOperationState({ status: "error", error: outcome.outcome });
+          setRoomBulbs(roomBulbsAtWin);
+        });
+      } else {
+        // Hardcore bez ready profilu (VPS výpadek) nebo bez náhradních kusů
+        // — nic k servisu, roomBulbs zůstává prasklá.
+        setRoomBulbs(state.roomBulbs);
+      }
       // Jen Hardcore je leaderboard eligible (viz GAME_MODE_CONFIG) — Normal
       // přežití noci posune jen lokální survivedNights výše, nikdy nevolá
       // server API, ať nemůže Normal run vylepšit Hardcore bestRun/currentRun
@@ -1134,10 +1250,16 @@ export default function PlayPage() {
             hasDoubleBarrelShotgun: state.hasDoubleBarrelShotgun,
             shotgunAmmo: getRechargedShotgunAmmo(state),
           };
+      // VŽDY čte aktuální ready profil (Hardcore) / localStorage fallback —
+      // NIKDY konečný runtime stav předchozí směny ani necommitnutou deltu
+      // (viz zadání "11. Start další směny" — oprava architektonické
+      // odchylky). Hardcore run bez ready profilu se sem vůbec nedostane
+      // (viz MainMenuScreen.tsx#hardcoreBlockedByProfile).
+      const restartBulbsRemaining = resolveStartingBulbsRemaining(object13Profile.loadState);
       dispatch({
         type: "RESTART_SHIFT",
         roomBulbs: getRoomBulbs(),
-        bulbsRemaining: getBulbsRemaining(),
+        bulbsRemaining: restartBulbsRemaining,
         nightFeatures,
         gameMode,
         livesRemaining,
@@ -1157,10 +1279,11 @@ export default function PlayPage() {
       // SKUTEČNĚ nový run (START_SHIFT z menu), ne RESTART_SHIFT pokračování
       // stejné směny po smrti s životy navíc.
       recordRunStarted();
+      const startBulbsRemaining = resolveStartingBulbsRemaining(object13Profile.loadState);
       dispatch({
         type: "START_SHIFT",
         roomBulbs: getRoomBulbs(),
-        bulbsRemaining: getBulbsRemaining(),
+        bulbsRemaining: startBulbsRemaining,
         nightFeatures,
         gameMode,
         livesRemaining: GAME_MODE_CONFIG[gameMode].startingLives,
@@ -1633,6 +1756,68 @@ export default function PlayPage() {
     dispatch({ type: "CANCEL_BULB_REPLACEMENT" });
   }
 
+  // Sleduje, kdy je ruční výměna žárovky u dveří ready-to-confirm (progres
+  // dosáhl konce, viz gameReducer.ts#isBulbReplacementReadyToConfirm) a podle
+  // gameMode/profilu rozhodne, jak ji potvrdit — Training/anonymní rovnou
+  // (dispatch(CONFIRM_BULB_REPLACEMENT) je synchronní, žádné čekání), Hardcore
+  // teprve PO úspěšné odpovědi serveru (viz zadání "4. Hardcore: spotřeba
+  // žárovky"). `bulbInventoryPendingRef` blokuje zdvojený dispatch, pokud by
+  // se effect nějak spustil znovu, než doběhne první serverová odpověď.
+  useEffect(() => {
+    const action = decideBulbReplacementConfirmAction({
+      readyToConfirm: isBulbReplacementReadyToConfirm(state),
+      operationPending: bulbInventoryPendingRef.current,
+      needsReload: bulbInventoryNeedsReloadRef.current,
+      gameMode: state.gameMode,
+      loadState: object13Profile.loadState,
+    });
+
+    if (action.type === "none") return;
+
+    if (action.type === "cancel_blocked_needs_reload") {
+      // Nejasný výsledek z dřívější operace (timeout/unavailable) — další
+      // inventářová operace je blokovaná, dokud si hráč nevyžádá reload (viz
+      // zadání "13. Výpadek odpovědi po zápisu"). Rozehranou výměnu bez
+      // následku zrušíme, ať progres nezůstane navěky zaseknutý na 100 %.
+      dispatch({ type: "CANCEL_BULB_REPLACEMENT" });
+      return;
+    }
+
+    if (action.type === "confirm_immediately") {
+      dispatch({ type: "CONFIRM_BULB_REPLACEMENT" });
+      return;
+    }
+
+    // action.type === "call_server"
+    bulbInventoryPendingRef.current = true;
+    setBulbInventoryOperationState({ status: "consuming" });
+    object13Profile
+      .consumeBulbs(1)
+      .then((result) => {
+        bulbInventoryPendingRef.current = false;
+        const outcome = deriveBulbInventoryConfirmOutcome(result);
+
+        if (outcome.outcome === "confirmed") {
+          setBulbInventoryOperationState({ status: "idle" });
+          dispatch({ type: "CONFIRM_BULB_REPLACEMENT" });
+          return;
+        }
+        // insufficient_inventory / exceeds_maximum (nikdy nenastane pro
+        // consume, ale typ ho zná) / conflict / unavailable — výměna se
+        // NEDOKONČÍ, aktivní žárovka se nevymění, bulbsRemaining se nesníží.
+        // `unavailable` navíc zablokuje DALŠÍ operace až do reloadu (viz
+        // zadání "13.") — nikdy automatický retry.
+        if (outcome.outcome === "unavailable") {
+          bulbInventoryNeedsReloadRef.current = true;
+        }
+        setBulbInventoryOperationState({ status: "error", error: outcome.outcome });
+        dispatch({ type: "CANCEL_BULB_REPLACEMENT" });
+      });
+    // Poznámka: žádný `.catch` navíc potřeba — `object13Profile.consumeBulbs`
+    // (lib/playerProfile/object13PlayerProfileClient.ts) už sama nikdy
+    // nevyhodí, network chyby se mapují na `{status: "error"}` výsledek.
+  }, [state.bulbReplacement.active, state.bulbReplacement.progressMs, state.gameMode, object13Profile.loadState]);
+
   function handleSelectCamera(cameraId: CameraId) {
     // heartbeat je zvuk překvapení: hraje jen když je nepřítel právě na
     // kameře nejblíž hráči, a jen poprvé za tuto "návštěvu" — další kliknutí
@@ -1674,14 +1859,6 @@ export default function PlayPage() {
   const atmosphereVars = atmosphereStyleToCssVars(atmosphereStyle);
 
   return (
-    // Object13PlayerProfileProvider (viz zadání "krok 1B") obaluje CELOU
-    // stránku (menu/loading/briefing/playing/death/win jsou všechno jeden
-    // React strom, ne samostatné route mounty) — profil se tak načte jednou
-    // hned, jak je hráč přihlášený, bez ohledu na to, kterou obrazovku zrovna
-    // vidí (viz zadání "napojit herní aplikaci"). Zatím ho čte jen
-    // DebugPanel.tsx (dev-only "TEST PROFILE WRITE"), ale je připravený i
-    // pro budoucí obrazovky beze změny tohohle místa.
-    <Object13PlayerProfileProvider>
     <>
     <div
       className="atmosphere-root"
@@ -1874,6 +2051,5 @@ export default function PlayPage() {
       </div>
     )}
     </>
-    </Object13PlayerProfileProvider>
   );
 }

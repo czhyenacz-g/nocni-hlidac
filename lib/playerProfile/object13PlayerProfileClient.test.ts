@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchObject13PlayerProfile, saveObject13PlayerProfile } from "./object13PlayerProfileClient";
+import { addBulbsToProfile, consumeBulbsFromProfile, fetchObject13PlayerProfile, saveObject13PlayerProfile } from "./object13PlayerProfileClient";
 import { Object13PlayerProfileDto } from "../../game/core/object13PlayerProfile";
 
 // Testuje jen samotnou klientskou service vrstvu (fetch("/api/player/profile")
@@ -18,7 +18,7 @@ afterEach(() => {
 const VALID_DTO: Object13PlayerProfileDto = {
   discordUserId: "123456789012345678",
   profileVersion: 1,
-  profileData: {},
+  profileData: { inventory: { items: { bulb: 10 } } },
   revision: 1,
   createdAt: "2026-07-16T12:00:00.000Z",
   updatedAt: "2026-07-16T12:00:00.000Z",
@@ -63,7 +63,7 @@ describe("fetchObject13PlayerProfile", () => {
   });
 });
 
-const SAVE_PAYLOAD = { expectedRevision: 1, profileVersion: 1, profileData: {} };
+const SAVE_PAYLOAD = { expectedRevision: 1, profileVersion: 1, profileData: { inventory: { items: { bulb: 15 } } } };
 
 describe("saveObject13PlayerProfile", () => {
   it("4. a successful save returns the new profile with its revision", async () => {
@@ -126,5 +126,69 @@ describe("saveObject13PlayerProfile", () => {
     const [a, b] = await Promise.all([saveObject13PlayerProfile(SAVE_PAYLOAD), saveObject13PlayerProfile({ ...SAVE_PAYLOAD, expectedRevision: 2 })]);
     expect(a.status).toBe("saved");
     expect(b.status).toBe("saved");
+  });
+});
+
+const INVENTORY_PAYLOAD = { amount: 1, expectedRevision: 1 };
+
+describe("addBulbsToProfile", () => {
+  it("8. only POSTs to the same-origin bulb/add proxy with the exact payload", async () => {
+    const fetchSpy = vi.fn<typeof fetch>(() => Promise.resolve(new Response(JSON.stringify(VALID_DTO), { status: 200 })));
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await addBulbsToProfile(INVENTORY_PAYLOAD);
+
+    const [url, init] = fetchSpy.mock.calls[0];
+    expect(url).toBe("/api/player/profile/inventory/bulb/add");
+    expect(init?.method).toBe("POST");
+    expect(init?.body).toBe(JSON.stringify(INVENTORY_PAYLOAD));
+  });
+
+  it("a successful add returns 'updated' with the new profile", async () => {
+    const updated = { ...VALID_DTO, revision: 2, profileData: { inventory: { items: { bulb: 11 } } } };
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify(updated), { status: 200 }))));
+
+    const result = await addBulbsToProfile(INVENTORY_PAYLOAD);
+    expect(result).toEqual({ status: "updated", profile: updated });
+  });
+
+  it("12. a 409 exceeds_maximum error returns its own distinct status", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify({ error: "exceeds_maximum" }), { status: 409 }))));
+
+    const result = await addBulbsToProfile(INVENTORY_PAYLOAD);
+    expect(result).toEqual({ status: "exceeds_maximum" });
+  });
+
+  it("a 409 revision_conflict returns status: conflict with currentRevision/currentProfile", async () => {
+    const conflictBody = { error: "profile_conflict", currentRevision: 4, currentProfile: { ...VALID_DTO, revision: 4 } };
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify(conflictBody), { status: 409 }))));
+
+    const result = await addBulbsToProfile(INVENTORY_PAYLOAD);
+    expect(result).toEqual({ status: "conflict", currentRevision: 4, currentProfile: { ...VALID_DTO, revision: 4 } });
+  });
+});
+
+describe("consumeBulbsFromProfile", () => {
+  it("only POSTs to the same-origin bulb/consume proxy", async () => {
+    const fetchSpy = vi.fn<typeof fetch>(() => Promise.resolve(new Response(JSON.stringify(VALID_DTO), { status: 200 })));
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await consumeBulbsFromProfile(INVENTORY_PAYLOAD);
+
+    const [url] = fetchSpy.mock.calls[0];
+    expect(url).toBe("/api/player/profile/inventory/bulb/consume");
+  });
+
+  it("11. a 409 insufficient_inventory error returns its own distinct status", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify({ error: "insufficient_inventory" }), { status: 409 }))));
+
+    const result = await consumeBulbsFromProfile(INVENTORY_PAYLOAD);
+    expect(result).toEqual({ status: "insufficient_inventory" });
+  });
+
+  it("a network failure returns status: error, never throws", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new Error("network error"))));
+    const result = await consumeBulbsFromProfile(INVENTORY_PAYLOAD);
+    expect(result).toEqual({ status: "error", error: "network_error" });
   });
 });

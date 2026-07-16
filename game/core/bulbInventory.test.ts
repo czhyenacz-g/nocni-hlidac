@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BULBS_CONFIG } from "./bulbsConfig";
+import { Object13PlayerProfileDto, Object13PlayerProfileLoadState } from "./object13PlayerProfile";
 
 // Vitest tu běží v node prostředí (žádné jsdom) — window je jinak undefined,
 // takže getBulbsRemaining/setBulbsRemaining by pořád spadly do SSR-safe
@@ -46,5 +47,49 @@ describe("bulbInventory", () => {
 
     expect(getBulbsRemaining()).not.toBe(BULBS_CONFIG.startingCount);
     expect(getBulbsRemaining()).toBe(8);
+  });
+});
+
+const VALID_PROFILE: Object13PlayerProfileDto = {
+  discordUserId: "123456789012345678",
+  profileVersion: 1,
+  profileData: { inventory: { items: { bulb: 42 } } },
+  revision: 1,
+  createdAt: "2026-07-16T12:00:00.000Z",
+  updatedAt: "2026-07-16T12:00:00.000Z",
+  lastSeenAt: "2026-07-16T12:00:00.000Z",
+};
+
+describe("resolveStartingBulbsRemaining", () => {
+  beforeEach(() => {
+    vi.stubGlobal("window", { localStorage: createFakeLocalStorage() });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("5. a ready profile is authoritative — VPS value wins over localStorage", async () => {
+    const { resolveStartingBulbsRemaining, setBulbsRemaining } = await import("./bulbInventory");
+    setBulbsRemaining(3); // local value present, should be ignored
+
+    const loadState: Object13PlayerProfileLoadState = { status: "ready", profile: VALID_PROFILE };
+    expect(resolveStartingBulbsRemaining(loadState)).toBe(42);
+  });
+
+  it("3. an anonymous (unauthorized) player reads localStorage", async () => {
+    const { resolveStartingBulbsRemaining, setBulbsRemaining } = await import("./bulbInventory");
+    setBulbsRemaining(7);
+
+    expect(resolveStartingBulbsRemaining({ status: "unauthorized" })).toBe(7);
+  });
+
+  it("falls back to localStorage while the profile is still loading or unavailable (VPS outage)", async () => {
+    const { resolveStartingBulbsRemaining, setBulbsRemaining } = await import("./bulbInventory");
+    setBulbsRemaining(5);
+
+    expect(resolveStartingBulbsRemaining({ status: "loading" })).toBe(5);
+    expect(resolveStartingBulbsRemaining({ status: "idle" })).toBe(5);
+    expect(resolveStartingBulbsRemaining({ status: "unavailable" })).toBe(5);
   });
 });

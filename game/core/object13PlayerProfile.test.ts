@@ -1,18 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
   deriveLoadStateFromFetchResult,
+  deriveSaveStateFromInventoryOperationResult,
   deriveSaveStateFromSaveResult,
   isPlainObject,
   isValidObject13PlayerProfileDto,
-  normalizeObject13PlayerProfileData,
   Object13PlayerProfileDto,
+  validateIncomingObject13PlayerProfileInventoryOperationBody,
   validateIncomingObject13PlayerProfilePutBody,
 } from "./object13PlayerProfile";
 
 const VALID_DTO: Object13PlayerProfileDto = {
   discordUserId: "123456789012345678",
   profileVersion: 1,
-  profileData: {},
+  profileData: { inventory: { items: { bulb: 10 } } },
   revision: 1,
   createdAt: "2026-07-16T12:00:00.000Z",
   updatedAt: "2026-07-16T12:00:00.000Z",
@@ -35,7 +36,7 @@ describe("isPlainObject", () => {
 });
 
 describe("isValidObject13PlayerProfileDto", () => {
-  it("accepts a well-formed DTO", () => {
+  it("accepts a well-formed DTO with a valid V1 profileData", () => {
     expect(isValidObject13PlayerProfileDto(VALID_DTO)).toBe(true);
   });
 
@@ -56,10 +57,11 @@ describe("isValidObject13PlayerProfileDto", () => {
     expect(isValidObject13PlayerProfileDto({ ...VALID_DTO, revision: "1" })).toBe(false);
   });
 
-  it("rejects profileData that is not a plain object", () => {
+  it("rejects a profileData that fails V1 validation (legacy empty {}, unknown key, out-of-range quantity)", () => {
+    expect(isValidObject13PlayerProfileDto({ ...VALID_DTO, profileData: {} })).toBe(false);
     expect(isValidObject13PlayerProfileDto({ ...VALID_DTO, profileData: null })).toBe(false);
-    expect(isValidObject13PlayerProfileDto({ ...VALID_DTO, profileData: [] })).toBe(false);
-    expect(isValidObject13PlayerProfileDto({ ...VALID_DTO, profileData: "not an object" })).toBe(false);
+    expect(isValidObject13PlayerProfileDto({ ...VALID_DTO, profileData: { inventory: { items: { bulb: -1 } } } })).toBe(false);
+    expect(isValidObject13PlayerProfileDto({ ...VALID_DTO, profileData: { inventory: { items: { shotgun: 1 } } } })).toBe(false);
   });
 
   it("rejects invalid timestamp strings", () => {
@@ -69,21 +71,8 @@ describe("isValidObject13PlayerProfileDto", () => {
   });
 });
 
-describe("normalizeObject13PlayerProfileData", () => {
-  it("passes a plain object through unchanged", () => {
-    expect(normalizeObject13PlayerProfileData({ a: 1 })).toEqual({ a: 1 });
-  });
-
-  it("normalizes null/array/string/number to {}", () => {
-    expect(normalizeObject13PlayerProfileData(null)).toEqual({});
-    expect(normalizeObject13PlayerProfileData([1, 2, 3])).toEqual({});
-    expect(normalizeObject13PlayerProfileData("corrupted")).toEqual({});
-    expect(normalizeObject13PlayerProfileData(42)).toEqual({});
-  });
-});
-
 describe("validateIncomingObject13PlayerProfilePutBody", () => {
-  const VALID_BODY = { expectedRevision: 1, profileVersion: 1, profileData: {} };
+  const VALID_BODY = { expectedRevision: 1, profileVersion: 1, profileData: { inventory: { items: { bulb: 10 } } } };
 
   it("accepts a well-formed body", () => {
     const result = validateIncomingObject13PlayerProfilePutBody(VALID_BODY);
@@ -113,12 +102,51 @@ describe("validateIncomingObject13PlayerProfilePutBody", () => {
     expect(validateIncomingObject13PlayerProfilePutBody({ ...VALID_BODY, profileVersion: 0 }).ok).toBe(false);
   });
 
-  it("rejects profileData: null", () => {
-    expect(validateIncomingObject13PlayerProfilePutBody({ ...VALID_BODY, profileData: null }).ok).toBe(false);
+  it("rejects a legacy empty {} profileData (missing inventory)", () => {
+    expect(validateIncomingObject13PlayerProfilePutBody({ ...VALID_BODY, profileData: {} }).ok).toBe(false);
   });
 
-  it("rejects profileData as an array", () => {
-    expect(validateIncomingObject13PlayerProfilePutBody({ ...VALID_BODY, profileData: [1, 2] }).ok).toBe(false);
+  it("rejects an unknown top-level profileData key", () => {
+    expect(
+      validateIncomingObject13PlayerProfilePutBody({ ...VALID_BODY, profileData: { inventory: { items: {} }, extra: 1 } }).ok,
+    ).toBe(false);
+  });
+
+  it("rejects an unknown item id inside profileData", () => {
+    expect(
+      validateIncomingObject13PlayerProfilePutBody({ ...VALID_BODY, profileData: { inventory: { items: { shotgun: 1 } } } }).ok,
+    ).toBe(false);
+  });
+
+  it("rejects a negative bulb quantity", () => {
+    expect(
+      validateIncomingObject13PlayerProfilePutBody({ ...VALID_BODY, profileData: { inventory: { items: { bulb: -1 } } } }).ok,
+    ).toBe(false);
+  });
+});
+
+describe("validateIncomingObject13PlayerProfileInventoryOperationBody", () => {
+  const VALID_BODY = { amount: 1, expectedRevision: 1 };
+
+  it("accepts a well-formed body", () => {
+    const result = validateIncomingObject13PlayerProfileInventoryOperationBody(VALID_BODY);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data).toEqual(VALID_BODY);
+  });
+
+  it("rejects amount <= 0 or non-integer", () => {
+    expect(validateIncomingObject13PlayerProfileInventoryOperationBody({ ...VALID_BODY, amount: 0 }).ok).toBe(false);
+    expect(validateIncomingObject13PlayerProfileInventoryOperationBody({ ...VALID_BODY, amount: -1 }).ok).toBe(false);
+    expect(validateIncomingObject13PlayerProfileInventoryOperationBody({ ...VALID_BODY, amount: 1.5 }).ok).toBe(false);
+  });
+
+  it("rejects expectedRevision <= 0 or non-integer", () => {
+    expect(validateIncomingObject13PlayerProfileInventoryOperationBody({ ...VALID_BODY, expectedRevision: 0 }).ok).toBe(false);
+  });
+
+  it("rejects a non-object body", () => {
+    expect(validateIncomingObject13PlayerProfileInventoryOperationBody(null).ok).toBe(false);
+    expect(validateIncomingObject13PlayerProfileInventoryOperationBody("x").ok).toBe(false);
   });
 });
 
@@ -171,6 +199,44 @@ describe("deriveSaveStateFromSaveResult", () => {
 
   it("maps a generic error through with its message", () => {
     const result = deriveSaveStateFromSaveResult({ status: "error", error: "network_error" });
+    expect(result.saveState).toEqual({ status: "error", error: "network_error" });
+  });
+});
+
+describe("deriveSaveStateFromInventoryOperationResult", () => {
+  it("maps updated -> saved + nextLoadState ready with the new profile", () => {
+    const result = deriveSaveStateFromInventoryOperationResult({ status: "updated", profile: VALID_DTO });
+    expect(result.saveState).toEqual({ status: "saved" });
+    expect(result.nextLoadState).toEqual({ status: "ready", profile: VALID_DTO });
+  });
+
+  it("maps conflict WITH a currentProfile -> conflict state", () => {
+    const result = deriveSaveStateFromInventoryOperationResult({ status: "conflict", currentRevision: 4, currentProfile: VALID_DTO });
+    expect(result.saveState).toEqual({ status: "conflict", currentProfile: VALID_DTO });
+  });
+
+  it("maps conflict WITHOUT a currentProfile -> error, never a fabricated conflict state", () => {
+    const result = deriveSaveStateFromInventoryOperationResult({ status: "conflict", currentRevision: 4 });
+    expect(result.saveState).toEqual({ status: "error", error: "conflict_without_profile" });
+  });
+
+  it("maps exceeds_maximum -> its own distinct saveState, not a generic error", () => {
+    const result = deriveSaveStateFromInventoryOperationResult({ status: "exceeds_maximum" });
+    expect(result.saveState).toEqual({ status: "exceeds_maximum" });
+  });
+
+  it("maps insufficient_inventory -> its own distinct saveState, not a generic error", () => {
+    const result = deriveSaveStateFromInventoryOperationResult({ status: "insufficient_inventory" });
+    expect(result.saveState).toEqual({ status: "insufficient_inventory" });
+  });
+
+  it("maps unauthorized -> error", () => {
+    const result = deriveSaveStateFromInventoryOperationResult({ status: "unauthorized" });
+    expect(result.saveState).toEqual({ status: "error", error: "unauthorized" });
+  });
+
+  it("maps a generic error through with its message", () => {
+    const result = deriveSaveStateFromInventoryOperationResult({ status: "error", error: "network_error" });
     expect(result.saveState).toEqual({ status: "error", error: "network_error" });
   });
 });

@@ -27,7 +27,7 @@ describe("SET_DEBUG_NIGHT", () => {
 
   it("3. preserves gameMode", () => {
     const reducer = createGameReducer(NIGHT_01);
-    const state = { ...createInitialGameState(NIGHT_01, undefined, undefined, undefined, "hardcore" as const) };
+    const state = { ...createInitialGameState(NIGHT_01, { gameMode: "hardcore" as const }) };
 
     const result = reducer(state, { type: "SET_DEBUG_NIGHT", night: 30 });
 

@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import SceneBackground from "@/components/SceneBackground";
 import AuthStatus from "@/components/auth/AuthStatus";
 import { useAuthStatus } from "@/components/auth/useAuthStatus";
+import { useObject13PlayerProfile } from "@/components/playerProfile/Object13PlayerProfileProvider";
 import { BACKGROUND_SCENES, SceneBackgroundConfig } from "@/game/visuals/backgroundImages";
 import { DEFAULT_GAME_MODE, GameMode } from "@/game/core/gameMode";
 import ConsoleIcon from "@/components/game/ConsoleIcon";
@@ -35,7 +36,15 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
   // handleSelectHardcore) — dokud hráč nezvolí "Zůstat v Normal" nebo se
   // nepřihlásí (a klikne znovu), gameMode zůstává "normal".
   const [showHardcoreLoginPrompt, setShowHardcoreLoginPrompt] = useState(false);
+  // Zobrazí se, když je hráč přihlášený, ale jeho Object13PlayerProfile
+  // není `ready` (VPS výpadek/ještě se načítá) — Hardcore run je server-
+  // authoritative pro inventář, proto se v tomhle stavu vůbec nesmí spustit
+  // (viz zadání "profilový kontrakt V1 + inventář žárovek", "15. Výpadek
+  // VPS během Hardcore"). Training a anonymní hra zůstávají dostupné beze
+  // změny.
+  const [showHardcoreProfileUnavailablePrompt, setShowHardcoreProfileUnavailablePrompt] = useState(false);
   const authStatus = useAuthStatus();
+  const object13Profile = useObject13PlayerProfile();
   // Rozehraná Hardcore šňůra (viz zadání "poznat rozehranou hru... hardcore
   // hráč přežije 4 noci, zavře PC, druhý den chce pokračovat") — `currentRun`
   // je počet po sobě dokončených nocí ze serveru (viz useAuthStatus.ts,
@@ -74,6 +83,13 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
   // tyhle hráče už nezobrazuje vůbec.
   const isGoldenGuard = menuBackground === "post_monster";
 
+  // Hardcore je vybraný, ale profil není `ready` (viz zadání "15. Výpadek
+  // VPS během Hardcore") — může nastat i BEZ ručního kliknutí na HARDCORE
+  // (viz hasActiveHardcoreRun efekt výše, který gameMode nastaví na
+  // "hardcore" automaticky), takže se kontroluje na aktuálním `gameMode`,
+  // ne jen uvnitř handleSelectHardcore.
+  const hardcoreBlockedByProfile = gameMode === "hardcore" && object13Profile.loadState.status !== "ready";
+
   // NORMAL/HARDCORE i "Zůstat v Normal" jsou čistě lokální stav (žádný
   // dispatch do app/play/page.tsx, kde normálně žije audio pro ostatní
   // tlačítka) — proto tady volají audioManager přímo, přesně jak to
@@ -91,22 +107,33 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
     audioManager.play(AUDIO_EVENTS.uiClick);
     setGameMode("normal");
     setShowHardcoreLoginPrompt(false);
+    setShowHardcoreProfileUnavailablePrompt(false);
   }
 
   function handleSelectHardcore() {
     audioManager.init();
     // Vlastní zvuk místo obyčejného uiClick (viz zadání "Řev monstra #8") —
     // volba nejtěžšího režimu má mít výraznější odezvu, hraje i když se
-    // nakonec jen zobrazí login prompt (viz showHardcoreLoginPrompt níže).
+    // nakonec jen zobrazí login/profile prompt (viz stavy níže).
     audioManager.play(AUDIO_EVENTS.hardcoreSelectRoar);
     if (authStatus.status === "authenticated") {
+      if (object13Profile.loadState.status !== "ready") {
+        // Profil se ještě načítá nebo je VPS nedostupné — Hardcore se
+        // nesmí spustit v nejasném offline režimu (server-authoritative
+        // inventář). gameMode zůstává, co bylo předtím.
+        setShowHardcoreProfileUnavailablePrompt(true);
+        setShowHardcoreLoginPrompt(false);
+        return;
+      }
       setGameMode("hardcore");
       setShowHardcoreLoginPrompt(false);
+      setShowHardcoreProfileUnavailablePrompt(false);
       return;
     }
     // Nepřihlášený hráč — NEvybírat hardcore potichu, jen zobrazit výzvu.
     // gameMode zůstává "normal" (nebo cokoliv bylo zvolené předtím).
     setShowHardcoreLoginPrompt(true);
+    setShowHardcoreProfileUnavailablePrompt(false);
   }
 
   // Bez bg-* třídy na <main> záměrně — main nezakládá vlastní stacking context
@@ -148,12 +175,13 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
                 (ten jde zvolit jen explicitním kliknutím na NORMAL tlačítko
                 níže, které prompt samo zavře). Skutečné `disabled`, ne jen
                 ztlumený vzhled — dokud hráč neřekne, který mód chce, není co
-                spouštět. */}
+                spouštět. Stejně tak `hardcoreBlockedByProfile` (viz výše) —
+                Hardcore je vybraný, ale profil není `ready`. */}
             <button
               className={`pixel-button console-button console-button--primary tap-target px-6 py-3 text-sm w-full ${
-                showHardcoreLoginPrompt ? "opacity-50 cursor-not-allowed" : ""
+                showHardcoreLoginPrompt || hardcoreBlockedByProfile ? "opacity-50 cursor-not-allowed" : ""
               }`}
-              disabled={showHardcoreLoginPrompt}
+              disabled={showHardcoreLoginPrompt || hardcoreBlockedByProfile}
               onClick={() => onStart(gameMode)}
             >
               {reward.doubleBarrelUnlocked ? COPY.menu.startButtonVeteran : COPY.menu.startButton}
@@ -216,6 +244,12 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
                   </span>
                   {COPY.auth.discordLoginLabel}
                 </a>
+              </div>
+            )}
+
+            {showHardcoreProfileUnavailablePrompt && (
+              <div className="mt-3 border border-gray-600 bg-gray-900/80 p-3 text-left text-[11px] text-gray-300">
+                <p>{COPY.gameMode.hardcoreProfileUnavailableText}</p>
               </div>
             )}
 

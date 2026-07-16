@@ -83,8 +83,20 @@ export type GameAction =
   | { type: "SET_DEBUG_NIGHT"; night: number }
   | { type: "START_BULB_REPLACEMENT" }
   // Puštění tlačítka/pointer leave/cancel před dokončením — viz DoorView.tsx.
-  // No-op, pokud žádná výměna zrovna neběží.
+  // No-op, pokud žádná výměna zrovna neběží. Používá se i jako "zamítnutí"
+  // ze strany orchestrační vrstvy (viz CONFIRM_BULB_REPLACEMENT níže), když
+  // Hardcore server odpoví insufficient_inventory/conflict/unavailable —
+  // stejný no-op bezpečný reset, žádný jiný efekt.
   | { type: "CANCEL_BULB_REPLACEMENT" }
+  // Dispatchuje VÝHRADNĚ orchestrační vrstva (lib/playerProfile/bulbInventoryActions.ts
+  // přes app/play/page.tsx), NIKDY přímo UI — teprve poté, co progres dosáhl
+  // konce (isBulbReplacementReadyToConfirm) A buď (a) gameMode nepersistuje
+  // inventář (Training/anonymní — potvrzuje se rovnou), nebo (b) Hardcore
+  // server-side consumeBulbs(1) uspěl. Až TEĎ se skutečně sníží bulbsRemaining
+  // a opraví roomBulbs — reducer sám žádný fetch/await neprovádí, jen čeká na
+  // tenhle explicitní dispatch. No-op, pokud výměna není ready-to-confirm
+  // (bezpečnostní pojistka proti pozdnímu/zdvojenému dispatchi).
+  | { type: "CONFIRM_BULB_REPLACEMENT" }
   // stressLevel (0..1, viz game/audio/useHeartbeatStress.ts) je volitelný —
   // řídí jen game/core/stressTimeScale.ts, chybí-li, čas běží normální
   // rychlostí (stejné jako stressLevel 0). currentNight (survivedNights + 1,

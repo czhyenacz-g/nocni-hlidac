@@ -17,6 +17,16 @@ describe("GAME_MODE_CONFIG", () => {
     expect(GAME_MODE_CONFIG.hardcore.startingLives).toBe(1);
     expect(GAME_MODE_CONFIG.hardcore.leaderboardEligible).toBe(true);
   });
+
+  it("7. Training (normal) never persists inventory or run stats", () => {
+    expect(GAME_MODE_CONFIG.normal.persistInventory).toBe(false);
+    expect(GAME_MODE_CONFIG.normal.persistRunStats).toBe(false);
+  });
+
+  it("Hardcore persists both inventory and run stats", () => {
+    expect(GAME_MODE_CONFIG.hardcore.persistInventory).toBe(true);
+    expect(GAME_MODE_CONFIG.hardcore.persistRunStats).toBe(true);
+  });
 });
 
 describe("resolveGameMode", () => {

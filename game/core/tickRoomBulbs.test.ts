@@ -60,7 +60,7 @@ describe("TICK — room bulb lifetime", () => {
 
   it("weak but unbroken bulb survives a shift transition with the same remainingMs (via createInitialGameState override)", () => {
     const roomBulbsOverride = { nearRoom: { remainingMs: 8000, maxMs: 30_000, broken: false } };
-    const nextShiftState = createInitialGameState(NIGHT_01, roomBulbsOverride);
+    const nextShiftState = createInitialGameState(NIGHT_01, { roomBulbs: roomBulbsOverride });
 
     expect(nextShiftState.roomBulbs.nearRoom.remainingMs).toBe(8000);
     expect(nextShiftState.roomBulbs.nearRoom.broken).toBe(false);

@@ -398,46 +398,30 @@ function updateRoomBulbs(state: GameState, deltaMs: number): RoomBulbsTickResult
 // přes výsledek updateRoomBulbs výše — kdyby tenhle typ vždycky vracel
 // `roomBulbs` (i "beze změny" = `state.roomBulbs`), spread by v TICKu přebil i
 // skutečně spočítaný drain z updateRoomBulbs, protože ten běží nad
-// ORIGINÁLNÍM `state`, ne nad už-updatovaným. Definované jen tehdy, když
-// výměna tenhle tik skutečně dokončí opravu (a spotřebuje 1 náhradní žárovku).
+// ORIGINÁLNÍM `state`, ne nad už-updatovaným.
 interface BulbReplacementTickResult {
   bulbReplacement: GameState["bulbReplacement"];
-  roomBulbs?: GameState["roomBulbs"];
-  bulbsRemaining?: GameState["bulbsRemaining"];
-  // Stejný "absent, dokud se nemění" vzor jako roomBulbs/bulbsRemaining výše —
-  // přítomné jen na úspěšném dokončení, ať app/play/page.tsx podle změny
-  // spustí bulb_replace_success zvuk + DoorView krátkou hlášku (ne při
-  // startu/cancelu/smrti, viz CANCEL_BULB_REPLACEMENT a ENEMY_ADVANCE).
-  bulbReplaceSuccessSeq?: GameState["bulbReplaceSuccessSeq"];
 }
 
 // Progres výměny žárovky roste, jen dokud je `active` — nezávislé na
 // updateRoomBulbs výše (ta žárovku nikdy neopraví, jen ji nechá prasknout,
 // dokud běží výměna zůstává `broken: true` a `isNearRoomLightActive` tak dál
-// vrací `false`, žádný konflikt). Po dosažení BULB_REPLACE_DURATION_MS se
-// žárovka opraví na plnou životnost a `bulbReplacement` spadne zpět na
-// neaktivní — jednorázově, ne opakovaně (`active` se dál nekontroluje, jen
-// se jednou přepne na `false`).
+// vrací `false`, žádný konflikt). DŮLEŽITÉ (viz zadání "profilový kontrakt
+// V1" oprava architektonické odchylky): tenhle tik už SÁM O SOBĚ výměnu
+// nedokončuje — jen zvedá `progressMs`, zastaví se (clamp) na
+// `BULB_REPLACE_DURATION_MS` a zůstává `active`. Skutečné spotřebování
+// náhradní žárovky (bulbsRemaining-1) a oprava roomBulbs je až
+// `CONFIRM_BULB_REPLACEMENT` akce níže — tu dispatchuje VÝHRADNĚ
+// orchestrační vrstva (app/play/page.tsx), a to buď rovnou (Training/
+// anonymní), nebo teprve PO úspěšném potvrzení serverem (Hardcore, viz
+// lib/playerProfile/bulbInventoryActions.ts). Reducer sám žádný fetch/await
+// neprovádí — jen čeká na explicitní CONFIRM/CANCEL.
 function updateBulbReplacement(state: GameState, deltaMs: number): BulbReplacementTickResult {
   if (!state.bulbReplacement.active) {
     return { bulbReplacement: state.bulbReplacement };
   }
 
-  const progressMs = state.bulbReplacement.progressMs + deltaMs;
-  if (progressMs >= BULB_REPLACE_DURATION_MS) {
-    return {
-      bulbReplacement: { active: false, startedAtMs: null, progressMs: 0 },
-      roomBulbs: {
-        ...state.roomBulbs,
-        nearRoom: { ...state.roomBulbs.nearRoom, remainingMs: state.roomBulbs.nearRoom.maxMs, broken: false },
-      },
-      // START_BULB_REPLACEMENT nejde spustit s bulbsRemaining <= 0, takže tady
-      // nemůže jít pod 0 — žádný clamp navíc.
-      bulbsRemaining: state.bulbsRemaining - 1,
-      bulbReplaceSuccessSeq: state.bulbReplaceSuccessSeq + 1,
-    };
-  }
-
+  const progressMs = Math.min(BULB_REPLACE_DURATION_MS, state.bulbReplacement.progressMs + deltaMs);
   return { bulbReplacement: { ...state.bulbReplacement, progressMs } };
 }
 
@@ -461,6 +445,28 @@ export function canReplaceBulb(state: GameState): boolean {
   if (state.bulbReplacement.active) return false;
   if (state.bulbsRemaining <= 0) return false;
   return true;
+}
+
+/**
+ * Progres dosáhl konce a čeká na `CONFIRM_BULB_REPLACEMENT` (viz
+ * updateBulbReplacement výše) — orchestrační vrstva (app/play/page.tsx) tohle
+ * sleduje a podle toho buď rovnou potvrdí (Training/anonymní), nebo napřed
+ * zavolá server (Hardcore).
+ */
+export function isBulbReplacementReadyToConfirm(state: GameState): boolean {
+  return state.bulbReplacement.active && state.bulbReplacement.progressMs >= BULB_REPLACE_DURATION_MS;
+}
+
+/**
+ * Jestli aktuálně běžící výměnu (na kterou se dosud NEDOSÁHLO konce
+ * progresu) smí zavření dveří/odchod od dveří/smrt bez následku zrušit —
+ * `false`, jakmile je `isBulbReplacementReadyToConfirm` (výměna je fyzicky
+ * hotová, čeká jen na potvrzení serveru/reduceru, ne na riziko u dveří) —
+ * viz TOGGLE_DOOR/LOOK_AT_ akce níže, které dřív cancelovaly KAŽDÉ
+ * `bulbReplacement.active`, i těsně po dokončení progresu.
+ */
+function isBulbReplacementCancelableByViewChange(state: GameState): boolean {
+  return state.bulbReplacement.active && !isBulbReplacementReadyToConfirm(state);
 }
 
 // Progres držení "Jít ven" roste, jen dokud je `active` — stejná mechanika
@@ -609,25 +615,20 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         // opravuje obojí v jednom místě, beze změny START_SHIFT/RESTART_SHIFT
         // (ty už svoje argumenty dostávaly správně).
         return {
-          ...createInitialGameState(
-            night,
-            undefined,
-            undefined,
-            undefined,
-            state.gameMode,
-            state.livesRemaining,
-            state.hasShotgun,
-            state.shotgunAmmo,
-            state.hasDoubleBarrelShotgun,
-            undefined,
+          ...createInitialGameState(night, {
+            gameMode: state.gameMode,
+            livesRemaining: state.livesRemaining,
+            hasShotgun: state.hasShotgun,
+            shotgunAmmo: state.shotgunAmmo,
+            hasDoubleBarrelShotgun: state.hasDoubleBarrelShotgun,
             // Stejný regresní bug jako gameMode/lives/shotgun výše (viz
             // komentář nahoře) — bez tohohle by SHOW_BRIEFING tiše vynuloval
             // GameState.monsterKilledThisRun na KAŽDÉM přechodu do další noci
             // (i uprostřed jednoho Hardcore runu), než ho handleBeginShift
             // vůbec stihne přečíst pro RESTART_SHIFT (viz
             // app/play/page.tsx#handleBeginShift, game/core/night30Ending.ts).
-            state.monsterKilledThisRun,
-          ),
+            monsterKilledThisRun: state.monsterKilledThisRun,
+          }),
           audioMuted: state.audioMuted,
           officeDoorLockMs: state.officeDoorLockMs,
           screen: "briefing",
@@ -635,19 +636,17 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
 
       case "START_SHIFT":
         return {
-          ...createInitialGameState(
-            night,
-            action.roomBulbs,
-            action.bulbsRemaining,
-            action.nightFeatures,
-            action.gameMode,
-            action.livesRemaining,
-            action.hasShotgun,
-            action.shotgunAmmo,
-            action.hasDoubleBarrelShotgun,
-            undefined,
-            action.monsterKilledThisRun,
-          ),
+          ...createInitialGameState(night, {
+            roomBulbs: action.roomBulbs,
+            bulbsRemaining: action.bulbsRemaining,
+            nightFeatures: action.nightFeatures,
+            gameMode: action.gameMode,
+            livesRemaining: action.livesRemaining,
+            hasShotgun: action.hasShotgun,
+            shotgunAmmo: action.shotgunAmmo,
+            hasDoubleBarrelShotgun: action.hasDoubleBarrelShotgun,
+            monsterKilledThisRun: action.monsterKilledThisRun,
+          }),
           audioMuted: state.audioMuted,
           officeDoorLockMs: state.officeDoorLockMs,
           screen: "playing",
@@ -656,19 +655,17 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
 
       case "RESTART_SHIFT":
         return {
-          ...createInitialGameState(
-            night,
-            action.roomBulbs,
-            action.bulbsRemaining,
-            action.nightFeatures,
-            action.gameMode,
-            action.livesRemaining,
-            action.hasShotgun,
-            action.shotgunAmmo,
-            action.hasDoubleBarrelShotgun,
-            undefined,
-            action.monsterKilledThisRun,
-          ),
+          ...createInitialGameState(night, {
+            roomBulbs: action.roomBulbs,
+            bulbsRemaining: action.bulbsRemaining,
+            nightFeatures: action.nightFeatures,
+            gameMode: action.gameMode,
+            livesRemaining: action.livesRemaining,
+            hasShotgun: action.hasShotgun,
+            shotgunAmmo: action.shotgunAmmo,
+            hasDoubleBarrelShotgun: action.hasDoubleBarrelShotgun,
+            monsterKilledThisRun: action.monsterKilledThisRun,
+          }),
           audioMuted: state.audioMuted,
           officeDoorLockMs: state.officeDoorLockMs,
           screen: "playing",
@@ -718,6 +715,27 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
       case "CANCEL_BULB_REPLACEMENT":
         if (!state.bulbReplacement.active) return state;
         return { ...state, bulbReplacement: INACTIVE_BULB_REPLACEMENT };
+
+      // Viz gameActions.ts pro plné zdůvodnění — jediné místo, které
+      // skutečně spotřebuje náhradní žárovku a opraví roomBulbs. No-op,
+      // pokud výměna zrovna není ready-to-confirm (nikdy nespotřebuje žárovku
+      // navíc kvůli pozdnímu/zdvojenému dispatchi orchestrační vrstvy).
+      case "CONFIRM_BULB_REPLACEMENT": {
+        if (!isBulbReplacementReadyToConfirm(state)) return state;
+        return {
+          ...state,
+          bulbReplacement: INACTIVE_BULB_REPLACEMENT,
+          roomBulbs: {
+            ...state.roomBulbs,
+            nearRoom: { ...state.roomBulbs.nearRoom, remainingMs: state.roomBulbs.nearRoom.maxMs, broken: false },
+          },
+          // isBulbReplacementReadyToConfirm garantuje, že výměna vůbec mohla
+          // začít (canReplaceBulb vyžadovalo bulbsRemaining > 0 na startu) —
+          // žádný clamp navíc potřeba.
+          bulbsRemaining: state.bulbsRemaining - 1,
+          bulbReplaceSuccessSeq: state.bulbReplaceSuccessSeq + 1,
+        };
+      }
 
       case "START_EMERGENCY_RUN_WINDUP": {
         // Stejný vzor jako START_BULB_REPLACEMENT — riskantní ruční akce,
@@ -801,8 +819,11 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           // Výměna žárovky vyžaduje otevřené dveře po celou dobu (riziko musí
           // trvat, ne jen na startu) — zavření dveří uprostřed výměny ji
           // zruší beze změny životnosti/broken (viz DoorView.tsx, START_BULB_REPLACEMENT).
+          // Pokud už progres dosáhl konce (isBulbReplacementReadyToConfirm),
+          // zavření dveří ji NERUŠÍ — fyzicky je hotová, čeká jen na potvrzení
+          // (viz isBulbReplacementCancelableByViewChange výše).
           bulbReplacement:
-            !state.doorClosed && state.bulbReplacement.active ? INACTIVE_BULB_REPLACEMENT : state.bulbReplacement,
+            !state.doorClosed && isBulbReplacementCancelableByViewChange(state) ? INACTIVE_BULB_REPLACEMENT : state.bulbReplacement,
         };
 
       case "TOGGLE_LIGHT":
@@ -837,7 +858,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         return {
           ...state,
           playerView: "desk",
-          bulbReplacement: state.bulbReplacement.active ? INACTIVE_BULB_REPLACEMENT : state.bulbReplacement,
+          bulbReplacement: isBulbReplacementCancelableByViewChange(state) ? INACTIVE_BULB_REPLACEMENT : state.bulbReplacement,
           // Odchod z left_wall zruší i rozběhnuté držení "Jít ven" (stejný
           // důvod jako bulbReplacement výše) — riziko musí trvat, dokud hráč
           // fyzicky drží tlačítko, ne přežít přechod na jiný pohled.
@@ -856,7 +877,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           activeCameraId: null,
           cameraViewMode: "overview",
           cameraFocusUntilMs: null,
-          bulbReplacement: state.bulbReplacement.active ? INACTIVE_BULB_REPLACEMENT : state.bulbReplacement,
+          bulbReplacement: isBulbReplacementCancelableByViewChange(state) ? INACTIVE_BULB_REPLACEMENT : state.bulbReplacement,
           emergencyRunWindup: state.emergencyRunWindup.active ? INACTIVE_EMERGENCY_RUN_WINDUP : state.emergencyRunWindup,
           thinkItOverWindup: state.thinkItOverWindup.active ? INACTIVE_THINK_IT_OVER_WINDUP : state.thinkItOverWindup,
         };
@@ -873,7 +894,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           activeCameraId: null,
           cameraViewMode: "overview",
           cameraFocusUntilMs: null,
-          bulbReplacement: state.bulbReplacement.active ? INACTIVE_BULB_REPLACEMENT : state.bulbReplacement,
+          bulbReplacement: isBulbReplacementCancelableByViewChange(state) ? INACTIVE_BULB_REPLACEMENT : state.bulbReplacement,
         };
 
       case "LOOK_AT_MAP":
@@ -888,7 +909,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           activeCameraId: null,
           cameraViewMode: "overview",
           cameraFocusUntilMs: null,
-          bulbReplacement: state.bulbReplacement.active ? INACTIVE_BULB_REPLACEMENT : state.bulbReplacement,
+          bulbReplacement: isBulbReplacementCancelableByViewChange(state) ? INACTIVE_BULB_REPLACEMENT : state.bulbReplacement,
           emergencyRunWindup: state.emergencyRunWindup.active ? INACTIVE_EMERGENCY_RUN_WINDUP : state.emergencyRunWindup,
           thinkItOverWindup: state.thinkItOverWindup.active ? INACTIVE_THINK_IT_OVER_WINDUP : state.thinkItOverWindup,
         };
@@ -1203,16 +1224,15 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         // sama vypne, jakmile hráč vyřeší všechny tři kroky — jinak by
         // libovolná POZDĚJŠÍ, nesouvisející porucha generátoru/přirozeně
         // prasklá žárovka omylem znovu ukázala krizové texty (viz
-        // resolveOfficeBreachPhase, který čte stejná pole). Merguje stejné
-        // hodnoty, jaké skutečně skončí v returnovaném stavu (roomBulbs z
-        // bulbReplacementUpdate MÁ přednost před roomBulbsUpdate, přesně
-        // jako spread pořadí níže).
+        // resolveOfficeBreachPhase, který čte stejná pole). `updateBulbReplacement`
+        // už žárovku sám neopravuje (viz komentář výše u tý funkce) — jediný
+        // zdroj pravdy pro `broken` je teď `roomBulbsUpdate.roomBulbs`.
         const officeBreachAftermathActive =
           state.officeBreachAftermathActive &&
           !isOfficeBreachResolved({
             doorClosed: state.doorClosed,
             generatorState: generatorUpdate.generatorState,
-            bulbBroken: (bulbReplacementUpdate.roomBulbs ?? roomBulbsUpdate.roomBulbs).nearRoom.broken,
+            bulbBroken: roomBulbsUpdate.roomBulbs.nearRoom.broken,
           });
 
         return {

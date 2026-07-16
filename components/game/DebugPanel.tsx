@@ -13,16 +13,8 @@ import { GHOUL_CAMERA_ATTACK_FRAMES_DURATION_MS } from "@/game/core/cameraDamage
 import { getGhoulCameraAttackAnimation } from "@/game/cameras/cameraAttackAnimation.object13";
 import { resolveGhoulCameraAttackFrameState } from "@/game/cameras/cameraAttackAnimation";
 import { useObject13PlayerProfile } from "@/components/playerProfile/Object13PlayerProfileProvider";
+import { BulbInventoryOperationState, deriveBulbInventoryConfirmOutcome } from "@/game/inventory/bulbInventoryController";
 import DoorControl from "./DoorControl";
-
-/**
- * Development-only klíč pro "TEST PROFILE WRITE" (viz zadání "krok 1B",
- * "10. Technický test zápisu") — jasně označený jako dočasný/technický,
- * NIKDY herní data. Jediné, co tahle akce dělá s `profileData`, je přidat/
- * přepsat přesně TENHLE jeden klíč — zbytek existujícího `profileData`
- * (v týhle fázi vždy `{}`, ale kód na to nespoléhá) se zachová beze změny.
- */
-const DEV_PROFILE_WRITE_TEST_KEY = "_devConnectionTest";
 
 const GHOUL_CAMERA_ATTACK_ANIMATION_IDS: GhoulCameraAttackAnimationId[] = [
   "outer_yard",
@@ -103,19 +95,48 @@ export default function DebugPanel({
   // tlačítko je navíc podmíněné `process.env.NODE_ENV !== "production"`
   // (viz JSX níže) — dvojitá pojistka, ne spoléhání na jediný gate.
   const object13Profile = useObject13PlayerProfile();
+  // Vlastní pending stav pro dev-only ADD/CONSUME tlačítka (viz zadání "15.
+  // Development/debug") — nezávislý na app/play/page.tsx#bulbInventoryOperationState
+  // (ten řeší jen skutečné herní události), čte se VŽDY (Rules of Hooks),
+  // stejně jako object13Profile výše.
+  const [bulbDebugOperationState, setBulbDebugOperationState] = useState<BulbInventoryOperationState>({ status: "idle" });
 
   if (!DEBUG_PANEL_ENABLED) return null;
 
+  // Dev-only přímé volání SKUTEČNÉHO add/consume endpointu (viz zadání "15.
+  // Development/debug") — stejná cesta jako běžná herní logika
+  // (object13Profile.addBulbs/consumeBulbs), jen bez vazby na konkrétní
+  // herní událost. Vlastní pending guard, ať dvojklik nespustí dvě volání.
+  function handleDebugAddBulb() {
+    if (bulbDebugOperationState.status === "adding" || bulbDebugOperationState.status === "consuming") return;
+    setBulbDebugOperationState({ status: "adding" });
+    void object13Profile.addBulbs(1).then((result) => {
+      const outcome = deriveBulbInventoryConfirmOutcome(result);
+      setBulbDebugOperationState(outcome.outcome === "confirmed" ? { status: "idle" } : { status: "error", error: outcome.outcome });
+    });
+  }
+
+  function handleDebugConsumeBulb() {
+    if (bulbDebugOperationState.status === "adding" || bulbDebugOperationState.status === "consuming") return;
+    setBulbDebugOperationState({ status: "consuming" });
+    void object13Profile.consumeBulbs(1).then((result) => {
+      const outcome = deriveBulbInventoryConfirmOutcome(result);
+      setBulbDebugOperationState(outcome.outcome === "confirmed" ? { status: "idle" } : { status: "error", error: outcome.outcome });
+    });
+  }
+
+  // Bezpečný technický test zápisu (viz zadání "profilový kontrakt V1 +
+  // inventář žárovek", "6. Obecný PUT profilu") — profil se jen znovu uloží
+  // BEZE ZMĚNY (stejný `profileData`/`profileVersion`, jen aktuální
+  // `expectedRevision`), ať ověří celou write cestu (proxy -> VPS ->
+  // revision +1) bez posílání jakéhokoliv klíče mimo V1 kontrakt.
   function handleTestProfileWrite() {
     if (object13Profile.loadState.status !== "ready") return;
     const current = object13Profile.loadState.profile;
     void object13Profile.save({
       expectedRevision: current.revision,
       profileVersion: current.profileVersion,
-      profileData: {
-        ...current.profileData,
-        [DEV_PROFILE_WRITE_TEST_KEY]: { updatedAt: new Date().toISOString() },
-      },
+      profileData: current.profileData,
     });
   }
 
@@ -387,14 +408,13 @@ export default function DebugPanel({
           </div>
         </div>
 
-        {/* Object13PlayerProfile (viz zadání "krok 1B") — VÝHRADNĚ
-            development, nikdy v produkčním buildu, i kdyby měl hráč
-            DebugPanel nějak otevřený (viz zadání "nesmí být dostupná v
-            produkčním běžném UI... nesmí existovat mimo development/debug
-            režim"). "TEST PROFILE WRITE" zapisuje VÝHRADNĚ dočasný
-            DEV_PROFILE_WRITE_TEST_KEY klíč — žádná herní hodnota
-            (žárovky/zbraně/nastavení) se sem v týhle fázi vůbec nepřidává,
-            viz game/core/object13PlayerProfile.ts. */}
+        {/* Object13PlayerProfile (viz zadání "krok 1B" a "profilový kontrakt
+            V1 + inventář žárovek") — VÝHRADNĚ development, nikdy v
+            produkčním buildu, i kdyby měl hráč DebugPanel nějak otevřený
+            (viz zadání "nesmí být dostupná v produkčním běžném UI... nesmí
+            existovat mimo development/debug režim"). "TEST PROFILE WRITE"
+            profil jen znovu uloží beze změny (viz handleTestProfileWrite
+            výše) — nikdy neposílá klíč mimo V1 kontrakt. */}
         {process.env.NODE_ENV !== "production" && (
           <div className="border-t border-gray-700 pt-2 mt-1">
             <div className="text-gray-400 mb-1">Object13 profile (dev only):</div>
@@ -403,7 +423,7 @@ export default function DebugPanel({
               <>
                 <div>revision: {object13Profile.loadState.profile.revision}</div>
                 <div>profileVersion: {object13Profile.loadState.profile.profileVersion}</div>
-                <div>profileData keys: {Object.keys(object13Profile.loadState.profile.profileData).length}</div>
+                <div>bulb: {object13Profile.loadState.profile.profileData.inventory.items.bulb ?? 0}</div>
               </>
             )}
             <div>save status: {object13Profile.saveState.status}</div>
@@ -433,6 +453,53 @@ export default function DebugPanel({
                   Reload after conflict
                 </button>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Bulb inventory debug (viz zadání "profilový kontrakt V1" —
+            "15. Development/debug") — VÝHRADNĚ development, stejný dvojitý
+            gate jako sekce výše. Tlačítka volají SKUTEČNÝ
+            add/consume endpoint (object13Profile.addBulbs/consumeBulbs),
+            NIKDY obecný save() — stejná cesta, kterou používá běžná herní
+            logika. Vlastní `bulbDebugOperationState`, ať dvojklik nemůže
+            spustit dvě operace najednou (stejný princip jako
+            app/play/page.tsx#bulbInventoryPendingRef). */}
+        {process.env.NODE_ENV !== "production" && (
+          <div className="border-t border-gray-700 pt-2 mt-1">
+            <div className="text-gray-400 mb-1">Bulb inventory (dev only):</div>
+            <div>runtime bulbsRemaining: {state.bulbsRemaining}</div>
+            <div>
+              server bulb:{" "}
+              {object13Profile.loadState.status === "ready" ? (object13Profile.loadState.profile.profileData.inventory.items.bulb ?? 0) : "—"}
+            </div>
+            <div>
+              runtime === server:{" "}
+              {object13Profile.loadState.status === "ready"
+                ? String(state.bulbsRemaining === (object13Profile.loadState.profile.profileData.inventory.items.bulb ?? 0))
+                : "—"}
+            </div>
+            <div>pending: {bulbDebugOperationState.status}</div>
+            {bulbDebugOperationState.status === "error" && (
+              <div className="text-red-400">error: {bulbDebugOperationState.error}</div>
+            )}
+            <div className="flex gap-1.5 mt-1.5">
+              <button
+                type="button"
+                className="pixel-button px-2 py-1 text-xs flex-1"
+                onClick={handleDebugAddBulb}
+                disabled={bulbDebugOperationState.status !== "idle" && bulbDebugOperationState.status !== "error"}
+              >
+                DEBUG ADD BULB
+              </button>
+              <button
+                type="button"
+                className="pixel-button px-2 py-1 text-xs flex-1"
+                onClick={handleDebugConsumeBulb}
+                disabled={bulbDebugOperationState.status !== "idle" && bulbDebugOperationState.status !== "error"}
+              >
+                DEBUG CONSUME BULB
+              </button>
             </div>
           </div>
         )}

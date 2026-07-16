@@ -1775,31 +1775,219 @@ serverový profil a nahradí jím `ready` stav). Žádné merge UI, žádné vyn
 Gate `process.env.NODE_ENV !== "production"` (Next.js `NODE_ENV` je vždy inlinovaný do
 klientského bundlu, bez potřeby `NEXT_PUBLIC_` prefixu) navíc k existujícímu
 `DEBUG_PANEL_ENABLED`/pravému-tlačítku-na-"Noc {n}" mechanismu. Tlačítko "TEST PROFILE
-WRITE" načte aktuální `profileData`, přidá/aktualizuje výhradně dev-only klíč
-`_devConnectionTest: {updatedAt: <ISO timestamp>}` a uloží s aktuálním `expectedRevision`
-— nikde mimo tenhle dev nástroj se `profileData` nečte ani nezapisuje (viz "profileData je
-pořád jen opaque blob" níže).
+WRITE" (od kroku "profilový kontrakt V1 + inventář žárovek" níže) profil jen ZNOVU ULOŽÍ
+BEZE ZMĚNY (stejné `profileData`/`profileVersion`, jen aktuální `expectedRevision`) — ať
+ověří celou write cestu bez posílání jakéhokoliv klíče mimo V1 kontrakt (starší
+`_devConnectionTest` klíč byl odstraněn, V1 validace by ho stejně odmítla).
 
-### `profileData` je pořád jen opaque blob
+### `profileData` má od kroku "profilový kontrakt V1 + inventář žárovek" přesný obsah
 
-Herní logika k němu v tomhle kroku NEPŘISTUPUJE vůbec — žádné
-`profileData.inventory`/`.bulbs`/`.weapons`/`.office` nikde v kódu. Načítá/ukládá se jen
-jako celek přes klientskou service vrstvu (bod 5 výše). Skutečný obsah a napojení na
-žárovky/zbraně/nastavení je vyloženě mimo rozsah kroku 1B — přijde jako samostatný
-následující krok.
+Viz samostatná sekce "Profilový kontrakt V1 a inventář žárovek" níže — `profileData` už
+NENÍ opaque blob, má přesný validovaný tvar (`Object13PlayerProfileDataV1`).
 
 ### Testování
 
-`game/core/object13PlayerProfile.test.ts` (26 testů, čisté funkce), a tři
+`game/core/object13PlayerProfile.test.ts` (čisté funkce, DTO validace/derivace stavů),
+`game/core/object13PlayerProfileInventory.test.ts` (registr/default/validátor V1 tvaru), a
 mock-`fetch`-based sady bez potřeby jsdom:
-`lib/playerProfile/remoteObject13PlayerProfile.test.ts` (12),
-`lib/playerProfile/playerProfileRequestHandlers.test.ts` (16),
-`lib/playerProfile/object13PlayerProfileClient.test.ts` (13). Provider/hook samotný
+`lib/playerProfile/remoteObject13PlayerProfile.test.ts`,
+`lib/playerProfile/playerProfileRequestHandlers.test.ts`,
+`lib/playerProfile/object13PlayerProfileClient.test.ts`. Provider/hook samotný
 (`Object13PlayerProfileProvider.tsx`) nemá jak být nezávisle otestovaný — repozitář nemá
 testing-library/jsdom infrastrukturu — takže Strict-Mode dedup, cleanup po unmountu a
 hook-level dedup souběžných `load()` volání jsou správné konstrukcí (stejný ověřený
 `cancelled`/ref-guard vzor jako `useAuthStatus.ts`), ne nezávisle ověřené automatickým
 testem.
+
+## Profilový kontrakt V1 a inventář žárovek
+
+Navazuje na "Obecný serverový profil" výše — `profileData` (`profileVersion: 1`) má teď
+přesný, validovaný obsah místo prázdného `{}`. Server (project-hub-api) i klient
+(tenhle repozitář) mají KAŽDÝ svou vlastní kopii stejného kontraktu (žádný sdílený balíček
+mezi repozitáři) — server v `src/modules/nocniHlidac/playerProfileInventory.ts`, klient v
+`game/core/object13PlayerProfileInventory.ts`. Tvar:
+
+```ts
+type Object13InventoryItemId = "bulb"; // budoucí položka = nový klíč v registru
+type Object13InventoryItems = Partial<Record<Object13InventoryItemId, number>>;
+type Object13PlayerProfileDataV1 = { inventory: { items: Object13InventoryItems } };
+```
+
+### Item registry — jediný zdroj default/min/max
+
+`OBJECT13_INVENTORY_ITEM_REGISTRY` (oba repozitáře) — pro `bulb`:
+`defaultQuantity`/`minQuantity: 0`/`maxQuantity: 999`. `maxQuantity` je čistě technický
+bezpečnostní strop (ochrana proti poškozené hodnotě), NE herní limit — hra sama žádný
+inventářový strop nemá. Na klientské straně `defaultQuantity` čte
+`BULBS_CONFIG.startingCount` (`game/core/bulbsConfig.ts`) — JEDINÁ centrální definice v
+tomhle repozitáři, žádné ručně zkopírované číslo (viz zadání "nevkládej číslo ručně do
+více souborů"). Server svou kopii nutně duplikuje staticky (jiný repozitář, žádný
+cross-repo import za buildu) — změna výchozí hodnoty žárovek vyžaduje ruční synchronizaci
+obou repozitářů, zdokumentováno v `project-hub-api/docs/operations/nocni-hlidac.md`.
+`createDefaultObject13PlayerProfileDataV1()` vrací `{inventory: {items: {bulb: 10}}}`,
+NIKDY `{}` — nový profil vždy začíná s každou registrovanou položkou na jejím defaultu.
+Změna `defaultQuantity` ovlivní jen NOVĚ VYTVOŘENÉ profily, nikdy existující řádky.
+
+### Validace (server i klient, stejná pravidla)
+
+`validateObject13PlayerProfileDataV1` — plně whitelistovaná: jediný top-level klíč
+`inventory`, jediný vnořený klíč `items`, klíče `items` musí být ID z registru, hodnoty
+celá čísla v `[minQuantity, maxQuantity]`. Cokoliv jiné → odmítnutí, žádný silent
+fallback. Server normalizuje starý/neplatný profil (typicky pre-tohohle-kroku `{}`) při
+GET a PERZISTUJE opravu (revision +1, jen když se opravdu něco mění) — viz
+project-hub-api docs. Klient (`isValidObject13PlayerProfileDto`) validuje CELOU odpověď
+znovu nezávisle jako defense-in-depth, ne jako jediný zdroj pravdy.
+
+### Serverové doménové operace — `POST .../inventory/bulb/add|consume`
+
+Běžná herní logika NIKDY nepoužívá obecný `PUT /nocni-hlidac/player-profile`/
+`saveObject13PlayerProfile()` pro změnu žárovek — jen tyhle dvě dedikované operace (viz
+`lib/playerProfile/object13PlayerProfileClient.ts#addBulbsToProfile`/
+`consumeBulbsFromProfile`, proxovány přes `app/api/player/profile/inventory/bulb/add|consume`,
+server-side `playerProfileInventoryRoutes.ts`/`playerProfileInventoryService.ts`). Stejný
+optimistic-locking princip jako obecný PUT (atomický `updateMany` na
+`discordUserId AND revision`). Doménové stavy navíc k `revision_conflict` (409):
+`exceeds_maximum` (add by přesáhl registr max) a `insufficient_inventory` (consume by šel
+pod nulu) — obojí 409, ale s vlastním `error` kódem, nikdy zaměněné s revision konfliktem.
+
+### `Object13PlayerProfileProvider` — `addBulbs`/`consumeBulbs`
+
+Rozšíření Provideru o `addBulbs(amount)`/`consumeBulbs(amount)` — použijí aktuální
+`revision` z `loadState`, po úspěchu nahradí CELÝ profil odpovědí serveru (`nextLoadState`
+v `deriveSaveStateFromInventoryOperationResult`, `game/core/object13PlayerProfile.ts`), při
+409 revision konfliktu přejdou do `saveState: "conflict"` (stejné chování jako obecný
+`save()`), při doménovém 409 do vlastního `saveState.status` (`"exceeds_maximum"` /
+`"insufficient_inventory"`) — NIKDY zaměněné za obecnou `"error"`. Žádný slepý retry v
+žádném z těchto stavů.
+
+### Training vs Hardcore — `GameModePersistencePolicy`
+
+Rozšíření `GAME_MODE_CONFIG` (`game/core/gameMode.ts`) o `persistInventory`/
+`persistRunStats` (`leaderboardEligible` už existovalo, sémanticky odpovídá
+"submitLeaderboard" ze zadání). Training (`normal`): obojí `false` — počet žárovek se
+načte jako výchozí pracovní stav, ale změny (nález/spotřeba) se na VPS nikdy nezapisují.
+Hardcore: obojí `true`. Jediné centrální místo — žádné rozeseté
+`if (gameMode === "hardcore")` po `app/play/page.tsx`.
+
+### Zdroj žárovek při startu směny (`resolveStartingBulbsRemaining`)
+
+`game/core/bulbInventory.ts#resolveStartingBulbsRemaining(loadState)` — přihlášený hráč s
+`ready` profilem: VPS `profile.inventory.items.bulb` je AUTORITATIVNÍ, localStorage se
+nepoužije jako fallback vůbec. Cokoliv jiné (anonymní `unauthorized`, ještě se načítá
+`idle`/`loading`, VPS nedostupné `unavailable`) čte lokální `getBulbsRemaining()` — hra
+zůstává hratelná v lokálním fallback režimu, ale beze změny se nikdy automaticky
+nepropisuje zpátky do profilu (žádný merge). `app/play/page.tsx#handleBeginShift` volá
+tuhle funkci místo dřívějšího přímého `getBulbsRemaining()` — viz "kdy se žárovky
+zapisují" níže pro přesný mechanismus potvrzení.
+
+### Hardcore start vyžaduje `ready` profil
+
+`MainMenuScreen.tsx#handleSelectHardcore` — přihlášený hráč, jehož
+`useObject13PlayerProfile().loadState.status !== "ready"`, dostane
+`hardcoreProfileUnavailableText` prompt místo přepnutí na Hardcore (`gameMode` zůstává
+beze změny). `hardcoreBlockedByProfile` navíc blokuje i samotné START tlačítko, kdyby se
+profil stal nedostupným PO výběru Hardcore (např. přes automatický přepnutí na Hardcore u
+rozehrané šňůry, viz `hasActiveHardcoreRun`). Training a anonymní hra zůstávají dostupné
+beze změny — důvod: Hardcore je server-authoritative pro inventář, nesmí běžet v nejasném
+offline režimu (žádná offline sync queue).
+
+### Kdy se žárovky zapisují na VPS — KAŽDÁ trvalá změna se potvrzuje V OKAMŽIKU, kdy nastane
+
+**Architektonická oprava** (nahrazuje dřívější "souhrnný delta commit na konci směny" —
+viz zadání "profilový kontrakt V1 + inventář žárovek", krok 2: "Toto nechci... Ne na konci
+směny. Ne souhrnnou deltou. Ne odvozením z konečného počtu."). V Hardcore se KAŽDÁ trvalá
+inventářová změna potvrzuje serverem přesně v okamžiku, kdy nastane — `death`/`win` samy o
+sobě už žádný inventory request neposílají (ověřeno testem, viz
+`app/play/bulbInventoryArchitecture.test.ts`).
+
+**Reducer zůstává synchronní a čistý** — `game/core/gameReducer.ts` nemá žádný fetch/await.
+Ruční výměna žárovky u dveří (`bulbReplacement`) je teď DVOUFÁZOVÁ:
+1. `TICK` zvedá `bulbReplacement.progressMs`, ale po dosažení `BULB_REPLACE_DURATION_MS` ho
+   jen CLAMPNE na maximum a `active` zůstane `true` — `updateBulbReplacement` už sám
+   žárovku neopravuje ani nespotřebovává (viz `gameReducer.ts`, dřívější přímé
+   dokončení bylo přesně ta věc, kterou tenhle krok opravuje).
+2. `isBulbReplacementReadyToConfirm(state)` (exportovaná čistá funkce) řekne orchestrační
+   vrstvě "výměna je fyzicky hotová, čeká na potvrzení". Zavření dveří/odchod od dveří/smrt
+   uprostřed PROGRESU pořád výměnu zruší beze spotřeby (`isBulbReplacementCancelableByViewChange`
+   vrátí `false`, jakmile je `readyToConfirm` — fyzicky dokončená akce se navigací pryč
+   už neruší, jen čeká na potvrzení).
+3. Teprve explicitní `CONFIRM_BULB_REPLACEMENT` akce (gameActions.ts) skutečně sníží
+   `bulbsRemaining` a opraví `roomBulbs` — no-op, pokud výměna není `readyToConfirm`.
+   `CANCEL_BULB_REPLACEMENT` (existující akce) slouží i jako "server odmítl" zamítnutí.
+
+**Orchestrace** (`app/play/page.tsx` + `game/inventory/bulbInventoryController.ts`, čistá
+rozhodovací vrstva bez Reactu/fetch):
+- `resolveBulbInventoryPersistenceMode(gameMode, loadState)` → `"local"` (Training/anonymní
+  — potvrdí se OKAMŽITĚ, žádné čekání) nebo `"server"` (Hardcore + `ready` profil).
+- `decideBulbReplacementConfirmAction({readyToConfirm, operationPending, needsReload, gameMode, loadState})`
+  → `"none"` / `"confirm_immediately"` / `"cancel_blocked_needs_reload"` / `"call_server"` —
+  VEŠKERÁ větvící logika `useEffect` v `app/play/page.tsx` je v týhle jedné čisté funkci,
+  testovatelné bez jsdom (viz `game/inventory/bulbInventoryController.test.ts`).
+- Efekt v `app/play/page.tsx` sleduje `isBulbReplacementReadyToConfirm(state)` a podle
+  `decideBulbReplacementConfirmAction` buď rovnou dispatchne `CONFIRM_BULB_REPLACEMENT`
+  (Training/anonymní), nebo zavolá `object13Profile.consumeBulbs(1)` a dispatchne
+  `CONFIRM_BULB_REPLACEMENT` teprve po úspěchu (`deriveBulbInventoryConfirmOutcome`
+  mapuje `insufficient_inventory`/`exceeds_maximum`/`conflict`/`unavailable` na
+  `CANCEL_BULB_REPLACEMENT` — výměna se nedokončí, žárovka se nevymění).
+
+**Denní servis** (`applyDailyBulbService`, přežitá směna) je SAMOSTATNÁ, TŘETÍ explicitní
+inventářová událost (vedle ruční výměny u dveří a — zatím nevyužité — akvizice), NE
+souhrnná synchronizace/delta na konci směny: spotřebovává náhradní žárovku stejně jako
+ruční výměna, takže je v Hardcore stejně potvrzená serverem, jen svázaná s přechodem na
+`win`, ne s dveřmi. `RoomBulbsState` má dnes jediný klíč (`nearRoom`), takže jde vždy
+nejvýš o JEDNO `consumeBulbs(1)` volání; kód je záměrně NAPSANÝ jako jedna větev, ne obecná
+smyčka.
+
+**Důležité pro budoucí rozšíření na víc místností**: pokud denní servis bude jednou opravovat
+víc než jednu žárovku najednou, správné řešení je JEDNA atomická operace
+`consumeBulbs(amount = počet skutečně opravených žárovek)` — NE `N` samostatných
+`consumeBulbs(1)` volání s mezilehlými revisemi. Sekvenční N volání by muselo řešit
+čerstvou revizi mezi jednotlivými kroky (Provider ji zpřístupňuje jen přes re-render), což
+je zbytečná komplikace navíc k tomu, že už dnešní `POST .../inventory/bulb/consume`
+endpoint (`amount` parametr, viz "Serverové doménové operace" výše) přesně tohle umí v
+jednom requestu. Denní servis dnes posílá `amount: 1` jen proto, že dnes může spravit
+nejvýš jednu žárovku — až přibude druhá místnost, je to změna JEDNOHO čísla
+(`amount: brokenCount`), ne architektury.
+
+**Pending stav a blokování** (`BulbInventoryOperationState`, `game/inventory/bulbInventoryController.ts`):
+`{status: "idle"|"consuming"|"adding"|"error"}`. `bulbInventoryPendingRef` (ref, ne state)
+blokuje druhou operaci, dokud první neskončí — `decideBulbReplacementConfirmAction` vrátí
+`"none"`, pokud `operationPending`. `bulbInventoryNeedsReloadRef` — po `unavailable`
+výsledku (nejasné selhání, mohlo/nemuselo se serverem uspět) se DALŠÍ operace zablokuje
+(`"cancel_blocked_needs_reload"`) až do `object13Profile.reload()`, ať nedojde k dvojí
+spotřebě, pokud první request server ve skutečnosti zpracoval a jen se ztratila odpověď —
+ŽÁDNÝ automatický retry.
+
+**Runtime === server invariant**: po úspěšném potvrzení musí platit
+`state.bulbsRemaining === profileData.inventory.items.bulb` — obě strany se mění o STEJNOU
+jednotku (1) ve STEJNÉM okamžiku (reducer `CONFIRM_BULB_REPLACEMENT` až po úspěšné serverové
+odpovědi), takže nemůže dojít k rozjetí (viz
+`game/inventory/bulbInventoryRuntimeServerInvariant.test.ts`).
+
+Aktivní nainstalovaná žárovka (`GameState.roomBulbs`, životnost/prasklá) je od inventáře
+(počet náhradních kusů) záměrně oddělená — `roomBulbs` zůstává čistě lokální
+(`setRoomBulbs`/`getRoomBulbs`, `game/core/roomBulbs.ts`), NIKDY se neposílá na VPS.
+
+### localStorage — kdy se čte, kdy se ignoruje
+
+Starý klíč `nocni-hlidac:object13:bulbs-remaining` (`bulbInventory.ts`) zůstal v kódu
+(nebyl odstraněn), ale přestal být autoritativní pro přihlášeného hráče: čte se JEN když
+`resolveStartingBulbsRemaining` vrátí non-"ready" stav (anonymní/loading/unavailable).
+Zapisuje se jen na dvou místech — anonymní hráč při `death`/denním servisu na `win`
+(`object13Profile.loadState.status === "unauthorized"`) a nikde jinde. Přihlášený hráč
+(ready i not-ready) do něj nikdy nezapisuje — žádná stará hodnota se automaticky
+nemigruje do VPS profilu, žádné dlouhodobé souběžné držení dvou zdrojů pravdy pro tutéž
+věc.
+
+### `createInitialGameState` — objektový parametr
+
+`game/core/gameState.ts#createInitialGameState(night, options?)` — dřívějších 11
+pozičních parametrů (identifikované riziko záměny pořadí) nahrazeno jedním volitelným
+`CreateInitialGameStateOptions` objektem. Všechna pole zůstala stejná
+(`roomBulbs`/`bulbsRemaining`/`nightFeatures`/`gameMode`/`livesRemaining`/`hasShotgun`/
+`shotgunAmmo`/`hasDoubleBarrelShotgun`/`officeDoorLockMs`/`monsterKilledThisRun`), jen
+pojmenovaná místo poziční. Všechna volání v `gameReducer.ts`
+(`SHOW_BRIEFING`/`START_SHIFT`/`RESTART_SHIFT`) i testech přepsána na objektovou formu.
 
 ## Power drain diagnostika (audit podezřele rychlého vybití energie)
 

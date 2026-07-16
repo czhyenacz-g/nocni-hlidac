@@ -1,4 +1,6 @@
 import { BULBS_CONFIG } from "./bulbsConfig";
+import { Object13PlayerProfileLoadState } from "./object13PlayerProfile";
+import { getInventoryItemQuantity } from "./object13PlayerProfileInventory";
 
 // Počet náhradních žárovek — čistě lokální localStorage counter (stejný vzor
 // jako deathCount.ts/survivedNights.ts), žádný backend/login/databáze.
@@ -24,7 +26,7 @@ export function getBulbsRemaining(): number {
   }
 }
 
-/** Uloží novou hodnotu a vrátí ji zpátky — voláno na hranicích směny (viz app/play/page.tsx). */
+/** Uloží novou hodnotu a vrátí ji zpátky — voláno na hranicích směny (viz app/play/page.tsx). Jen pro anonymního hráče (viz resolveStartingBulbsRemaining níže) — přihlášený hráč s ready profilem má localStorage irelevantní. */
 export function setBulbsRemaining(count: number): number {
   if (typeof window === "undefined") return count;
   try {
@@ -33,4 +35,23 @@ export function setBulbsRemaining(count: number): number {
   } catch {
     return getBulbsRemaining();
   }
+}
+
+/**
+ * Zdroj počtu náhradních žárovek při startu směny (viz zadání "profilový
+ * kontrakt V1 + inventář žárovek", "11. Přesun žárovek z localStorage", "12.
+ * GameState a inicializace"). Přihlášený hráč s `ready` profilem: VPS je
+ * AUTORITATIVNÍ, localStorage se NEPOUŽIJE jako fallback (viz zadání
+ * "localStorage počet žárovek se nepoužije jako fallback, pokud VPS profil
+ * je ready"). Cokoliv jiné — anonymní hráč (`unauthorized`), profil se ještě
+ * načítá (`idle`/`loading`), nebo VPS nedostupné (`unavailable`) — čte
+ * lokální `getBulbsRemaining()`: hra zůstává hratelná v lokálním fallback
+ * režimu, ale změny se odsud nikdy automaticky nepropíšou zpátky na server
+ * (žádný merge, viz zadání).
+ */
+export function resolveStartingBulbsRemaining(loadState: Object13PlayerProfileLoadState): number {
+  if (loadState.status === "ready") {
+    return getInventoryItemQuantity(loadState.profile.profileData, "bulb");
+  }
+  return getBulbsRemaining();
 }

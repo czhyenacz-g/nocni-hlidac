@@ -101,7 +101,6 @@ export async function hubPost<T>(path: string, body: unknown): Promise<T | null>
 }
 
 /**
- * Jediný dnešní volající, který potřebuje víc než "ok, nebo null" —
  * `putRemoteObject13PlayerProfile` (viz lib/playerProfile/remoteObject13PlayerProfile.ts)
  * musí odlišit 200 (uloženo) od 409 (revision conflict, VPS vrací i
  * `currentRevision`/`profile` v těle) od 413/404/jiné. Stejná auth/timeout/
@@ -111,6 +110,20 @@ export async function hubPost<T>(path: string, body: unknown): Promise<T | null>
 export async function hubPutDetailed<T>(path: string, body: unknown): Promise<HubResponse<T>> {
   return hubFetchDetailed<T>(path, {
     method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+/**
+ * Stejný důvod jako `hubPutDetailed` výše, ale pro POST — inventářové
+ * operace (`/nocni-hlidac/player-profile/inventory/bulb/add|consume`, viz
+ * lib/playerProfile/remoteObject13PlayerProfile.ts) musí odlišit 200 od 409
+ * (revision conflict NEBO `exceeds_maximum`/`insufficient_inventory`) od 404.
+ */
+export async function hubPostDetailed<T>(path: string, body: unknown): Promise<HubResponse<T>> {
+  return hubFetchDetailed<T>(path, {
+    method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });

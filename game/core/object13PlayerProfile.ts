@@ -9,16 +9,21 @@
 // components/playerProfile/Object13PlayerProfileProvider.tsx) — žádné React,
 // žádný fetch, žádný side effect tady.
 //
-// DŮLEŽITÉ (viz zadání "krok 1B"): `profileData` je v týhle fázi záměrně
-// OPAQUE — validuje/normalizuje se jen jako "plain JSON objekt", obsah se
-// nikde nečte ani neinterpretuje. Žádný inventář/nastavení/postup sem ještě
-// nepatří (to je až budoucí krok, viz TECH_DESIGN.md).
+// `profileData` má od kroku "profilový kontrakt V1 + inventář žárovek"
+// přesný, validovaný tvar (Object13PlayerProfileDataV1, viz
+// object13PlayerProfileInventory.ts) — první skutečná položka je `bulb`
+// (náhradní žárovka). Žádné zbraně/munice/baterie/vybavení kanceláře zatím.
 
-/** Sdílený tvar s VPS `Object13PlayerProfileDto` (project-hub-api, viz report kroku 1A) — beze změny napříč server proxy i klientem. */
+import {
+  Object13PlayerProfileDataV1,
+  validateObject13PlayerProfileDataV1,
+} from "./object13PlayerProfileInventory";
+
+/** Sdílený tvar s VPS `Object13PlayerProfileDto` (project-hub-api) — beze změny napříč server proxy i klientem. */
 export interface Object13PlayerProfileDto {
   discordUserId: string;
   profileVersion: number;
-  profileData: Record<string, unknown>;
+  profileData: Object13PlayerProfileDataV1;
   revision: number;
   createdAt: string;
   updatedAt: string;
@@ -42,8 +47,10 @@ function isValidTimestampString(value: unknown): value is string {
  * Bezpečné ověření CELÉHO tvaru odpovědi z project-hub-api (přes Next.js
  * proxy, nebo přímo z VPS na server-side straně) — `false` na cokoliv, co
  * neodpovídá přesně `Object13PlayerProfileDto`. `profileData` se ověřuje
- * jen jako "plain object" (viz zadání "profileData je zatím opaque") —
- * obsah samotný se nijak nekontroluje/neinterpretuje.
+ * přísně proti V1 kontraktu (`validateObject13PlayerProfileDataV1`,
+ * object13PlayerProfileInventory.ts) — server sám garantuje jen validní V1
+ * tvar (normalizuje starý/poškozený profil při GET), tahle validace je tu
+ * jako defense-in-depth pro volající, které nedůvěřuje syrové odpovědi.
  */
 export function isValidObject13PlayerProfileDto(value: unknown): value is Object13PlayerProfileDto {
   if (!isPlainObject(value)) return false;
@@ -51,24 +58,12 @@ export function isValidObject13PlayerProfileDto(value: unknown): value is Object
     typeof value.discordUserId === "string" &&
     value.discordUserId.length > 0 &&
     isFiniteInteger(value.profileVersion) &&
-    isPlainObject(value.profileData) &&
+    validateObject13PlayerProfileDataV1(value.profileData).ok &&
     isFiniteInteger(value.revision) &&
     isValidTimestampString(value.createdAt) &&
     isValidTimestampString(value.updatedAt) &&
     isValidTimestampString(value.lastSeenAt)
   );
-}
-
-/**
- * Normalizuje `profileData` na bezpečný plain object — `{}` pro cokoliv
- * jiného (poškozený/neobjektový tvar, viz zadání "poškozený nebo
- * neobjektový profileData se bezpečně normalizuje"). Defense-in-depth pro
- * volající, které z nějakého důvodu dostanou syrovou hodnotu mimo
- * `isValidObject13PlayerProfileDto` (ten už `profileData` sám ověřuje, ale
- * tahle funkce je samostatně použitelná i jinde).
- */
-export function normalizeObject13PlayerProfileData(value: unknown): Record<string, unknown> {
-  return isPlainObject(value) ? value : {};
 }
 
 // ── PUT tělo requestu (klient -> Next.js proxy) ──────────────────────────
@@ -82,7 +77,7 @@ export function normalizeObject13PlayerProfileData(value: unknown): Record<strin
 export interface IncomingObject13PlayerProfilePutBody {
   expectedRevision: number;
   profileVersion: number;
-  profileData: Record<string, unknown>;
+  profileData: Object13PlayerProfileDataV1;
 }
 
 export type ValidateIncomingPutBodyResult =
@@ -90,21 +85,46 @@ export type ValidateIncomingPutBodyResult =
   | { ok: false };
 
 /**
- * Přísná validace (žádný lenientní silent fallback, viz zadání "krok 1A" —
- * stejný princip platí i tady) — neplatný tvar/typ vrátí `{ ok: false }`,
- * volající (viz playerProfileRequestHandlers.ts) na tom pozná "400, VPS se
- * vůbec nevolá" (test "Neplatný browser payload vrátí 400 bez volání VPS").
- * `profileData` se tu jen ověří jako plain object — VELIKOST/nebezpečné
- * klíče validuje VÝHRADNĚ VPS (project-hub-api), tahle vrstva tu kontrolu
- * záměrně neduplikuje (jeden zdroj pravdy pro tenhle konkrétní limit).
+ * Přísná validace (žádný lenientní silent fallback) — neplatný tvar/typ
+ * vrátí `{ ok: false }`, volající (viz playerProfileRequestHandlers.ts) na
+ * tom pozná "400, VPS se vůbec nevolá" (test "Neplatný browser payload
+ * vrátí 400 bez volání VPS"). `profileData` se ověřuje přísně proti V1
+ * kontraktu (`validateObject13PlayerProfileDataV1`) — VPS validuje tentýž
+ * tvar znovu nezávisle (playerProfileValidation.ts), duplicitní kontrola je
+ * tu záměrná (fail fast, bez zbytečného round-tripu na VPS), ne jediný
+ * zdroj pravdy.
  */
 export function validateIncomingObject13PlayerProfilePutBody(raw: unknown): ValidateIncomingPutBodyResult {
   if (!isPlainObject(raw)) return { ok: false };
   const { expectedRevision, profileVersion, profileData } = raw;
   if (!isFiniteInteger(expectedRevision) || expectedRevision <= 0) return { ok: false };
   if (!isFiniteInteger(profileVersion) || profileVersion <= 0) return { ok: false };
-  if (!isPlainObject(profileData)) return { ok: false };
-  return { ok: true, data: { expectedRevision, profileVersion, profileData } };
+  const validated = validateObject13PlayerProfileDataV1(profileData);
+  if (!validated.ok) return { ok: false };
+  return { ok: true, data: { expectedRevision, profileVersion, profileData: validated.data } };
+}
+
+// ── Inventářová operace (add/consume) tělo requestu (klient -> Next.js proxy) ──
+
+/** Co hráčův prohlížeč smí poslat na `POST /api/player/profile/inventory/bulb/add|consume` — bez `discordUserId`, stejný princip jako obecný PUT výše. */
+export interface IncomingObject13PlayerProfileInventoryOperationBody {
+  amount: number;
+  expectedRevision: number;
+}
+
+export type ValidateIncomingInventoryOperationBodyResult =
+  | { ok: true; data: IncomingObject13PlayerProfileInventoryOperationBody }
+  | { ok: false };
+
+/** `amount` musí být kladné celé číslo (žádná nulová/záporná/desetinná spotřeba/nález). */
+export function validateIncomingObject13PlayerProfileInventoryOperationBody(
+  raw: unknown,
+): ValidateIncomingInventoryOperationBodyResult {
+  if (!isPlainObject(raw)) return { ok: false };
+  const { amount, expectedRevision } = raw;
+  if (!isFiniteInteger(amount) || amount <= 0) return { ok: false };
+  if (!isFiniteInteger(expectedRevision) || expectedRevision <= 0) return { ok: false };
+  return { ok: true, data: { amount, expectedRevision } };
 }
 
 // ── Klientský load/save state (viz components/playerProfile/Object13PlayerProfileProvider.tsx) ──
@@ -121,6 +141,11 @@ export type Object13PlayerProfileSaveState =
   | { status: "saving" }
   | { status: "saved" }
   | { status: "conflict"; currentProfile: Object13PlayerProfileDto }
+  // Doménové stavy inventářových operací (addBulbs/consumeBulbs, viz
+  // Object13PlayerProfileProvider.tsx) — jasně odlišené od "error", ať UI
+  // umí zobrazit "žárovky došly" jinak než obecnou chybu.
+  | { status: "exceeds_maximum" }
+  | { status: "insufficient_inventory" }
   | { status: "error"; error: string };
 
 /**
@@ -194,6 +219,52 @@ export function deriveSaveStateFromSaveResult(result: SaveObject13PlayerProfileR
   }
   if (result.status === "too_large") {
     return { saveState: { status: "error", error: "too_large" } };
+  }
+  return { saveState: { status: "error", error: result.error } };
+}
+
+// ── Inventářová operace (add/consume) — klientský výsledek + odvození stavu ──
+
+/** Výsledek `addBulbsToProfile()`/`consumeBulbsFromProfile()` (viz lib/playerProfile/object13PlayerProfileClient.ts). */
+export type Object13PlayerProfileInventoryOperationResult =
+  | { status: "updated"; profile: Object13PlayerProfileDto }
+  | { status: "conflict"; currentRevision: number; currentProfile?: Object13PlayerProfileDto }
+  | { status: "exceeds_maximum" }
+  | { status: "insufficient_inventory" }
+  | { status: "unauthorized" }
+  | { status: "error"; error: string };
+
+/**
+ * Čistá projekce `Object13PlayerProfileInventoryOperationResult` -> nový
+ * `saveState` (+ volitelně nový `loadState` při úspěchu) — stejný princip
+ * jako `deriveSaveStateFromSaveResult` výše, sdílené s ním přes `DeriveSaveStateResult`.
+ * Provider (Object13PlayerProfileProvider.tsx) NIKDY na `insufficient_inventory`/
+ * `exceeds_maximum`/`conflict` sám neopakuje volání (viz zadání "neprovádí
+ * slepý retry") — jen promítne výsledek do stavu.
+ */
+export function deriveSaveStateFromInventoryOperationResult(
+  result: Object13PlayerProfileInventoryOperationResult,
+): DeriveSaveStateResult {
+  if (result.status === "updated") {
+    return {
+      saveState: { status: "saved" },
+      nextLoadState: { status: "ready", profile: result.profile },
+    };
+  }
+  if (result.status === "conflict") {
+    if (!result.currentProfile) {
+      return { saveState: { status: "error", error: "conflict_without_profile" } };
+    }
+    return { saveState: { status: "conflict", currentProfile: result.currentProfile } };
+  }
+  if (result.status === "exceeds_maximum") {
+    return { saveState: { status: "exceeds_maximum" } };
+  }
+  if (result.status === "insufficient_inventory") {
+    return { saveState: { status: "insufficient_inventory" } };
+  }
+  if (result.status === "unauthorized") {
+    return { saveState: { status: "error", error: "unauthorized" } };
   }
   return { saveState: { status: "error", error: result.error } };
 }

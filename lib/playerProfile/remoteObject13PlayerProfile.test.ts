@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchRemoteObject13PlayerProfile, putRemoteObject13PlayerProfile } from "./remoteObject13PlayerProfile";
+import {
+  addRemoteObject13PlayerProfileInventoryItem,
+  consumeRemoteObject13PlayerProfileInventoryItem,
+  fetchRemoteObject13PlayerProfile,
+  putRemoteObject13PlayerProfile,
+} from "./remoteObject13PlayerProfile";
 import { Object13PlayerProfileDto } from "../../game/core/object13PlayerProfile";
 
 afterEach(() => {
@@ -10,7 +15,7 @@ afterEach(() => {
 const VALID_DTO: Object13PlayerProfileDto = {
   discordUserId: "123456789012345678",
   profileVersion: 1,
-  profileData: {},
+  profileData: { inventory: { items: { bulb: 10 } } },
   revision: 1,
   createdAt: "2026-07-16T12:00:00.000Z",
   updatedAt: "2026-07-16T12:00:00.000Z",
@@ -74,7 +79,7 @@ const PUT_PAYLOAD = {
   discordUserId: "123456789012345678",
   expectedRevision: 1,
   profileVersion: 1,
-  profileData: {},
+  profileData: { inventory: { items: { bulb: 10 } } },
 };
 
 describe("putRemoteObject13PlayerProfile", () => {
@@ -145,5 +150,75 @@ describe("putRemoteObject13PlayerProfile", () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new Error("network error"))));
     const result2 = await putRemoteObject13PlayerProfile(PUT_PAYLOAD);
     expect(result2).toEqual({ outcome: "unavailable" });
+  });
+});
+
+const INVENTORY_PAYLOAD = { discordUserId: "123456789012345678", amount: 1, expectedRevision: 1 };
+
+describe("addRemoteObject13PlayerProfileInventoryItem", () => {
+  it("posts to the item-specific add endpoint and maps 200 to outcome: updated", async () => {
+    configureHub();
+    const fetchSpy = vi.fn<typeof fetch>(() => Promise.resolve(new Response(JSON.stringify({ ...VALID_DTO, revision: 2 }), { status: 200 })));
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const result = await addRemoteObject13PlayerProfileInventoryItem("bulb", INVENTORY_PAYLOAD);
+    expect(result).toEqual({ outcome: "updated", profile: { ...VALID_DTO, revision: 2 } });
+    const [url, init] = fetchSpy.mock.calls[0];
+    expect(url).toBe("https://hub.example.invalid/nocni-hlidac/player-profile/inventory/bulb/add");
+    expect(init?.method).toBe("POST");
+  });
+
+  it("maps a 409 exceeds_maximum error body to outcome: exceeds_maximum", async () => {
+    configureHub();
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify({ error: "exceeds_maximum" }), { status: 409 }))));
+
+    const result = await addRemoteObject13PlayerProfileInventoryItem("bulb", INVENTORY_PAYLOAD);
+    expect(result).toEqual({ outcome: "exceeds_maximum" });
+  });
+
+  it("maps a 409 revision_conflict error body to outcome: conflict", async () => {
+    configureHub();
+    const conflictBody = { error: "revision_conflict", currentRevision: 4, profile: { ...VALID_DTO, revision: 4 } };
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify(conflictBody), { status: 409 }))));
+
+    const result = await addRemoteObject13PlayerProfileInventoryItem("bulb", INVENTORY_PAYLOAD);
+    expect(result).toEqual({ outcome: "conflict", currentRevision: 4, currentProfile: { ...VALID_DTO, revision: 4 } });
+  });
+
+  it("maps a 404 to outcome: not_found", async () => {
+    configureHub();
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify({ error: "profile_not_found" }), { status: 404 }))));
+
+    const result = await addRemoteObject13PlayerProfileInventoryItem("bulb", INVENTORY_PAYLOAD);
+    expect(result).toEqual({ outcome: "not_found" });
+  });
+
+  it("maps a network failure to outcome: unavailable", async () => {
+    configureHub();
+    vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new Error("network error"))));
+
+    const result = await addRemoteObject13PlayerProfileInventoryItem("bulb", INVENTORY_PAYLOAD);
+    expect(result).toEqual({ outcome: "unavailable" });
+  });
+});
+
+describe("consumeRemoteObject13PlayerProfileInventoryItem", () => {
+  it("posts to the item-specific consume endpoint and maps 200 to outcome: updated", async () => {
+    configureHub();
+    const fetchSpy = vi.fn<typeof fetch>(() => Promise.resolve(new Response(JSON.stringify({ ...VALID_DTO, revision: 2 }), { status: 200 })));
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const result = await consumeRemoteObject13PlayerProfileInventoryItem("bulb", INVENTORY_PAYLOAD);
+    expect(result).toEqual({ outcome: "updated", profile: { ...VALID_DTO, revision: 2 } });
+    const [url] = fetchSpy.mock.calls[0];
+    expect(url).toBe("https://hub.example.invalid/nocni-hlidac/player-profile/inventory/bulb/consume");
+  });
+
+  it("maps a 409 insufficient_inventory error body to outcome: insufficient_inventory", async () => {
+    configureHub();
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify({ error: "insufficient_inventory" }), { status: 409 }))));
+
+    const result = await consumeRemoteObject13PlayerProfileInventoryItem("bulb", INVENTORY_PAYLOAD);
+    expect(result).toEqual({ outcome: "insufficient_inventory" });
   });
 });

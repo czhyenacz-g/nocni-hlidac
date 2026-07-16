@@ -126,6 +126,11 @@ export const COPY = {
     // MainMenuScreen.tsx#handleSelectHardcore) — hráč zůstává v Normal,
     // dokud se nepřihlásí.
     hardcoreLoginPromptText: "Hardcore režim se zapisuje do Síně slávy, proto vyžaduje přihlášení přes Discord.",
+    // Zobrazí se, když je hráč přihlášený, ale jeho serverový profil není
+    // dostupný (VPS výpadek/ještě se načítá, viz MainMenuScreen.tsx#hardcoreBlockedByProfile)
+    // — Hardcore je server-authoritative pro inventář žárovek, nesmí běžet
+    // v nejasném offline režimu.
+    hardcoreProfileUnavailableText: "Hardcore vyžaduje spojení se serverem (žárovky se ukládají online). Zkus to znovu za chvíli.",
     // Zobrazí se místo normalTooltip, dokud má hráč rozehranou Hardcore
     // šňůru (currentRun > 0, viz MainMenuScreen.tsx#hasActiveHardcoreRun) —
     // Normal je v tu chvíli uzamčený, tenhle text vysvětluje proč (viz

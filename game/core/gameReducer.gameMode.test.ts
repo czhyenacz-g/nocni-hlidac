@@ -46,7 +46,7 @@ describe("Normal death with lives remaining", () => {
   it("decrements livesRemaining from 3 to 2 and does not end the run", () => {
     const reducer = createGameReducer(NIGHT_01);
     const state = {
-      ...createInitialGameState(NIGHT_01, undefined, undefined, undefined, "normal", 3),
+      ...createInitialGameState(NIGHT_01, { gameMode: "normal", livesRemaining: 3 }),
       isRunning: true,
       screen: "playing" as const,
     };
@@ -61,7 +61,7 @@ describe("Normal death with lives remaining", () => {
   it("a door-attack death (not looking at the door) also decrements lives the same way", () => {
     const reducer = createGameReducer(NIGHT_01);
     const state = {
-      ...createInitialGameState(NIGHT_01, undefined, undefined, undefined, "normal", 3),
+      ...createInitialGameState(NIGHT_01, { gameMode: "normal", livesRemaining: 3 }),
       isRunning: true,
       screen: "playing" as const,
       enemyRoute: ["at_door", "attack"] as EnemyStage[],
@@ -81,7 +81,7 @@ describe("Normal death with the last life", () => {
   it("drops livesRemaining to 0, ending the run", () => {
     const reducer = createGameReducer(NIGHT_01);
     const state = {
-      ...createInitialGameState(NIGHT_01, undefined, undefined, undefined, "normal", 1),
+      ...createInitialGameState(NIGHT_01, { gameMode: "normal", livesRemaining: 1 }),
       isRunning: true,
       screen: "playing" as const,
     };
@@ -97,7 +97,7 @@ describe("Hardcore death", () => {
   it("always drops livesRemaining to 0 (no continuing) regardless of starting lives", () => {
     const reducer = createGameReducer(NIGHT_01);
     const state = {
-      ...createInitialGameState(NIGHT_01, undefined, undefined, undefined, "hardcore", 1),
+      ...createInitialGameState(NIGHT_01, { gameMode: "hardcore", livesRemaining: 1 }),
       isRunning: true,
       screen: "playing" as const,
     };

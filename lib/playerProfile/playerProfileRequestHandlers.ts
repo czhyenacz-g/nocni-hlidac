@@ -1,9 +1,18 @@
 import { DiscordPlayer } from "../auth/types";
 import {
   Object13PlayerProfileDto,
+  validateIncomingObject13PlayerProfileInventoryOperationBody,
   validateIncomingObject13PlayerProfilePutBody,
 } from "../../game/core/object13PlayerProfile";
-import { fetchRemoteObject13PlayerProfile, putRemoteObject13PlayerProfile } from "./remoteObject13PlayerProfile";
+import { Object13InventoryItemId } from "../../game/core/object13PlayerProfileInventory";
+import {
+  addRemoteObject13PlayerProfileInventoryItem,
+  consumeRemoteObject13PlayerProfileInventoryItem,
+  fetchRemoteObject13PlayerProfile,
+  putRemoteObject13PlayerProfile,
+  RemoteObject13PlayerProfileInventoryOperationPayload,
+  RemoteObject13PlayerProfileInventoryOperationResult,
+} from "./remoteObject13PlayerProfile";
 
 /**
  * Session-in/response-out logika sdílená mezi app/api/player/profile/route.ts
@@ -117,4 +126,87 @@ export async function handlePutPlayerProfileRequest(
       );
       return { status: 502, body: { error: "profile_unavailable" } };
   }
+}
+
+export type PlayerProfileInventoryOperationErrorBody =
+  | { error: "unauthorized" }
+  | { error: "invalid_request" }
+  | { error: "profile_conflict"; currentRevision: number; currentProfile?: Object13PlayerProfileDto }
+  | { error: "exceeds_maximum" }
+  | { error: "insufficient_inventory" }
+  | { error: "profile_not_found" }
+  | { error: "profile_unavailable" };
+
+export type PlayerProfileInventoryOperationResponseBody = Object13PlayerProfileDto | PlayerProfileInventoryOperationErrorBody;
+
+export interface PlayerProfileInventoryOperationResponse {
+  status: number;
+  body: PlayerProfileInventoryOperationResponseBody;
+}
+
+/**
+ * Sdílená implementace pro `/api/player/profile/inventory/bulb/add|consume`
+ * — parametrizovaná `itemId` a konkrétní VPS operací (add vs consume), ať
+ * budoucí druhá položka inventáře nepotřebuje kopii celé funkce. Běžná
+ * herní logika volá VÝHRADNĚ tudy, nikdy `handlePutPlayerProfileRequest`
+ * (viz zadání "obecný PUT nesmí být používán běžnou herní logikou pro
+ * změnu žárovek").
+ */
+async function handleInventoryOperationRequest(
+  session: DiscordPlayer | null,
+  rawBody: unknown,
+  itemId: Object13InventoryItemId,
+  operation: (
+    itemId: Object13InventoryItemId,
+    payload: RemoteObject13PlayerProfileInventoryOperationPayload,
+  ) => Promise<RemoteObject13PlayerProfileInventoryOperationResult>,
+): Promise<PlayerProfileInventoryOperationResponse> {
+  if (!session) {
+    console.warn("[playerProfileRequestHandlers] inventory operation called without a valid session");
+    return { status: 401, body: { error: "unauthorized" } };
+  }
+
+  const validated = validateIncomingObject13PlayerProfileInventoryOperationBody(rawBody);
+  if (!validated.ok) {
+    return { status: 400, body: { error: "invalid_request" } };
+  }
+
+  const result = await operation(itemId, {
+    discordUserId: session.discordUserId,
+    amount: validated.data.amount,
+    expectedRevision: validated.data.expectedRevision,
+  });
+
+  switch (result.outcome) {
+    case "updated":
+      return { status: 200, body: result.profile };
+    case "conflict":
+      return {
+        status: 409,
+        body: {
+          error: "profile_conflict",
+          currentRevision: result.currentRevision,
+          ...(result.currentProfile ? { currentProfile: result.currentProfile } : {}),
+        },
+      };
+    case "exceeds_maximum":
+      return { status: 409, body: { error: "exceeds_maximum" } };
+    case "insufficient_inventory":
+      return { status: 409, body: { error: "insufficient_inventory" } };
+    case "not_found":
+      return { status: 404, body: { error: "profile_not_found" } };
+    case "unavailable":
+      console.warn(
+        `[playerProfileRequestHandlers] inventory operation: hub returned no result, discordUserId: ${session.discordUserId}`,
+      );
+      return { status: 502, body: { error: "profile_unavailable" } };
+  }
+}
+
+export function handleAddBulbInventoryRequest(session: DiscordPlayer | null, rawBody: unknown): Promise<PlayerProfileInventoryOperationResponse> {
+  return handleInventoryOperationRequest(session, rawBody, "bulb", addRemoteObject13PlayerProfileInventoryItem);
+}
+
+export function handleConsumeBulbInventoryRequest(session: DiscordPlayer | null, rawBody: unknown): Promise<PlayerProfileInventoryOperationResponse> {
+  return handleInventoryOperationRequest(session, rawBody, "bulb", consumeRemoteObject13PlayerProfileInventoryItem);
 }
