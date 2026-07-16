@@ -54,7 +54,7 @@ describe("COPY.menu.leaderboardLinkLabel", () => {
 // (viz zadání, components/screens/LoadingScreen.tsx).
 describe("COPY.loading.difficultyNormalLabel", () => {
   it("is the exact required text", () => {
-    expect(COPY.loading.difficultyNormalLabel).toBe("Obtížnost NORMAL");
+    expect(COPY.loading.difficultyNormalLabel).toBe("Obtížnost TRÉNINK");
   });
 });
 
@@ -136,14 +136,14 @@ describe("COPY.monsterDefeated", () => {
 });
 
 describe("COPY.gameMode", () => {
-  it("has the exact NORMAL/HARDCORE mode labels", () => {
-    expect(COPY.gameMode.normalLabel).toBe("NORMAL");
+  it("has the exact TRÉNINK/HARDCORE mode labels", () => {
+    expect(COPY.gameMode.normalLabel).toBe("TRÉNINK");
     expect(COPY.gameMode.hardcoreLabel).toBe("HARDCORE");
   });
 
   it("has the exact tooltip texts", () => {
     expect(COPY.gameMode.normalTooltip).toBe(
-      "Normal: 3 životy.\nVýsledky se nezapisují do Síně slávy.\nObtížnost pro lidi jako je Filip Turek.",
+      "Trénink: 3 životy.\nVýsledky se nezapisují do Síně slávy.\nObtížnost pro lidi jako je Filip Turek.",
     );
     expect(COPY.gameMode.hardcoreTooltip).toBe("Hardcore: 1 život.\nJen legendy se dostanou do síně slávy!");
   });

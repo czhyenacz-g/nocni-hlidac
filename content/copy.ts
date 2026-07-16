@@ -72,7 +72,7 @@ export const COPY = {
     // Zadání: "pokud je to moc UI zásah, zatím pouze zobraz Hardcore server
     // source a do reportu napiš, že Normal/casual lokální sekce bude
     // vyčištěna později" — tenhle krátký disclaimer je ten minimální zásah.
-    statsLocalNote: "Normal i Hardcore aktivita zatím dohromady — lokální, nekompetitivní přehled.",
+    statsLocalNote: "Trénink i Hardcore aktivita zatím dohromady — lokální, nekompetitivní přehled.",
     statTotalDeaths: "Celkem smrtí",
     statTotalRunsStarted: "Nastoupené směny",
     statTotalNightsSurvived: "Přežité noci",
@@ -111,12 +111,16 @@ export const COPY = {
   // pravidla jsou teď skutečně zapojené (viz gameReducer.ts, app/play/page.tsx,
   // DeathScreen.tsx), tenhle blok nese jen texty.
   gameMode: {
-    normalLabel: "NORMAL",
+    // Přejmenováno z "NORMAL" na "TRÉNINK" (na žádost) — viditelný text
+    // pouze, interní identifikátor režimu (`GameMode = "normal" |
+    // "hardcore"`, game/core/gameMode.ts) zůstává beze změny, včetně
+    // server API kontraktu (`gameMode?: "normal" | "hardcore"`).
+    normalLabel: "TRÉNINK",
     hardcoreLabel: "HARDCORE",
     // Druhá věta na vlastním řádku (viz zadání "čitelnější, druhá věta na
     // novém řádku") — vykresluje se přes whitespace-pre-line
     // (MainMenuScreen.tsx), stejný vzor jako DeathScreen.tsx/monsterDefeated body.
-    normalTooltip: "Normal: 3 životy.\nVýsledky se nezapisují do Síně slávy.\nObtížnost pro lidi jako je Filip Turek.",
+    normalTooltip: "Trénink: 3 životy.\nVýsledky se nezapisují do Síně slávy.\nObtížnost pro lidi jako je Filip Turek.",
     hardcoreTooltip: "Hardcore: 1 život.\nJen legendy se dostanou do síně slávy!",
     // Zobrazí se při kliknutí na HARDCORE bez Discord přihlášení (viz
     // MainMenuScreen.tsx#handleSelectHardcore) — hráč zůstává v Normal,
@@ -391,7 +395,9 @@ export const COPY = {
     normalGameOverButton: "NOVÁ HRA",
     // Vidět jen na Normal death screen (viz zadání "Síň slávy je pouze pro
     // Hardcore") — připomínka, proč tahle smrt nikde v žebříčku nepřibyla.
-    normalLeaderboardNote: "Normal režim se nezapisuje do Síně slávy.",
+    // "Normal" -> "Trénink" přejmenováno na žádost, stejná konvence jako
+    // COPY.gameMode.normalLabel.
+    normalLeaderboardNote: "Trénink se nezapisuje do Síně slávy.",
     hardcoreGameOverLabel: "Hardcore run končí. Smrt tě vrací na noc 1.",
     hardcoreGameOverButton: "NOVÁ HRA",
   },
@@ -474,8 +480,10 @@ export const COPY = {
     subtitle: "Spouštím systémy směny...",
     // První řádek servisního výpisu, jen pro gameMode "normal" (viz zadání,
     // LoadingScreen.tsx) — Hardcore zatím žádnou obdobu nemá, nebyla
-    // vyžádaná.
-    difficultyNormalLabel: "Obtížnost NORMAL",
+    // vyžádaná. "NORMAL" přejmenováno na "TRÉNINK" (na žádost), stejná
+    // konvence jako COPY.gameMode.normalLabel — interní gameMode hodnota
+    // beze změny.
+    difficultyNormalLabel: "Obtížnost TRÉNINK",
   },
   footer: {
     projectName: "Noční hlídač",
