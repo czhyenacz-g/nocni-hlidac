@@ -192,13 +192,48 @@ export function isCameraFullyOffline(cameraDamage: CameraDamageState, cameraId: 
 }
 
 /**
+ * ID offline kamery, jejíž lokaci Ghoul PRÁVĚ TEĎ fyzicky obývá — `null`,
+ * pokud Ghoul stojí mimo dosah libovolné kamery, nebo kamera dané lokace
+ * není vyřazená. Sdílený základ pro `isEnemyOnDisabledCameraStage`
+ * (mikrofon je aktivní bez ohledu na to, kam se hráč dívá) i pro
+ * `withDisabledCameraFootsteps` v gameReducer.ts (potřebuje vědět KTEROU
+ * konkrétní kameru zvuk kroků patří, viz zadání "je právě vybraná tato
+ * kamera").
+ */
+export function findDisabledCameraIdForEnemyStage(state: GameState, night: NightDefinition): CameraId | null {
+  const camera = night.cameras.find((c) => c.enemyVisibleAtStage === state.enemyStage);
+  return camera !== undefined && state.cameraDamage.disabledCameraIds.includes(camera.id) ? camera.id : null;
+}
+
+/**
  * Je Ghoul PRÁVĚ TEĎ v lokaci, kterou snímá NĚKTERÁ offline kamera (viz
  * zadání "mikrofon zůstává funkční") — nezávisí na tom, na kterou kameru se
  * hráč zrovna dívá, jen na tom, kde Ghoul fyzicky je.
  */
 export function isEnemyOnDisabledCameraStage(state: GameState, night: NightDefinition): boolean {
-  const camera = night.cameras.find((c) => c.enemyVisibleAtStage === state.enemyStage);
-  return camera !== undefined && state.cameraDamage.disabledCameraIds.includes(camera.id);
+  return findDisabledCameraIdForEnemyStage(state, night) !== null;
+}
+
+/**
+ * Smí PRÁVĚ TEĎ hrát zvuk kroků z mikrofonu offline kamery (viz zadání
+ * "zvuk kroků z konkrétní kamery se smí přehrávat pouze tehdy, když je
+ * právě vybraná tato kamera A existuje aktivní audio událost pro tuto
+ * lokaci") — čistá odvozená hodnota jen z existujících polí `GameState`
+ * (žádný vlastní stav v komponentě, viz CLAUDE.md), sdílená mezi
+ * "smím přehrát novou událost" (app/play/page.tsx, na
+ * `disabledCameraFootstepsSeq`) i "mám právě teď zastavit běžící zvuk"
+ * (tentýž soubor, na téhle podmínce samotné) — obě strany MUSÍ číst
+ * přesně stejnou podmínku, jinak by šlo přehrát zvuk, který by druhá
+ * strana okamžitě nekonzistentně zastavila.
+ */
+export function isWatchingDisabledCameraFootstepsSource(state: GameState): boolean {
+  return (
+    state.cameraOpen &&
+    state.cameraViewMode === "detail" &&
+    state.playerView === "desk" &&
+    state.activeCameraId !== null &&
+    state.activeCameraId === state.lastDisabledCameraFootstepsCameraId
+  );
 }
 
 /**

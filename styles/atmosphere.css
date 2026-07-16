@@ -23,3 +23,18 @@
   96% { filter: saturate(var(--atmosphere-saturation)) contrast(var(--atmosphere-contrast)) brightness(0.7); }
 }
 
+/*
+ * Jemné blikání/záře textu odpočtu "Žárovka u dveří: X s" (viz
+ * PowerMeter.tsx) — samotná žárovka dohořívá, ať to na ní je vidět i na
+ * jejím countdownu. Nezávislé na .atmosphere-root/tensionLevel výše (jen
+ * dekorativní detail jednoho konkrétního textu, ne systémový efekt).
+ */
+@keyframes bulb-countdown-flicker {
+  0%, 100% { opacity: 1; text-shadow: 0 0 4px rgba(250, 204, 21, 0.5); }
+  50% { opacity: 0.75; text-shadow: 0 0 1px rgba(250, 204, 21, 0.1); }
+}
+
+.bulb-countdown-flicker {
+  animation: bulb-countdown-flicker 1.6s ease-in-out infinite;
+}
+

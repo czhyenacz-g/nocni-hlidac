@@ -33,6 +33,17 @@ export const SONIC_CANNON_RETREAT_CHANCE = 0.32;
 export const SONIC_CANNON_STAY_CHANCE = 0.6;
 export const SONIC_CANNON_ADVANCE_CHANCE = 0.08;
 
+// Jak dlouho (ms) po sonickém "retreat" rozhodnutí zůstane Ghoul VIDITELNĚ na
+// PŮVODNÍ (sledované) stage, než se `enemyStage` skutečně přesune (viz
+// zadání "sonic hit → přehrání reakce/ústupu v původní lokaci → dokončení
+// animace → teprve potom stepBackOneStage"). Bez tohohle okna by se stage
+// změnila ve STEJNÉM tiku jako rozhodnutí, takže by
+// `getCameraImageSrc#isFleeingRetreat` (cameraAssets.object13.ts) nikdy
+// neviděl monstrum na kameře, kterou hráč zrovna sleduje — viz
+// GameState.sonicCannonPendingRetreat. Zhruba jeden `enemyTickMs`, ať hráč
+// stihne animaci ústupu doopravdy zaregistrovat.
+export const SONIC_CANNON_RETREAT_REVEAL_MS = 1500;
+
 export const MAX_POWER = 100;
 
 export const LOW_POWER_THRESHOLD = 25;
@@ -174,6 +185,12 @@ export const BULB_REPLACE_SUCCESS_MESSAGE_MS = 1800;
 // content/copy.ts generatorAccidentalRestartMessage) — stejný čistě kosmetický
 // lokální React timeout vzor jako BULB_REPLACE_SUCCESS_MESSAGE_MS výše.
 export const GENERATOR_ACCIDENTAL_RESTART_MESSAGE_MS = 2500;
+
+// Jak dlouho (ms) zůstane v LeftWallView vidět hláška po kliknutí na dávkovač
+// munice BEZ brokovnice (viz content/copy.ts#requestAmmoNoWeaponLabel) —
+// stejný čistě kosmetický lokální React timeout vzor jako
+// BULB_REPLACE_SUCCESS_MESSAGE_MS/GENERATOR_ACCIDENTAL_RESTART_MESSAGE_MS výše.
+export const REQUEST_AMMO_NO_WEAPON_MESSAGE_MS = 2500;
 
 // Jak dlouho (ms) PowerMeter.tsx animuje výplň postupně po RECHARGE_POWER
 // (viz zadání "uspokojivý efekt" po přinesení baterie, GameState.powerRechargeSeq)

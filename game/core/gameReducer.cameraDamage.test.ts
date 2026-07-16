@@ -3,7 +3,7 @@ import { createGameReducer } from "./gameReducer";
 import { createInitialGameState } from "./gameState";
 import { NIGHT_01 } from "../nights/night01";
 import { CameraDamageState, GameState } from "./types";
-import { INACTIVE_CAMERA_DAMAGE } from "./cameraDamage";
+import { INACTIVE_CAMERA_DAMAGE, isWatchingDisabledCameraFootstepsSource } from "./cameraDamage";
 import { CAMERA_ATTACK_COOLDOWN_MS, CAMERA_FAILURE_TRANSITION_MS, GHOUL_CAMERA_ATTACK_RETREAT_PAUSE_MS } from "./cameraDamageConfig";
 
 // Pravá větev natvrdo (viz basicIntruder.ts routeVariants) — createInitialGameState
@@ -175,7 +175,7 @@ describe("TICK — camera damage phase transition", () => {
 });
 
 describe("12. mic stays active on an offline camera — image is gone, but nothing blocks the enemyStage/mic path", () => {
-  it("TOGGLE_SONIC_CANNON activation is silently rejected on a fully offline camera", () => {
+  it("TOGGLE_SONIC_CANNON still works on a fully offline camera (image gone, mic/cannon unaffected)", () => {
     const reducer = createGameReducer(NIGHT_01);
     const state = stateWith({
       sonicCannonActive: false,
@@ -183,7 +183,7 @@ describe("12. mic stays active on an offline camera — image is gone, but nothi
       cameraDamage: cameraDamageWith({ disabledCameraIds: ["door_hallway"] }),
     });
     const result = reducer(state, { type: "TOGGLE_SONIC_CANNON" });
-    expect(result).toBe(state);
+    expect(result.sonicCannonActive).toBe(true);
   });
 
   it("activation still works normally on a different, unaffected camera", () => {
@@ -255,6 +255,57 @@ describe("14/15. disabled camera microphone footsteps", () => {
     vi.spyOn(Math, "random").mockReturnValue(0);
     const result = reducer(state, { type: "ENEMY_ADVANCE" });
     expect(result.disabledCameraFootstepsSeq).toBe(0);
+  });
+
+  it("records WHICH camera the footsteps event belongs to (lastDisabledCameraFootstepsCameraId), not just that one happened", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = stateWith({
+      enemyStage: "right_hallway",
+      cameraDamage: cameraDamageWith({ disabledCameraIds: ["door_hallway"] }),
+      disabledCameraFootstepsSeq: 0,
+      lastDisabledCameraFootstepsCameraId: null,
+    });
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    const result = reducer(state, { type: "ENEMY_ADVANCE" });
+    expect(result.enemyStage).toBe("door_hallway");
+    expect(result.lastDisabledCameraFootstepsCameraId).toBe("door_hallway");
+  });
+});
+
+describe("isWatchingDisabledCameraFootstepsSource — gating rule for footsteps playback (zadání: 'jen tato kamera + aktivní událost pro tuto lokaci')", () => {
+  function watchingState(overrides: Partial<GameState>): GameState {
+    return stateWith({
+      cameraOpen: true,
+      cameraViewMode: "detail",
+      playerView: "desk",
+      activeCameraId: "door_hallway",
+      lastDisabledCameraFootstepsCameraId: "door_hallway",
+      ...overrides,
+    });
+  }
+
+  it("1. true when the player is watching the exact camera the last footsteps event belongs to", () => {
+    expect(isWatchingDisabledCameraFootstepsSource(watchingState({}))).toBe(true);
+  });
+
+  it("2. false when the player is watching a DIFFERENT camera than the event", () => {
+    expect(isWatchingDisabledCameraFootstepsSource(watchingState({ activeCameraId: "right_hallway" }))).toBe(false);
+  });
+
+  it("6. false when the camera system is closed", () => {
+    expect(isWatchingDisabledCameraFootstepsSource(watchingState({ cameraOpen: false }))).toBe(false);
+  });
+
+  it("false when in overview mode, not a focused camera detail", () => {
+    expect(isWatchingDisabledCameraFootstepsSource(watchingState({ cameraViewMode: "overview" }))).toBe(false);
+  });
+
+  it("false when the player has left the desk (door/left_wall/generator view)", () => {
+    expect(isWatchingDisabledCameraFootstepsSource(watchingState({ playerView: "door" }))).toBe(false);
+  });
+
+  it("false when there was never a footsteps event yet (lastDisabledCameraFootstepsCameraId null)", () => {
+    expect(isWatchingDisabledCameraFootstepsSource(watchingState({ lastDisabledCameraFootstepsCameraId: null }))).toBe(false);
   });
 });
 
@@ -346,6 +397,22 @@ describe("DEBUG_TRIGGER_GHOUL_CAMERA_ATTACK / DEBUG_RESET_CAMERA_DAMAGE / DEBUG_
     const state = stateWith({ disabledCameraFootstepsSeq: 2 });
     const result = reducer(state, { type: "DEBUG_PLAY_DISABLED_CAMERA_FOOTSTEPS" });
     expect(result.disabledCameraFootstepsSeq).toBe(3);
+  });
+
+  it("debug play footsteps respects the same camera-selection rule as the production event (binds to the currently open camera)", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = stateWith({ activeCameraId: "right_hallway", lastDisabledCameraFootstepsCameraId: "door_hallway" });
+    const result = reducer(state, { type: "DEBUG_PLAY_DISABLED_CAMERA_FOOTSTEPS" });
+    expect(result.lastDisabledCameraFootstepsCameraId).toBe("right_hallway");
+    expect(isWatchingDisabledCameraFootstepsSource(result)).toBe(true);
+  });
+
+  it("debug play footsteps with no camera open binds to null (won't play, same as a real event nobody is watching)", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = stateWith({ cameraOpen: false, activeCameraId: null });
+    const result = reducer(state, { type: "DEBUG_PLAY_DISABLED_CAMERA_FOOTSTEPS" });
+    expect(result.lastDisabledCameraFootstepsCameraId).toBeNull();
+    expect(isWatchingDisabledCameraFootstepsSource(result)).toBe(false);
   });
 
   it("13. debug chance override sets 100%, production constant stays untouched", () => {

@@ -1,6 +1,10 @@
 import { useEffect, useState, type ChangeEvent, type CSSProperties, type PointerEvent } from "react";
 import { COPY } from "@/content/copy";
-import { EMERGENCY_RUN_WINDUP_DURATION_MS, THINK_IT_OVER_WINDUP_DURATION_MS } from "@/game/balancing/constants";
+import {
+  EMERGENCY_RUN_WINDUP_DURATION_MS,
+  REQUEST_AMMO_NO_WEAPON_MESSAGE_MS,
+  THINK_IT_OVER_WINDUP_DURATION_MS,
+} from "@/game/balancing/constants";
 import { computeEmergencyRunWindupProgressRatio } from "@/game/core/emergencyRunWindupProgress";
 import { computeThinkItOverWindupProgressRatio } from "@/game/core/thinkItOverWindupProgress";
 import { DOUBLE_BARREL_SHOTGUN_MAX_AMMO, SHOTGUN_MAX_AMMO } from "@/game/core/shotgunEquipment";
@@ -140,6 +144,23 @@ export default function LeftWallView({
   onRequestAmmo,
 }: LeftWallViewProps) {
   const [imageFailed, setImageFailed] = useState(false);
+  // Klik na dávkovač BEZ brokovnice nikdy nic nedispatchuje (viz
+  // app/play/page.tsx#handleRequestAmmo, canRequestAmmo) — tahle hláška je
+  // proto čistě lokální UI feedback na "prázdný" klik, ne reakce na herní
+  // stav/seq z reduceru (na rozdíl od DoorView.tsx#showSuccessMessage).
+  const [showNoWeaponMessage, setShowNoWeaponMessage] = useState(false);
+  useEffect(() => {
+    if (!showNoWeaponMessage) return;
+    const timeout = setTimeout(() => setShowNoWeaponMessage(false), REQUEST_AMMO_NO_WEAPON_MESSAGE_MS);
+    return () => clearTimeout(timeout);
+  }, [showNoWeaponMessage]);
+  function handleRequestAmmoClick() {
+    if (!hasShotgun) {
+      setShowNoWeaponMessage(true);
+      return;
+    }
+    onRequestAmmo();
+  }
   const wallImageSrc = !hasShotgun
     ? EMPTY_LEFT_WALL_IMAGE_SRC
     : hasDoubleBarrelShotgun
@@ -321,10 +342,13 @@ export default function LeftWallView({
         <button
           type="button"
           className={`pixel-button console-button tap-target flex items-center gap-2 px-3 py-2 text-xs touch-none select-none w-full justify-center ${canRequestAmmoNow ? "" : "opacity-50"}`}
-          onClick={onRequestAmmo}
+          onClick={handleRequestAmmoClick}
         >
           <span>{COPY.game.requestAmmoLabel.replace("{ammo}", String(shotgunAmmo)).replace("{max}", String(shotgunMaxAmmo))}</span>
         </button>
+        {showNoWeaponMessage && (
+          <div className="text-[10px] text-amber-300 bg-black/70 px-2 py-1 rounded">{COPY.game.requestAmmoNoWeaponLabel}</div>
+        )}
 
         {/* Posuvník "za jak dlouho se dveře do kanceláře samy odemknou" (viz
             zadání "kompenzovat horší mobilní ovládání") — jen s brokovnicí. */}

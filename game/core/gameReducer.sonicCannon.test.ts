@@ -3,6 +3,7 @@ import { createGameReducer } from "./gameReducer";
 import { createInitialGameState } from "./gameState";
 import { NIGHT_01 } from "../nights/night01";
 import { GameState } from "./types";
+import { SONIC_CANNON_RETREAT_REVEAL_MS } from "../balancing/constants";
 
 // Trasa pravou chodbou, vždy stejná (ne losovaná) — ať jsou indexy/kamery v
 // testech deterministické. Odpovídá basicIntruder.ts routeVariants[0].
@@ -270,14 +271,47 @@ describe("ENEMY_ADVANCE — sonic cannon probabilities (32/60/8)", () => {
     expect(result.sonicCannonActive).toBe(false);
   });
 
-  it("sonic cannon: roll in [0.08, 0.40) -> retreat (success)", () => {
+  it("sonic cannon: roll in [0.08, 0.40) -> retreat (success), but enemyStage stays put until the reveal window finishes (visible retreat, see sonicCannonPendingRetreat)", () => {
     const reducer = createGameReducer(NIGHT_01);
     const state = stateWithSonicAimedAt("right_hallway");
     mockRoll(0.2);
     const result = reducer(state, { type: "ENEMY_ADVANCE" });
     expect(result.lastEnemyDecision).toBe("retreat");
-    expect(result.enemyStage).toBe("outer_yard");
+    expect(result.enemyStage).toBe("right_hallway");
     expect(result.sonicCannonActive).toBe(false);
+    expect(result.sonicCannonPendingRetreat).toEqual({
+      targetStage: "outer_yard",
+      revealUntilMs: result.elapsedMs + SONIC_CANNON_RETREAT_REVEAL_MS,
+    });
+    expect(result.monsterRetreatRoarSeq).toBe(state.monsterRetreatRoarSeq + 1);
+  });
+
+  it("sonic cannon retreat: ENEMY_ADVANCE is frozen while the reveal window is pending", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = stateWithSonicAimedAt("right_hallway");
+    mockRoll(0.2);
+    const pending = reducer(state, { type: "ENEMY_ADVANCE" });
+    mockRoll(0.01); // would be "advance" if this rolled at all
+    const result = reducer(pending, { type: "ENEMY_ADVANCE" });
+    expect(result).toBe(pending);
+  });
+
+  it("sonic cannon retreat: TICK finalizes the move to targetStage once revealUntilMs passes, and opens the visible-flee window", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = stateWithSonicAimedAt("right_hallway");
+    mockRoll(0.2);
+    const pending = reducer(state, { type: "ENEMY_ADVANCE" });
+    expect(pending.enemyStage).toBe("right_hallway");
+
+    const tooSoon = reducer(pending, { type: "TICK", deltaMs: SONIC_CANNON_RETREAT_REVEAL_MS - 100 });
+    expect(tooSoon.enemyStage).toBe("right_hallway");
+    expect(tooSoon.sonicCannonPendingRetreat).not.toBeNull();
+
+    const finalized = reducer(tooSoon, { type: "TICK", deltaMs: 200 });
+    expect(finalized.enemyStage).toBe("outer_yard");
+    expect(finalized.sonicCannonPendingRetreat).toBeNull();
+    expect(finalized.enemyForcedRetreatChance).toBe(0);
+    expect(finalized.enemyForcedRetreatUntilMs).not.toBeNull();
   });
 
   it("sonic cannon: roll >= 0.40 -> stay", () => {

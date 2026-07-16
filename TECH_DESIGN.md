@@ -2112,12 +2112,34 @@ jen s nulovou šancí = čisté čekání.
   `gameReducer.ts`, stejný vzor jako `withEnemyStageVisitSeed`/`withSonicCannonAutoOff`)
   detekuje přechod "Ghoul je na lokaci offline kamery" z `false` na `true` (pokrývá JAK
   vstup Ghoula do už offline lokace, TAK dokončení vyřazení kamery, na které Ghoul už
-  stojí, jedním sjednoceným porovnáním) a přehraje existující candidate zvuk kroků
-  (`AUDIO_EVENTS.disabledCameraFootsteps`, `/dev-sound-candidates/footsteps_human/
-  footsteps_stone_securesubset.mp3`, CC0, žádná kopie souboru), respektuje
-  `DISABLED_CAMERA_FOOTSTEPS_COOLDOWN_MS` (10 s).
-- **Sonické dělo na offline kameře** — `TOGGLE_SONIC_CANNON` guard
-  (`isCameraFullyOffline`) tiše odmítne aktivaci.
+  stojí, jedním sjednoceným porovnáním, `findDisabledCameraIdForEnemyStage`) a nastaví
+  `disabledCameraFootstepsSeq` + `lastDisabledCameraFootstepsCameraId` (KTERÁ konkrétní
+  kamera, ne jen "nějaká"), respektuje `DISABLED_CAMERA_FOOTSTEPS_COOLDOWN_MS` (10 s).
+  Přehrání v `app/play/page.tsx` je navíc gatované přes `isWatchingDisabledCameraFootstepsSource`
+  (`game/core/cameraDamage.ts`, čistá odvozená funkce) — hraje JEN, když hráč v okamžiku
+  události sleduje detail PŘESNĚ té kamery (`cameraOpen && cameraViewMode === "detail" &&
+  playerView === "desk" && activeCameraId === lastDisabledCameraFootstepsCameraId); jinak
+  se seq jen "spotřebuje" beze zvuku, žádné doplnění při pozdějším přepnutí. Druhý efekt
+  sleduje tutéž podmínku a při přechodu `true -> false` (přepnutí kamery, zavření
+  kamerového systému, opuštění desk pohledu) zavolá `audioManager.stopLoop(...)` — pauza +
+  `currentTime = 0`, ať se při návratu nedohrává stará událost (bezpečné i na `loop: false`
+  zvuk). `DEBUG_PLAY_DISABLED_CAMERA_FOOTSTEPS` váže `lastDisabledCameraFootstepsCameraId`
+  na aktuálně otevřenou kameru (`activeCameraId`), respektuje tak stejné pravidlo.
+- **Sonické dělo na offline kameře** — funguje normálně (`isSonicCannonAffectingEnemy`
+  nikdy nezávisel na `cameraDamage`, jen dřívější `TOGGLE_SONIC_CANNON` guard aktivaci
+  blokoval — guard byl odstraněn, mikrofon offline kamery Ghoula prozradí i bez obrazu).
+- **Viditelný ústup po sonickém odražení** (`GameState.sonicCannonPendingRetreat`,
+  `SONIC_CANNON_RETREAT_REVEAL_MS` = 1500ms v `balancing/constants.ts`) — na rozdíl od
+  gave_up/light/UV repelů (ty přesouvají Ghoula NA kamerou viditelnou stage, takže
+  `getCameraImageSrc#isFleeingRetreat` "náhodou" funguje) sonický ústup posouvá Ghoula PRYČ
+  ze sledované kamery, takže by okamžitá změna `enemyStage` nikdy nebyla vidět. `ENEMY_ADVANCE`
+  s `sonicEffective && decision === "retreat"` proto `enemyStage` NEZMĚNÍ — jen bump
+  `monsterRetreatRoarSeq` (existující roar→kroky sekvence) a nastaví
+  `sonicCannonPendingRetreat: { targetStage, revealUntilMs }`. `ENEMY_ADVANCE` je zamrzlé
+  (stejný vzor jako `doorDeathRevealUntilMs`), dokud pending běží. `TICK` po `revealUntilMs`
+  (`resolveSonicCannonPendingRetreat`) skutečně přesune `enemyStage` na `targetStage` a
+  spustí stejné "viditelný útěk" okno jako po útoku na kameru (`enemyForcedRetreatUntilMs`
+  s `chance: 0`, `GHOUL_CAMERA_ATTACK_RETREAT_PAUSE_MS` = 7s).
 - **Obrázková animace** (`game/cameras/cameraAttackAnimation.ts` obecný typ +
   `cameraAttackAnimation.object13.ts` konkrétní data) — 5 sekvencí, jedna na kameru
   (`outer_yard`/`left_hallway`/`right_hallway`/`door_hallway`/`door_hallway_light`, vybrané

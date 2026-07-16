@@ -14,6 +14,7 @@ import { getLiveDeathSequenceConfig, isDoorAttackDeath } from "@/game/death/live
 import { NIGHT_01 } from "@/game/nights/night01";
 import { createInitialGameState } from "@/game/core/gameState";
 import { canStartThinkItOverWindup, createGameReducer, willGeneratorRestartSucceed } from "@/game/core/gameReducer";
+import { isWatchingDisabledCameraFootstepsSource } from "@/game/core/cameraDamage";
 import { useGameLoop } from "@/game/core/gameLoop";
 import { CameraId, GhoulCameraAttackAnimationId } from "@/game/core/types";
 import { audioManager } from "@/game/audio/audioManager";
@@ -864,13 +865,43 @@ export default function PlayPage() {
   // Mikrofon offline kamery (viz zadání "vyřazení kamery znamená pouze
   // ztrátu obrazu, ne zvuku") — GameState.disabledCameraFootstepsSeq se
   // zvyšuje výhradně v gameReducer.ts#withDisabledCameraFootsteps (vstup
-  // Ghoula do lokace s offline kamerou, respektuje cooldown), tady jen zvuk.
+  // Ghoula do lokace s offline kamerou, respektuje cooldown), tady jen
+  // zvuk. Přehraje se JEN tehdy, když hráč PRÁVĚ TEĎ (v okamžiku události)
+  // sleduje detail PŘESNĚ té kamery, které se událost týká (viz zadání "je
+  // právě vybraná tato kamera A existuje aktivní audio událost pro tuto
+  // lokaci") — jinak se seq jen "spotřebuje" beze zvuku (žádné doplnění při
+  // pozdějším přepnutí na tuhle kameru, viz zadání "nové kroky se mohou
+  // přehrát až při nové samostatné herní události").
   useEffect(() => {
-    if (prevDisabledCameraFootstepsSeqRef.current !== state.disabledCameraFootstepsSeq) {
+    if (prevDisabledCameraFootstepsSeqRef.current === state.disabledCameraFootstepsSeq) return;
+    prevDisabledCameraFootstepsSeqRef.current = state.disabledCameraFootstepsSeq;
+    if (isWatchingDisabledCameraFootstepsSource(state)) {
       audioManager.play(AUDIO_EVENTS.disabledCameraFootsteps);
-      prevDisabledCameraFootstepsSeqRef.current = state.disabledCameraFootstepsSeq;
     }
-  }, [state.disabledCameraFootstepsSeq]);
+  }, [
+    state.disabledCameraFootstepsSeq,
+    state.cameraOpen,
+    state.cameraViewMode,
+    state.playerView,
+    state.activeCameraId,
+    state.lastDisabledCameraFootstepsCameraId,
+  ]);
+
+  // Jakmile hráč přestane sledovat detail TÉ kamery, které se poslední
+  // událost týkala (přepnutí kamery, zavření kamerového systému, opuštění
+  // pohledu na desk), zvuk kroků se OKAMŽITĚ zastaví — ne jen pauza, i
+  // currentTime na 0 (viz zadání "aby se při návratu na kameru nedohrávala
+  // stará událost"), ať se náhodou nerozehraje odjinud. `audioManager.play`
+  // beztak currentTime před přehráním resetuje, tohle je jen jistota pro
+  // okamžik MEZI odchodem z kamery a případnou další událostí.
+  const wasWatchingDisabledCameraFootstepsRef = useRef(false);
+  useEffect(() => {
+    const isWatchingThatCamera = isWatchingDisabledCameraFootstepsSource(state);
+    if (wasWatchingDisabledCameraFootstepsRef.current && !isWatchingThatCamera) {
+      audioManager.stopLoop(AUDIO_EVENTS.disabledCameraFootsteps);
+    }
+    wasWatchingDisabledCameraFootstepsRef.current = isWatchingThatCamera;
+  }, [state.cameraOpen, state.cameraViewMode, state.playerView, state.activeCameraId, state.lastDisabledCameraFootstepsCameraId]);
 
   useEffect(() => {
     if (prevBulbReplaceSuccessSeqRef.current !== state.bulbReplaceSuccessSeq) {

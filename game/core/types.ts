@@ -657,6 +657,27 @@ export interface GameState {
    * `AUDIO_EVENTS.lightClick`, znovupoužitý — žádný nový click event).
    */
   sonicCannonToggleSeq: number;
+
+  /**
+   * Rozjeté-ale-ještě-neviditelné sonické odražení (viz zadání "sonic hit →
+   * přehrání reakce/ústupu v původní lokaci → dokončení animace → teprve
+   * potom stepBackOneStage → 7s forced retreat pause",
+   * `SONIC_CANNON_RETREAT_REVEAL_MS` v balancing/constants.ts). Na rozdíl od
+   * `light_repelled`/`hallway_light_repelled`/`gave_up` (ty posouvají
+   * monstrum NA kamerou viditelnou stage, takže reveal funguje "náhodou")
+   * sonický ústup posouvá monstrum PRYČ ze sledované kamery — okamžitá
+   * změna `enemyStage` by proto ústup nikdy neukázala
+   * (`getCameraImageSrc#isFleeingRetreat` čte AŽ NOVOU stage). Dokud je
+   * tohle pole nastavené, `enemyStage` zůstává beze změny (jen
+   * `lastEnemyDecision: "retreat"` a `monsterRetreatRoarSeq` se zvýší, ať
+   * hraje reakce/ústupové kroky) a `ENEMY_ADVANCE` je zamrzlé (stejně jako
+   * při `doorDeathRevealUntilMs`) — žádný další hod, dokud reveal neskončí.
+   * `TICK` po `revealUntilMs` dokončí skutečný přesun na `targetStage` a
+   * spustí normální "viditelný útěk" okno (`enemyForcedRetreatUntilMs` atd.,
+   * stejný mechanismus jako u ostatních repelů). `null`, dokud žádné
+   * sonické odražení nečeká na dokončení.
+   */
+  sonicCannonPendingRetreat: { targetStage: EnemyStage; revealUntilMs: number } | null;
   /** Důvod POSLEDNÍ změny `sonicCannonToggleSeq` — `null`, dokud k žádné nedošlo. Viz sonicCannonToggleSeq výše. */
   lastSonicCannonToggleReason: "manual_on" | "manual_off" | "result_auto_off" | null;
 
@@ -702,6 +723,17 @@ export interface GameState {
    * `AUDIO_EVENTS.disabledCameraFootsteps`).
    */
   disabledCameraFootstepsSeq: number;
+  /**
+   * Kamera, ke které se váže POSLEDNÍ `disabledCameraFootstepsSeq` událost
+   * (viz zadání "zvuk kroků z konkrétní kamery se smí přehrávat pouze
+   * tehdy, když je právě vybraná tato kamera A existuje aktivní audio
+   * událost pro tuto lokaci") — `app/play/page.tsx` přehraje zvuk JEN
+   * tehdy, když se v okamžiku události shoduje s `activeCameraId` A hráč
+   * skutečně sleduje detail kamer (`cameraOpen && cameraViewMode ===
+   * "detail" && playerView === "desk"`). `null`, dokud žádná událost
+   * neproběhla.
+   */
+  lastDisabledCameraFootstepsCameraId: CameraId | null;
 
   deathReason: DeathReason | null;
   /**

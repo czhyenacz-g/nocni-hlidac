@@ -144,6 +144,9 @@ export const COPY = {
     lightOffLabel: "UV světla za dveřmi: vypnuto",
     /** Prasklá žárovka u dveří (viz game/core/roomBulbs.ts) — nahrazuje lightOffLabel na LightControl, ať "VYPNUTO" nepůsobí jako by šlo světlo prostě zapnout. */
     lightBrokenLabel: "UV světla za dveřmi: rozbitá žárovka",
+    /** Tooltip po chvíli podržení myši nad LightControl.tsx (viz zadání) — jen atmosférická narážka, nic herně nemění. */
+    lightControlTooltip:
+      "Za dveřmi je asi největší žárovka, co jsi kdy viděl. Řev monstra ti říká, že to nebude jen UV světlo.",
     powerLabel: "Energie",
     // Dev-only hodnota vedle energie (viz STRESS_DEV_HUD_ENABLED, PowerMeter.tsx) — časem se skryje.
     stressLabel: "Stres",
@@ -283,6 +286,8 @@ export const COPY = {
     // Žádné automatické dobíjení už neexistuje (viz applyShotgunEmergencyReturn) —
     // tohle je jediná cesta, jak munici doplnit.
     requestAmmoLabel: "ZAŽÁDAT O MUNICI ({ammo}/{max})",
+    /** Krátká hláška po kliknutí na dávkovač BEZ brokovnice (viz zadání) — dávkovač je viditelný, ale bez zbraně logicky nemá co vydat. */
+    requestAmmoNoWeaponLabel: "Nemáš žádnou zbraň. A to jsi poctivě prohledal celou kancelář. Tady je tedy nenajdeš.",
     // Vedlejší tlačítko na left_wall, vidět jen s brokovnicí (viz zadání,
     // GameState.hasShotgun) — stejný "drž tlačítko" vzor jako
     // startEmergencyRunLabel výše, jen delší (THINK_IT_OVER_WINDUP_DURATION_MS)

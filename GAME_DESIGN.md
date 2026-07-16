@@ -354,8 +354,22 @@ odradilo, `game/core/cameraDamage.ts`) proběhne dodatečný 5% hod. Uspěje-li:
 
 Kolik kamer lze za noc takhle ztratit, roste s obtížností nocí: 1 (noci 1–10), 2 (11–19),
 3 (od noci 20) — počítáno vždy z aktuálního čísla noci, nikdy neukládáno. Mezi dvěma útoky
-je navíc ~15 s cooldown, ať se dvě kamery neztratí prakticky najednou. Sonické dělo na
-offline kameře nejde použít; přepínání na ostatní kamery zůstává funkční.
+je navíc ~15 s cooldown, ať se dvě kamery neztratí prakticky najednou. **Sonické dělo na
+offline kameře funguje normálně** — vyřazení bere jen obraz, mikrofon (a tedy i dělo, které
+na obrazu nezávisí) zůstává funkční.
+
+**Viditelný ústup po sonickém odražení.** Odradí-li sonické dělo Ghoula ("retreat"), Ghoul se
+posune o jeden krok zpět — ale ne okamžitě. Nejdřív krátce (~1,5 s, `enemyStage` beze změny)
+zůstane vidět/slyšet na PŮVODNÍ lokaci — hraje reakční řev a vzdalující se kroky (stejný zvuk
+jako po odražení světlem u dveří) — teprve pak se skutečně přesune a spustí se obvyklá ~7s
+pauza vynuceného ústupu. Bez týhle pauzy by přesun na jinou/žádnou kameru proběhl ve STEJNÉM
+okamžiku jako rozhodnutí, takže by hráč ústup nikdy neviděl na kameře, kterou zrovna sleduje.
+
+**Kroky z mikrofonu vyřazené kamery** hrají jen tehdy, když hráč PRÁVĚ TEĎ sleduje detail
+PŘESNĚ té kamery, které se konkrétní událost týká — přepnutí na jinou kameru, zavření
+kamerového systému nebo opuštění pohledu na stůl zvuk okamžitě zastaví (a vynuluje pozici),
+ať se při návratu nedohrává stará událost. Nová událost může znovu hrát jen při dalším
+skutečném vstupu Ghoula do vyřazené lokace.
 
 ## Stres a heartbeat
 

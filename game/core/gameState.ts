@@ -108,6 +108,7 @@ export function createInitialGameState(
     lastSonicCannonResult: null,
     sonicCannonToggleSeq: 0,
     lastSonicCannonToggleReason: null,
+    sonicCannonPendingRetreat: null,
 
     // Nikdy persistentní mezi nocemi (viz zadání "reset ráno") — vždy
     // čerstvý klidový stav, žádný override parametr (stejná konvence jako
@@ -117,6 +118,7 @@ export function createInitialGameState(
     cameraAttackStartedSeq: 0,
     cameraOfflineSeq: 0,
     disabledCameraFootstepsSeq: 0,
+    lastDisabledCameraFootstepsCameraId: null,
 
     deathReason: null,
     doorDeathRevealUntilMs: null,

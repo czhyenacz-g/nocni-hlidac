@@ -24,9 +24,23 @@ interface PowerMeterProps {
    * zobrazí, co dostane. `undefined` = nezobrazovat.
    */
   nearRoomBulbLabel?: string;
+  /**
+   * Jestli `nearRoomBulbLabel` PRÁVĚ TEĎ ukazuje odpočet v sekundách (ne
+   * "prasklá") — jen tehdy dostane jemné blikání/záři (viz
+   * styles/atmosphere.css#bulb-countdown-flicker, zadání "ať ten text
+   * trochu bliká/září"). PowerMeter sama nepočítá `broken`, jen zobrazí.
+   */
+  nearRoomBulbCountingDown?: boolean;
 }
 
-export default function PowerMeter({ power, rechargeSeq, stressPercent, bulbsRemaining, nearRoomBulbLabel }: PowerMeterProps) {
+export default function PowerMeter({
+  power,
+  rechargeSeq,
+  stressPercent,
+  bulbsRemaining,
+  nearRoomBulbLabel,
+  nearRoomBulbCountingDown,
+}: PowerMeterProps) {
   const color =
     power <= CRITICAL_POWER_THRESHOLD
       ? PALETTE.powerCritical
@@ -79,7 +93,7 @@ export default function PowerMeter({ power, rechargeSeq, stressPercent, bulbsRem
           />
         </div>
         {nearRoomBulbLabel !== undefined && (
-          <div className="text-[10px] text-gray-500 mt-1">
+          <div className={`text-[10px] text-gray-500 mt-1 ${nearRoomBulbCountingDown ? "bulb-countdown-flicker" : ""}`}>
             {COPY.game.nearRoomBulbLabel}: {nearRoomBulbLabel}
           </div>
         )}
