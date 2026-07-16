@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { COPY } from "@/content/copy";
 import {
   BACKGROUND_SCENES,
-  DOOR_CLOSED_FRAME_COUNT,
+  doorClosedFrameOffsetForStep,
   DOOR_CLOSED_FRAME_HOLD_MS,
   DOOR_CLOSED_FRAME_START_INDEX,
 } from "@/game/visuals/backgroundImages";
@@ -76,25 +76,24 @@ export default function DoorView({
   // Pomalé cyklení mezi zavřenými snímky, dokud dveře zůstávají zavřené —
   // řetězec setTimeoutů stejným vzorem jako SceneBackground.tsx#autoIndex
   // (žádný pevný setInterval, ať jde snadno měnit hold jednotlivě, kdyby
-  // některý snímek měl v budoucnu vydržet jinak dlouho). Reset na 0 při
-  // otevření/zavření dveří, ať animace vždycky začíná od prvního zavřeného
-  // snímku, ne odkudsi uprostřed.
-  const [closedFrameOffset, setClosedFrameOffset] = useState(0);
+  // některý snímek měl v budoucnu vydržet jinak dlouho). `closedFrameStep`
+  // je jen monotónní počítadlo kroků — skutečný zobrazený snímek dopočítá
+  // `doorClosedFrameOffsetForStep` (ping-pong 0,1,2,3,2,1,0,..., viz zadání).
+  // Reset na 0 při otevření/zavření dveří, ať animace vždycky začíná od
+  // prvního zavřeného snímku, ne odkudsi uprostřed.
+  const [closedFrameStep, setClosedFrameStep] = useState(0);
   useEffect(() => {
     if (!doorClosed || isDoorDeathReveal) {
-      setClosedFrameOffset(0);
+      setClosedFrameStep(0);
       return;
     }
-    const timeout = setTimeout(
-      () => setClosedFrameOffset((offset) => (offset + 1) % DOOR_CLOSED_FRAME_COUNT),
-      DOOR_CLOSED_FRAME_HOLD_MS,
-    );
+    const timeout = setTimeout(() => setClosedFrameStep((step) => step + 1), DOOR_CLOSED_FRAME_HOLD_MS);
     return () => clearTimeout(timeout);
-  }, [doorClosed, isDoorDeathReveal, closedFrameOffset]);
+  }, [doorClosed, isDoorDeathReveal, closedFrameStep]);
   const activeIndex = isDoorDeathReveal
     ? deathRevealIndex
     : doorClosed
-      ? DOOR_CLOSED_FRAME_START_INDEX + closedFrameOffset
+      ? DOOR_CLOSED_FRAME_START_INDEX + doorClosedFrameOffsetForStep(closedFrameStep)
       : 0;
   // Ikonka výměny je v DoorView trvale vidět (na rozdíl od dřívějšího "jen
   // po prasknutí") — jedinou výjimkou je krátký doorDeathReveal (monstrum ve

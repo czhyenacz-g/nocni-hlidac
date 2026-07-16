@@ -87,6 +87,21 @@ export const DOOR_CLOSED_FRAME_START_INDEX = 1;
 // zjevná smyčka. Podobný řád velikosti jako camera "dýchání" (~25s cyklus).
 export const DOOR_CLOSED_FRAME_HOLD_MS = 5000;
 
+/**
+ * Which door_closed_* frame offset (0..DOOR_CLOSED_FRAME_COUNT-1) to show for
+ * a given monotonic step count — "ping-pong" sekvence tam a zpátky (viz
+ * zadání "0,1,2,3,2,1,0,1,2,3,2,1,0..."), ne obyčejné cyklení dokola
+ * (0,1,2,3,0,1,2,3,...), ať dveře nedělají viditelný "skok" zpátky na první
+ * snímek. Čistá funkce (jen step + počet snímků), ať jde snadno testovat
+ * nezávisle na DoorView.tsx#useEffect časovači.
+ */
+export function doorClosedFrameOffsetForStep(step: number): number {
+  const period = 2 * (DOOR_CLOSED_FRAME_COUNT - 1);
+  if (period <= 0) return 0;
+  const phase = step % period;
+  return phase < DOOR_CLOSED_FRAME_COUNT ? phase : period - phase;
+}
+
 export type BackgroundSceneId =
   | "menu"
   | "menuFirstWin"

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BACKGROUND_SCENES } from "./backgroundImages";
+import { BACKGROUND_SCENES, doorClosedFrameOffsetForStep, DOOR_CLOSED_FRAME_START_INDEX } from "./backgroundImages";
 
 // Default (nepřihlášený hráč) menu pozadí — rozšířeno ze 2 na 3 snímky
 // (menu_bg_0/1/2.webp, viz zadání "přidal jsem menu_bg_2.png"), stejný
@@ -117,6 +117,39 @@ describe("BACKGROUND_SCENES.death", () => {
 // DeathScreen.tsx) používá vlastní scénu "deathDoorAttack", ne "death" výše
 // — dostala stejnou ghoul animaci na žádost po prvním živém testu, kde
 // zůstala nečekaně statická.
+// Zavřené dveře — 4-snímková idle animace (door_closed_0..3, viz zadání
+// "přidal jsem door_closed_1/2/3.png"), na indexech 1-4 mezi otevřenými (0)
+// a death reveal (poslední).
+describe("BACKGROUND_SCENES.door", () => {
+  it("has open, 4 closed idle frames, and the death-reveal frame in that order", () => {
+    const srcs = BACKGROUND_SCENES.door.frames.map((f) => f.src);
+    expect(srcs).toEqual([
+      "/object_13/background/door_open_0.webp",
+      "/object_13/background/door_closed_0.webp",
+      "/object_13/background/door_closed_1.webp",
+      "/object_13/background/door_closed_2.webp",
+      "/object_13/background/door_closed_3.webp",
+      "/object_13/background/door_open_death_0.webp",
+    ]);
+  });
+});
+
+describe("doorClosedFrameOffsetForStep — ping-pong sequence for the closed-door idle animation", () => {
+  it("produces 0,1,2,3,2,1,0,1,2,3,2,1,0,... (zadání), not a hard cut back to 0", () => {
+    const steps = Array.from({ length: 13 }, (_, step) => doorClosedFrameOffsetForStep(step));
+    expect(steps).toEqual([0, 1, 2, 3, 2, 1, 0, 1, 2, 3, 2, 1, 0]);
+  });
+
+  it("every offset stays within the DOOR_CLOSED_FRAME_START_INDEX..+3 frame range", () => {
+    for (let step = 0; step < 20; step++) {
+      const offset = doorClosedFrameOffsetForStep(step);
+      expect(offset).toBeGreaterThanOrEqual(0);
+      expect(offset).toBeLessThanOrEqual(3);
+      expect(DOOR_CLOSED_FRAME_START_INDEX + offset).toBeLessThanOrEqual(4);
+    }
+  });
+});
+
 describe("BACKGROUND_SCENES.deathDoorAttack", () => {
   it("has the same four ghoul_death frames in order as BACKGROUND_SCENES.death", () => {
     const srcs = BACKGROUND_SCENES.deathDoorAttack.frames.map((f) => f.src);
