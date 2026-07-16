@@ -9,7 +9,7 @@ function extractFrameNumber(src: string): number {
 }
 
 describe("GHOUL_CAMERA_ATTACK_ANIMATIONS", () => {
-  const ids = ["left_hallway", "right_hallway", "door_hallway", "door_hallway_light"] as const;
+  const ids = ["outer_yard", "left_hallway", "right_hallway", "door_hallway", "door_hallway_light"] as const;
 
   it("2. every sequence uses only .webp paths — never .png", () => {
     for (const id of ids) {
@@ -30,10 +30,14 @@ describe("GHOUL_CAMERA_ATTACK_ANIMATIONS", () => {
     }
   });
 
-  it("has 25 frames per sequence (exact count found in the source project)", () => {
-    for (const id of ids) {
+  it("has 25 frames per hallway/door sequence (exact count found in the source project)", () => {
+    for (const id of ["left_hallway", "right_hallway", "door_hallway", "door_hallway_light"] as const) {
       expect(GHOUL_CAMERA_ATTACK_ANIMATIONS[id].frames).toHaveLength(25);
     }
+  });
+
+  it("outer_yard has 4 frames (added later, exact count found in the source project)", () => {
+    expect(GHOUL_CAMERA_ATTACK_ANIMATIONS.outer_yard.frames).toHaveLength(4);
   });
 
   it("9. total playback duration is GHOUL_CAMERA_ATTACK_FRAMES_DURATION_MS regardless of frame count", () => {
@@ -64,6 +68,12 @@ describe("GHOUL_CAMERA_ATTACK_ANIMATIONS", () => {
   it("door_hallway_light frames live under the door_hallway_light_ghoul_attack folder (source files use 'bright' in the name)", () => {
     for (const src of GHOUL_CAMERA_ATTACK_ANIMATIONS.door_hallway_light.frames) {
       expect(src).toContain("/door_hallway_light/door_hallway_light_ghoul_attack/door_hallway_bright_");
+    }
+  });
+
+  it("outer_yard frames live under the outdoor_ghoul_attack folder", () => {
+    for (const src of GHOUL_CAMERA_ATTACK_ANIMATIONS.outer_yard.frames) {
+      expect(src).toContain("/outdoor/outdoor_ghoul_attack/outdoor_");
     }
   });
 });

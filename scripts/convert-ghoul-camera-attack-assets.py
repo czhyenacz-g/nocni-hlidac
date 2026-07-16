@@ -23,12 +23,16 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CAMERA_ROOT = REPO_ROOT / "public" / "object_13" / "camera"
 
-# Čtyři zdrojové složky (viz zadání) — cesty relativní ke CAMERA_ROOT.
+# Zdrojové složky (viz zadání) — cesty relativní ke CAMERA_ROOT. outdoor
+# přibyl později (viz zadání "doplnil jsem fotky i pro outdoor_ghoul_attack")
+# a má jiný (menší) počet snímků než ostatní čtyři — frameDurationMs se
+# odvozuje z počtu, takže to nevadí (viz cameraAttackAnimation.object13.ts).
 SOURCE_FOLDERS = [
     "left_hallway/left_hallway_ghoul_attack",
     "right_hallway/right_hallway_ghoul_attack",
     "door_hallway/door_hallway_ghoul_attack",
     "door_hallway_light/door_hallway_light_ghoul_attack",
+    "outdoor/outdoor_ghoul_attack",
 ]
 
 FRAME_NUMBER_RE = re.compile(r"(\d+)(?=\.png$)")

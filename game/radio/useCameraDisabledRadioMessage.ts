@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CAMERA_DISABLED_OVERLAY_DURATION_MS, GHOUL_CAMERA_DISABLED_MESSAGE } from "./cameraDisabledRadioMessage";
+import { audioManager } from "../audio/audioManager";
+import { pickRandomCameraDisabledMessage, resolveCameraDisabledOverlayDurationMs } from "./cameraDisabledRadioMessage";
 import { RadioMessageState } from "./radioTypes";
 
 /**
@@ -12,11 +13,13 @@ import { RadioMessageState } from "./radioTypes";
  * (viz gameReducer.ts#updateCameraDamagePhase) — NIKDY při začátku
  * ztmavování (viz zadání "zpráva se nesmí spustit už při začátku").
  *
- * Zatím čistě textová (viz zadání "žádný browser speechSynthesis, žádné
- * externí TTS, žádný zvuk") — `GHOUL_CAMERA_DISABLED_MESSAGE.audioSrc` je
- * `null`, takže se nic nepřehrává; jakmile přibude reálný soubor (viz
- * cameraDisabledRadioMessage.ts komentář), přehrávání se doplní přes
- * `audioManager`, ne přímo tady náhradou za `new Audio()`.
+ * Náhodně vybere jednu ze tří skutečně namluvených variant
+ * (cameraDisabledRadioMessage.ts) a přehraje ji přes `audioManager` —
+ * stejný vzor jako useMonsterRepelRadioMessage.ts/useRadioMessage.ts, žádné
+ * `new Audio()` přímo tady. Overlay text odpovídá PŘESNĚ té variantě, která
+ * se zrovna přehrává (na rozdíl od repel/release hlášek, kde je text jen
+ * obecný status — tady máme ověřený přesný přepis, viz
+ * cameraDisabledRadioMessage.ts).
  */
 export function useCameraDisabledRadioMessage(cameraOfflineSeq: number): RadioMessageState {
   const prevSeqRef = useRef(cameraOfflineSeq);
@@ -26,9 +29,13 @@ export function useCameraDisabledRadioMessage(cameraOfflineSeq: number): RadioMe
     if (prevSeqRef.current === cameraOfflineSeq) return;
     prevSeqRef.current = cameraOfflineSeq;
 
-    setState({ visible: true, text: GHOUL_CAMERA_DISABLED_MESSAGE.text });
+    const message = pickRandomCameraDisabledMessage();
+    if (!message) return;
 
-    const timeout = setTimeout(() => setState({ visible: false, text: null }), CAMERA_DISABLED_OVERLAY_DURATION_MS);
+    audioManager.play(message.id);
+    setState({ visible: true, text: message.text });
+
+    const timeout = setTimeout(() => setState({ visible: false, text: null }), resolveCameraDisabledOverlayDurationMs(message.id));
     return () => clearTimeout(timeout);
   }, [cameraOfflineSeq]);
 

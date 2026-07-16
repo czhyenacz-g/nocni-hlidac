@@ -5,7 +5,7 @@ import GhoulCameraAttackAnimation from "./GhoulCameraAttackAnimation";
 
 interface CameraDamageOverlayProps {
   phase: CameraAttackVisualPhase;
-  /** GameState.cameraDamage.activeAttack.animationId — `null` (outer_yard, nebo chybějící/prázdná sekvence) spadne na CSS fallback (viz zadání "Fallback"). */
+  /** GameState.cameraDamage.activeAttack.animationId — `null` (chybějící/prázdná sekvence) spadne na CSS fallback (viz zadání "Fallback"). */
   animationId: GhoulCameraAttackAnimationId | null;
   /** GameState.cameraDamage.activeAttack.startedAtMs — React `key` na CSS větvi (viz níže) i vstup pro odvození aktuálního snímku. */
   attackStartedAtMs: number | null;

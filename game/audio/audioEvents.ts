@@ -143,6 +143,14 @@ export const AUDIO_EVENTS = {
   // (freesound.org/people/SecureSubset/sounds/813622/, CC0, dosud jen v
   // /dev-sound candidate listu, žádný duplicitní soubor, viz audioConfig.ts).
   disabledCameraFootsteps: "disabled_camera_footsteps",
+  // Rádiová hláška "kamera zničena" (viz zadání, game/radio/cameraDisabledRadioMessage.ts)
+  // — tři skutečně namluvené varianty (camera_destroid_full_1.wav, přepsáno
+  // přes Whisper — viz TECH_DESIGN.md), náhodný výběr jedné při každém
+  // dokončeném vyřazení kamery, stejný "1 event = 1 předem načtený <audio>
+  // element" vzor jako radioReleaseMonster*/radioMonsterRepel*.
+  radioCameraDestroyed0: "radio_camera_destroyed_0",
+  radioCameraDestroyed1: "radio_camera_destroyed_1",
+  radioCameraDestroyed2: "radio_camera_destroyed_2",
 } as const;
 
 export type AudioEventId = (typeof AUDIO_EVENTS)[keyof typeof AUDIO_EVENTS];

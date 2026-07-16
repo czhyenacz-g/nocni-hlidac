@@ -340,13 +340,15 @@ Při **každém** použití sonického děla na Ghoula (bez ohledu na to, jestli
 odradilo, `game/core/cameraDamage.ts`) proběhne dodatečný 5% hod. Uspěje-li:
 
 1. Ghoul si všimne aktivní kamery — kamera přejde do útoku (obrázková sekvence Ghoula
-   běžícího ke kameře, ~2,5 s, `left_hallway`/`right_hallway`/`door_hallway`/
+   běžícího ke kameře, ~2,5 s, `outer_yard`/`left_hallway`/`right_hallway`/`door_hallway`/
    `door_hallway_light` podle kamery a stavu chodbového světla V OKAMŽIKU spuštění —
    pozdější přepnutí světla sekvenci už nemění).
 2. Poslední snímek zůstane vidět další ~2 s, pak krátké závěrečné ztmavnutí/zrnění.
 3. Kamera přejde do trvalého stavu **offline** (obraz pryč) až do rána — "SIGNÁL ZTRACEN /
    KAMERA MIMO PROVOZ / SERVIS V 06:00 / MIKROFON: AKTIVNÍ". **Mikrofon zůstává funkční** —
-   vejde-li Ghoul do lokace offline kamery, ozvou se z reproduktoru jeho kroky.
+   vejde-li Ghoul do lokace offline kamery, ozvou se z reproduktoru jeho kroky. Rádio navíc
+   krátce ohlásí, co se stalo (jedna ze tří skutečně namluvených hlášek, viz
+   `game/radio/cameraDisabledRadioMessage.ts`).
 4. Ghoul po útoku ustoupí přesně o jeden krok směrem ven (nikdy blíž ke kanceláři) a na
    chvíli (~7 s) jen čeká, než pokračuje normální AI.
 

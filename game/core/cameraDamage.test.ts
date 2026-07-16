@@ -72,8 +72,8 @@ describe("resolveGhoulCameraAttackAnimationId", () => {
     expect(resolveGhoulCameraAttackAnimationId("door_hallway", true)).toBe("door_hallway_light");
   });
 
-  it("outer_yard has no sequence (null) — a real gap, not a bug", () => {
-    expect(resolveGhoulCameraAttackAnimationId("outer_yard", false)).toBeNull();
+  it("outer_yard -> 'outer_yard'", () => {
+    expect(resolveGhoulCameraAttackAnimationId("outer_yard", false)).toBe("outer_yard");
   });
 });
 
@@ -194,11 +194,11 @@ describe("attemptGhoulCameraAttack", () => {
     expect(result.activeAttack?.animationId).toBe("door_hallway_light");
   });
 
-  it("outer_yard (no sequence) still starts an attack — animationId is null, falls back to CSS at render time", () => {
+  it("outer_yard attacks use their own animationId", () => {
     vi.spyOn(Math, "random").mockReturnValue(0);
     const state = stateWith({ activeCameraId: "outer_yard", enemyStage: "outer_yard" });
     const result = attemptGhoulCameraAttack(state, NIGHT_01, 1, false);
-    expect(result.activeAttack?.animationId).toBeNull();
+    expect(result.activeAttack?.animationId).toBe("outer_yard");
   });
 
   it("never triggers for a non-Ghoul enemy, even with a guaranteed-hit roll", () => {
@@ -359,7 +359,7 @@ describe("canDebugTriggerGhoulCameraAttack / debugTriggerGhoulCameraAttack / deb
 
   it("debugTriggerGhoulCameraAttack normally selects the sequence like production", () => {
     const state = stateWith({ activeCameraId: "outer_yard", elapsedMs: 500 });
-    expect(debugTriggerGhoulCameraAttack(state, false).activeAttack?.animationId).toBeNull();
+    expect(debugTriggerGhoulCameraAttack(state, false).activeAttack?.animationId).toBe("outer_yard");
   });
 
   it("debugTriggerGhoulCameraAttack respects an explicit animationId override (dev 'pick a sequence')", () => {

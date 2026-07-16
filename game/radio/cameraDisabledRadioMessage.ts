@@ -1,30 +1,70 @@
+import { AUDIO_CONFIG } from "../audio/audioConfig";
+import { AUDIO_EVENTS, AudioEventId } from "../audio/audioEvents";
+
 /**
- * Malá, samostatná definice rádiové zprávy pro vyřazení kamery Ghoulem (viz
- * zadání) — ZÁMĚRNĚ NENÍ napojená na `game/audio/audioEvents.ts`/
- * `audioConfig.ts` jako `monsterRepelRadioMessages.ts`/`releaseMonsterMessages.ts`
- * (`id: AudioEventId`) — tahle zpráva zatím nemá žádný zvukový soubor a
- * nemá se pro ni ani generovat fallback synth (viz zadání "v této úpravě
- * žádný zvuk negeneruj"). `text` je zdroj pravdy, `audioSrc` je jen
- * budoucí metadata.
+ * Definice rádiové zprávy pro vyřazení kamery Ghoulem (viz zadání) — tři
+ * SKUTEČNĚ namluvené varianty (`camera_destroid_full_1.wav`, dodaný zdroj),
+ * stejný "`id: AudioEventId`, `audioSrc` odvozený z `AUDIO_CONFIG[id].src`"
+ * vzor jako `monsterRepelRadioMessages.ts`/`releaseMonsterMessages.ts`.
+ * `text` je přesný přepis dané varianty (Whisper, ověřeno opakovanou
+ * transkripcí + poslechem — viz TECH_DESIGN.md "Whisper" a report u
+ * zadání) — zobrazuje se v overlay PŘESNĚ podle toho, která varianta se
+ * náhodně vybere (na rozdíl od repel/release hlášek tady text sedí 1:1 s
+ * přehrávaným zvukem, ne obecný stavový label).
  *
- * Až přibude reálný soubor: zaregistruj ho jako nový `AUDIO_EVENTS`/
- * `AUDIO_CONFIG` event (stejná konvence jako zbytek projektu, viz CLAUDE.md
- * "Nový zvuk = nový event + config, ne `new Audio()` přímo"), nastav sem
- * `audioSrc` na jeho cestu, a v `useCameraDisabledRadioMessage.ts` přidej
- * `audioManager.play(<ten nový AudioEventId>)` vedle zobrazení textu.
- * Skutečné přehrávání VŽDY jde přes `audioManager`, nikdy přímo `new Audio()`.
+ * Čtvrtý segment ve zdrojové nahrávce zůstal nesrozumitelný i po několika
+ * nezávislých pokusech o přepis (různé ořezy, denoising, prompt) — na
+ * žádost vynechán, pool má proto jen tři varianty, ne čtyři.
  */
 export interface CameraDisabledRadioMessage {
-  id: string;
+  id: AudioEventId;
   text: string;
-  audioSrc: string | null;
+  audioSrc: string;
 }
 
-export const GHOUL_CAMERA_DISABLED_MESSAGE: CameraDisabledRadioMessage = {
-  id: "ghoul-camera-disabled",
-  text: "To monstrum vyřadilo kameru! Opravit to půjde až ráno!",
-  audioSrc: null,
+export const CAMERA_DISABLED_RADIO_MESSAGES: CameraDisabledRadioMessage[] = [
+  {
+    id: AUDIO_EVENTS.radioCameraDestroyed0,
+    text: "No, tak do rána jsme po tmě.",
+    audioSrc: AUDIO_CONFIG[AUDIO_EVENTS.radioCameraDestroyed0].src,
+  },
+  {
+    id: AUDIO_EVENTS.radioCameraDestroyed1,
+    text: "Kamera zničena!",
+    audioSrc: AUDIO_CONFIG[AUDIO_EVENTS.radioCameraDestroyed1].src,
+  },
+  {
+    id: AUDIO_EVENTS.radioCameraDestroyed2,
+    text: "Zbývá už jenom mikrofon.",
+    audioSrc: AUDIO_CONFIG[AUDIO_EVENTS.radioCameraDestroyed2].src,
+  },
+];
+
+/** Přesná délka (ms) každého souboru + malá rezerva — stejný účel jako monsterRepelRadioMessages.ts#resolveMonsterRepelOverlayDurationMs. */
+const MESSAGE_DURATIONS_MS: Partial<Record<AudioEventId, number>> = {
+  [AUDIO_EVENTS.radioCameraDestroyed0]: 3700,
+  [AUDIO_EVENTS.radioCameraDestroyed1]: 2100,
+  [AUDIO_EVENTS.radioCameraDestroyed2]: 1800,
 };
 
-/** Cca 4-5s (viz zadání) — mírně delší než sonic-cannon rádiové hlášky, ať hráč stihne text v klidu přečíst. */
-export const CAMERA_DISABLED_OVERLAY_DURATION_MS = 4500;
+const OVERLAY_TAIL_MS = 400;
+
+/** `0` (jen tail rezerva) pro neznámé/budoucí id, ne pád — bezpečný fallback, stejná konvence jako ostatní rádiové manifesty. */
+export function resolveCameraDisabledOverlayDurationMs(id: AudioEventId): number {
+  return (MESSAGE_DURATIONS_MS[id] ?? 0) + OVERLAY_TAIL_MS;
+}
+
+/**
+ * Náhodný výběr jedné varianty (viz zadání "výběr v místě audio
+ * side-effectu, ne v čistém reduceru") — volá se z
+ * useCameraDisabledRadioMessage.ts. Čistá funkce nad explicitním `messages`
+ * parametrem (default = skutečný manifest), ať jde testovat i s uměle
+ * krátkým/prázdným seznamem. `null` pro prázdný seznam, nikdy pád.
+ */
+export function pickRandomCameraDisabledMessage(
+  messages: CameraDisabledRadioMessage[] = CAMERA_DISABLED_RADIO_MESSAGES,
+): CameraDisabledRadioMessage | null {
+  if (messages.length === 0) return null;
+  const index = Math.floor(Math.random() * messages.length);
+  return messages[index];
+}

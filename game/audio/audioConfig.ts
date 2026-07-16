@@ -623,4 +623,22 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
     volume: 0.5,
     loop: false,
   },
+  // Rádiová hláška "kamera zničena" — tři reálné namluvené varianty
+  // (camera_destroid_full_1.wav, zpracováno ffmpeg, viz
+  // game/radio/cameraDisabledRadioMessage.ts).
+  [AUDIO_EVENTS.radioCameraDestroyed0]: {
+    src: "/object_13/sound/camera_destroid/radio_camera_destroyed_0.mp3",
+    volume: 0.85,
+    loop: false,
+  },
+  [AUDIO_EVENTS.radioCameraDestroyed1]: {
+    src: "/object_13/sound/camera_destroid/radio_camera_destroyed_1.mp3",
+    volume: 0.85,
+    loop: false,
+  },
+  [AUDIO_EVENTS.radioCameraDestroyed2]: {
+    src: "/object_13/sound/camera_destroid/radio_camera_destroyed_2.mp3",
+    volume: 0.85,
+    loop: false,
+  },
 };

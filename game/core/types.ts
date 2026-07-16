@@ -286,7 +286,7 @@ export type MonsterRepelRadioResult = "success" | "stay" | "fail";
  * data), stejné směřování závislosti jako `CameraId`/`CameraDefinition`
  * (cameras závisí na core, nikdy naopak).
  */
-export type GhoulCameraAttackAnimationId = "left_hallway" | "right_hallway" | "door_hallway" | "door_hallway_light";
+export type GhoulCameraAttackAnimationId = "outer_yard" | "left_hallway" | "right_hallway" | "door_hallway" | "door_hallway_light";
 
 /**
  * Vizuální fáze útoku Ghoula na JEDNU konkrétní kameru (viz zadání) — čistě
@@ -296,7 +296,8 @@ export type GhoulCameraAttackAnimationId = "left_hallway" | "right_hallway" | "d
  * konkrétní kameru+elapsedMs dopočítá). `"approaching-camera"` renderuje
  * skutečnou obrázkovou sekvenci (frames přehrávají se + hold posledního
  * snímku, viz game/cameras/cameraAttackAnimation.object13.ts) nebo CSS
- * fallback, pokud sekvence pro danou kameru neexistuje (`outer_yard`).
+ * fallback, kdyby sekvence pro danou kameru chyběla/měla prázdné pole
+ * snímků (dnes mají sekvenci všechny čtyři kamery).
  * `"signal-failing"` je krátký závěrečný CSS "ztmavni/zrnění" ohon PO
  * doběhnutí sekvence+hold, těsně před `"offline"` (viz
  * GHOUL_CAMERA_ATTACK_FRAMES_DURATION_MS + GHOUL_CAMERA_ATTACK_LAST_FRAME_HOLD_MS

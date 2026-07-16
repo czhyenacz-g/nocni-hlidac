@@ -452,4 +452,25 @@ export const SOUND_REGISTRY: Record<AudioEventId, SoundRegistryEntry> = {
     guess: "Kroky — člověk, kámen (7 s), CC0, freesound.org/people/SecureSubset/sounds/813622/.",
     usedIn: "app/play/page.tsx — efekt na state.disabledCameraFootstepsSeq. Stejný soubor jako /dev-sound candidate 'footsteps_human/footsteps_stone_securesubset.mp3', beze změny/kopie.",
   },
+  [AUDIO_EVENTS.radioCameraDestroyed0]: {
+    id: AUDIO_EVENTS.radioCameraDestroyed0,
+    label: "Rádio / Kamera zničena 01",
+    description: "Jedna ze 3 reálně namluvených variant (camera_destroid_full_1.wav, přepsáno přes Whisper), náhodně vybraná při dokončeném vyřazení kamery.",
+    guess: 'Přesný přepis: "No, tak do rána jsme po tmě."',
+    usedIn: "game/radio/useCameraDisabledRadioMessage.ts — pickRandomCameraDisabledMessage() po dokončeném přechodu kamery do offline.",
+  },
+  [AUDIO_EVENTS.radioCameraDestroyed1]: {
+    id: AUDIO_EVENTS.radioCameraDestroyed1,
+    label: "Rádio / Kamera zničena 02",
+    description: "Jedna ze 3 reálně namluvených variant (camera_destroid_full_1.wav, přepsáno přes Whisper), náhodně vybraná při dokončeném vyřazení kamery.",
+    guess: 'Přesný přepis: "Kamera zničena!"',
+    usedIn: "game/radio/useCameraDisabledRadioMessage.ts — pickRandomCameraDisabledMessage() po dokončeném přechodu kamery do offline.",
+  },
+  [AUDIO_EVENTS.radioCameraDestroyed2]: {
+    id: AUDIO_EVENTS.radioCameraDestroyed2,
+    label: "Rádio / Kamera zničena 03",
+    description: "Jedna ze 3 reálně namluvených variant (camera_destroid_full_1.wav, přepsáno přes Whisper), náhodně vybraná při dokončeném vyřazení kamery.",
+    guess: 'Přesný přepis: "Zbývá už jenom mikrofon."',
+    usedIn: "game/radio/useCameraDisabledRadioMessage.ts — pickRandomCameraDisabledMessage() po dokončeném přechodu kamery do offline.",
+  },
 };

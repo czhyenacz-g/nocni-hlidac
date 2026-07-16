@@ -15,6 +15,7 @@ import { resolveGhoulCameraAttackFrameState } from "@/game/cameras/cameraAttackA
 import DoorControl from "./DoorControl";
 
 const GHOUL_CAMERA_ATTACK_ANIMATION_IDS: GhoulCameraAttackAnimationId[] = [
+  "outer_yard",
   "left_hallway",
   "right_hallway",
   "door_hallway",

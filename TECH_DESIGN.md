@@ -2119,21 +2119,34 @@ jen s nulovou šancí = čisté čekání.
 - **Sonické dělo na offline kameře** — `TOGGLE_SONIC_CANNON` guard
   (`isCameraFullyOffline`) tiše odmítne aktivaci.
 - **Obrázková animace** (`game/cameras/cameraAttackAnimation.ts` obecný typ +
-  `cameraAttackAnimation.object13.ts` konkrétní data) — 4 sekvence po 25 snímcích
-  (`left_hallway`/`right_hallway`/`door_hallway`/`door_hallway_light`, vybrané
+  `cameraAttackAnimation.object13.ts` konkrétní data) — 5 sekvencí, jedna na kameru
+  (`outer_yard`/`left_hallway`/`right_hallway`/`door_hallway`/`door_hallway_light`, vybrané
   `game/core/cameraDamage.ts#resolveGhoulCameraAttackAnimationId` podle kamery + světla
-  V OKAMŽIKU spuštění, zamrzlé do `activeAttack.animationId`). `outer_yard` sekvenci nemá
-  — `CameraDamageOverlay.tsx` spadne na CSS ztmavnutí/zrnění (fallback funguje i při
-  chybějícím/prázdném poli snímků). `resolveGhoulCameraAttackFrameState` čistě odvozuje
-  index snímku z `nowMs - startedAtMs` (žádný lokální timer) — `frameDurationMs =
-  GHOUL_CAMERA_ATTACK_FRAMES_DURATION_MS / frames.length` (2500ms / 25 = 100ms), po
-  `GHOUL_CAMERA_ATTACK_LAST_FRAME_HOLD_MS` (2000ms) drží poslední snímek, nikdy smyčka.
-  Snímky zdrojově PNG → WebP převedeny skriptem `scripts/convert-ghoul-camera-attack-assets.py`
-  (numerické řazení podle čísla v názvu, ne lexikografické), PNG i WebP koexistují ve
-  stejné složce (stejná konvence jako zbytek `public/object_13/camera/`). Preload všech
-  4 sekvencí (~1,2 MB) na `LoadingScreen.tsx` (`preloadGhoulCameraAttackAnimations`).
+  V OKAMŽIKU spuštění, zamrzlé do `activeAttack.animationId`). 25 snímků ve čtyřech
+  hallway/door sekvencích, 4 snímky ve `outer_yard` (dodáno později — počet snímků se
+  smí lišit, `frameDurationMs` se odvozuje z délky pole). `CameraDamageOverlay.tsx` má i
+  tak CSS ztmavnutí/zrnění fallback pro případ chybějící/prázdné sekvence.
+  `resolveGhoulCameraAttackFrameState` čistě odvozuje index snímku z `nowMs - startedAtMs`
+  (žádný lokální timer) — `frameDurationMs = GHOUL_CAMERA_ATTACK_FRAMES_DURATION_MS /
+  frames.length` (2500ms / 25 = 100ms), po `GHOUL_CAMERA_ATTACK_LAST_FRAME_HOLD_MS`
+  (2000ms) drží poslední snímek, nikdy smyčka. Snímky zdrojově PNG → WebP převedeny
+  skriptem `scripts/convert-ghoul-camera-attack-assets.py` (numerické řazení podle čísla
+  v názvu, ne lexikografické), PNG i WebP koexistují ve stejné složce (stejná konvence
+  jako zbytek `public/object_13/camera/`). Preload všech sekvencí na `LoadingScreen.tsx`
+  (`preloadGhoulCameraAttackAnimations`).
 - **Debug** (`DebugPanel.tsx`) — ruční spuštění útoku (i s vybranou konkrétní sekvencí),
   reset stavu poškození, teleport Ghoula na offline kameru (test mikrofonu), ruční
   přehrání zvuku kroků, override efektivní šance na 100 % (`debugGhoulCameraAttackChanceOverride`,
   produkční `GHOUL_CAMERA_ATTACK_CHANCE` beze změny), skok na poslední snímek, skok rovnou
   do offline stavu.
+- **Rádiová hláška "kamera zničena"** (`game/radio/cameraDisabledRadioMessage.ts`,
+  `useCameraDisabledRadioMessage.ts`) — tři skutečně namluvené varianty
+  (`camera_destroid_full_1.wav`, dodaný zdroj), náhodně vybraná jedna při každém
+  dokončeném vyřazení kamery (`cameraOfflineSeq`), přehrává se přes `audioManager` a
+  overlay text odpovídá přesně přehrávané variantě (na rozdíl od repel/release hlášek,
+  kde je text jen obecný status — tady máme ověřený přepis). Přepis zajištěn nástrojem
+  **Whisper** (OpenAI, model `medium`, lokálně přes `pip install openai-whisper` do
+  virtuálního prostředí) — spuštěno na celém souboru i na jednotlivě vyříznutých
+  segmentech pro ověření shody. Čtvrtý segment ve zdrojové nahrávce zůstal
+  nesrozumitelný i po opakovaných pokusech (různé ořezy/denoising/prompty) a byl na
+  žádost vynechán — pool má tři varianty, ne čtyři.

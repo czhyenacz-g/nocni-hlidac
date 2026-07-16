@@ -29,9 +29,12 @@ export function isGhoulEnemy(night: NightDefinition): boolean {
  * stavu aktivního útoku... během animace nesmí změna světla přepnout
  * sekvenci") — volá se VÝHRADNĚ z `attemptGhoulCameraAttack`/
  * `debugTriggerGhoulCameraAttack` níže, výsledek se zamrzne do
- * `activeAttack.animationId`. `null` pro `outer_yard` (žádná sekvence —
- * CameraDamageOverlay.tsx spadne zpět na CSS ztmavnutí/zrnění). Skutečné
- * WebP snímky žijí odděleně v `game/cameras/cameraAttackAnimation.object13.ts`
+ * `activeAttack.animationId`. Všechny čtyři kamery mají vlastní sekvenci
+ * (`outer_yard` doplněna dodatečně, viz report) — `null` návratová hodnota
+ * zůstává v typu jen jako obecná ochrana pro `getGhoulCameraAttackAnimation`
+ * (CameraDamageOverlay.tsx pořád umí spadnout na CSS fallback, kdyby
+ * některá sekvence chyběla/měla prázdné pole snímků). Skutečné WebP
+ * snímky žijí odděleně v `game/cameras/cameraAttackAnimation.object13.ts`
  * (vizuální data, ne herní rozhodnutí) — tahle funkce jen vrací identifikátor.
  */
 export function resolveGhoulCameraAttackAnimationId(
@@ -46,7 +49,7 @@ export function resolveGhoulCameraAttackAnimationId(
     case "door_hallway":
       return isDoorHallwayLightActive ? "door_hallway_light" : "door_hallway";
     case "outer_yard":
-      return null;
+      return "outer_yard";
   }
 }
 
