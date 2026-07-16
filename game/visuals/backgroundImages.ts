@@ -82,11 +82,9 @@ const OBJECT_13_BACKGROUND_PATH = "/object_13/background";
 // jsou dveře zavřené a neběží doorDeathReveal.
 export const DOOR_CLOSED_FRAME_COUNT = 4;
 export const DOOR_CLOSED_FRAME_START_INDEX = 1;
-// Pomalé, sotva postřehnutelné cyklení (ne rychlá animace) — dveře mají
-// působit jako "skoro nehybné, jen občas se něco jemně mihne", ne jako
-// zjevná smyčka. Podobný řád velikosti jako camera "dýchání" (~25s cyklus).
-// 2x rychlejší než původních 5000ms (na žádost).
-export const DOOR_CLOSED_FRAME_HOLD_MS = 2500;
+// Znatelně rychlejší cyklení (na žádost — 5000ms i 2500ms bylo pořád moc
+// pomalé), pořád ale krátký "hold" mezi snímky, ne plynulá animace.
+export const DOOR_CLOSED_FRAME_HOLD_MS = 1000;
 
 /**
  * Which door_closed_* frame offset (0..DOOR_CLOSED_FRAME_COUNT-1) to show for
