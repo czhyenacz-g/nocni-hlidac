@@ -5,6 +5,8 @@ import {
   BULB_REPLACE_DURATION_MS,
   DOOR_DEATH_REVEAL_DURATION_MS,
   EMERGENCY_RUN_WINDUP_DURATION_MS,
+  GENERATOR_OVERLOAD_DOOR_DURATION_MS,
+  GENERATOR_OVERLOAD_WINDUP_DURATION_MS,
   MAX_POWER,
   OFFICE_BREACH_REACTION_WINDOW_MS,
   OFFICE_THREAT_GRACE_HIGH_MS,
@@ -521,6 +523,66 @@ function updateThinkItOverWindup(
 
 const INACTIVE_THINK_IT_OVER_WINDUP: GameState["thinkItOverWindup"] = { active: false, startedAtMs: null, progressMs: 0 };
 
+// Progres držení "PŘETÍŽIT GENERÁTOR" — stejná mechanika jako
+// updateEmergencyRunWindup/updateThinkItOverWindup výše. Po dosažení
+// GENERATOR_OVERLOAD_WINDUP_DURATION_MS se `generatorOverloadReadySeq`
+// jednou zvýší — to je signál pro app/play/page.tsx, ať dispatchne
+// START_GENERATOR_OVERLOAD (skutečné spuštění desetisekundového přetížení).
+function updateGeneratorOverloadWindup(
+  state: GameState,
+  deltaMs: number,
+): Pick<GameState, "generatorOverloadWindup" | "generatorOverloadReadySeq"> {
+  if (!state.generatorOverloadWindup.active) {
+    return { generatorOverloadWindup: state.generatorOverloadWindup, generatorOverloadReadySeq: state.generatorOverloadReadySeq };
+  }
+
+  const progressMs = state.generatorOverloadWindup.progressMs + deltaMs;
+  if (progressMs >= GENERATOR_OVERLOAD_WINDUP_DURATION_MS) {
+    return {
+      generatorOverloadWindup: { active: false, startedAtMs: null, progressMs: 0 },
+      generatorOverloadReadySeq: state.generatorOverloadReadySeq + 1,
+    };
+  }
+
+  return {
+    generatorOverloadWindup: { ...state.generatorOverloadWindup, progressMs },
+    generatorOverloadReadySeq: state.generatorOverloadReadySeq,
+  };
+}
+
+const INACTIVE_GENERATOR_OVERLOAD_WINDUP: GameState["generatorOverloadWindup"] = {
+  active: false,
+  startedAtMs: null,
+  progressMs: 0,
+};
+
+/**
+ * Dokončení probíhajícího přetížení generátoru (viz
+ * GameState.doorGeneratorOverloadUntilMs, START_GENERATOR_OVERLOAD) — čistě
+ * časová věc jako updateCameraDamagePhase/resolveSonicCannonPendingRetreat,
+ * nezávislá na deltaMs. Mimo přetížení (`null`) beze změny. Po vypršení se
+ * dveře nevratně zničí — STEJNÝ výsledek jako akce DESTROY_DOOR
+ * (`doorDestroyed: true, doorClosed: false`), jen spuštěný z téhle časované
+ * cesty, ne ruční akcí. Žádná podmínka na monstru/stage tady záměrně není
+ * (viz TODO.md "budoucí Titan") — přetížení dnes VŽDY zničí dveře.
+ */
+function updateDoorGeneratorOverload(
+  state: GameState,
+  elapsedMs: number,
+): Pick<GameState, "doorGeneratorOverloadUntilMs" | "doorDestroyed" | "doorClosed"> {
+  if (state.doorGeneratorOverloadUntilMs === null) {
+    return { doorGeneratorOverloadUntilMs: null, doorDestroyed: state.doorDestroyed, doorClosed: state.doorClosed };
+  }
+  if (elapsedMs >= state.doorGeneratorOverloadUntilMs) {
+    return { doorGeneratorOverloadUntilMs: null, doorDestroyed: true, doorClosed: false };
+  }
+  return {
+    doorGeneratorOverloadUntilMs: state.doorGeneratorOverloadUntilMs,
+    doorDestroyed: state.doorDestroyed,
+    doorClosed: state.doorClosed,
+  };
+}
+
 /**
  * Jestli hráč MŮŽE teď začít držet "Nechat si to projít hlavou" na
  * left_wall — vyžaduje brokovnici (GameState.hasShotgun, viz zadání "ve
@@ -549,6 +611,26 @@ export function canStartThinkItOverWindup(state: GameState): boolean {
 export function willGeneratorRestartSucceed(state: GameState): boolean {
   if (!state.isRunning || state.gameStatus === "blackout" || state.doorDeathRevealUntilMs !== null) return false;
   return state.generatorState !== "normal" && state.generatorState !== "restarting";
+}
+
+/**
+ * Jestli hráč MŮŽE teď začít držet "PŘETÍŽIT GENERÁTOR" na generator pohledu
+ * — sdílená podmínka mezi `START_GENERATOR_OVERLOAD_WINDUP` (reducer) a UI
+ * (GeneratorView.tsx přes app/play/page.tsx), stejný vzor jako
+ * `canStartEmergencyRunWindup`. Night feature flag (viz
+ * game/difficulty/nightConfig.ts#generatorOverloadEnabled) se kontroluje
+ * tady, ne jen skrytím tlačítka v UI. Vyžaduje `generatorState === "normal"`
+ * (ne uprostřed jiné poruchy/restartu) a dveře, které ještě nejsou zničené
+ * ani zrovna nepřetěžují — jde spustit jen jednou za noc.
+ */
+export function canStartGeneratorOverloadWindup(state: GameState): boolean {
+  if (!state.nightFeatures.generatorOverloadEnabled) return false;
+  if (!state.isRunning || state.gameStatus === "blackout" || state.doorDeathRevealUntilMs !== null) return false;
+  if (state.playerView !== "generator") return false;
+  if (state.generatorState !== "normal") return false;
+  if (state.doorDestroyed || state.doorGeneratorOverloadUntilMs !== null) return false;
+  if (state.generatorOverloadWindup.active) return false;
+  return true;
 }
 
 /**
@@ -766,23 +848,66 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         if (!state.thinkItOverWindup.active) return state;
         return { ...state, thinkItOverWindup: INACTIVE_THINK_IT_OVER_WINDUP };
 
+      case "START_GENERATOR_OVERLOAD_WINDUP": {
+        if (!canStartGeneratorOverloadWindup(state)) return state;
+        return {
+          ...state,
+          generatorOverloadWindup: { active: true, startedAtMs: state.elapsedMs, progressMs: 0 },
+        };
+      }
+
+      case "CANCEL_GENERATOR_OVERLOAD_WINDUP":
+        if (!state.generatorOverloadWindup.active) return state;
+        return { ...state, generatorOverloadWindup: INACTIVE_GENERATOR_OVERLOAD_WINDUP };
+
+      case "START_GENERATOR_OVERLOAD": {
+        // Dispatchuje jen app/play/page.tsx po doběhnutí
+        // START_GENERATOR_OVERLOAD_WINDUP (viz generatorOverloadReadySeq) —
+        // guard tady je obranná kontrola stejného tvaru jako
+        // canStartGeneratorOverloadWindup (bez windup.active podmínky, ta
+        // už v tuhle chvíli sama zase neplatí).
+        if (!state.isRunning || state.gameStatus === "blackout" || state.doorDeathRevealUntilMs !== null) return state;
+        if (state.generatorState !== "normal") return state;
+        if (state.doorDestroyed || state.doorGeneratorOverloadUntilMs !== null) return state;
+        return {
+          ...state,
+          // Energetické chování PŘESNĚ jako RESTART_GENERATOR "úspěšná"
+          // větev níže — beze změny updateGenerator/applyPowerDelta logiky,
+          // jen jiná (delší, pevná) doba trvání.
+          generatorState: "restarting",
+          generatorRestartUntilMs: state.elapsedMs + GENERATOR_OVERLOAD_DOOR_DURATION_MS,
+          generatorSilentSinceMs: null,
+          generatorNextBeepAtMs: state.elapsedMs,
+          // Samostatné pole jen pro dveře (viz updateDoorGeneratorOverload v
+          // TICK) — NEZÁVISLÉ na generatorRestartUntilMs výše, i když má dnes
+          // stejnou hodnotu. Dveře se zamknou na door_generator_overload
+          // obrázek, dokud tohle nevyprší.
+          doorGeneratorOverloadUntilMs: state.elapsedMs + GENERATOR_OVERLOAD_DOOR_DURATION_MS,
+          doorClosed: false,
+        };
+      }
+
       case "TOGGLE_DOOR":
         // Dveře jde přepnout jen v pohledu na dveře — hráč se tam musí nejdřív
         // otočit (LOOK_AT_DOOR). Debug panel simuluje oba kroky najednou.
         // V blackoutu zámek povolil — dveře jsou vždy "otevřené" a nejdou zavřít.
         // Během doorDeathReveal (viz ENEMY_ADVANCE/TICK) je hra fakticky u konce —
         // dveře se nedají přepnout, ať hráč "neuteče" z už rozhodnuté smrti.
-        // Zničené dveře (viz DESTROY_DOOR) jsou navždy otevřené — no-op, ne
-        // jen "nejde zavřít" (invariant doorDestroyed ⟹ doorClosed===false
-        // by tímhle no-opem zůstal zachovaný i bez samostatné kontroly, ale
-        // explicitní podmínka je čitelnější než spoléhat na to, že
-        // doorClosed už je false).
+        // Zničené dveře (viz DESTROY_DOOR/START_GENERATOR_OVERLOAD) jsou
+        // navždy otevřené — no-op, ne jen "nejde zavřít" (invariant
+        // doorDestroyed ⟹ doorClosed===false by tímhle no-opem zůstal
+        // zachovaný i bez samostatné kontroly, ale explicitní podmínka je
+        // čitelnější než spoléhat na to, že doorClosed už je false).
+        // Probíhající přetížení generátoru (doorGeneratorOverloadUntilMs)
+        // dveře stejně zamyká, ještě než je definitivně zničí — "hráč nesmí
+        // dveře ovládat" po celou dobu, ne až po dokončení.
         if (
           !state.isRunning ||
           state.playerView !== "door" ||
           state.gameStatus === "blackout" ||
           state.doorDeathRevealUntilMs !== null ||
-          state.doorDestroyed
+          state.doorDestroyed ||
+          state.doorGeneratorOverloadUntilMs !== null
         )
           return state;
 
@@ -866,6 +991,12 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           activeCameraId: null,
           cameraViewMode: "overview",
           cameraFocusUntilMs: null,
+          // "PŘETÍŽIT GENERÁTOR" jde spustit jen na generator pohledu (viz
+          // canStartGeneratorOverloadWindup) — odchod jinam rozběhnuté
+          // držení zruší, stejný důvod jako emergencyRunWindup u LOOK_AT_DESK.
+          generatorOverloadWindup: state.generatorOverloadWindup.active
+            ? INACTIVE_GENERATOR_OVERLOAD_WINDUP
+            : state.generatorOverloadWindup,
         };
 
       case "LOOK_AT_DESK":
@@ -884,6 +1015,9 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           // Stejný důvod jako emergencyRunWindup výše, jen pro "Nechat si to
           // projít hlavou" (viz zadání).
           thinkItOverWindup: state.thinkItOverWindup.active ? INACTIVE_THINK_IT_OVER_WINDUP : state.thinkItOverWindup,
+          generatorOverloadWindup: state.generatorOverloadWindup.active
+            ? INACTIVE_GENERATOR_OVERLOAD_WINDUP
+            : state.generatorOverloadWindup,
         };
 
       case "LOOK_AT_GENERATOR":
@@ -913,6 +1047,9 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           cameraViewMode: "overview",
           cameraFocusUntilMs: null,
           bulbReplacement: isBulbReplacementCancelableByViewChange(state) ? INACTIVE_BULB_REPLACEMENT : state.bulbReplacement,
+          generatorOverloadWindup: state.generatorOverloadWindup.active
+            ? INACTIVE_GENERATOR_OVERLOAD_WINDUP
+            : state.generatorOverloadWindup,
         };
 
       case "LOOK_AT_MAP":
@@ -930,6 +1067,9 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           bulbReplacement: isBulbReplacementCancelableByViewChange(state) ? INACTIVE_BULB_REPLACEMENT : state.bulbReplacement,
           emergencyRunWindup: state.emergencyRunWindup.active ? INACTIVE_EMERGENCY_RUN_WINDUP : state.emergencyRunWindup,
           thinkItOverWindup: state.thinkItOverWindup.active ? INACTIVE_THINK_IT_OVER_WINDUP : state.thinkItOverWindup,
+          generatorOverloadWindup: state.generatorOverloadWindup.active
+            ? INACTIVE_GENERATOR_OVERLOAD_WINDUP
+            : state.generatorOverloadWindup,
         };
 
       case "RESTART_GENERATOR": {
@@ -1145,7 +1285,25 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             };
           }
 
-          return { ...state, elapsedMs, remainingMs, blackoutElapsedMs, blackoutPhaseSeq, blackoutRoarSeq };
+          return {
+            ...state,
+            elapsedMs,
+            remainingMs,
+            blackoutElapsedMs,
+            blackoutPhaseSeq,
+            blackoutRoarSeq,
+            // Blackout = "všechny systémy mrtvé", včetně rozběhnutého
+            // přetížení generátoru — dveře se blackoutem beztak už nuceně
+            // otevírají (viz TOGGLE_DOOR), takže probíhající přetížení tady
+            // ztrácí smysl. Na rozdíl od doorDestroyed se dveře tímhle
+            // NEZNIČÍ — blackout je jiný, dočasný stav (přežije se koncem
+            // směny), zničení dveří má zůstat výhradně následkem dokončeného
+            // přetížení, ne vedlejším efektem výpadku proudu.
+            generatorOverloadWindup: state.generatorOverloadWindup.active
+              ? INACTIVE_GENERATOR_OVERLOAD_WINDUP
+              : state.generatorOverloadWindup,
+            doorGeneratorOverloadUntilMs: null,
+          };
         }
 
         const generatorUpdate = updateGenerator(state, night, elapsedMs);
@@ -1177,6 +1335,14 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         // "Nechat si to projít hlavou"), stejný "nanejvýš jedna active"
         // vzor (LOOK_AT_* mezi nimi zruší tu druhou).
         const thinkItOverWindupUpdate = updateThinkItOverWindup(state, action.deltaMs);
+        // Nezávislé na obou windupech výše — jiná riskantní ruční akce, jiný
+        // pohled (generator, ne left_wall), stejný "nanejvýš jedna active"
+        // vzor (LOOK_AT_* mezi nimi zruší tu druhou).
+        const generatorOverloadWindupUpdate = updateGeneratorOverloadWindup(state, action.deltaMs);
+        // Dokončení probíhajícího přetížení (viz doorGeneratorOverloadUntilMs)
+        // — nezávislé na generatorOverloadWindupUpdate výše (ten řídí jen
+        // DRŽENÍ tlačítka, tohle už samotné PŘETÍŽENÍ po jeho doběhnutí).
+        const doorGeneratorOverloadUpdate = updateDoorGeneratorOverload(state, elapsedMs);
         // Postupné ztmavování/zrnění po útoku Ghoula na kameru (viz zadání) —
         // čistě časová věc (attackStartedAtMs -> elapsedMs), nezávislá na
         // deltaMs stejně jako blackoutElapsedMs výše. cameraOfflineSeq se tu
@@ -1215,6 +1381,13 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             bulbReplacement: INACTIVE_BULB_REPLACEMENT,
             emergencyRunWindup: INACTIVE_EMERGENCY_RUN_WINDUP,
             thinkItOverWindup: INACTIVE_THINK_IT_OVER_WINDUP,
+            // Stejný důvod jako blackout přes durationMs výše — probíhající
+            // přetížení se zruší, dveře se tímhle NEZNIČÍ (jen zůstávají
+            // otevřené jako všechno ostatní systém během blackoutu).
+            generatorOverloadWindup: state.generatorOverloadWindup.active
+              ? INACTIVE_GENERATOR_OVERLOAD_WINDUP
+              : state.generatorOverloadWindup,
+            doorGeneratorOverloadUntilMs: null,
           };
         }
 
@@ -1228,6 +1401,8 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             ...bulbReplacementUpdate,
             ...emergencyRunWindupUpdate,
             ...thinkItOverWindupUpdate,
+            ...generatorOverloadWindupUpdate,
+            ...doorGeneratorOverloadUpdate,
             ...cameraDamageUpdate,
             ...sonicCannonPendingRetreatUpdate,
             elapsedMs,
@@ -1262,6 +1437,8 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           ...bulbReplacementUpdate,
           ...emergencyRunWindupUpdate,
           ...thinkItOverWindupUpdate,
+          ...generatorOverloadWindupUpdate,
+          ...doorGeneratorOverloadUpdate,
           ...cameraDamageUpdate,
           ...sonicCannonPendingRetreatUpdate,
           elapsedMs,

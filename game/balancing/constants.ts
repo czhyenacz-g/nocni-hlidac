@@ -218,6 +218,20 @@ export const EMERGENCY_RUN_WINDUP_DURATION_MS = 3000;
 // game/core/types.ts ThinkItOverWindupState, app/play/page.tsx).
 export const THINK_IT_OVER_WINDUP_DURATION_MS = 10_000;
 
+// "PŘETÍŽIT GENERÁTOR" (viz GeneratorView.tsx, gameReducer.ts
+// START_GENERATOR_OVERLOAD_WINDUP/START_GENERATOR_OVERLOAD) — hráč tlačítko
+// drží GENERATOR_OVERLOAD_WINDUP_DURATION_MS (STEJNÁ hodnota jako
+// EMERGENCY_RUN_WINDUP_DURATION_MS výše — "stejný mechanismus jako Nouzové
+// opuštění kanceláře", viz zadání; vlastní konstanta jen ať jde odemknutí
+// tlačítka a jeho trvání laďovat nezávisle na emergency run, kdyby se to v
+// budoucnu rozešlo). Po doběhnutí držení následuje samotné přetížení, které
+// trvá GENERATOR_OVERLOAD_DOOR_DURATION_MS — po tu dobu se generátor chová
+// energeticky stejně jako "restarting" (viz gameReducer.ts#updateGenerator,
+// beze změny té logiky) a dveře zůstávají zamčené na door_generator_overload
+// obrázku, než se na konci nevratně zničí (GameState.doorDestroyed).
+export const GENERATOR_OVERLOAD_WINDUP_DURATION_MS = EMERGENCY_RUN_WINDUP_DURATION_MS;
+export const GENERATOR_OVERLOAD_DOOR_DURATION_MS = 10_000;
+
 // Sekvence útoku/smrti (viz app/play/page.tsx, efekt na state.screen ===
 // "death", AUDIO_DESIGN.md "Ticho před lekačkou"): ambience plynule ztlumí
 // přes AMBIENCE_DEATH_FADE_MS, pak JUMPSCARE_SILENT_GAP_MS ticha, teprve

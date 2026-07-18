@@ -4,7 +4,7 @@ import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 import { STRESS_DEV_HUD_ENABLED } from "@/game/balancing/constants";
 import { COPY } from "@/content/copy";
 import { computeNearRoomBulbWearRatio } from "@/game/core/roomBulbs";
-import { canReplaceBulb } from "@/game/core/gameReducer";
+import { canReplaceBulb, canStartGeneratorOverloadWindup } from "@/game/core/gameReducer";
 import { canStartBatteryEmergencyRun, canStartShotgunEmergencyRun } from "@/game/core/emergencyMiniGameIntegration";
 import { resolveOfficeBreachPhase } from "@/game/core/officeBreachAftermath";
 import SceneBackground from "@/components/SceneBackground";
@@ -58,6 +58,8 @@ interface GameScreenProps {
   /** Posuvník na LeftWallView.tsx (jen s brokovnicí) — viz GameState.officeDoorLockMs, game/minigame/config.ts#OFFICE_DOOR_LOCK_MIN_MS/MAX_MS. */
   onChangeOfficeDoorLockMs: (value: number) => void;
   onRestartGenerator: () => void;
+  /** "PŘETÍŽIT GENERÁTOR" (viz zadání) — window.confirm + spuštění GeneratorOverloadWindupState, viz app/play/page.tsx#handleStartGeneratorOverload. */
+  onStartGeneratorOverload: () => void;
   onDebugToggleDoor: () => void;
   onDebugRestartGenerator: () => void;
   /** Admin-only "Test noci" v DebugPanel.tsx (viz zadání, GameState.debugNightOverride). */
@@ -103,6 +105,7 @@ export default function GameScreen({
   onCancelThinkItOverWindup,
   onChangeOfficeDoorLockMs,
   onRestartGenerator,
+  onStartGeneratorOverload,
   onDebugToggleDoor,
   onDebugRestartGenerator,
   onSetDebugNight,
@@ -258,6 +261,8 @@ export default function GameScreen({
             {state.playerView === "door" && (
               <DoorView
                 doorClosed={state.doorClosed}
+                doorDestroyed={state.doorDestroyed}
+                doorGeneratorOverloadActive={state.doorGeneratorOverloadUntilMs !== null}
                 isDoorDeathReveal={state.doorDeathRevealUntilMs !== null}
                 bulbBroken={state.roomBulbs.nearRoom.broken}
                 bulbWearRatio={computeNearRoomBulbWearRatio(state)}
@@ -279,6 +284,11 @@ export default function GameScreen({
                 accidentalRestartSeq={state.generatorAccidentalRestartSeq}
                 onRestartGenerator={onRestartGenerator}
                 onLookAtDesk={onLookAtDesk}
+                canOverloadGenerator={state.nightFeatures.generatorOverloadEnabled}
+                canStartOverload={canStartGeneratorOverloadWindup(state)}
+                overloadWindupActive={state.generatorOverloadWindup.active}
+                overloadWindupProgressMs={state.generatorOverloadWindup.progressMs}
+                onStartGeneratorOverload={onStartGeneratorOverload}
               />
             )}
             {state.playerView === "left_wall" && (

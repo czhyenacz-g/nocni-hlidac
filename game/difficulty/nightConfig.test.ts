@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_NIGHT_FEATURES, SHOTGUN_LOOT_MIN_NIGHT, canSpawnShotgun, getNightConfig } from "./nightConfig";
+import {
+  DEFAULT_NIGHT_FEATURES,
+  GENERATOR_OVERLOAD_MIN_NIGHT,
+  SHOTGUN_LOOT_MIN_NIGHT,
+  canOverloadGenerator,
+  canSpawnShotgun,
+  getNightConfig,
+} from "./nightConfig";
 import { MONSTER_TRUE_ENDING_REQUIRED_HITS, MONSTER_TRUE_ENDING_REQUIRED_HITS_ADMIN } from "../core/monsterEnding";
 
 describe("getNightConfig", () => {
@@ -45,7 +52,11 @@ describe("getNightConfig", () => {
   // vrátí na 10, tenhle test má projít v obou případech.
   it.each([5, 6, 7, 8, 9])("night %i: everything on (default) except shotgunLootEnabled by threshold, shared fallback-style briefing", (nightNumber) => {
     const config = getNightConfig(nightNumber);
-    expect(config.features).toEqual({ ...DEFAULT_NIGHT_FEATURES, shotgunLootEnabled: canSpawnShotgun(nightNumber) });
+    expect(config.features).toEqual({
+      ...DEFAULT_NIGHT_FEATURES,
+      shotgunLootEnabled: canSpawnShotgun(nightNumber),
+      generatorOverloadEnabled: canOverloadGenerator(nightNumber),
+    });
     expect(config.briefing.title).toBe(`Noc ${nightNumber}`);
     expect(config.briefing.lines).toEqual(["Služby jsou čím dál horší.", "Tohle místo se rozpadá."]);
   });
@@ -58,7 +69,11 @@ describe("getNightConfig", () => {
 
   it("undefined night (999) uses the same fallback briefing and all default features except shotgunLootEnabled", () => {
     const config = getNightConfig(999);
-    expect(config.features).toEqual({ ...DEFAULT_NIGHT_FEATURES, shotgunLootEnabled: canSpawnShotgun(999) });
+    expect(config.features).toEqual({
+      ...DEFAULT_NIGHT_FEATURES,
+      shotgunLootEnabled: canSpawnShotgun(999),
+      generatorOverloadEnabled: canOverloadGenerator(999),
+    });
     expect(config.briefing.title).toBe("Noc 999");
     expect(config.briefing.lines).toEqual(["Služby jsou čím dál horší.", "Tohle místo se rozpadá."]);
   });
@@ -124,6 +139,44 @@ describe("canSpawnShotgun", () => {
   it("isAdmin: true bypasses the threshold entirely, even on night 1", () => {
     expect(canSpawnShotgun(1, true)).toBe(true);
     expect(canSpawnShotgun(SHOTGUN_LOOT_MIN_NIGHT - 1, true)).toBe(true);
+  });
+});
+
+// Testy jsou psané relativně k GENERATOR_OVERLOAD_MIN_NIGHT, ne natvrdo k
+// "5", ať zůstanou platné i kdyby se práh znovu změnil.
+describe("canOverloadGenerator", () => {
+  it("is false one night before the threshold", () => {
+    expect(canOverloadGenerator(GENERATOR_OVERLOAD_MIN_NIGHT - 1)).toBe(false);
+  });
+
+  it("is true from the threshold night onward", () => {
+    expect(canOverloadGenerator(GENERATOR_OVERLOAD_MIN_NIGHT)).toBe(true);
+    expect(canOverloadGenerator(GENERATOR_OVERLOAD_MIN_NIGHT + 1)).toBe(true);
+  });
+
+  it("defaults isAdmin to false — same as calling without the second argument", () => {
+    expect(canOverloadGenerator(1, false)).toBe(canOverloadGenerator(1));
+  });
+
+  // Admin výjimka (viz zadání "u admina ať je vidět už od první noci") —
+  // isAdmin: true obchází GENERATOR_OVERLOAD_MIN_NIGHT úplně, i pro noc 1.
+  it("isAdmin: true bypasses the threshold entirely, even on night 1", () => {
+    expect(canOverloadGenerator(1, true)).toBe(true);
+    expect(canOverloadGenerator(GENERATOR_OVERLOAD_MIN_NIGHT - 1, true)).toBe(true);
+  });
+});
+
+describe("getNightConfig — generatorOverloadEnabled follows canOverloadGenerator", () => {
+  it("matches canOverloadGenerator for every night number, both below and at/above the threshold", () => {
+    for (const nightNumber of [1, 2, 3, 4, 5, 6, 10, 50]) {
+      expect(getNightConfig(nightNumber).features.generatorOverloadEnabled).toBe(canOverloadGenerator(nightNumber));
+    }
+  });
+
+  it("isAdmin: true turns generatorOverloadEnabled on even for night 1 (regular players stay gated by the threshold)", () => {
+    expect(getNightConfig(1, true).features.generatorOverloadEnabled).toBe(true);
+    expect(getNightConfig(1, false).features.generatorOverloadEnabled).toBe(false);
+    expect(getNightConfig(1).features.generatorOverloadEnabled).toBe(false);
   });
 });
 

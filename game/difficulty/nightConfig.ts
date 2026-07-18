@@ -48,6 +48,13 @@ export interface NightFeatureFlags {
    * (viz MONSTER_TRUE_ENDING_REQUIRED_HITS_ADMIN) pro rychlejší testování.
    */
   monsterTrueEndingRequiredHits: number;
+  /**
+   * Jestli je "PŘETÍŽIT GENERÁTOR" (GeneratorView.tsx, viz zadání "zničené
+   * dveře vlastní chybou hráče") tuhle noc vůbec vidět — stejný vzor jako
+   * shotgunLootEnabled výše, VŽDY dopočítaná z `canOverloadGenerator`, nikdy
+   * ruční hodnota v NIGHT_CONFIGS.
+   */
+  generatorOverloadEnabled: boolean;
 }
 
 export const DEFAULT_NIGHT_FEATURES: NightFeatureFlags = {
@@ -60,6 +67,7 @@ export const DEFAULT_NIGHT_FEATURES: NightFeatureFlags = {
   bulbRunEnabled: false,
   shotgunLootEnabled: false,
   monsterTrueEndingRequiredHits: MONSTER_TRUE_ENDING_REQUIRED_HITS,
+  generatorOverloadEnabled: false,
 };
 
 /**
@@ -79,6 +87,22 @@ export const SHOTGUN_LOOT_MIN_NIGHT = 10;
 export function canSpawnShotgun(nightNumber: number, isAdmin: boolean = false): boolean {
   if (isAdmin) return true;
   return nightNumber >= SHOTGUN_LOOT_MIN_NIGHT;
+}
+
+/**
+ * Od jaké noci je "PŘETÍŽIT GENERÁTOR" vidět pro běžného hráče (viz zadání
+ * "zobrazit od 5. noci") — jediné místo, které tohle číslo definuje.
+ */
+export const GENERATOR_OVERLOAD_MIN_NIGHT = 5;
+
+/**
+ * Stejný vzor jako canSpawnShotgun výše — čistá funkce nezávislá na
+ * getNightConfig, admin (viz lib/auth/adminUsers.ts) práh obchází úplně a
+ * vidí tlačítko už od noci 1.
+ */
+export function canOverloadGenerator(nightNumber: number, isAdmin: boolean = false): boolean {
+  if (isAdmin) return true;
+  return nightNumber >= GENERATOR_OVERLOAD_MIN_NIGHT;
 }
 
 export interface NightBriefing {
@@ -188,6 +212,7 @@ export function getNightConfig(nightNumber: number, isAdmin: boolean = false): R
       ...entry?.features,
       shotgunLootEnabled: canSpawnShotgun(safeNightNumber, isAdmin),
       monsterTrueEndingRequiredHits: resolveMonsterTrueEndingRequiredHits(isAdmin),
+      generatorOverloadEnabled: canOverloadGenerator(safeNightNumber, isAdmin),
     },
   };
 }

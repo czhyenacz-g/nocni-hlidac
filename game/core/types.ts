@@ -418,6 +418,21 @@ export interface ThinkItOverWindupState {
   progressMs: number;
 }
 
+/**
+ * Držení "PŘETÍŽIT GENERÁTOR" na GeneratorView.tsx (viz zadání "zničené
+ * dveře vlastní chybou hráče") — stejný "drž a riskuj" vzor jako
+ * EmergencyRunWindupState/ThinkItOverWindupState výše (`progressMs` roste v
+ * TICKu, dokud `active`). Po dosažení GENERATOR_OVERLOAD_WINDUP_DURATION_MS
+ * se `GameState.generatorOverloadReadySeq` zvýší — to je signál pro
+ * app/play/page.tsx, ať dispatchne `START_GENERATOR_OVERLOAD` (skutečné
+ * spuštění desetisekundového přetížení, viz gameReducer.ts).
+ */
+export interface GeneratorOverloadWindupState {
+  active: boolean;
+  startedAtMs: number | null;
+  progressMs: number;
+}
+
 export type GameStatus = "normal" | "blackout";
 
 export interface GameState {
@@ -841,6 +856,30 @@ export interface GameState {
    * app/play/page.tsx podle změny jen zobrazí textovou hlášku, žádnou minihru.
    */
   thinkItOverReadySeq: number;
+
+  /** Držení "PŘETÍŽIT GENERÁTOR" (viz GeneratorOverloadWindupState) — vždy resetováno na novou směnu, stejná konvence jako emergencyRunWindup/thinkItOverWindup. */
+  generatorOverloadWindup: GeneratorOverloadWindupState;
+  /**
+   * Zvyšuje se přesně jednou při ÚSPĚŠNÉM dokončení držení "PŘETÍŽIT
+   * GENERÁTOR" — stejný "seq" vzor jako `emergencyRunReadySeq`/
+   * `thinkItOverReadySeq` výše. app/play/page.tsx podle změny dispatchne
+   * `START_GENERATOR_OVERLOAD` (skutečné spuštění desetisekundového
+   * přetížení), samotný reducer tady jen odpočítává držení.
+   */
+  generatorOverloadReadySeq: number;
+  /**
+   * `elapsedMs`, kdy skončí probíhající přetížení generátoru (viz
+   * START_GENERATOR_OVERLOAD, GENERATOR_OVERLOAD_DOOR_DURATION_MS) — `null`
+   * mimo přetížení. Po tu dobu (viz TICK v gameReducer.ts): dveře zobrazují
+   * door_generator_overload_0 (DoorView.tsx) a nejdou ovládat
+   * (TOGGLE_DOOR no-op, stejný guard jako doorDestroyed). Po vypršení se
+   * dveře nevratně zničí (`doorDestroyed: true, doorClosed: false`, stejný
+   * výsledek jako DESTROY_DOOR) a pole se vrátí na `null`. Nezávislé na
+   * `generatorRestartUntilMs`/`generatorState` — energetické chování
+   * generátoru řeší VÝHRADNĚ ta dvě pole beze změny (viz updateGenerator),
+   * tohle pole řídí jen dveře.
+   */
+  doorGeneratorOverloadUntilMs: number | null;
 
   /**
    * Které mechaniky jsou tuhle noc zapnuté (viz game/difficulty/nightConfig.ts)

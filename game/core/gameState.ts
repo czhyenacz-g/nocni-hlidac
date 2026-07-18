@@ -78,6 +78,7 @@ export function createInitialGameState(night: NightDefinition, options: CreateIn
 
     doorClosed: false,
     doorDestroyed: false,
+    doorGeneratorOverloadUntilMs: null,
     lightOn: false,
 
     cameraOpen: false,
@@ -152,6 +153,9 @@ export function createInitialGameState(night: NightDefinition, options: CreateIn
 
     thinkItOverWindup: { active: false, startedAtMs: null, progressMs: 0 },
     thinkItOverReadySeq: 0,
+
+    generatorOverloadWindup: { active: false, startedAtMs: null, progressMs: 0 },
+    generatorOverloadReadySeq: 0,
 
     nightFeatures: nightFeaturesOverride ?? DEFAULT_NIGHT_FEATURES,
 

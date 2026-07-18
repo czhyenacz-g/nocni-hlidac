@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { COPY } from "@/content/copy";
 import { GeneratorState } from "@/game/core/types";
-import { GENERATOR_ACCIDENTAL_RESTART_MESSAGE_MS } from "@/game/balancing/constants";
+import { GENERATOR_ACCIDENTAL_RESTART_MESSAGE_MS, GENERATOR_OVERLOAD_WINDUP_DURATION_MS } from "@/game/balancing/constants";
 import ViewSwitchArrow from "./ViewSwitchArrow";
 
 interface GeneratorViewProps {
@@ -12,13 +12,40 @@ interface GeneratorViewProps {
   accidentalRestartSeq: number;
   onRestartGenerator: () => void;
   onLookAtDesk: () => void;
+  /**
+   * Jestli je "PŘETÍŽIT GENERÁTOR" tuhle noc vůbec vidět (viz zadání
+   * "zobrazit od 5. noci", game/difficulty/nightConfig.ts#generatorOverloadEnabled)
+   * — jen viditelnost tlačítka, KLIKATELNOST (generatorState/doorDestroyed/
+   * probíhající přetížení) řeší canStartGeneratorOverloadWindup v
+   * app/play/page.tsx#handleStartGeneratorOverload, ne tenhle prop.
+   */
+  canOverloadGenerator: boolean;
+  /** viz gameReducer.ts#canStartGeneratorOverloadWindup — čistě vizuální ztlumení (stejný vzor jako LeftWallView "Jít ven" + zavřené dveře), autoritativní podmínka zůstává v reduceru/handleru. */
+  canStartOverload: boolean;
+  /** viz GameState.generatorOverloadWindup — držení tlačítka po potvrzení (window.confirm), stejný vzor jako LeftWallView "Jít ven". */
+  overloadWindupActive: boolean;
+  overloadWindupProgressMs: number;
+  /** Zobrazí window.confirm() a po potvrzení spustí GENERATOR_OVERLOAD_WINDUP_DURATION_MS držení (viz app/play/page.tsx). */
+  onStartGeneratorOverload: () => void;
 }
 
-// Pohled na generátor: jediné místo, odkud jde restartovat po poruše. Hráč se
-// sem musí nejdřív otočit z DeskView (viz gameActions.ts LOOK_AT_GENERATOR).
-// Vizuální stav je jen pomocný — hlavní signál poruchy je zvuk (ticho, pak
-// rychlé pípání), viz AUDIO_DESIGN.md.
-export default function GeneratorView({ generatorState, beepSeq, accidentalRestartSeq, onRestartGenerator, onLookAtDesk }: GeneratorViewProps) {
+// Pohled na generátor: jediné místo, odkud jde restartovat po poruše (a od
+// GENERATOR_OVERLOAD_MIN_NIGHT/admin i vědomě přetížit, viz zadání "zničené
+// dveře vlastní chybou hráče"). Hráč se sem musí nejdřív otočit z DeskView
+// (viz gameActions.ts LOOK_AT_GENERATOR). Vizuální stav je jen pomocný —
+// hlavní signál poruchy je zvuk (ticho, pak rychlé pípání), viz AUDIO_DESIGN.md.
+export default function GeneratorView({
+  generatorState,
+  beepSeq,
+  accidentalRestartSeq,
+  onRestartGenerator,
+  onLookAtDesk,
+  canOverloadGenerator,
+  canStartOverload,
+  overloadWindupActive,
+  overloadWindupProgressMs,
+  onStartGeneratorOverload,
+}: GeneratorViewProps) {
   // Kontrolka v "normal" stavu je jinak statická zelená — key na beepSeq ji
   // při každém pípnutí remountne, což znovu spustí jednorázovou pixel-flash
   // animaci (viz styles/pixel.css) přesně v okamžiku zvuku.
@@ -36,6 +63,11 @@ export default function GeneratorView({ generatorState, beepSeq, accidentalResta
     const timeout = setTimeout(() => setShowAccidentalRestartMessage(false), GENERATOR_ACCIDENTAL_RESTART_MESSAGE_MS);
     return () => clearTimeout(timeout);
   }, [accidentalRestartSeq]);
+
+  // Stejný výpočet jako LeftWallView.tsx#windupSeconds/windupPercent — jen
+  // jiná konstanta (GENERATOR_OVERLOAD_WINDUP_DURATION_MS).
+  const overloadWindupSeconds = Math.max(0, (GENERATOR_OVERLOAD_WINDUP_DURATION_MS - overloadWindupProgressMs) / 1000).toFixed(1);
+  const overloadWindupPercent = Math.min(100, (overloadWindupProgressMs / GENERATOR_OVERLOAD_WINDUP_DURATION_MS) * 100);
 
   return (
     <div className="flex flex-col gap-3">
@@ -79,6 +111,39 @@ export default function GeneratorView({ generatorState, beepSeq, accidentalResta
           )}
         </button>
       </div>
+
+      {/* "PŘETÍŽIT GENERÁTOR" — pod restartem (viz zadání), stejný
+          pixel-button/console-button styl jako LeftWallView.tsx "Jít ven".
+          Klik jde vždy do onStartGeneratorOverload (window.confirm +
+          guard v app/play/page.tsx), tlačítko samo žádnou podmínku
+          neduplikuje kromě viditelnosti (canOverloadGenerator). */}
+      {canOverloadGenerator && (
+        <div className="flex flex-col items-start gap-1">
+          <button
+            type="button"
+            className={`pixel-button console-button tap-target flex items-center gap-2 px-3 py-2 text-xs ${
+              !overloadWindupActive && !canStartOverload ? "opacity-50" : ""
+            }`}
+            style={
+              overloadWindupActive
+                ? { animation: "pixel-blink 0.35s steps(2) infinite", backgroundColor: "#facc15", color: "#1a1a1a" }
+                : undefined
+            }
+            onClick={onStartGeneratorOverload}
+          >
+            <span>
+              {overloadWindupActive
+                ? COPY.game.generatorOverloadHoldingLabel.replace("{seconds}", overloadWindupSeconds)
+                : COPY.game.generatorOverloadLabel}
+            </span>
+          </button>
+          {overloadWindupActive && (
+            <div className="w-32 h-1 bg-gray-800 border border-gray-700 rounded overflow-hidden">
+              <div className="h-full bg-red-500 transition-all duration-150" style={{ width: `${overloadWindupPercent}%` }} />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

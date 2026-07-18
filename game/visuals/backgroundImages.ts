@@ -86,6 +86,14 @@ export const DOOR_CLOSED_FRAME_START_INDEX = 1;
 // pomalé), pořád ale krátký "hold" mezi snímky, ne plynulá animace.
 export const DOOR_CLOSED_FRAME_HOLD_MS = 1000;
 
+// Přetížení generátoru (viz GameState.doorGeneratorOverloadUntilMs,
+// gameReducer.ts) a trvale zničené dveře (GameState.doorDestroyed) — dva
+// další pevné snímky v BACKGROUND_SCENES.door, VLOŽENÉ před death-reveal
+// snímek (ne přidané na konec pole), ať `deathRevealIndex = frames.length-1`
+// v DoorView.tsx zůstane platné beze změny.
+export const DOOR_GENERATOR_OVERLOAD_FRAME_INDEX = 5;
+export const DOOR_DESTROYED_FRAME_INDEX = 6;
+
 /**
  * Which door_closed_* frame offset (0..DOOR_CLOSED_FRAME_COUNT-1) to show for
  * a given monotonic step count — "ping-pong" sekvence tam a zpátky (viz
@@ -198,6 +206,9 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
       { src: `${OBJECT_13_BACKGROUND_PATH}/door_closed_1.webp` },
       { src: `${OBJECT_13_BACKGROUND_PATH}/door_closed_2.webp` },
       { src: `${OBJECT_13_BACKGROUND_PATH}/door_closed_3.webp` },
+      // Indexy DOOR_GENERATOR_OVERLOAD_FRAME_INDEX/DOOR_DESTROYED_FRAME_INDEX výše.
+      { src: `${OBJECT_13_BACKGROUND_PATH}/door_generator_overload_0.webp` },
+      { src: `${OBJECT_13_BACKGROUND_PATH}/door_destroyed_0.webp` },
       { src: `${OBJECT_13_BACKGROUND_PATH}/door_open_death_0.webp` },
     ],
     holdMs: DEFAULT_HOLD_MS,

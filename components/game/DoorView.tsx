@@ -5,6 +5,8 @@ import {
   doorClosedFrameOffsetForStep,
   DOOR_CLOSED_FRAME_HOLD_MS,
   DOOR_CLOSED_FRAME_START_INDEX,
+  DOOR_DESTROYED_FRAME_INDEX,
+  DOOR_GENERATOR_OVERLOAD_FRAME_INDEX,
 } from "@/game/visuals/backgroundImages";
 import { BULB_REPLACE_DURATION_MS, BULB_REPLACE_SUCCESS_MESSAGE_MS } from "@/game/balancing/constants";
 import { computeBulbReplacementProgressRatio } from "@/game/core/bulbReplacementProgress";
@@ -13,6 +15,10 @@ import ViewSwitchArrow from "./ViewSwitchArrow";
 
 interface DoorViewProps {
   doorClosed: boolean;
+  /** viz GameState.doorDestroyed — trvale zničené dveře (základ pro přetížení generátoru), navždy otevřené, TOGGLE_DOOR je no-op. */
+  doorDestroyed: boolean;
+  /** viz GameState.doorGeneratorOverloadUntilMs !== null — probíhající desetisekundové přetížení, dveře zamčené, TOGGLE_DOOR je no-op. */
+  doorGeneratorOverloadActive: boolean;
   /** viz GameState.doorDeathRevealUntilMs — krátce ukáže monstrum ve dveřích před smrtí. */
   isDoorDeathReveal: boolean;
   /** Prasklá žárovka u dveří (viz game/core/roomBulbs.ts) — jen jemné grayscale navíc na ikonce, o viditelnosti/interaktivitě už nerozhoduje. */
@@ -55,6 +61,8 @@ interface DoorViewProps {
 // obrázku (elektronický zámek vpravo), takže tu není potřeba velký text.
 export default function DoorView({
   doorClosed,
+  doorDestroyed,
+  doorGeneratorOverloadActive,
   isDoorDeathReveal,
   bulbBroken,
   bulbWearRatio,
@@ -90,11 +98,24 @@ export default function DoorView({
     const timeout = setTimeout(() => setClosedFrameStep((step) => step + 1), DOOR_CLOSED_FRAME_HOLD_MS);
     return () => clearTimeout(timeout);
   }, [doorClosed, isDoorDeathReveal, closedFrameStep]);
+  // Priorita: doorDeathReveal (monstrum u dveří, smrt už rozhodnuta) >
+  // doorDestroyed (trvale, do konce noci) > probíhající přetížení > zavřeno/
+  // otevřeno. doorDestroyed a doorGeneratorOverloadActive se nikdy nesejdou
+  // současně (viz gameReducer.ts#updateDoorGeneratorOverload — pole se
+  // vzájemně vylučují), pořadí je tu jen pro čitelnost/budoucí jistotu.
   const activeIndex = isDoorDeathReveal
     ? deathRevealIndex
-    : doorClosed
-      ? DOOR_CLOSED_FRAME_START_INDEX + doorClosedFrameOffsetForStep(closedFrameStep)
-      : 0;
+    : doorDestroyed
+      ? DOOR_DESTROYED_FRAME_INDEX
+      : doorGeneratorOverloadActive
+        ? DOOR_GENERATOR_OVERLOAD_FRAME_INDEX
+        : doorClosed
+          ? DOOR_CLOSED_FRAME_START_INDEX + doorClosedFrameOffsetForStep(closedFrameStep)
+          : 0;
+  // Dveře nereagují na hráče (viz TOGGLE_DOOR guard v gameReducer.ts) —
+  // hotspot zůstává vizuálně přítomný (žádný layout skok), ale bez akce a s
+  // odlišným textem, ať klik viditelně "nic neudělá" místo tichého no-opu.
+  const doorControlsLocked = doorDestroyed || doorGeneratorOverloadActive;
   // Ikonka výměny je v DoorView trvale vidět (na rozdíl od dřívějšího "jen
   // po prasknutí") — jedinou výjimkou je krátký doorDeathReveal (monstrum ve
   // dveřích těsně před smrtí), kde by ikonka jen rušila. Vlastní menší
@@ -155,21 +176,37 @@ export default function DoorView({
     <div className="flex flex-col gap-3">
       <DoorSceneFrame frames={doorScene.frames} activeIndex={activeIndex} crossfadeMs={doorScene.crossfadeMs}>
         <button
-          className="door-hotspot tap-target-critical absolute flex items-end justify-center"
+          className={`door-hotspot tap-target-critical absolute flex items-end justify-center ${doorControlsLocked ? "opacity-50 cursor-not-allowed" : ""}`}
           style={{ left: "30%", top: "14%", width: "40%", height: "70%" }}
           data-active={doorClosed}
-          onClick={onToggleDoor}
-          aria-label={doorClosed ? "Otevřít dveře" : "Zavřít dveře"}
+          onClick={doorControlsLocked ? undefined : onToggleDoor}
+          aria-label={
+            doorDestroyed
+              ? COPY.game.doorViewHintDestroyed
+              : doorGeneratorOverloadActive
+                ? COPY.game.doorViewHintGeneratorOverload
+                : doorClosed
+                  ? "Otevřít dveře"
+                  : "Zavřít dveře"
+          }
         >
           <span
             className="door-hotspot-label"
             style={
-              closeDoorUrgent && !doorClosed
+              closeDoorUrgent && !doorClosed && !doorControlsLocked
                 ? { animation: "pixel-blink 0.6s steps(2) infinite", background: "#ef4444", color: "#fff" }
                 : undefined
             }
           >
-            {doorClosed ? COPY.game.doorViewHintOpen : closeDoorUrgent ? COPY.game.doorViewHintCloseUrgent : COPY.game.doorViewHintClose}
+            {doorDestroyed
+              ? COPY.game.doorViewHintDestroyed
+              : doorGeneratorOverloadActive
+                ? COPY.game.doorViewHintGeneratorOverload
+                : doorClosed
+                  ? COPY.game.doorViewHintOpen
+                  : closeDoorUrgent
+                    ? COPY.game.doorViewHintCloseUrgent
+                    : COPY.game.doorViewHintClose}
           </span>
         </button>
 

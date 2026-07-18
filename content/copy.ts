@@ -202,6 +202,12 @@ export const COPY = {
     // hotspot/akce (onToggleDoor), jen naléhavější text + pulzování
     // (DoorView.tsx#closeDoorUrgent).
     doorViewHintCloseUrgent: "ZABOUCHNOUT DVEŘE!",
+    // Hotspot během probíhajícího přetížení generátoru (viz
+    // GameState.doorGeneratorOverloadUntilMs) — dveře nereagují, hotspot je
+    // vizuálně neaktivní (viz DoorView.tsx#doorControlsLocked).
+    doorViewHintGeneratorOverload: "Zámek nereaguje...",
+    // Hotspot po nevratném zničení dveří (viz GameState.doorDestroyed).
+    doorViewHintDestroyed: "Mechanismus je zničen.",
     // Ruční výměna prasklé žárovky (viz DoorView.tsx, gameReducer.ts
     // START_BULB_REPLACEMENT) — jen MVP text, žádný nový obrázkový asset.
     bulbReplaceLabel: "Vyměnit žárovku",
@@ -361,6 +367,18 @@ export const COPY = {
     // Krátká posměšná hláška, když hráč restartuje generátor, co běžel v
     // pořádku (viz GameState.generatorAccidentalRestartSeq, GeneratorView.tsx).
     generatorAccidentalRestartMessage: "To byla pěkný blbost, co jsi udělal...",
+    // "PŘETÍŽIT GENERÁTOR" (viz zadání "zničené dveře vlastní chybou hráče")
+    // — tlačítko pod restartem, vidět od GENERATOR_OVERLOAD_MIN_NIGHT (admin
+    // od noci 1, viz game/difficulty/nightConfig.ts#canOverloadGenerator).
+    generatorOverloadLabel: "PŘETÍŽIT GENERÁTOR",
+    // window.confirm() text (viz zadání "stejné potvrzení jako u jiných
+    // nevratných akcí") — jediný existující confirm precedent v projektu je
+    // ProfileScreen.tsx#resetConfirmLabel, stejný nativní vzor tady.
+    generatorOverloadConfirmLabel: "Přetížení může nevratně poškodit dveřní mechanismus. Pokračovat?",
+    // Text tlačítka během držení (viz GameState.generatorOverloadWindup) —
+    // stejný vzor jako emergencyRunHoldingLabel, {seconds} se nahradí
+    // zbývajícím počtem sekund do spuštění samotného přetížení.
+    generatorOverloadHoldingLabel: "PŘETĚŽUJI GENERÁTOR… {seconds} s",
     // Zobrazí se, když hráč otevře dveře bez ověření kamerou, kam monstrum
     // odešlo (medium/hard, viz game/difficulty/difficultyConfig.ts
     // monster_check_or_return) — zatím nikde ve UI nenapojeno, jen připraveno.

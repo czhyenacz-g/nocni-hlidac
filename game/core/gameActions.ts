@@ -140,6 +140,23 @@ export type GameAction =
   // doběhnutí se jen zvýší thinkItOverReadySeq (žádná minihra).
   | { type: "START_THINK_IT_OVER_WINDUP" }
   | { type: "CANCEL_THINK_IT_OVER_WINDUP" }
+  // Držení "PŘETÍŽIT GENERÁTOR" (viz GeneratorOverloadWindupState,
+  // GeneratorView.tsx) — stejný start/cancel pár jako
+  // START_EMERGENCY_RUN_WINDUP/CANCEL_EMERGENCY_RUN_WINDUP výše. Po
+  // doběhnutí (generatorOverloadReadySeq) dispatchne app/play/page.tsx
+  // START_GENERATOR_OVERLOAD níže, ne přímo tenhle windup.
+  | { type: "START_GENERATOR_OVERLOAD_WINDUP" }
+  | { type: "CANCEL_GENERATOR_OVERLOAD_WINDUP" }
+  // Skutečné spuštění desetisekundového přetížení (viz
+  // GameState.doorGeneratorOverloadUntilMs, GENERATOR_OVERLOAD_DOOR_DURATION_MS)
+  // — dispatchuje VÝHRADNĚ app/play/page.tsx po doběhnutí
+  // START_GENERATOR_OVERLOAD_WINDUP, nikdy přímo UI. Beze změny energetické
+  // logiky generátoru (generatorState: "restarting", stejný mechanismus jako
+  // RESTART_GENERATOR) — jen navíc uzamkne dveře na door_generator_overload
+  // obrázek, dokud TICK po GENERATOR_OVERLOAD_DOOR_DURATION_MS dveře nezničí.
+  // Žádná podmínka na monstru/stage tady záměrně není (viz TODO.md) —
+  // přetížení dnes VŽDY zničí dveře.
+  | { type: "START_GENERATOR_OVERLOAD" }
   // Hráč se vrátil z nouzové minihry (outcome "returned"), ale monstrum ho
   // pronásledovalo/bylo blízko kanceláře (viz
   // game/minigame/officeThreat.ts#evaluateOfficeThreatOnReturn,

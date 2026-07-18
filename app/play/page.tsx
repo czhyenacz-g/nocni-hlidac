@@ -14,6 +14,7 @@ import { getLiveDeathSequenceConfig, isDoorAttackDeath } from "@/game/death/live
 import { NIGHT_01 } from "@/game/nights/night01";
 import { createInitialGameState } from "@/game/core/gameState";
 import {
+  canStartGeneratorOverloadWindup,
   canStartThinkItOverWindup,
   createGameReducer,
   isBulbReplacementReadyToConfirm,
@@ -341,6 +342,7 @@ function PlayPageContent() {
   const prevBulbReplaceSuccessSeqRef = useRef(state.bulbReplaceSuccessSeq);
   const prevEmergencyRunReadySeqRef = useRef(state.emergencyRunReadySeq);
   const prevThinkItOverReadySeqRef = useRef(state.thinkItOverReadySeq);
+  const prevGeneratorOverloadReadySeqRef = useRef(state.generatorOverloadReadySeq);
   // Zvuk překvapení na nejbližší kameře smí zaznít jen jednou za "návštěvu" —
   // dokud tam nepřítel je, další kliknutí na kameru (ani na jinou a zpátky) ho
   // znovu nespustí. Resetuje se, až nepřítel z téhle stage odejde (uteče/postoupí).
@@ -1155,6 +1157,19 @@ function PlayPageContent() {
     setThinkItOverCinematicActive(false);
   }
 
+  // Držení "PŘETÍŽIT GENERÁTOR" doběhlo celé (viz gameReducer.ts
+  // START_GENERATOR_OVERLOAD_WINDUP/TICK) — teprve TADY se dispatchne
+  // skutečné START_GENERATOR_OVERLOAD (energetické chování jako restart +
+  // desetisekundové zamčení/zničení dveří). Stejný `>` diff jako
+  // emergencyRunReadySeq/thinkItOverReadySeq výše, ze stejného důvodu (nová
+  // směna resetuje seq zpět na 0).
+  useEffect(() => {
+    if (state.generatorOverloadReadySeq > prevGeneratorOverloadReadySeqRef.current) {
+      dispatch({ type: "START_GENERATOR_OVERLOAD" });
+    }
+    prevGeneratorOverloadReadySeqRef.current = state.generatorOverloadReadySeq;
+  }, [state.generatorOverloadReadySeq]);
+
   // "Spustit intro" na BriefingScreen.tsx (jen Noc 1, viz JSX níže) —
   // otevře cinematic, žádný dispatch (viz introCinematicActive komentář
   // výše). Dokončení jen scénu zavře, hráč zůstává na stejném briefingu se
@@ -1774,6 +1789,25 @@ function PlayPageContent() {
     dispatch({ type: "RESTART_GENERATOR" });
   }
 
+  // "PŘETÍŽIT GENERÁTOR" (viz zadání "zničené dveře vlastní chybou hráče") —
+  // canStartGeneratorOverloadWindup se čte PŘED window.confirm (guard je
+  // stejný, ať se nepotvrzující stav vůbec neptá) i po něm (stav se mezitím
+  // mohl změnit — TICK/ENEMY_ADVANCE dál běží pod otevřeným confirm() dialogem
+  // stejně jako pod čímkoliv jiným). Jediný confirm precedent v projektu je
+  // ProfileScreen.tsx#handleResetLocalProfile — stejný nativní window.confirm
+  // vzor tady (viz zadání "stejné potvrzení jako u jiných nevratných akcí"),
+  // ne nová modal komponenta. Po potvrzení spustí STEJNÝ windup mechanismus
+  // jako "Jít ven" (EMERGENCY_RUN_WINDUP_DURATION_MS, viz
+  // GENERATOR_OVERLOAD_WINDUP_DURATION_MS) — samotné přetížení (energie +
+  // zamčení/zničení dveří) přijde až přes generatorOverloadReadySeq efekt výše.
+  function handleStartGeneratorOverload() {
+    if (!canStartGeneratorOverloadWindup(state)) return;
+    audioManager.play(AUDIO_EVENTS.uiClick);
+    if (!window.confirm(COPY.game.generatorOverloadConfirmLabel)) return;
+    if (!canStartGeneratorOverloadWindup(state)) return;
+    dispatch({ type: "START_GENERATOR_OVERLOAD_WINDUP" });
+  }
+
   // DEV-ONLY: same simulate-both-steps pattern as handleDebugToggleDoor.
   function handleDebugRestartGenerator() {
     dispatch({ type: "LOOK_AT_GENERATOR" });
@@ -1974,6 +2008,7 @@ function PlayPageContent() {
           onLookAtLeftWall={handleLookAtLeftWall}
           onLookAtMap={handleLookAtMap}
           onRestartGenerator={handleRestartGenerator}
+          onStartGeneratorOverload={handleStartGeneratorOverload}
           onDebugToggleDoor={handleDebugToggleDoor}
           onDebugRestartGenerator={handleDebugRestartGenerator}
           onSetDebugNight={handleSetDebugNight}
