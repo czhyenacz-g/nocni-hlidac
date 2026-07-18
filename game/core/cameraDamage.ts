@@ -5,10 +5,10 @@ import {
   GHOUL_CAMERA_ATTACK_CHANCE,
   GHOUL_CAMERA_ATTACK_FRAMES_DURATION_MS,
   GHOUL_CAMERA_ATTACK_LAST_FRAME_HOLD_MS,
-  GHOUL_ENEMY_ID,
   MAX_DISABLED_CAMERAS_BY_NIGHT,
   PROTECTED_CAMERA_IDS,
 } from "./cameraDamageConfig";
+import { monsterHasAbility } from "../enemies/monsterDefinitions";
 
 /** Čerstvý/klidový stav bez útoku — `createInitialGameState` (nová/opakovaná noc) i DEBUG_RESET_CAMERA_DAMAGE ho používají beze změny. */
 export const INACTIVE_CAMERA_DAMAGE: CameraDamageState = {
@@ -17,11 +17,6 @@ export const INACTIVE_CAMERA_DAMAGE: CameraDamageState = {
   lastAttackAtMs: null,
   lastFootstepsAtMs: null,
 };
-
-/** Jediné místo, které rozhoduje "je aktuální noční nepřítel Ghoul" (viz cameraDamageConfig.ts#GHOUL_ENEMY_ID). */
-export function isGhoulEnemy(night: NightDefinition): boolean {
-  return night.enemy.id === GHOUL_ENEMY_ID;
-}
 
 /**
  * Vybere sekvenci podle kamery a (jen pro door_hallway) aktuálního stavu
@@ -72,7 +67,7 @@ export function getMaxDisabledCamerasForNight(nightNumber: number): number {
  * (úspěšné odražení hod NEVYNECHÁVÁ).
  */
 export function canRollGhoulCameraAttack(state: GameState, night: NightDefinition, nightNumber: number): boolean {
-  if (!isGhoulEnemy(night)) return false;
+  if (!monsterHasAbility(night.enemy.id, "summon_ghoul_camera_attack")) return false;
   if (state.activeCameraId === null) return false;
   if (state.cameraDamage.activeAttack !== null) return false;
   if (state.cameraDamage.disabledCameraIds.includes(state.activeCameraId)) return false;
@@ -246,7 +241,7 @@ export function isWatchingDisabledCameraFootstepsSource(state: GameState): boole
  * tlačítkem zcela nedotčená (viz zadání "produkční hodnota musí zůstat 5 %").
  */
 export function canDebugTriggerGhoulCameraAttack(state: GameState, night: NightDefinition, nightNumber: number): boolean {
-  if (!isGhoulEnemy(night)) return false;
+  if (!monsterHasAbility(night.enemy.id, "summon_ghoul_camera_attack")) return false;
   if (state.activeCameraId === null) return false;
   if (state.cameraDamage.activeAttack !== null) return false;
   if (state.cameraDamage.disabledCameraIds.includes(state.activeCameraId)) return false;

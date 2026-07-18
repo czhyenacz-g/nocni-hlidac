@@ -58,6 +58,7 @@ export default function DeskView({
           onSelectCamera={onSelectCamera}
           onCloseCameras={onCloseCameras}
           cameraDamage={state.cameraDamage}
+          monsterId={night.enemy.id}
         />
       </div>
 

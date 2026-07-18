@@ -1,6 +1,6 @@
 import { NightDefinition } from "../core/types";
 import { OBJECT13_CAMERAS } from "../cameras/cameras.object13";
-import { BASIC_INTRUDER } from "../enemies/basicIntruder";
+import { IMP_ENEMY } from "../enemies/imp";
 
 // Definice první směny. Každá další směna bude vlastní soubor v této složce.
 export const NIGHT_01: NightDefinition = {
@@ -19,7 +19,7 @@ export const NIGHT_01: NightDefinition = {
   // 1 % za 12 s = 1/12 % za sekundu (čtvrtina původní rychlosti 1/3) —
   // viz GAME_DESIGN.md "Energie".
   rechargePerSecondWhenIdle: 1 / 12,
-  enemy: BASIC_INTRUDER,
+  enemy: IMP_ENEMY,
   cameras: OBJECT13_CAMERAS,
   defaultCameraId: "outer_yard",
   enemyTickMs: 2000,

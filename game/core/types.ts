@@ -188,6 +188,32 @@ export interface EnemyDefinition {
   monsterRetreatStage: EnemyStage;
 }
 
+// ── Identita monstra (viz zadání "první jednoduchá verze definice monster",
+// sjednoceno v kroku "sjednoť definici Impa") ──
+//
+// `MonsterId`/`MonsterAbilityId` jsou tady (leaf typy beze závislostí) —
+// samotné `MonsterDefinition` (id/displayName/abilities/presentation/gameplay)
+// žije v `game/enemies/monsterDefinitions.ts`, protože jeho `presentation`
+// pole potřebuje typy z `game/enemies/monsterPresentation.ts` (ty samy
+// importují `CameraId` odsud) — kdyby `MonsterDefinition` zůstalo tady,
+// vznikl by cyklický import. `EnemyDefinition` výše řeší celou neměnnou
+// gameplay konfiguraci (trasa/pravděpodobnosti/dveře/repel) —
+// `MonsterDefinition.gameplay` je přesně tenhle tvar
+// (`MonsterGameplayDefinition = Omit<EnemyDefinition, "id">`), ne nový
+// model. Aktivní monstrum se
+// dnes neukládá jako druhé paralelní pole nikde v GameState — jediný zdroj
+// pravdy je `NightDefinition.enemy.id` (viz
+// game/enemies/monsterDefinitions.ts#getMonsterDefinition,
+// game/core/cameraDamage.ts, kde se `night.enemy.id` používá přímo jako
+// `monsterId`). Zatím jen jeden typ (`"imp"`) a jedna schopnost
+// (`"summon_ghoul_camera_attack"`, viz zadání "Ghoul zatím není samostatné
+// hlavní monstrum, jen animace útoku na kameru přiřazená Impovi") — žádný
+// obecný ability framework, žádný registr pro víc monster najednou.
+
+export type MonsterId = "imp";
+
+export type MonsterAbilityId = "summon_ghoul_camera_attack";
+
 export interface NightDefinition {
   id: string;
   title: string;

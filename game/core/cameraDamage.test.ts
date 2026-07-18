@@ -10,7 +10,6 @@ import {
   INACTIVE_CAMERA_DAMAGE,
   isCameraFullyOffline,
   isEnemyOnDisabledCameraStage,
-  isGhoulEnemy,
   resolveCameraAttackVisualPhase,
   resolveGhoulCameraAttackAnimationId,
   rollGhoulCameraAttack,
@@ -20,7 +19,8 @@ import { CAMERA_ATTACK_COOLDOWN_MS, CAMERA_FAILURE_TRANSITION_MS, GHOUL_CAMERA_A
 import { createInitialGameState } from "./gameState";
 import { NIGHT_01 } from "../nights/night01";
 import { CameraDamageState, GameState, NightDefinition } from "./types";
-import { BASIC_INTRUDER } from "../enemies/basicIntruder";
+import { IMP_ENEMY } from "../enemies/imp";
+import { monsterHasAbility } from "../enemies/monsterDefinitions";
 
 function stateWith(overrides: Partial<GameState>): GameState {
   return {
@@ -36,22 +36,27 @@ function cameraDamageWith(overrides: Partial<CameraDamageState>): CameraDamageSt
   return { ...INACTIVE_CAMERA_DAMAGE, ...overrides };
 }
 
+// Monstrum bez schopnosti "summon_ghoul_camera_attack" (viz
+// game/enemies/monsterDefinitions.ts) — nahrazuje dřívější "not a Ghoul"
+// fixture od kroku "první jednoduchá verze definice monster" (hardcoded
+// enemy-id kontrola nahrazená kontrolou schopnosti, viz
+// cameraDamage.ts#canRollGhoulCameraAttack/canDebugTriggerGhoulCameraAttack).
 const NOT_GHOUL_NIGHT: NightDefinition = {
   ...NIGHT_01,
-  enemy: { ...BASIC_INTRUDER, id: "some_other_monster" },
+  enemy: { ...IMP_ENEMY, id: "some_other_monster" },
 };
 
 afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("isGhoulEnemy", () => {
-  it("true for the game's only enemy (basic_intruder, narratively the Ghoul)", () => {
-    expect(isGhoulEnemy(NIGHT_01)).toBe(true);
+describe("monsterHasAbility — summon_ghoul_camera_attack gate (replaces the old hardcoded enemy-id check)", () => {
+  it("true for the game's only monster (imp), which owns the ability in this first version", () => {
+    expect(monsterHasAbility(NIGHT_01.enemy.id, "summon_ghoul_camera_attack")).toBe(true);
   });
 
-  it("3. false for a hypothetical different enemy id", () => {
-    expect(isGhoulEnemy(NOT_GHOUL_NIGHT)).toBe(false);
+  it("3. false for a hypothetical different/unregistered monster id", () => {
+    expect(monsterHasAbility(NOT_GHOUL_NIGHT.enemy.id, "summon_ghoul_camera_attack")).toBe(false);
   });
 });
 

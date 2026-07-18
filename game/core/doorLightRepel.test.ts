@@ -19,7 +19,7 @@ function stateAtDoor(overrides: Partial<GameState> = {}): GameState {
     isRunning: true,
     screen: "playing",
     // Jeden krok PŘED at_door, ať stepBackOneStage má kam couvnout — reálná
-    // trasa vždy má door_hallway hned před at_door (viz basicIntruder.ts).
+    // trasa vždy má door_hallway hned před at_door (viz imp.ts).
     enemyRoute: ["door_hallway", "at_door", "attack"],
     enemyStage: "at_door",
     ...overrides,

@@ -23,7 +23,7 @@ export interface ComputeHeartbeatTargetStressInput {
  * Cílová hladina stresu (0..100) podle toho, jestli hráč zrovna vidí
  * monstrum v detailu kamery — viz GAME_DESIGN.md "Stres a heartbeat". Nikdy
  * nepředpokládá konkrétní camera id napevno (levá/pravá chodba se losuje per
- * směna, viz basicIntruder.ts routeVariants) — vždy se ptá `cameras`, na
+ * směna, viz imp.ts routeVariants) — vždy se ptá `cameras`, na
  * které kameře je monstrum skutečně vidět, stejný vzor jako
  * `isEnemyBeingWatched` v gameReducer.ts. Pro první verzi se řeší jen detail
  * kamery (`isCameraDetailOpen`) — overview mřížka cíleně stres nezvedá.

@@ -54,7 +54,7 @@ function clamp(value: number, min: number, max: number): number {
 
 // Vylosuje (jednou na standoff u zavřených dveří) cíl efektivního čekání, než
 // se nepřítel vzdá — viz doorHoldRangeMs / doorHoldLightAccelMultiplier v
-// basicIntruder.ts a použití v ENEMY_ADVANCE níže.
+// imp.ts a použití v ENEMY_ADVANCE níže.
 function rollDoorHoldTargetMs(enemy: EnemyDefinition): number {
   const { min, max } = enemy.doorHoldRangeMs;
   return min + Math.random() * (max - min);

@@ -21,6 +21,8 @@ interface CameraPanelProps {
   onCloseCameras: () => void;
   /** Viz GameState.cameraDamage — vzácný útok Ghoula na kameru (game/core/cameraDamage.ts). */
   cameraDamage: CameraDamageState;
+  /** `NightDefinition.enemy.id` — jen předává dál do CameraDetailView.tsx (viz zadání "první jednoduchá verze assetové definice"). Overview (CameraMonitorGrid) žádný živý obraz neukazuje, tenhle prop nepotřebuje. */
+  monsterId: string;
 }
 
 // Wrapper podle GameState.cameraViewMode: overview = mřížka monitorů
@@ -42,6 +44,7 @@ export default function CameraPanel({
   onSelectCamera,
   onCloseCameras,
   cameraDamage,
+  monsterId,
 }: CameraPanelProps) {
   if (cameraViewMode === "detail") {
     const activeCamera = cameras.find((c) => c.id === activeCameraId) ?? null;
@@ -58,6 +61,7 @@ export default function CameraPanel({
         onToggleSonicCannon={onToggleSonicCannon}
         onBack={onCloseCameras}
         cameraDamage={cameraDamage}
+        monsterId={monsterId}
       />
     );
   }

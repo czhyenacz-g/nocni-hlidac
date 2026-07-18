@@ -6,7 +6,7 @@ import { CameraDamageState, GameState } from "./types";
 import { INACTIVE_CAMERA_DAMAGE, isWatchingDisabledCameraFootstepsSource } from "./cameraDamage";
 import { CAMERA_ATTACK_COOLDOWN_MS, CAMERA_FAILURE_TRANSITION_MS, GHOUL_CAMERA_ATTACK_RETREAT_PAUSE_MS } from "./cameraDamageConfig";
 
-// Pravá větev natvrdo (viz basicIntruder.ts routeVariants) — createInitialGameState
+// Pravá větev natvrdo (viz imp.ts routeVariants) — createInitialGameState
 // by jinak vylosovala náhodnou variantu (Math.random), což by dělalo testy
 // nedeterministické a "left_hallway"/"right_hallway" testy nespolehlivé,
 // kdyby náhodou padla druhá větev. enemyLocationEnteredAtMs daleko v

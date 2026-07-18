@@ -30,7 +30,8 @@ export interface CameraAssetSet {
   fleeing: string[];
 }
 
-interface CameraAssetsEntry {
+/** Exportované, ať jde referencovat z `game/enemies/monsterPresentation.ts` (Impova prezentace ukazuje na tenhle stejný registr, žádná duplicitní kopie). */
+export interface CameraAssetsEntry {
   /** Výchozí sada obrázků pro danou kameru. */
   default: CameraAssetSet;
   /**
@@ -186,8 +187,7 @@ const DOOR_HALLWAY_AT_DOOR_ASSET = {
   lightOn: "/object_13/camera/door_hallway_light/door_hallway_light_10_monster_at_door.webp",
 };
 
-function resolveAssetSet(cameraId: CameraId, lightOn: boolean): CameraAssetSet {
-  const entry = CAMERA_ASSETS[cameraId];
+function resolveAssetSet(entry: CameraAssetsEntry, lightOn: boolean): CameraAssetSet {
   if (lightOn && entry.lightOn) return entry.lightOn;
   return entry.default;
 }
@@ -245,6 +245,16 @@ function pickCycling(list: string[], elapsedMs: number): string | null {
  * příchodu monstra na kameru (enemyStage se změnil), ale zůstává stabilní
  * (nebliká), dokud tam beze změny stage zůstává — `pickDeterministic` pořád
  * není `Math.random()`, jen se mění, CO se hashuje.
+ *
+ * `cameraAssets` (viz zadání "první jednoduchá verze assetové definice
+ * monster") — volitelný poslední parametr, výchozí hodnota je stejný
+ * `CAMERA_ASSETS` registr jako dřív, takže VŠECHNA existující volání (testy,
+ * `CameraView.tsx` bez předaného monstra) mají identický výstup jako před
+ * touhle změnou. Volající, který zná aktivní `monsterId`
+ * (`night.enemy.id`), mu předá `getMonsterDefinition(monsterId)?.presentation.camera`
+ * (viz `game/enemies/monsterDefinitions.ts`) — to je jediné místo, kde se
+ * "kamerový resolver napojuje na Impovu definici", žádná změna algoritmu
+ * výběru samotného.
  */
 export function getCameraImageSrc(
   cameraId: CameraId,
@@ -254,15 +264,16 @@ export function getCameraImageSrc(
   enemyStage?: EnemyStage,
   lastEnemyDecision?: EnemyMoveDecision,
   enemyStageVisitSeq: number = 0,
+  cameraAssets: Record<CameraId, CameraAssetsEntry> = CAMERA_ASSETS,
 ): string | null {
-  const assets = CAMERA_ASSETS[cameraId];
+  const assets = cameraAssets[cameraId];
   if (!assets) return null;
 
   if (cameraId === "door_hallway" && enemyStage === "at_door") {
     return lightOn ? DOOR_HALLWAY_AT_DOOR_ASSET.lightOn : DOOR_HALLWAY_AT_DOOR_ASSET.default;
   }
 
-  const set = resolveAssetSet(cameraId, lightOn);
+  const set = resolveAssetSet(assets, lightOn);
 
   const isFleeingRetreat = hasMonster && lastEnemyDecision !== undefined && RETREATING_DECISIONS.includes(lastEnemyDecision);
 

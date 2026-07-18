@@ -20,6 +20,8 @@ interface CameraDetailViewProps {
   onBack: () => void;
   /** Viz GameState.cameraDamage — vzácný útok Ghoula (game/core/cameraDamage.ts), vykreslený přes CameraDamageOverlay.tsx jen když se týká PRÁVĚ TÉHLE kamery. */
   cameraDamage: CameraDamageState;
+  /** `NightDefinition.enemy.id` — jen předává dál do CameraView.tsx (viz zadání "první jednoduchá verze assetové definice"). */
+  monsterId: string;
 }
 
 // Zvětšený detail jedné kamery (viz GameState.cameraViewMode === "detail").
@@ -37,6 +39,7 @@ export default function CameraDetailView({
   onToggleSonicCannon,
   onBack,
   cameraDamage,
+  monsterId,
 }: CameraDetailViewProps) {
   // Vizuální fáze PRO PRÁVĚ TUHLE kameru (viz
   // game/core/cameraDamage.ts#resolveCameraAttackVisualPhase) — čistě
@@ -71,6 +74,7 @@ export default function CameraDetailView({
           elapsedMs={elapsedMs}
           lastEnemyDecision={lastEnemyDecision}
           enemyStageVisitSeq={enemyStageVisitSeq}
+          monsterId={monsterId}
         />
         {/* Lehký modrý filtr (viz zadání "vysoká průhlednost, nesmí výrazně
             zhoršit čitelnost monstra") — samostatná `pointer-events-none`

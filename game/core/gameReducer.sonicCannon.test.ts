@@ -6,7 +6,7 @@ import { GameState } from "./types";
 import { SONIC_CANNON_RETREAT_REVEAL_MS } from "../balancing/constants";
 
 // Trasa pravou chodbou, vždy stejná (ne losovaná) — ať jsou indexy/kamery v
-// testech deterministické. Odpovídá basicIntruder.ts routeVariants[0].
+// testech deterministické. Odpovídá imp.ts routeVariants[0].
 const ROUTE = ["outside", "outer_yard", "right_hallway", "door_hallway", "at_door", "attack"] as const;
 
 function stateWith(overrides: Partial<GameState>): GameState {

@@ -4,6 +4,14 @@ import { CameraId } from "./types";
 // magic numbers v reduceru/komponentě, jen se sem odkazuje (viz CLAUDE.md
 // "obtížnost patří do game/difficulty/, nikdy rozeseté podmínky" — stejný
 // princip i mimo obtížnost samotnou).
+//
+// Kdo smí tenhle útok spustit se od kroku "první jednoduchá verze definice
+// monster" neřeší hardcoded porovnáním na konkrétní enemy id (bývalé
+// GHOUL_ENEMY_ID), ale schopností `monsterHasAbility(night.enemy.id,
+// "summon_ghoul_camera_attack")` (viz game/enemies/monsterDefinitions.ts,
+// game/core/cameraDamage.ts#canRollGhoulCameraAttack/canDebugTriggerGhoulCameraAttack).
+// Ghoul zatím není samostatné hlavní monstrum — tahle schopnost je v první
+// verzi přiřazená Impovi (jedinému existujícímu monstru).
 
 /** Šance na útok kamery při KAŽDÉM použití sonického děla na Ghoula (bez ohledu na to, jestli dělo Ghoula odrazilo). */
 export const GHOUL_CAMERA_ATTACK_CHANCE = 0.05;
@@ -34,18 +42,6 @@ export const GHOUL_CAMERA_ATTACK_FRAMES_DURATION_MS = 2500;
 
 /** Jak dlouho po dohrání sekvence zůstane poslední snímek vidět (viz zadání "2 sekundy"). */
 export const GHOUL_CAMERA_ATTACK_LAST_FRAME_HOLD_MS = 2000;
-
-/**
- * Jediný nepřítel ve hře (`game/enemies/basicIntruder.ts`) je narativně/vizuálně
- * "Ghoul" (viz `ghoul_death` assety death sekvence, GAME_DESIGN.md) — kód ho
- * eviduje pod `id: "basic_intruder"`, žádné pole `monsterType`/`species`
- * zatím neexistuje. Mechanika se má týkat "pouze Ghoula" (viz zadání) — než
- * případně přibude druhý typ nepřítele s vlastním odlišujícím polem, je
- * tenhle string jediný spolehlivý způsob identifikace (viz report u zadání).
- * "jiné útoky kamer pro Ghosta nebo Titana" (zadání "co nyní nedělat") tak
- * automaticky zůstávají mimo, jakmile přibude odlišný `id`.
- */
-export const GHOUL_ENEMY_ID = "basic_intruder";
 
 /**
  * Kamery, které tahle mechanika nikdy nesmí vyřadit, protože by to

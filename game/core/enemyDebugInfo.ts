@@ -7,7 +7,7 @@ import { CameraId, EnemyMoveDecision, EnemyStage, GameState, NightDefinition } f
 export interface EnemyDebugInfo {
   stage: EnemyStage;
   route: EnemyStage[];
-  /** Podle toho, jestli aktuální `route` obsahuje `left_hallway`/`right_hallway` (viz basicIntruder.ts routeVariants). */
+  /** Podle toho, jestli aktuální `route` obsahuje `left_hallway`/`right_hallway` (viz imp.ts routeVariants). */
   routeBranch: "left" | "right" | "none";
   activeCameraId: CameraId | null;
   cameraViewMode: GameState["cameraViewMode"];
