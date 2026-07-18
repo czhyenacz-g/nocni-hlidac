@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { getMonsterDefinition, IMP, monsterHasAbility } from "./monsterDefinitions";
 import { IMP_ENEMY } from "./imp";
-import { IMP_PRESENTATION } from "./monsterPresentation";
-import { CAMERA_ASSETS, getCameraImageSrc } from "../cameras/cameraAssets.object13";
+import { IMP_CAMERA_ASSETS, IMP_PRESENTATION } from "./monsterPresentation";
+import { getCameraImageSrc } from "../cameras/cameraAssets.object13";
 import { NIGHT_01 } from "../nights/night01";
 import { CameraId, EnemyMoveDecision, EnemyStage } from "../core/types";
 
@@ -63,7 +63,7 @@ describe("getMonsterDefinition", () => {
 
   it("3. presentation reachable through the single registry contains the same camera assets and outcome sequences as before", () => {
     const presentation = getMonsterDefinition("imp")?.presentation;
-    expect(presentation?.camera).toBe(CAMERA_ASSETS);
+    expect(presentation?.camera).toBe(IMP_CAMERA_ASSETS);
     expect(presentation?.outcomes.playerKill.default).toBe("death");
     expect(presentation?.outcomes.monsterDeath).toBe("monsterDefeated");
   });
@@ -110,7 +110,12 @@ describe("5. IMP_ENEMY (game/enemies/imp.ts) is derived from IMP.gameplay, no du
   });
 });
 
-describe("7. getCameraImageSrc — resolving through Imp's definition produces identical output to the pre-change direct call", () => {
+describe("7. getCameraImageSrc — resolving through Imp's definition produces the expected asset, no implicit fallback", () => {
+  // cameraAssets/cameraByEnemyStage jsou POVINNÉ parametry (viz zadání
+  // "odstraň tichý fallback na Impovy assety") — tenhle test ověřuje, že
+  // volání s explicitně předanou Impovou prezentací (stejný vzor jako
+  // CameraView.tsx) dá stejný výsledek jako přímé volání se stejnými daty,
+  // ne že by existoval nějaký implicitní univerzální default.
   const cases: Array<[CameraId, boolean, boolean, number, EnemyStage?, EnemyMoveDecision?, number?]> = [
     ["door_hallway", false, false, 0, "at_door"],
     ["door_hallway", false, true, 0, "at_door"],
@@ -120,11 +125,33 @@ describe("7. getCameraImageSrc — resolving through Imp's definition produces i
     ["right_hallway", true, false, 1234, "right_hallway", "advance", 3],
   ];
 
-  it.each(cases)("same result with and without an explicit monsterId-resolved assets map (%s)", (...args) => {
-    const withoutPresentation = getCameraImageSrc(...args);
+  it.each(cases)("resolves via getMonsterDefinition('imp').presentation (%s)", (cameraId, hasMonster, lightOn, elapsedMs, enemyStage, lastEnemyDecision, enemyStageVisitSeq) => {
     const presentation = getMonsterDefinition("imp")?.presentation;
-    const withPresentation = getCameraImageSrc(...args, presentation?.camera);
-    expect(withPresentation).toBe(withoutPresentation);
+    expect(presentation).toBeDefined();
+    const viaDefinition = getCameraImageSrc(
+      cameraId,
+      hasMonster,
+      lightOn,
+      elapsedMs,
+      enemyStage,
+      lastEnemyDecision,
+      enemyStageVisitSeq ?? 0,
+      presentation!.camera,
+      presentation!.cameraByEnemyStage,
+    );
+    const direct = getCameraImageSrc(
+      cameraId,
+      hasMonster,
+      lightOn,
+      elapsedMs,
+      enemyStage,
+      lastEnemyDecision,
+      enemyStageVisitSeq ?? 0,
+      IMP_CAMERA_ASSETS,
+      IMP_PRESENTATION.cameraByEnemyStage,
+    );
+    expect(viaDefinition).toBe(direct);
+    expect(viaDefinition).not.toBeNull();
   });
 });
 

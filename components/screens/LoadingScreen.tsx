@@ -7,6 +7,8 @@ import { LOADING_SCREEN_DURATION_MS, LOADING_SCREEN_HINT_COUNT } from "@/game/ba
 import { preloadBackgroundImages, BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 import { preloadCameraImages } from "@/game/cameras/cameraAssets.object13";
 import { preloadGhoulCameraAttackAnimations } from "@/game/cameras/cameraAttackAnimation.object13";
+import { getMonsterDefinition } from "@/game/enemies/monsterDefinitions";
+import { NIGHT_01 } from "@/game/nights/night01";
 import SceneBackground from "@/components/SceneBackground";
 import { GameMode } from "@/game/core/gameMode";
 
@@ -41,7 +43,15 @@ export default function LoadingScreen({ gameMode }: LoadingScreenProps) {
 
   useEffect(() => {
     preloadBackgroundImages();
-    preloadCameraImages();
+    // Aktivní monstrum téhle směny (viz NightDefinition.enemy.id) — preload
+    // je čistě výkonnostní věc (chybějící/neznámá prezentace jen znamená
+    // pár chybějících obrázků v cache, ne rozbitý rendering), takže se tu
+    // (na rozdíl od CameraView.tsx) nepadá, jen se preload pro kamery
+    // přeskočí.
+    const monster = getMonsterDefinition(NIGHT_01.enemy.id);
+    if (monster) {
+      preloadCameraImages(monster.presentation.camera, monster.presentation.cameraByEnemyStage);
+    }
     preloadGhoulCameraAttackAnimations();
   }, []);
 

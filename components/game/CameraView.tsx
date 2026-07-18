@@ -18,11 +18,10 @@ interface CameraViewProps {
   /** Seed pro výběr monster/fleeing obrázku (viz GameState.enemyStageVisitSeq) — mění se jen při novém příchodu na stage, ne při každém renderu. */
   enemyStageVisitSeq: number;
   /**
-   * `NightDefinition.enemy.id` (viz zadání "první jednoduchá verze assetové
-   * definice") — kamerový resolver přes něj získá `getMonsterDefinition(monsterId)?.presentation`
-   * a použije JEJÍ `camera` registr místo přímého modulového `CAMERA_ASSETS`.
-   * Beze změny výstupu — Impova prezentace na `CAMERA_ASSETS` jen odkazuje
-   * (viz monsterPresentation.ts).
+   * `NightDefinition.enemy.id` — kamerový resolver přes něj získá
+   * `getMonsterDefinition(monsterId).presentation` a použije JEJÍ vlastní
+   * `camera`/`cameraByEnemyStage` data (viz monsterPresentation.ts). Neznámé
+   * monsterId je konfigurační chyba (fail-fast), ne tichý pád na cizí assety.
    */
   monsterId: string;
 }
@@ -59,11 +58,14 @@ export default function CameraView({
   // sama žádné názvy souborů nezná, jen zobrazí, co vrátí getCameraImageSrc.
   // null (kamera bez assetů, nebo prázdné pole pro danou situaci) = dosavadní
   // textový/placeholder vzhled beze změny.
-  // `getMonsterDefinition(monsterId)?.presentation.camera` — viz zadání
-  // "kamerový resolver má získat Impovu prezentaci podle MonsterId". Pro
-  // neznámé monstrum vrátí undefined a getCameraImageSrc sám spadne na svůj
-  // výchozí parametr (CAMERA_ASSETS) — beze změny výstupu.
-  const monsterPresentation = getMonsterDefinition(monsterId)?.presentation;
+  // Neznámé monsterId je konfigurační chyba (NightDefinition.enemy.id musí
+  // vždy ukazovat na existující monstrum, stejný fail-fast precedent jako
+  // ENEMY_ADVANCE v gameReducer.ts) — ne tichý pád na cizí/univerzální
+  // assety, viz zadání "dokončit skutečné vlastnictví kamerových assetů".
+  const monster = getMonsterDefinition(monsterId);
+  if (!monster) {
+    throw new Error(`Unknown monster id: ${monsterId}`);
+  }
   const imageSrc = getCameraImageSrc(
     camera.id,
     enemyVisible,
@@ -72,7 +74,8 @@ export default function CameraView({
     enemyStage,
     lastEnemyDecision,
     enemyStageVisitSeq,
-    monsterPresentation?.camera,
+    monster.presentation.camera,
+    monster.presentation.cameraByEnemyStage,
   );
   const motion = resolveCameraMotionConfig(camera.id);
 

@@ -30,7 +30,14 @@ export interface CameraAssetSet {
   fleeing: string[];
 }
 
-/** Exportované, ať jde referencovat z `game/enemies/monsterPresentation.ts` (Impova prezentace ukazuje na tenhle stejný registr, žádná duplicitní kopie). */
+/**
+ * Obecný, monstrum-agnostický tvar — jeden záznam v kterémkoliv monster
+ * `presentation.camera` registru (viz zadání "dokončit skutečné vlastnictví
+ * kamerových assetů monstrem"). Tenhle soubor sám žádný konkrétní monster
+ * registr (Imp/Titan/...) NEOBSAHUJE ani neimportuje — jen definuje tvar dat
+ * a čisté funkce, které je zpracují. Konkrétní data (`IMP_CAMERA_ASSETS`)
+ * žijí v `game/enemies/monsterPresentation.ts`.
+ */
 export interface CameraAssetsEntry {
   /** Výchozí sada obrázků pro danou kameru. */
   default: CameraAssetSet;
@@ -42,126 +49,33 @@ export interface CameraAssetsEntry {
   lightOn?: CameraAssetSet;
 }
 
-// Obrázky pro obsah detailu kamery (CameraView.tsx) — oddělené od
-// CameraDefinition (cameras.object13.ts), ať jde snadno přidat/vyměnit sadu
-// obrázků bez zásahu do herní konfigurace kamer. Soubory jsou v
-// public/object_13/camera/<složka>/ (viz TECH_DESIGN.md "Kamerové assety").
-// Prázdné pole = kamera zatím nemá (dostatek) vlastních obrázků — CameraView
-// pak spadne zpět na dosavadní textový/placeholder vzhled (viz
-// getCameraImageSrc níže).
-//
-// Prázdné/chybějící "monster" pole u libovolné kamery je stále platný stav —
-// getCameraImageSrc na to reaguje fallbackem na "normal" snímky místo pádu/
-// prázdné obrazovky (right_hallway dřív žádné monster snímky nemělo, teď má).
-export const CAMERA_ASSETS: Record<CameraId, CameraAssetsEntry> = {
-  outer_yard: {
-    default: {
-      normal: [
-        "/object_13/camera/outdoor/outdoor_01.webp",
-        "/object_13/camera/outdoor/outdoor_02.webp",
-        "/object_13/camera/outdoor/outdoor_04.webp",
-        "/object_13/camera/outdoor/outdoor_07.webp",
-        "/object_13/camera/outdoor/outdoor_09.webp",
-        "/object_13/camera/outdoor/outdoor_10.webp",
-      ],
-      monster: [
-        "/object_13/camera/outdoor/outdoor_03_monster.webp",
-        "/object_13/camera/outdoor/outdoor_05_monster.webp",
-        "/object_13/camera/outdoor/outdoor_06_monster.webp",
-        "/object_13/camera/outdoor/outdoor_08_monster.webp",
-      ],
-      fleeing: ["/object_13/camera/outdoor/outdoor_fleeing_monster.webp"],
-    },
-  },
-  right_hallway: {
-    default: {
-      normal: [
-        "/object_13/camera/right_hallway/right_hallway_01.webp",
-        "/object_13/camera/right_hallway/right_hallway_02.webp",
-        "/object_13/camera/right_hallway/right_hallway_04.webp",
-        "/object_13/camera/right_hallway/right_hallway_06.webp",
-        "/object_13/camera/right_hallway/right_hallway_08.webp",
-        "/object_13/camera/right_hallway/right_hallway_09.webp",
-      ],
-      monster: [
-        "/object_13/camera/right_hallway/right_hallway_03_monster.webp",
-        "/object_13/camera/right_hallway/right_hallway_05_monster.webp",
-        "/object_13/camera/right_hallway/right_hallway_07_monster.webp",
-        "/object_13/camera/right_hallway/right_hallway_10_monster.webp",
-      ],
-      fleeing: ["/object_13/camera/right_hallway/right_hallway_fleeing_monster.webp"],
-    },
-  },
-  left_hallway: {
-    default: {
-      normal: [
-        "/object_13/camera/left_hallway/left_hallway_01.webp",
-        "/object_13/camera/left_hallway/left_hallway_02.webp",
-        "/object_13/camera/left_hallway/left_hallway_03.webp",
-        "/object_13/camera/left_hallway/left_hallway_04.webp",
-        "/object_13/camera/left_hallway/left_hallway_05.webp",
-        "/object_13/camera/left_hallway/left_hallway_07.webp",
-        "/object_13/camera/left_hallway/left_hallway_09.webp",
-      ],
-      monster: [
-        "/object_13/camera/left_hallway/left_hallway_06_monster.webp",
-        "/object_13/camera/left_hallway/left_hallway_08_monster.webp",
-        "/object_13/camera/left_hallway/left_hallway_10_monster.webp",
-      ],
-      fleeing: ["/object_13/camera/left_hallway/left_hallway_fleeing_monster.webp"],
-    },
-  },
-  door_hallway: {
-    default: {
-      normal: [
-        "/object_13/camera/door_hallway/door_hallway_01.webp",
-        "/object_13/camera/door_hallway/door_hallway_02.webp",
-        "/object_13/camera/door_hallway/door_hallway_03.webp",
-        "/object_13/camera/door_hallway/door_hallway_04.webp",
-        "/object_13/camera/door_hallway/door_hallway_05.webp",
-        "/object_13/camera/door_hallway/door_hallway_08.webp",
-        "/object_13/camera/door_hallway/door_hallway_09.webp",
-      ],
-      // door_hallway_10_monster.webp byl přejmenovaný na
-      // door_hallway_10_monster_at_door.webp (viz DOOR_HALLWAY_AT_DOOR_ASSET
-      // výše) — vyřazený odsud, ať se náhodou nevybere pro obyčejný
-      // door_hallway monster stav (soubor pod původním názvem už neexistuje).
-      monster: [
-        "/object_13/camera/door_hallway/door_hallway_06_monster.webp",
-        "/object_13/camera/door_hallway/door_hallway_07_monster.webp",
-      ],
-      fleeing: ["/object_13/camera/door_hallway/door_hallway_fleeing_monster.webp"],
-    },
-    // Světlo do chodby zapnuté — jiná sada snímků (jasnější chodba), stejné
-    // rozdělení normal/monster. Viz resolveAssetSet.
-    lightOn: {
-      normal: [
-        "/object_13/camera/door_hallway_light/door_hallway_light_01.webp",
-        "/object_13/camera/door_hallway_light/door_hallway_light_02.webp",
-        "/object_13/camera/door_hallway_light/door_hallway_light_03.webp",
-        "/object_13/camera/door_hallway_light/door_hallway_light_04.webp",
-        "/object_13/camera/door_hallway_light/door_hallway_light_05.webp",
-        "/object_13/camera/door_hallway_light/door_hallway_light_08.webp",
-        "/object_13/camera/door_hallway_light/door_hallway_light_09.webp",
-      ],
-      // Stejný důvod jako výše — door_hallway_light_10_monster.webp byl
-      // přejmenovaný na _at_door variantu.
-      monster: [
-        "/object_13/camera/door_hallway_light/door_hallway_light_06_monster.webp",
-        "/object_13/camera/door_hallway_light/door_hallway_light_07_monster.webp",
-      ],
-      fleeing: ["/object_13/camera/door_hallway_light/door_hallway_light_fleeing_monster.webp"],
-    },
-  },
-};
+/**
+ * Stage-specific kamerový obraz monstra (viz zadání "přesuň at_door asset
+ * pod IMP presentation") — pro `EnemyStage` hodnoty, které NEJSOU 1:1
+ * `CameraId` (např. `"at_door"` nemá vlastní kameru, jen speciální obraz na
+ * kameře `door_hallway`). Pole variant, ne jediný string — dnes má Imp jen
+ * jednu variantu pro `at_door`, ale typ počítá s tím, že jich může být víc
+ * (stejný `pickDeterministic` mechanismus jako `monster`/`fleeing` výběr).
+ */
+export interface MonsterStageCameraPresentation {
+  default: string[];
+  lightOn?: string[];
+}
 
-// Stáhne všechny kamerové snímky do cache prohlížeče na LoadingScreen (stejný
-// vzor jako preloadBackgroundImages v game/visuals/backgroundImages.ts) — ať
-// se detail kamery při první návštěvě dané kamery/stavu (monstrum/světlo)
-// nezobrazí s prodlevou/probliknutím, i na horším připojení.
-export function preloadCameraImages(): void {
+/**
+ * Stáhne do cache prohlížeče všechny snímky ZE VSTUPU (stejný vzor jako
+ * `preloadBackgroundImages` v `game/visuals/backgroundImages.ts`) — ať se
+ * detail kamery při první návštěvě dané kamery/stavu nezobrazí s prodlevou/
+ * probliknutím. Obecná funkce, žádná konkrétní monster data — volající
+ * (`LoadingScreen.tsx`) jí předá `getMonsterDefinition(monsterId)?.presentation`
+ * aktivního monstra, stejně jako `getCameraImageSrc` výše.
+ */
+export function preloadCameraImages(
+  cameraAssets: Record<CameraId, CameraAssetsEntry>,
+  cameraByEnemyStage?: Partial<Record<EnemyStage, MonsterStageCameraPresentation>>,
+): void {
   if (typeof window === "undefined") return;
-  for (const entry of Object.values(CAMERA_ASSETS)) {
+  for (const entry of Object.values(cameraAssets)) {
     for (const set of [entry.default, entry.lightOn]) {
       if (!set) continue;
       for (const src of [...set.normal, ...set.monster, ...set.fleeing]) {
@@ -170,22 +84,15 @@ export function preloadCameraImages(): void {
       }
     }
   }
-  for (const src of [DOOR_HALLWAY_AT_DOOR_ASSET.default, DOOR_HALLWAY_AT_DOOR_ASSET.lightOn]) {
-    const img = new Image();
-    img.src = src;
+  if (!cameraByEnemyStage) return;
+  for (const stagePresentation of Object.values(cameraByEnemyStage)) {
+    if (!stagePresentation) continue;
+    for (const src of [...stagePresentation.default, ...(stagePresentation.lightOn ?? [])]) {
+      const img = new Image();
+      img.src = src;
+    }
   }
 }
-
-// Speciální jednorázový snímek jen pro door_hallway, když je enemyStage
-// "at_door" — monstrum je fyzicky přímo u dveří, ne jen v chodbě před nimi.
-// Má přednost před běžným monster/normal cyklováním (viz getCameraImageSrc
-// níže) — hráč má na kameře dostat jasný vizuální cue "je extrémně blízko",
-// ne obyčejný door_hallway monster snímek. Netýká se žádné jiné kamery ani
-// jiné enemyStage.
-const DOOR_HALLWAY_AT_DOOR_ASSET = {
-  default: "/object_13/camera/door_hallway/door_hallway_10_monster_at_door.webp",
-  lightOn: "/object_13/camera/door_hallway_light/door_hallway_light_10_monster_at_door.webp",
-};
 
 function resolveAssetSet(entry: CameraAssetsEntry, lightOn: boolean): CameraAssetSet {
   if (lightOn && entry.lightOn) return entry.lightOn;
@@ -196,7 +103,7 @@ function resolveAssetSet(entry: CameraAssetsEntry, lightOn: boolean): CameraAsse
 // stejný stav (monstrum) vždy vrátí stejný obrázek, ať se obraz neseká při
 // každém renderu detailu kamery. `seed` je jen vstup do hashe, žádný
 // skutečný kryptografický požadavek.
-function pickDeterministic(list: string[], seed: string): string | null {
+function pickDeterministic(list: readonly string[], seed: string): string | null {
   if (list.length === 0) return null;
   let hash = 0;
   for (let i = 0; i < seed.length; i++) {
@@ -218,9 +125,17 @@ function pickCycling(list: string[], elapsedMs: number): string | null {
  * Vrátí src obrázku pro detail kamery — priorita podle GAME_DESIGN.md
  * "Odchod monstra od dveří":
  *
- * 1. `monster_at_door` — `door_hallway` + `enemyStage === "at_door"`
- *    (monstrum je fyzicky u dveří, ne jen v chodbě před nimi) — přednost
- *    před vším ostatním, viz `DOOR_HALLWAY_AT_DOOR_ASSET` výše.
+ * 1. stage-specific obraz aktivního monstra (viz `cameraByEnemyStage`) — jen
+ *    pro `cameraId === "door_hallway" && enemyStage === "at_door"` (stejná
+ *    dvojpodmínka jako dřívější hardcoded `DOOR_HALLWAY_AT_DOOR_ASSET`
+ *    speciál — "at_door" nemá vlastní kameru v `CameraDefinition`/
+ *    `enemyVisibleAtStage` systému, je to jen speciální obraz zobrazovaný NA
+ *    kameře `door_hallway`, viz `cameras.object13.ts`). Bez tyhle dvojpodmínky
+ *    by monstrum "u dveří" tiše přebilo obraz i na ostatních třech kamerách,
+ *    kde se nikdy nezobrazovalo — ne obecná "libovolná kamera+stage"
+ *    podmínka. Pokud pro tenhle pár žádná stage-specific prezentace NENÍ
+ *    (chybí klíč, nebo její pole je prázdné), pokračuje se BĚŽNOU logikou
+ *    níže — nikdy se tiše nepoužije jiná (cizí) prezentace jako záskok.
  * 2. `fleeing_monster` — monstrum se právě couvlo/uteklo pryč (poslední
  *    rozhodnutí je jedno z `RETREATING_DECISIONS` výše — jak vynucené ústupy
  *    (standoff u dveří, světlo, UV, potvrzený zásah), TAK obyčejná náhodná
@@ -239,38 +154,44 @@ function pickCycling(list: string[], elapsedMs: number): string | null {
  * `CameraView` pak zobrazí dosavadní textový/placeholder vzhled.
  *
  * `enemyStageVisitSeq` (viz GameState) je součástí seedu pro `monster`/
- * `fleeing` výběr (`pickDeterministic` níže) — bez něj by seed byl čistě
- * `cameraId`, tedy NAVŽDY stejný index pro danou kameru (viz zadání "pořád
- * ty samé"). S tímhle polem se obrázek vybere znovu při KAŽDÉM novém
- * příchodu monstra na kameru (enemyStage se změnil), ale zůstává stabilní
- * (nebliká), dokud tam beze změny stage zůstává — `pickDeterministic` pořád
- * není `Math.random()`, jen se mění, CO se hashuje.
+ * `fleeing`/stage-specific výběr (`pickDeterministic` níže) — bez něj by
+ * seed byl čistě `cameraId`, tedy NAVŽDY stejný index pro danou kameru (viz
+ * zadání "pořád ty samé"). S tímhle polem se obrázek vybere znovu při
+ * KAŽDÉM novém příchodu monstra na kameru (enemyStage se změnil), ale
+ * zůstává stabilní (nebliká), dokud tam beze změny stage zůstává —
+ * `pickDeterministic` pořád není `Math.random()`, jen se mění, CO se hashuje.
  *
- * `cameraAssets` (viz zadání "první jednoduchá verze assetové definice
- * monster") — volitelný poslední parametr, výchozí hodnota je stejný
- * `CAMERA_ASSETS` registr jako dřív, takže VŠECHNA existující volání (testy,
- * `CameraView.tsx` bez předaného monstra) mají identický výstup jako před
- * touhle změnou. Volající, který zná aktivní `monsterId`
- * (`night.enemy.id`), mu předá `getMonsterDefinition(monsterId)?.presentation.camera`
- * (viz `game/enemies/monsterDefinitions.ts`) — to je jediné místo, kde se
- * "kamerový resolver napojuje na Impovu definici", žádná změna algoritmu
- * výběru samotného.
+ * `cameraAssets`/`cameraByEnemyStage` (viz zadání "dokončit skutečné
+ * vlastnictví kamerových assetů monstrem") — POVINNÉ parametry, žádný
+ * výchozí fallback. Tahle funkce záměrně NEZNÁ žádné konkrétní monstrum
+ * (žádný import z game/enemies/) — volající (CameraView.tsx) je získá přes
+ * `getMonsterDefinition(monsterId)?.presentation` a předá explicitně. Pokud
+ * volající aktivní monstrum/prezentaci nezná, je to JEHO odpovědnost to
+ * řešit (fail-fast), ne tichý pád na cizí/výchozí assety tady.
  */
 export function getCameraImageSrc(
   cameraId: CameraId,
   hasMonster: boolean,
   lightOn: boolean,
   elapsedMs: number,
-  enemyStage?: EnemyStage,
-  lastEnemyDecision?: EnemyMoveDecision,
-  enemyStageVisitSeq: number = 0,
-  cameraAssets: Record<CameraId, CameraAssetsEntry> = CAMERA_ASSETS,
+  enemyStage: EnemyStage | undefined,
+  lastEnemyDecision: EnemyMoveDecision | undefined,
+  enemyStageVisitSeq: number,
+  cameraAssets: Record<CameraId, CameraAssetsEntry>,
+  cameraByEnemyStage?: Partial<Record<EnemyStage, MonsterStageCameraPresentation>>,
 ): string | null {
   const assets = cameraAssets[cameraId];
   if (!assets) return null;
 
   if (cameraId === "door_hallway" && enemyStage === "at_door") {
-    return lightOn ? DOOR_HALLWAY_AT_DOOR_ASSET.lightOn : DOOR_HALLWAY_AT_DOOR_ASSET.default;
+    const stagePresentation = cameraByEnemyStage?.[enemyStage];
+    if (stagePresentation) {
+      const variants = lightOn && stagePresentation.lightOn ? stagePresentation.lightOn : stagePresentation.default;
+      const picked = pickDeterministic(variants, `${cameraId}:${enemyStage}:${enemyStageVisitSeq}`);
+      if (picked) return picked;
+      // Prázdná/chybějící varianta pro tenhle konkrétní stav — pokračuje se
+      // běžnou logikou níže, ne pád/prázdná obrazovka.
+    }
   }
 
   const set = resolveAssetSet(assets, lightOn);
