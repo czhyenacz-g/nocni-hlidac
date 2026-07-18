@@ -54,6 +54,12 @@ export type GameAction =
       monsterKilledThisRun?: boolean;
     }
   | { type: "TOGGLE_DOOR" }
+  /**
+   * Základ pro budoucí přetížení generátoru (viz TODO.md) — atomicky
+   * nastaví `doorDestroyed: true, doorClosed: false`. Zatím nenapojená na
+   * žádné produkční UI, jen čistý reducer základ + testy.
+   */
+  | { type: "DESTROY_DOOR" }
   | { type: "TOGGLE_LIGHT" }
   | { type: "LOOK_AT_DOOR" }
   | { type: "LOOK_AT_DESK" }

@@ -772,11 +772,17 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         // V blackoutu zámek povolil — dveře jsou vždy "otevřené" a nejdou zavřít.
         // Během doorDeathReveal (viz ENEMY_ADVANCE/TICK) je hra fakticky u konce —
         // dveře se nedají přepnout, ať hráč "neuteče" z už rozhodnuté smrti.
+        // Zničené dveře (viz DESTROY_DOOR) jsou navždy otevřené — no-op, ne
+        // jen "nejde zavřít" (invariant doorDestroyed ⟹ doorClosed===false
+        // by tímhle no-opem zůstal zachovaný i bez samostatné kontroly, ale
+        // explicitní podmínka je čitelnější než spoléhat na to, že
+        // doorClosed už je false).
         if (
           !state.isRunning ||
           state.playerView !== "door" ||
           state.gameStatus === "blackout" ||
-          state.doorDeathRevealUntilMs !== null
+          state.doorDeathRevealUntilMs !== null ||
+          state.doorDestroyed
         )
           return state;
 
@@ -824,6 +830,18 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           // (viz isBulbReplacementCancelableByViewChange výše).
           bulbReplacement:
             !state.doorClosed && isBulbReplacementCancelableByViewChange(state) ? INACTIVE_BULB_REPLACEMENT : state.bulbReplacement,
+        };
+
+      case "DESTROY_DOOR":
+        // Čistý základ pro budoucí přetížení generátoru (viz TODO.md) —
+        // atomicky zničí dveře, beze změny playerView/UI. Zatím nenapojeno
+        // na žádný trigger v produkční hře. Žádná monster/at_door podmínka
+        // tady záměrně není — tu bude mít až budoucí generátorový resolver,
+        // tahle akce jen aplikuje už rozhodnutý výsledek.
+        return {
+          ...state,
+          doorDestroyed: true,
+          doorClosed: false,
         };
 
       case "TOGGLE_LIGHT":

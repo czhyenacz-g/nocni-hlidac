@@ -77,6 +77,7 @@ export function createInitialGameState(night: NightDefinition, options: CreateIn
     playerView: "desk",
 
     doorClosed: false,
+    doorDestroyed: false,
     lightOn: false,
 
     cameraOpen: false,

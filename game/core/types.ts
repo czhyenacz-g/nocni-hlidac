@@ -470,6 +470,14 @@ export interface GameState {
 
   doorClosed: boolean;
   lightOn: boolean;
+  /**
+   * Trvale zničené dveře (základ pro budoucí přetížení generátoru — viz
+   * TODO.md) — jakmile `true`, zůstávají navždy otevřené do konce noci.
+   * Invariant: `doorDestroyed === true` ⟹ `doorClosed === false`, vynucený
+   * v `TOGGLE_DOOR`/`DESTROY_DOOR` v gameReducer.ts, ne tady. Reset na
+   * `false` každou novou noc, žádná persistence mezi nocemi.
+   */
+  doorDestroyed: boolean;
 
   /**
    * true jen v `cameraViewMode === "detail"` — overview (mřížka náhledů) se
