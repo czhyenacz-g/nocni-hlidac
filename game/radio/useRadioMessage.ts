@@ -39,9 +39,26 @@ const TRANSMISSION_STATUS_LABEL = "Přenos probíhá…";
  * navíc mountuje AŽ na `state.screen === "playing"` (viz app/play/page.tsx)
  * a unmountuje na smrt/výhru, takže `trackerRef` dostane čerstvý start i po
  * restartu STEJNÉ noci (nový pokus), ne jen při změně čísla noci.
+ *
+ * `hideTimeoutRef` (NE `useEffect`-return cleanup) drží schovávací timeout
+ * — `monsterStage` se mění mnohem častěji než trigger samotný (monstrum
+ * postupuje po trase každých pár sekund, viz `night.enemyTickMs`), takže
+ * efekt níže běží znovu i dávno po spuštění zprávy. Kdyby timeout žil jen v
+ * `useEffect`-return cleanup, KAŽDÝ další běh efektu (i ten, co skončí hned
+ * na `!shouldTrigger`) by ho zrušil, aniž by ho něco nahradilo — zpráva by
+ * zůstala "Přenos probíhá…" navždy zaseknutá (reprodukovaný bug, viz git
+ * historie). Ref přežívá mezi jednotlivými voláními efektu beze změny, takže
+ * se timeout zruší/přenastaví JEN když se skutečně přehrává NOVÁ zpráva, ne
+ * při každé nesouvisející změně stage. Stejný vzor je nutný pro JAKOUKOLIV
+ * budoucí rádiovou zprávu, jejíž trigger bude přímo záviset na `monsterStage`
+ * (na rozdíl od `useMonsterRepelRadioMessage.ts`/`useCameraDisabledRadioMessage.ts`/
+ * `useGhoulCameraAttackWarningMessage.ts`, které místo toho sledují
+ * nízkofrekvenční `...Seq` čítač měnící se jen při skutečné události, takže
+ * tenhle konkrétní bug samy o sobě nemají).
  */
 export function useRadioMessage(monsterStage: EnemyStage, nightNumber: number): RadioMessageState {
   const trackerRef = useRef<RadioTriggerTrackerState>(createInitialRadioTriggerTracker(nightNumber));
+  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [state, setState] = useState<RadioMessageState>({ visible: false, text: null });
 
   useEffect(() => {
@@ -59,15 +76,24 @@ export function useRadioMessage(monsterStage: EnemyStage, nightNumber: number): 
     audioManager.play(message.id);
     setState({ visible: true, text: TRANSMISSION_STATUS_LABEL });
 
-    const timeout = setTimeout(() => setState({ visible: false, text: null }), resolveReleaseMonsterOverlayDurationMs(message.id));
-
-    // Úklid (viz zadání "při unmountu zrušit aktivní timery") — volá se i
-    // PŘED spuštěním efektu pro další změnu monsterStage/nightNumber.
     // Zvuk samotný se nezastavuje (audioManager.play je fire-and-forget,
     // krátký jednorázový klip — na rozdíl od dřívějšího speechSynthesis
-    // tady není co "rušit uprostřed věty").
-    return () => clearTimeout(timeout);
+    // tady není co "rušit uprostřed věty"), jen vizuální overlay.
+    if (hideTimeoutRef.current !== null) clearTimeout(hideTimeoutRef.current);
+    hideTimeoutRef.current = setTimeout(() => {
+      hideTimeoutRef.current = null;
+      setState({ visible: false, text: null });
+    }, resolveReleaseMonsterOverlayDurationMs(message.id));
   }, [monsterStage, nightNumber]);
+
+  // Úklid při unmountu (viz zadání "při unmountu zrušit aktivní timery") —
+  // samostatný efekt s prázdným dependency polem, ať se spustí přesně
+  // jednou při unmountu, ne po každé změně monsterStage/nightNumber.
+  useEffect(() => {
+    return () => {
+      if (hideTimeoutRef.current !== null) clearTimeout(hideTimeoutRef.current);
+    };
+  }, []);
 
   return state;
 }
