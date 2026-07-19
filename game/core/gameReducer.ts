@@ -523,8 +523,30 @@ function updateThinkItOverWindup(
 
 const INACTIVE_THINK_IT_OVER_WINDUP: GameState["thinkItOverWindup"] = { active: false, startedAtMs: null, progressMs: 0 };
 
+/**
+ * Sdílená podmínka "PŘETÍŽIT GENERÁTOR" NENÍ teď použitelné — bez ohledu na
+ * to, jestli hráč zrovna drží tlačítko, nebo se to teprve chystá udělat.
+ * `canStartGeneratorOverloadWindup` (níže) ji používá jako "smí to vůbec
+ * začít", `updateGeneratorOverloadWindup` (níže) jako "smí to ještě
+ * pokračovat" — např. skutečná porucha generátoru, co se náhodou vylosuje
+ * uprostřed třísekundového držení, držení okamžitě zruší (viz zadání
+ * "ztráta možnosti použít generátor"), ne až při příštím pokusu.
+ */
+function isGeneratorOverloadWindupBlocked(state: GameState): boolean {
+  if (!state.nightFeatures.generatorOverloadEnabled) return true;
+  if (!state.isRunning || state.gameStatus === "blackout" || state.doorDeathRevealUntilMs !== null) return true;
+  if (state.playerView !== "generator") return true;
+  if (state.generatorState !== "normal") return true;
+  if (state.doorDestroyed || state.doorGeneratorOverloadUntilMs !== null) return true;
+  return false;
+}
+
 // Progres držení "PŘETÍŽIT GENERÁTOR" — stejná mechanika jako
-// updateEmergencyRunWindup/updateThinkItOverWindup výše. Po dosažení
+// updateEmergencyRunWindup/updateThinkItOverWindup výše. Navíc (na rozdíl od
+// těch dvou) každý tik znovu ověří isGeneratorOverloadWindupBlocked — pokud
+// se mezitím (uprostřed držení) stane cokoliv, co by dnes zabránilo ZAČÍT
+// (skutečná porucha, blackout, změna pohledu, ...), držení se okamžitě zruší
+// beze spuštění přetížení, ne až při dalším pokusu. Po dosažení
 // GENERATOR_OVERLOAD_WINDUP_DURATION_MS se `generatorOverloadReadySeq`
 // jednou zvýší — to je signál pro app/play/page.tsx, ať dispatchne
 // START_GENERATOR_OVERLOAD (skutečné spuštění desetisekundového přetížení).
@@ -534,6 +556,13 @@ function updateGeneratorOverloadWindup(
 ): Pick<GameState, "generatorOverloadWindup" | "generatorOverloadReadySeq"> {
   if (!state.generatorOverloadWindup.active) {
     return { generatorOverloadWindup: state.generatorOverloadWindup, generatorOverloadReadySeq: state.generatorOverloadReadySeq };
+  }
+
+  if (isGeneratorOverloadWindupBlocked(state)) {
+    return {
+      generatorOverloadWindup: { active: false, startedAtMs: null, progressMs: 0 },
+      generatorOverloadReadySeq: state.generatorOverloadReadySeq,
+    };
   }
 
   const progressMs = state.generatorOverloadWindup.progressMs + deltaMs;
@@ -624,13 +653,8 @@ export function willGeneratorRestartSucceed(state: GameState): boolean {
  * ani zrovna nepřetěžují — jde spustit jen jednou za noc.
  */
 export function canStartGeneratorOverloadWindup(state: GameState): boolean {
-  if (!state.nightFeatures.generatorOverloadEnabled) return false;
-  if (!state.isRunning || state.gameStatus === "blackout" || state.doorDeathRevealUntilMs !== null) return false;
-  if (state.playerView !== "generator") return false;
-  if (state.generatorState !== "normal") return false;
-  if (state.doorDestroyed || state.doorGeneratorOverloadUntilMs !== null) return false;
   if (state.generatorOverloadWindup.active) return false;
-  return true;
+  return !isGeneratorOverloadWindupBlocked(state);
 }
 
 /**
@@ -884,6 +908,17 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           // obrázek, dokud tohle nevyprší.
           doorGeneratorOverloadUntilMs: state.elapsedMs + GENERATOR_OVERLOAD_DOOR_DURATION_MS,
           doorClosed: false,
+          // Vynucený přesun pohledu na dveře (viz zadání "hra automaticky
+          // přesune pohled hráče ke dveřím") — autoritativní stavová změna
+          // stejným tvarem jako LOOK_AT_DOOR (playerView + zavření kamer),
+          // ne simulovaný klik. Hráč to nemůže odmítnout ani obejít — stejný
+          // "vynucený" charakter jako blackout přebíjející playerView v
+          // GameScreen.tsx, jen tady přímo přepisem playerView samotného.
+          playerView: "door",
+          cameraOpen: false,
+          activeCameraId: null,
+          cameraViewMode: "overview",
+          cameraFocusUntilMs: null,
         };
       }
 

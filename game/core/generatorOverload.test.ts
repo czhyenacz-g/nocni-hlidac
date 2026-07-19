@@ -78,6 +78,50 @@ describe("START_GENERATOR_OVERLOAD_WINDUP / CANCEL_GENERATOR_OVERLOAD_WINDUP", (
     const result = reducer(started, { type: "LOOK_AT_DESK" });
     expect(result.generatorOverloadWindup.active).toBe(false);
   });
+
+  it("a bare click-equivalent (dispatching START_GENERATOR_OVERLOAD without ever holding) never destroys the door", () => {
+    // Neexistuje žádná "klik = spusť rovnou" akce — START_GENERATOR_OVERLOAD
+    // samo o sobě vyžaduje, aby ho něco (app/play/page.tsx přes
+    // generatorOverloadReadySeq) dispatchlo AŽ po doběhnutí držení. Tenhle
+    // test jen ověřuje, že state bez jakéhokoliv držení (žádný
+    // START_GENERATOR_OVERLOAD_WINDUP) zůstává netknutý.
+    const state = stateAtGenerator();
+    expect(state.generatorOverloadWindup.active).toBe(false);
+    expect(state.doorGeneratorOverloadUntilMs).toBeNull();
+  });
+});
+
+describe("windup shorter than required — cancel before completion never starts the overload", () => {
+  it("releasing before GENERATOR_OVERLOAD_WINDUP_DURATION_MS cancels the windup and never bumps readySeq", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const started = reducer(stateAtGenerator(), { type: "START_GENERATOR_OVERLOAD_WINDUP" });
+    const partiallyTicked = reducer(started, { type: "TICK", deltaMs: GENERATOR_OVERLOAD_WINDUP_DURATION_MS - 500 });
+    const cancelled = reducer(partiallyTicked, { type: "CANCEL_GENERATOR_OVERLOAD_WINDUP" });
+
+    expect(cancelled.generatorOverloadWindup).toEqual({ active: false, startedAtMs: null, progressMs: 0 });
+    expect(cancelled.generatorOverloadReadySeq).toBe(0);
+
+    // Overload never starts on its own after a cancel, even if more time passes.
+    const laterTick = reducer(cancelled, { type: "TICK", deltaMs: GENERATOR_OVERLOAD_DOOR_DURATION_MS });
+    expect(laterTick.doorGeneratorOverloadUntilMs).toBeNull();
+    expect(laterTick.doorDestroyed).toBe(false);
+    expect(laterTick.generatorState).toBe("normal");
+  });
+});
+
+describe("a real generator fault interrupting the windup cancels it (loss of ability to use the generator)", () => {
+  it("windup is cancelled the moment generatorState stops being 'normal' mid-hold, overload never starts", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const started = reducer(stateAtGenerator(), { type: "START_GENERATOR_OVERLOAD_WINDUP" });
+    // Simulates a real fault rolling in mid-hold (updateGenerator would do
+    // this on its own in a live TICK once generatorFaultAtMs is reached —
+    // here it's forced directly to isolate the windup-cancel behavior).
+    const interrupted: GameState = { ...started, generatorState: "silentFault" };
+    const ticked = reducer(interrupted, { type: "TICK", deltaMs: 100 });
+
+    expect(ticked.generatorOverloadWindup.active).toBe(false);
+    expect(ticked.generatorOverloadReadySeq).toBe(0);
+  });
 });
 
 describe("generator overload windup — reaches ready via TICK, same duration as emergency run windup", () => {
@@ -95,6 +139,60 @@ describe("generator overload windup — reaches ready via TICK, same duration as
     const ticked = reducer(started, { type: "TICK", deltaMs: GENERATOR_OVERLOAD_WINDUP_DURATION_MS });
     expect(ticked.generatorOverloadWindup).toEqual({ active: false, startedAtMs: null, progressMs: 0 });
     expect(ticked.generatorOverloadReadySeq).toBe(1);
+  });
+
+  it("GENERATOR_OVERLOAD_WINDUP_DURATION_MS is exactly 3000ms, matching the emergency-run hold", () => {
+    expect(GENERATOR_OVERLOAD_WINDUP_DURATION_MS).toBe(3000);
+  });
+
+  it("holding for the full duration bumps readySeq exactly once, even across further ticks (dispatched exactly once)", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const started = reducer(stateAtGenerator(), { type: "START_GENERATOR_OVERLOAD_WINDUP" });
+    const ticked = reducer(started, { type: "TICK", deltaMs: GENERATOR_OVERLOAD_WINDUP_DURATION_MS });
+    const laterTick = reducer(ticked, { type: "TICK", deltaMs: 1000 });
+    expect(laterTick.generatorOverloadReadySeq).toBe(1);
+  });
+
+  it("during the windup, nothing overload-related happens yet: door doesn't lock, energy doesn't act like restart, view doesn't change", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const started = reducer(stateAtGenerator(), { type: "START_GENERATOR_OVERLOAD_WINDUP" });
+    const ticked = reducer(started, { type: "TICK", deltaMs: GENERATOR_OVERLOAD_WINDUP_DURATION_MS - 1 });
+
+    expect(ticked.doorGeneratorOverloadUntilMs).toBeNull();
+    expect(ticked.doorDestroyed).toBe(false);
+    expect(ticked.generatorState).toBe("normal");
+    expect(ticked.playerView).toBe("generator");
+  });
+});
+
+describe("completing the windup automatically moves the view to the door", () => {
+  it("START_GENERATOR_OVERLOAD sets playerView to 'door' and closes the camera overlay", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = stateAtGenerator({ cameraOpen: true, cameraViewMode: "detail", activeCameraId: NIGHT_01.defaultCameraId });
+    const result = reducer(state, { type: "START_GENERATOR_OVERLOAD" });
+
+    expect(result.playerView).toBe("door");
+    expect(result.cameraOpen).toBe(false);
+    expect(result.activeCameraId).toBeNull();
+    expect(result.cameraViewMode).toBe("overview");
+  });
+});
+
+describe("blackout during the windup cancels it", () => {
+  it("a TICK that drains power to 0 mid-windup clears generatorOverloadWindup and never starts the overload", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    // doorClosed+lightOn give real drain (NIGHT_01: 1 + 1.4 per second) so a
+    // low starting power actually crosses to <=0 within one tick, instead of
+    // being outpaced by idle recharge (generator view alone has no drain).
+    const started = reducer(stateAtGenerator({ power: 0.1, doorClosed: true, lightOn: true }), {
+      type: "START_GENERATOR_OVERLOAD_WINDUP",
+    });
+    const ticked = reducer(started, { type: "TICK", deltaMs: 200 });
+
+    expect(ticked.gameStatus).toBe("blackout");
+    expect(ticked.generatorOverloadWindup).toEqual({ active: false, startedAtMs: null, progressMs: 0 });
+    expect(ticked.doorGeneratorOverloadUntilMs).toBeNull();
+    expect(ticked.generatorOverloadReadySeq).toBe(0);
   });
 });
 

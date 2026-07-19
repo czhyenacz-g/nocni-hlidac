@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { COPY } from "@/content/copy";
 import { GeneratorState } from "@/game/core/types";
 import { GENERATOR_ACCIDENTAL_RESTART_MESSAGE_MS, GENERATOR_OVERLOAD_WINDUP_DURATION_MS } from "@/game/balancing/constants";
@@ -22,11 +22,12 @@ interface GeneratorViewProps {
   canOverloadGenerator: boolean;
   /** viz gameReducer.ts#canStartGeneratorOverloadWindup — čistě vizuální ztlumení (stejný vzor jako LeftWallView "Jít ven" + zavřené dveře), autoritativní podmínka zůstává v reduceru/handleru. */
   canStartOverload: boolean;
-  /** viz GameState.generatorOverloadWindup — držení tlačítka po potvrzení (window.confirm), stejný vzor jako LeftWallView "Jít ven". */
+  /** viz GameState.generatorOverloadWindup — hold-to-activate, žádný window.confirm, stejný pointerDown/Up vzor jako LeftWallView "Jít ven". */
   overloadWindupActive: boolean;
   overloadWindupProgressMs: number;
-  /** Zobrazí window.confirm() a po potvrzení spustí GENERATOR_OVERLOAD_WINDUP_DURATION_MS držení (viz app/play/page.tsx). */
-  onStartGeneratorOverload: () => void;
+  /** Zahájí/zruší držení (viz app/play/page.tsx#handleStartGeneratorOverloadWindup/handleCancelGeneratorOverloadWindup) — stejný pár jako onStartEmergencyRunWindup/onCancelEmergencyRunWindup. */
+  onStartGeneratorOverloadWindup: () => void;
+  onCancelGeneratorOverloadWindup: () => void;
 }
 
 // Pohled na generátor: jediné místo, odkud jde restartovat po poruše (a od
@@ -44,7 +45,8 @@ export default function GeneratorView({
   canStartOverload,
   overloadWindupActive,
   overloadWindupProgressMs,
-  onStartGeneratorOverload,
+  onStartGeneratorOverloadWindup,
+  onCancelGeneratorOverloadWindup,
 }: GeneratorViewProps) {
   // Kontrolka v "normal" stavu je jinak statická zelená — key na beepSeq ji
   // při každém pípnutí remountne, což znovu spustí jednorázovou pixel-flash
@@ -68,6 +70,20 @@ export default function GeneratorView({
   // jiná konstanta (GENERATOR_OVERLOAD_WINDUP_DURATION_MS).
   const overloadWindupSeconds = Math.max(0, (GENERATOR_OVERLOAD_WINDUP_DURATION_MS - overloadWindupProgressMs) / 1000).toFixed(1);
   const overloadWindupPercent = Math.min(100, (overloadWindupProgressMs / GENERATOR_OVERLOAD_WINDUP_DURATION_MS) * 100);
+
+  // Hold-to-activate — stejný pointerDown/Up/Leave/Cancel vzor jako
+  // LeftWallView.tsx#handlePointerDown/handlePointerUp (žádný window.confirm,
+  // žádné kliknutí). `onCancelGeneratorOverloadWindup` je no-op v reduceru,
+  // pokud žádné držení zrovna neběží, takže je bezpečné ho volat i z
+  // pointerLeave/Cancel, které mohou dorazit bez předchozího pointerDown.
+  function handlePointerDown(event: PointerEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    onStartGeneratorOverloadWindup();
+  }
+
+  function handlePointerUp() {
+    onCancelGeneratorOverloadWindup();
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -112,37 +128,49 @@ export default function GeneratorView({
         </button>
       </div>
 
-      {/* "PŘETÍŽIT GENERÁTOR" — pod restartem (viz zadání), stejný
-          pixel-button/console-button styl jako LeftWallView.tsx "Jít ven".
-          Klik jde vždy do onStartGeneratorOverload (window.confirm +
-          guard v app/play/page.tsx), tlačítko samo žádnou podmínku
-          neduplikuje kromě viditelnosti (canOverloadGenerator). */}
+      {/* "PŘETÍŽIT GENERÁTOR" — přes celou šířku, výrazně nebezpečně vypadající
+          (silný červený rámeček + tmavě rudé pozadí + glow při hoveru/držení),
+          jasně odlišené od klidného zeleného restart-terminálu nad ním (viz
+          zadání "musí působit nebezpečně"). Hold-to-activate, ne klik —
+          pointerDown/Up/Leave/Cancel, stejný fyzický vzor jako LeftWallView.tsx
+          "Jít ven". Progress se plní ZLEVA DOPRAVA jako poloprůhledná vrstva
+          uvnitř tlačítka (ne samostatný bar pod ním jako u "Jít ven") — na
+          přání "plnění tlačítka zleva doprava". */}
       {canOverloadGenerator && (
-        <div className="flex flex-col items-start gap-1">
-          <button
-            type="button"
-            className={`pixel-button console-button tap-target flex items-center gap-2 px-3 py-2 text-xs ${
-              !overloadWindupActive && !canStartOverload ? "opacity-50" : ""
-            }`}
-            style={
-              overloadWindupActive
-                ? { animation: "pixel-blink 0.35s steps(2) infinite", backgroundColor: "#facc15", color: "#1a1a1a" }
-                : undefined
-            }
-            onClick={onStartGeneratorOverload}
-          >
-            <span>
-              {overloadWindupActive
-                ? COPY.game.generatorOverloadHoldingLabel.replace("{seconds}", overloadWindupSeconds)
-                : COPY.game.generatorOverloadLabel}
-            </span>
-          </button>
-          {overloadWindupActive && (
-            <div className="w-32 h-1 bg-gray-800 border border-gray-700 rounded overflow-hidden">
-              <div className="h-full bg-red-500 transition-all duration-150" style={{ width: `${overloadWindupPercent}%` }} />
-            </div>
-          )}
-        </div>
+        <button
+          type="button"
+          className={`pixel-button tap-target-critical relative w-full overflow-hidden flex flex-col items-center justify-center gap-0.5 px-3 py-3 text-sm border-4 border-red-600 bg-red-950/80 text-red-100 touch-none select-none transition-shadow duration-150 hover:shadow-[0_0_14px_rgba(239,68,68,0.65)] ${
+            !overloadWindupActive && !canStartOverload ? "opacity-50" : ""
+          }`}
+          style={
+            overloadWindupActive
+              ? {
+                  animation: "pixel-blink 0.35s steps(2) infinite",
+                  borderColor: "#fca5a5",
+                  boxShadow: "0 0 20px rgba(239,68,68,0.85)",
+                }
+              : undefined
+          }
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          onPointerLeave={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          aria-label={COPY.game.generatorOverloadLabel}
+        >
+          {/* Vyplnění zleva doprava podle overloadWindupPercent — čistá
+              prezentační vrstva, nikdy nezachytává pointer eventy. */}
+          <div
+            className="absolute inset-y-0 left-0 bg-red-600/50 pointer-events-none"
+            style={{ width: `${overloadWindupActive ? overloadWindupPercent : 0}%` }}
+            aria-hidden="true"
+          />
+          <span className="relative z-10 font-bold tracking-widest">
+            {overloadWindupActive
+              ? COPY.game.generatorOverloadHoldingLabel.replace("{seconds}", overloadWindupSeconds)
+              : COPY.game.generatorOverloadLabel}
+          </span>
+          <span className="relative z-10 text-[10px] text-red-300">{COPY.game.generatorOverloadDangerLabel}</span>
+        </button>
       )}
     </div>
   );

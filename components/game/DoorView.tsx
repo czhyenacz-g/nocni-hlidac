@@ -19,6 +19,8 @@ interface DoorViewProps {
   doorDestroyed: boolean;
   /** viz GameState.doorGeneratorOverloadUntilMs !== null — probíhající desetisekundové přetížení, dveře zamčené, TOGGLE_DOOR je no-op. */
   doorGeneratorOverloadActive: boolean;
+  /** Zbývající celé sekundy přetížení (viz GameScreen.tsx), `null` mimo přetížení — jasná indikace, že fáze skutečně trvá 10 s (viz zadání "zobrazení času přetížení"). */
+  doorGeneratorOverloadSecondsRemaining: number | null;
   /** viz GameState.doorDeathRevealUntilMs — krátce ukáže monstrum ve dveřích před smrtí. */
   isDoorDeathReveal: boolean;
   /** Prasklá žárovka u dveří (viz game/core/roomBulbs.ts) — jen jemné grayscale navíc na ikonce, o viditelnosti/interaktivitě už nerozhoduje. */
@@ -63,6 +65,7 @@ export default function DoorView({
   doorClosed,
   doorDestroyed,
   doorGeneratorOverloadActive,
+  doorGeneratorOverloadSecondsRemaining,
   isDoorDeathReveal,
   bulbBroken,
   bulbWearRatio,
@@ -209,6 +212,20 @@ export default function DoorView({
                     : COPY.game.doorViewHintClose}
           </span>
         </button>
+
+        {doorGeneratorOverloadActive && doorGeneratorOverloadSecondsRemaining !== null && (
+          // Malý stavový text (viz zadání "zobrazení času přetížení") — hráč
+          // je sem automaticky přesunutý ze START_GENERATOR_OVERLOAD, takže
+          // countdown patří sem, ne jen na (teď opuštěný) generátorový
+          // pohled. pointer-events-none: čistě informativní, nesmí bránit
+          // hotspotu pod ním (ten je stejně zamčený, viz doorControlsLocked).
+          <div
+            className="absolute pointer-events-none text-sm font-bold text-red-300 bg-black/70 border border-red-600 px-3 py-1 rounded whitespace-nowrap"
+            style={{ left: "50%", top: "6%", transform: "translateX(-50%)" }}
+          >
+            {COPY.game.doorGeneratorOverloadCountdownLabel.replace("{seconds}", String(doorGeneratorOverloadSecondsRemaining))}
+          </div>
+        )}
 
         {showBulbReplacement && (
           <div

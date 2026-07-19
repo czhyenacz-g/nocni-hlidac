@@ -58,8 +58,14 @@ interface GameScreenProps {
   /** Posuvník na LeftWallView.tsx (jen s brokovnicí) — viz GameState.officeDoorLockMs, game/minigame/config.ts#OFFICE_DOOR_LOCK_MIN_MS/MAX_MS. */
   onChangeOfficeDoorLockMs: (value: number) => void;
   onRestartGenerator: () => void;
-  /** "PŘETÍŽIT GENERÁTOR" (viz zadání) — window.confirm + spuštění GeneratorOverloadWindupState, viz app/play/page.tsx#handleStartGeneratorOverload. */
-  onStartGeneratorOverload: () => void;
+  /**
+   * Hold-to-activate "PŘETÍŽIT GENERÁTOR" (viz zadání) — stejný
+   * pointerDown/Up pár jako onStartEmergencyRunWindup/onCancelEmergencyRunWindup
+   * výše, žádný window.confirm. Viz app/play/page.tsx#handleStartGeneratorOverloadWindup/
+   * handleCancelGeneratorOverloadWindup, GameState.generatorOverloadWindup.
+   */
+  onStartGeneratorOverloadWindup: () => void;
+  onCancelGeneratorOverloadWindup: () => void;
   onDebugToggleDoor: () => void;
   onDebugRestartGenerator: () => void;
   /** Admin-only "Test noci" v DebugPanel.tsx (viz zadání, GameState.debugNightOverride). */
@@ -105,7 +111,8 @@ export default function GameScreen({
   onCancelThinkItOverWindup,
   onChangeOfficeDoorLockMs,
   onRestartGenerator,
-  onStartGeneratorOverload,
+  onStartGeneratorOverloadWindup,
+  onCancelGeneratorOverloadWindup,
   onDebugToggleDoor,
   onDebugRestartGenerator,
   onSetDebugNight,
@@ -147,6 +154,14 @@ export default function GameScreen({
   // generátor -> žárovka) je zrovna aktuální. Jediné místo, které tohle
   // počítá — OfficeBreachBanner i LeftWallView dostanou jen hotovou hodnotu.
   const officeBreachPhase = resolveOfficeBreachPhase(state);
+  // Zbývající celé sekundy probíhajícího přetížení generátoru (viz zadání
+  // "zobrazení času přetížení") — `null` mimo přetížení. Zaokrouhleno nahoru
+  // (Math.ceil), ať odpočet ukáže "10 s" hned na prvním tiku po spuštění a
+  // "1 s" těsně před zničením dveří, ne "0 s" o kus dřív.
+  const doorGeneratorOverloadSecondsRemaining =
+    state.doorGeneratorOverloadUntilMs !== null
+      ? Math.max(0, Math.ceil((state.doorGeneratorOverloadUntilMs - state.elapsedMs) / 1000))
+      : null;
   // DEV panel je schválně skrytý ve výchozím stavu (ne jen collapsed <details>
   // jako dřív) — objeví se jen po pravém kliku na popisek "Noc {n}" v
   // ShiftTimeru (viz onNightLabelContextMenu níže). Čistě UI viditelnost dev
@@ -263,6 +278,7 @@ export default function GameScreen({
                 doorClosed={state.doorClosed}
                 doorDestroyed={state.doorDestroyed}
                 doorGeneratorOverloadActive={state.doorGeneratorOverloadUntilMs !== null}
+                doorGeneratorOverloadSecondsRemaining={doorGeneratorOverloadSecondsRemaining}
                 isDoorDeathReveal={state.doorDeathRevealUntilMs !== null}
                 bulbBroken={state.roomBulbs.nearRoom.broken}
                 bulbWearRatio={computeNearRoomBulbWearRatio(state)}
@@ -288,7 +304,8 @@ export default function GameScreen({
                 canStartOverload={canStartGeneratorOverloadWindup(state)}
                 overloadWindupActive={state.generatorOverloadWindup.active}
                 overloadWindupProgressMs={state.generatorOverloadWindup.progressMs}
-                onStartGeneratorOverload={onStartGeneratorOverload}
+                onStartGeneratorOverloadWindup={onStartGeneratorOverloadWindup}
+                onCancelGeneratorOverloadWindup={onCancelGeneratorOverloadWindup}
               />
             )}
             {state.playerView === "left_wall" && (

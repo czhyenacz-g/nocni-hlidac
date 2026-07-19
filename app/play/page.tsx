@@ -865,6 +865,23 @@ function PlayPageContent() {
     }
   }, [state.emergencyRunWindup.active]);
 
+  // Stejná siréna (STEJNÝ audio event, žádný duplicitní asset/systém) po
+  // dobu držení "PŘETÍŽIT GENERÁTOR" (viz GeneratorView.tsx#handlePointerDown/Up).
+  // Navíc kontroluje `state.isRunning` (na rozdíl od efektu výše) — reducer
+  // dnes nikde explicitně nenuluje `generatorOverloadWindup.active` při
+  // smrti/konci směny (stejná mezera existuje i u emergencyRunWindup výše),
+  // takže bez tyhle podmínky by siréna mohla zůstat viset i po screen
+  // "death"/"win", kde GeneratorView už není vidět. `isRunning` false =
+  // hra skončila, siréna vždy zastaví, bez ohledu na to, co si `active`
+  // pole samo pamatuje.
+  useEffect(() => {
+    if (state.generatorOverloadWindup.active && state.isRunning) {
+      audioManager.startLoop(AUDIO_EVENTS.emergencyRunSiren);
+    } else {
+      audioManager.stopLoop(AUDIO_EVENTS.emergencyRunSiren);
+    }
+  }, [state.generatorOverloadWindup.active, state.isRunning]);
+
   useEffect(() => {
     // Stejné pípnutí jako normální provoz, i v criticalBeeping — jen rychlejší
     // tempo (viz night.generator.criticalBeepIntervalMs). Jediná signalizace
@@ -1790,22 +1807,22 @@ function PlayPageContent() {
   }
 
   // "PŘETÍŽIT GENERÁTOR" (viz zadání "zničené dveře vlastní chybou hráče") —
-  // canStartGeneratorOverloadWindup se čte PŘED window.confirm (guard je
-  // stejný, ať se nepotvrzující stav vůbec neptá) i po něm (stav se mezitím
-  // mohl změnit — TICK/ENEMY_ADVANCE dál běží pod otevřeným confirm() dialogem
-  // stejně jako pod čímkoliv jiným). Jediný confirm precedent v projektu je
-  // ProfileScreen.tsx#handleResetLocalProfile — stejný nativní window.confirm
-  // vzor tady (viz zadání "stejné potvrzení jako u jiných nevratných akcí"),
-  // ne nová modal komponenta. Po potvrzení spustí STEJNÝ windup mechanismus
-  // jako "Jít ven" (EMERGENCY_RUN_WINDUP_DURATION_MS, viz
-  // GENERATOR_OVERLOAD_WINDUP_DURATION_MS) — samotné přetížení (energie +
-  // zamčení/zničení dveří) přijde až přes generatorOverloadReadySeq efekt výše.
-  function handleStartGeneratorOverload() {
+  // ŽÁDNÝ window.confirm, čistě hold-to-activate, stejný vzor jako
+  // handleStartEmergencyRunWindup/handleCancelEmergencyRunWindup výše
+  // (canStartGeneratorOverloadWindup je jen UX zkratka proti zbytečnému
+  // dispatchi, autoritativní podmínka zůstává v reduceru). Varování se
+  // ukáže hned při zahájení držení (stejný emergencyRunMessage slot jako
+  // "Jít ven" — žádný nový toast systém, viz zadání), siréna běží přes
+  // samostatný useEffect výše sledující generatorOverloadWindup.active.
+  function handleStartGeneratorOverloadWindup() {
     if (!canStartGeneratorOverloadWindup(state)) return;
     audioManager.play(AUDIO_EVENTS.uiClick);
-    if (!window.confirm(COPY.game.generatorOverloadConfirmLabel)) return;
-    if (!canStartGeneratorOverloadWindup(state)) return;
+    setEmergencyRunMessage(COPY.game.generatorOverloadWarningLabel);
     dispatch({ type: "START_GENERATOR_OVERLOAD_WINDUP" });
+  }
+
+  function handleCancelGeneratorOverloadWindup() {
+    dispatch({ type: "CANCEL_GENERATOR_OVERLOAD_WINDUP" });
   }
 
   // DEV-ONLY: same simulate-both-steps pattern as handleDebugToggleDoor.
@@ -2008,7 +2025,8 @@ function PlayPageContent() {
           onLookAtLeftWall={handleLookAtLeftWall}
           onLookAtMap={handleLookAtMap}
           onRestartGenerator={handleRestartGenerator}
-          onStartGeneratorOverload={handleStartGeneratorOverload}
+          onStartGeneratorOverloadWindup={handleStartGeneratorOverloadWindup}
+          onCancelGeneratorOverloadWindup={handleCancelGeneratorOverloadWindup}
           onDebugToggleDoor={handleDebugToggleDoor}
           onDebugRestartGenerator={handleDebugRestartGenerator}
           onSetDebugNight={handleSetDebugNight}
