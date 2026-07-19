@@ -11,6 +11,15 @@ import { GameMode } from "./gameMode";
 // "breach" je připravená pro budoucí trasy (žádná současná ji nepoužívá) — je
 // to jen druhá stage, na kterou reaguje repel dveře+světlo stejně jako na
 // "at_door" (viz gameReducer isAtDoorStage), ne rozpad "at_door" na jemnější kroky.
+// "graveyard" je definitivní vyřazení monstra do konce AKTUÁLNÍ noci (viz
+// zadání "Titan zabitý přetížením generátoru u dveří") — NIKDY není součástí
+// žádné EnemyDefinition.routeVariants (na rozdíl od ostatních stage výše, po
+// kterých monstrum fyzicky postupuje/couvá), nemá žádný návratový timer a
+// nedostává ENEMY_ADVANCE (viz guard v gameReducer.ts). Na žádné kameře není
+// vidět ze stejného důvodu jako "outside" — žádná CameraDefinition.enemyVisibleAtStage
+// ho nezmiňuje. Resetuje se jen tak, jak se resetuje VŠECHEN runtime stav
+// příští noci (createInitialGameState#enemyStage: "outside"), ne vlastním
+// mechanismem.
 export type EnemyStage =
   | "outside"
   | "outer_yard"
@@ -19,7 +28,8 @@ export type EnemyStage =
   | "door_hallway"
   | "at_door"
   | "breach"
-  | "attack";
+  | "attack"
+  | "graveyard";
 
 /** Poslední rozhodnutí nepřítele při vyhodnocení ENEMY_ADVANCE/TICK — pro DebugPanel. */
 export type EnemyMoveDecision =

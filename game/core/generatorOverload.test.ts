@@ -4,14 +4,36 @@ import { createInitialGameState } from "./gameState";
 import { NIGHT_01 } from "../nights/night01";
 import { DEFAULT_NIGHT_FEATURES } from "../difficulty/nightConfig";
 import { GENERATOR_OVERLOAD_DOOR_DURATION_MS, GENERATOR_OVERLOAD_WINDUP_DURATION_MS } from "../balancing/constants";
-import { GameState } from "./types";
+import { GameState, NightDefinition } from "./types";
 
-// Základ pro budoucí Titana (viz TODO.md) — přetížení generátoru dnes VŽDY
-// zničí dveře, žádná podmínka na monstru/stage tu (schválně) neexistuje.
+// Přetížení generátoru dnes VŽDY zničí dveře. Pokud je aktivní monstrum
+// Titan A je právě u dveří (isMonsterAtDoor — "at_door"/"breach", stejná
+// definice jako zbytek hry), přesune se navíc do "graveyard" (viz
+// updateDoorGeneratorOverload v gameReducer.ts — jediné autoritativní
+// místo tohohle rozhodnutí). Žádný MonsterId/MONSTER_REGISTRY zásah — Titan
+// se pozná čistě přes `night.enemy.id === "titan"` (EnemyDefinition.id je
+// plain `string`), stejně jako by ho poznal budoucí resolveTitanAdvance.
 
 function stateAtGenerator(overrides: Partial<GameState> = {}): GameState {
   return {
     ...createInitialGameState(NIGHT_01, { nightFeatures: { ...DEFAULT_NIGHT_FEATURES, generatorOverloadEnabled: true } }),
+    isRunning: true,
+    playerView: "generator",
+    ...overrides,
+  };
+}
+
+// Syntetická noc s Titanem jako aktivním monstrem — Titan dnes nemá vlastní
+// MonsterDefinition/resolver (viz zadání "nevytvářej Titan resolver"), takže
+// tahle fixture slouží VÝHRADNĚ k otestování updateDoorGeneratorOverload
+// (TICK-driven), nikdy se s ní nesmí dispatchnout ENEMY_ADVANCE (to by
+// spadlo na "Unsupported monster resolver: titan", správně — Titan pohyb
+// není součástí tohohle kroku).
+const TITAN_NIGHT: NightDefinition = { ...NIGHT_01, enemy: { ...NIGHT_01.enemy, id: "titan" } };
+
+function titanStateAtGenerator(overrides: Partial<GameState> = {}): GameState {
+  return {
+    ...createInitialGameState(TITAN_NIGHT, { nightFeatures: { ...DEFAULT_NIGHT_FEATURES, generatorOverloadEnabled: true } }),
     isRunning: true,
     playerView: "generator",
     ...overrides,
@@ -285,5 +307,97 @@ describe("RESTART_GENERATOR — unaffected by the new overload mechanism", () =>
     expect(result.doorGeneratorOverloadUntilMs).toBeNull();
     expect(result.doorDestroyed).toBe(false);
     expect(result.doorClosed).toBe(false);
+  });
+});
+
+describe("Titan overload outcome — door always destroyed, Titan graveyarded only at the door", () => {
+  it("a completed overload with NO Titan (Imp night) still destroys the door exactly as before — regression", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const started = reducer(stateAtGenerator({ elapsedMs: 0, enemyStage: "at_door" }), { type: "START_GENERATOR_OVERLOAD" });
+    const finished = reducer(started, { type: "TICK", deltaMs: GENERATOR_OVERLOAD_DOOR_DURATION_MS });
+    expect(finished.doorDestroyed).toBe(true);
+    expect(finished.doorClosed).toBe(false);
+  });
+
+  it("Imp at the door (or breach) is NOT moved to graveyard by the overload — only Titan is", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    for (const stage of ["at_door", "breach"] as const) {
+      const started = reducer(stateAtGenerator({ elapsedMs: 0, enemyStage: stage }), { type: "START_GENERATOR_OVERLOAD" });
+      const finished = reducer(started, { type: "TICK", deltaMs: GENERATOR_OVERLOAD_DOOR_DURATION_MS });
+      expect(finished.enemyStage).toBe(stage);
+      expect(finished.doorDestroyed).toBe(true);
+    }
+  });
+
+  it("Titan at 'at_door' when the overload completes: door destroyed AND Titan moved to graveyard", () => {
+    const reducer = createGameReducer(TITAN_NIGHT);
+    const started = reducer(titanStateAtGenerator({ elapsedMs: 0, enemyStage: "at_door" }), { type: "START_GENERATOR_OVERLOAD" });
+    const finished = reducer(started, { type: "TICK", deltaMs: GENERATOR_OVERLOAD_DOOR_DURATION_MS });
+    expect(finished.doorDestroyed).toBe(true);
+    expect(finished.doorClosed).toBe(false);
+    expect(finished.enemyStage).toBe("graveyard");
+  });
+
+  it("Titan at 'breach' when the overload completes also dies (same door-contact definition as isMonsterAtDoor)", () => {
+    const reducer = createGameReducer(TITAN_NIGHT);
+    const started = reducer(titanStateAtGenerator({ elapsedMs: 0, enemyStage: "breach" }), { type: "START_GENERATOR_OVERLOAD" });
+    const finished = reducer(started, { type: "TICK", deltaMs: GENERATOR_OVERLOAD_DOOR_DURATION_MS });
+    expect(finished.enemyStage).toBe("graveyard");
+    expect(finished.doorDestroyed).toBe(true);
+  });
+
+  it("Titan NOT at the door when the overload completes: door still destroyed, but enemyStage is untouched", () => {
+    const reducer = createGameReducer(TITAN_NIGHT);
+    for (const stage of ["outside", "outer_yard", "left_hallway", "right_hallway", "door_hallway"] as const) {
+      const started = reducer(titanStateAtGenerator({ elapsedMs: 0, enemyStage: stage }), { type: "START_GENERATOR_OVERLOAD" });
+      const finished = reducer(started, { type: "TICK", deltaMs: GENERATOR_OVERLOAD_DOOR_DURATION_MS });
+      expect(finished.doorDestroyed).toBe(true);
+      expect(finished.enemyStage).toBe(stage);
+    }
+  });
+
+  it("Titan already mid-attack (death already decided) when the overload completes is NOT graveyarded — most conservative reading of 'at the door'", () => {
+    const reducer = createGameReducer(TITAN_NIGHT);
+    const started = reducer(titanStateAtGenerator({ elapsedMs: 0, enemyStage: "attack" }), { type: "START_GENERATOR_OVERLOAD" });
+    const finished = reducer(started, { type: "TICK", deltaMs: GENERATOR_OVERLOAD_DOOR_DURATION_MS });
+    expect(finished.enemyStage).toBe("attack");
+    expect(finished.doorDestroyed).toBe(true);
+  });
+
+  it("does not move Titan to graveyard before the overload actually completes", () => {
+    const reducer = createGameReducer(TITAN_NIGHT);
+    const started = reducer(titanStateAtGenerator({ elapsedMs: 0, enemyStage: "at_door" }), { type: "START_GENERATOR_OVERLOAD" });
+    const almostDone = reducer(started, { type: "TICK", deltaMs: GENERATOR_OVERLOAD_DOOR_DURATION_MS - 1 });
+    expect(almostDone.enemyStage).toBe("at_door");
+    expect(almostDone.doorDestroyed).toBe(false);
+  });
+
+  it("Titan graveyarded by the overload stops receiving ENEMY_ADVANCE afterwards", () => {
+    const reducer = createGameReducer(TITAN_NIGHT);
+    const started = reducer(titanStateAtGenerator({ elapsedMs: 0, enemyStage: "at_door" }), { type: "START_GENERATOR_OVERLOAD" });
+    const finished = reducer(started, { type: "TICK", deltaMs: GENERATOR_OVERLOAD_DOOR_DURATION_MS });
+    expect(finished.enemyStage).toBe("graveyard");
+
+    // Dispatch ENEMY_ADVANCE directly against the imp reducer here (not
+    // TITAN_NIGHT's, which has no resolver and would throw) — the point is
+    // solely to confirm the graveyard GUARD in ENEMY_ADVANCE itself blocks
+    // any further movement, independent of which monster resolver exists.
+    const impReducer = createGameReducer(NIGHT_01);
+    const stillGraveyard = impReducer(finished, { type: "ENEMY_ADVANCE" });
+    expect(stillGraveyard).toBe(finished);
+    expect(stillGraveyard.enemyStage).toBe("graveyard");
+  });
+
+  it("Titan kill via overload does NOT set monsterDefeated, does NOT set screen to 'monsterDefeated', and does NOT stop the run", () => {
+    const reducer = createGameReducer(TITAN_NIGHT);
+    const started = reducer(titanStateAtGenerator({ elapsedMs: 0, enemyStage: "at_door", screen: "playing" }), {
+      type: "START_GENERATOR_OVERLOAD",
+    });
+    const finished = reducer(started, { type: "TICK", deltaMs: GENERATOR_OVERLOAD_DOOR_DURATION_MS });
+    expect(finished.enemyStage).toBe("graveyard");
+    expect(finished.monsterDefeated).toBe(false);
+    expect(finished.monsterKilledThisRun).toBe(false);
+    expect(finished.screen).toBe("playing");
+    expect(finished.isRunning).toBe(true);
   });
 });

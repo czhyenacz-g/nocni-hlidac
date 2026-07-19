@@ -23,6 +23,9 @@ export function computeTensionLevel(input: TensionInput): number {
     at_door: 0.85,
     breach: 0.92,
     attack: 1,
+    // Definitivně vyřazené monstrum (viz EnemyStage#graveyard) — žádné
+    // napětí z blízkosti, stejně jako "outside".
+    graveyard: 0,
   }[input.enemyStage];
 
   const atDoor = input.enemyStage === "at_door" || input.enemyStage === "breach";

@@ -591,19 +591,50 @@ const INACTIVE_GENERATOR_OVERLOAD_WINDUP: GameState["generatorOverloadWindup"] =
  * časová věc jako updateCameraDamagePhase/resolveSonicCannonPendingRetreat,
  * nezávislá na deltaMs. Mimo přetížení (`null`) beze změny. Po vypršení se
  * dveře nevratně zničí — STEJNÝ výsledek jako akce DESTROY_DOOR
- * (`doorDestroyed: true, doorClosed: false`), jen spuštěný z téhle časované
- * cesty, ne ruční akcí. Žádná podmínka na monstru/stage tady záměrně není
- * (viz TODO.md "budoucí Titan") — přetížení dnes VŽDY zničí dveře.
+ * (`doorDestroyed: true, doorClosed: false`) — VŽDY, bez výjimky (smrt
+ * Titana dveře nezachrání, viz zadání).
+ *
+ * Jediné výjimečné chování: pokud je aktivní monstrum Titan (`night.enemy.id
+ * === "titan"` — dnes nikdy nenastane, žádná NightDefinition Titana
+ * nepoužívá, ale kontrola je tu připravená a typově bezpečná, `EnemyDefinition.id`
+ * je `string`) A je PRÁVĚ TEĎ u dveří (`isMonsterAtDoor`, stejná definice
+ * jako zbytek hry — `"at_door"` i `"breach"`), přetížení ho navíc přesune do
+ * `"graveyard"` (definitivně mimo hru do konce noci). Jde o JEDINÉ
+ * autoritativní místo tohohle rozhodnutí (viz zadání "TICK / overload
+ * completion resolver, ne komponenta/DoorView/zvuk"). Záměrně NEnastavuje
+ * `monsterDefeated` — to pole spouští MonsterDefeatedScreen/hidden
+ * ending/shotgun odměnu, což s environmentální smrtí Titana od generátoru
+ * nemá nic společného (viz zadání "nesmí být použito pro Titana").
+ *
+ * `isMonsterAtDoor` už sama vylučuje případ "útok už začal" — jakmile
+ * resolveImpAdvance/budoucí resolveTitanAdvance jednou rozhodne smrt hráče,
+ * `enemyStage` se ve STEJNÉM dispatchi přepne na `"attack"` (ne `"at_door"`/
+ * `"breach"`), takže `isMonsterAtDoor` od tohohle okamžiku vrací `false` —
+ * Titan tak nikdy neumře přetížením PO zahájení nevratného player-death flow
+ * (nejkonzervativnější varianta, viz zadání).
  */
 function updateDoorGeneratorOverload(
   state: GameState,
+  night: NightDefinition,
   elapsedMs: number,
-): Pick<GameState, "doorGeneratorOverloadUntilMs" | "doorDestroyed" | "doorClosed"> {
+): Pick<GameState, "doorGeneratorOverloadUntilMs" | "doorDestroyed" | "doorClosed"> & Partial<Pick<GameState, "enemyStage">> {
   if (state.doorGeneratorOverloadUntilMs === null) {
+    // Žádný `enemyStage` klíč v návratu — tenhle update se spreaduje do
+    // TICKu AŽ PO doorLightRepel/doorHallwayUvRepel update (viz volání
+    // níže), takže kdyby tu vždy vracel `enemyStage: state.enemyStage`
+    // (PŘED-tikovou hodnotu), přebil by jejich legitimní změnu stage zpátky
+    // na starou hodnotu. Klíč se objeví jen tehdy, když tahle funkce
+    // SKUTEČNĚ o přesunu do graveyardu rozhoduje (viz níže).
     return { doorGeneratorOverloadUntilMs: null, doorDestroyed: state.doorDestroyed, doorClosed: state.doorClosed };
   }
   if (elapsedMs >= state.doorGeneratorOverloadUntilMs) {
-    return { doorGeneratorOverloadUntilMs: null, doorDestroyed: true, doorClosed: false };
+    const titanAtDoor = night.enemy.id === "titan" && isMonsterAtDoor(state);
+    return {
+      doorGeneratorOverloadUntilMs: null,
+      doorDestroyed: true,
+      doorClosed: false,
+      ...(titanAtDoor ? { enemyStage: "graveyard" as const } : {}),
+    };
   }
   return {
     doorGeneratorOverloadUntilMs: state.doorGeneratorOverloadUntilMs,
@@ -1377,7 +1408,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         // Dokončení probíhajícího přetížení (viz doorGeneratorOverloadUntilMs)
         // — nezávislé na generatorOverloadWindupUpdate výše (ten řídí jen
         // DRŽENÍ tlačítka, tohle už samotné PŘETÍŽENÍ po jeho doběhnutí).
-        const doorGeneratorOverloadUpdate = updateDoorGeneratorOverload(state, elapsedMs);
+        const doorGeneratorOverloadUpdate = updateDoorGeneratorOverload(state, night, elapsedMs);
         // Postupné ztmavování/zrnění po útoku Ghoula na kameru (viz zadání) —
         // čistě časová věc (attackStartedAtMs -> elapsedMs), nezávislá na
         // deltaMs stejně jako blackoutElapsedMs výše. cameraOfflineSeq se tu
@@ -1506,7 +1537,15 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           // Sonické odražení čeká na dokončení revealu (viz
           // GameState.sonicCannonPendingRetreat, TICK níže) — žádný další
           // hod/pohyb, dokud hráč neviděl ústup na PŮVODNÍ stage doběhnout.
-          state.sonicCannonPendingRetreat !== null
+          state.sonicCannonPendingRetreat !== null ||
+          // Definitivně vyřazené monstrum (viz EnemyStage#graveyard,
+          // updateDoorGeneratorOverload níže — dnes jediný zdroj) už nikdy
+          // nedostává další advance, bez ohledu na to, kolikrát se tahle
+          // akce ještě dispatchne. Na rozdíl od monsterDefeated (resetuje se
+          // příští noc společně s ostatním runtime stavem, ne dřív) tu není
+          // žádný samostatný "je run u konce"/screen efekt — graveyard je
+          // čistě gameplay pohybový stav.
+          state.enemyStage === "graveyard"
         )
           return state;
 
@@ -1857,8 +1896,17 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
       case "APPLY_OFFICE_THREAT_ON_RETURN": {
         // Stejné guardy jako ENEMY_ADVANCE — v blackoutu/doorDeathRevealu už
         // je pozice nepřítele/výsledek směny beztak rozhodnutý, hrozba z
-        // minihry na tom nic nemění.
-        if (!state.isRunning || state.gameStatus === "blackout" || state.doorDeathRevealUntilMs !== null)
+        // minihry na tom nic nemění. `enemyStage === "graveyard"` navíc
+        // brání "vzkříšení" definitivně vyřazeného monstra zpátky na
+        // normální stage (viz zadání "advance cesty mimo centrální guard,
+        // oprav i je") — bez týhle podmínky by tahle akce mohla monstrum z
+        // graveyardu přesunout na `pickOfficeThreatStage` výsledek.
+        if (
+          !state.isRunning ||
+          state.gameStatus === "blackout" ||
+          state.doorDeathRevealUntilMs !== null ||
+          state.enemyStage === "graveyard"
+        )
           return state;
 
         const nextStage = pickOfficeThreatStage(state.enemyRoute, action.intensity);
@@ -1889,8 +1937,14 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
       }
 
       case "APPLY_MONSTER_REACHED_OFFICE_AFTERMATH": {
-        // Stejné guardy jako APPLY_OFFICE_THREAT_ON_RETURN výše.
-        if (!state.isRunning || state.gameStatus === "blackout" || state.doorDeathRevealUntilMs !== null)
+        // Stejné guardy jako APPLY_OFFICE_THREAT_ON_RETURN výše (včetně
+        // graveyard ochrany proti "vzkříšení").
+        if (
+          !state.isRunning ||
+          state.gameStatus === "blackout" ||
+          state.doorDeathRevealUntilMs !== null ||
+          state.enemyStage === "graveyard"
+        )
           return state;
 
         // Stejný "high" kandidátní seznam/reuse jako APPLY_OFFICE_THREAT_ON_RETURN
