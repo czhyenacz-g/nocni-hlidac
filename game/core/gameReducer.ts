@@ -1,9 +1,8 @@
 import { GameAction } from "./gameActions";
 import { createInitialGameState } from "./gameState";
-import { EnemyDefinition, EnemyStage, GameState, MonsterRepelRadioResult, NightDefinition } from "./types";
+import { EnemyStage, GameState, NightDefinition } from "./types";
 import {
   BULB_REPLACE_DURATION_MS,
-  DOOR_DEATH_REVEAL_DURATION_MS,
   EMERGENCY_RUN_WINDUP_DURATION_MS,
   GENERATOR_OVERLOAD_DOOR_DURATION_MS,
   GENERATOR_OVERLOAD_WINDUP_DURATION_MS,
@@ -12,9 +11,6 @@ import {
   OFFICE_THREAT_GRACE_HIGH_MS,
   OFFICE_THREAT_GRACE_LOW_MS,
   OFFICE_THREAT_GRACE_MEDIUM_MS,
-  SONIC_CANNON_ADVANCE_CHANCE,
-  SONIC_CANNON_RETREAT_CHANCE,
-  SONIC_CANNON_RETREAT_REVEAL_MS,
   THINK_IT_OVER_WINDUP_DURATION_MS,
 } from "../balancing/constants";
 import { getBlackoutPhaseIndex } from "../visuals/blackoutPhase";
@@ -27,11 +23,8 @@ import { computePowerDrainBreakdown } from "./powerDrain";
 import { canStartBatteryEmergencyRun } from "./emergencyMiniGameIntegration";
 import { resolveLivesRemainingAfterDeath } from "./gameMode";
 import { confirmMonsterHit } from "./monsterEnding";
-import { isMonsterMinStayBlocking } from "./monsterMinStay";
-import { isSonicCannonAffectingEnemy } from "./sonicCannon";
 import { canRequestAmmo, requestSingleAmmo } from "./shotgunEquipment";
 import {
-  attemptGhoulCameraAttack,
   canDebugTriggerGhoulCameraAttack,
   debugSkipActiveAttackToOffline,
   debugSkipToLastFrame,
@@ -43,33 +36,17 @@ import {
 } from "./cameraDamage";
 import { DISABLED_CAMERA_FOOTSTEPS_COOLDOWN_MS, GHOUL_CAMERA_ATTACK_RETREAT_PAUSE_MS } from "./cameraDamageConfig";
 import {
-  isDoorAttackBlockedByClosedDoor,
   isDoorAttackGraceActive,
   isMonsterAtDoor,
   shouldDoorHallwayUvForceRetreat,
   shouldDoorLightForceRetreat,
 } from "./doorEncounter";
+import { stepBackOneStage } from "./enemyRoute";
+import { getMonsterDefinition } from "../enemies/monsterDefinitions";
+import { resolveImpAdvance } from "../enemies/resolveImpAdvance";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
-}
-
-// Vylosuje (jednou na standoff u zavřených dveří) cíl efektivního čekání, než
-// se nepřítel vzdá — viz doorHoldRangeMs / doorHoldLightAccelMultiplier v
-// imp.ts a použití v ENEMY_ADVANCE níže.
-function rollDoorHoldTargetMs(enemy: EnemyDefinition): number {
-  const { min, max } = enemy.doorHoldRangeMs;
-  return min + Math.random() * (max - min);
-}
-
-// Jeden krok zpátky na trase z `currentStage` (viz zadání "ať hráč vidí
-// bestii utíkat, ne teleport") — sdílené mezi ENEMY_ADVANCE (normální 10%
-// ústup, "vzdání se" u dveří) i TICKových repelů (světlo, UV). Na začátku
-// trasy (`outside`, index 0) není kam couvat dál — vrátí stejnou stage.
-function stepBackOneStage(route: EnemyStage[], currentStage: EnemyStage): EnemyStage {
-  const currentIndex = route.indexOf(currentStage);
-  const previousIndex = Math.max(currentIndex - 1, 0);
-  return route[previousIndex] ?? currentStage;
 }
 
 // Kam se monstrum posune jako hrozba přenesená z EmergencyMiniGame (viz
@@ -1549,322 +1526,32 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         )
           return state;
 
-        const route = state.enemyRoute;
-        const currentIndex = route.indexOf(state.enemyStage);
-        const atDoorStage = isMonsterAtDoor(state);
-
-        if (atDoorStage) {
-          // Útok NASTANE (monstrum je u dveří), ale zavřené dveře ho
-          // zablokují — přesně a jedině tahle podmínka smí spustit bušení do
-          // dveří (viz doorEncounter.ts#isDoorAttackBlockedByClosedDoor,
-          // GameState.doorBangSeq). Počítá se JEDNOU tady, ne opakovaně na
-          // dvou místech, ať zůstane nemožné, aby se bang a "byl by útok
-          // smrtící" rozešly.
-          if (isDoorAttackBlockedByClosedDoor(state)) {
-            const since = state.enemyAtDoorSinceMs ?? state.elapsedMs;
-            const target = state.enemyDoorHoldTargetMs ?? rollDoorHoldTargetMs(night.enemy);
-            // Nezávislé na světle — kombinovaný efekt dveří+světla řeší
-            // doorLightRepelMs v TICKu (updateDoorLightRepel výše), ne tohle.
-            const progress = state.enemyDoorHoldProgressMs + night.enemyTickMs;
-
-            if (progress >= target) {
-              // O jeden krok zpět (ne teleport na náhodný bod jako dřív) +
-              // dočasné okno nejslabší ze tří zvýšené šance na ústup (viz
-              // zadání "ať hráč vidí bestii utíkat", night.enemy.forcedRetreatAfterGaveUp
-              // — vzdání se timeoutem bez světla je nejméně přesvědčivé).
-              const retreatedTo = stepBackOneStage(route, state.enemyStage);
-              return {
-                ...state,
-                enemyStage: retreatedTo,
-                lastEnemyDecision: "gave_up",
-                enemyAtDoorSinceMs: null,
-                enemyDoorHoldTargetMs: null,
-                enemyDoorHoldProgressMs: 0,
-                monsterRetreatedTo: retreatedTo,
-                // Bez požadavku na ověření (easy, nebo vypnuté
-                // monsterRetreatVerificationEnabled tuhle noc) rovnou
-                // "ověřeno" -> dveře jdou otevřít bez dalšího kroku (viz
-                // TOGGLE_DOOR).
-                monsterRetreatVerified: !requireMonsterRetreatVerification,
-                // I tenhle poslední, "vzdávající se" tik byl pořád zablokovaný
-                // útok (dveře ho zachránily naposledy, než se monstrum stáhlo).
-                doorBangSeq: state.doorBangSeq + 1,
-                enemyForcedRetreatUntilMs: state.elapsedMs + night.enemy.forcedRetreatAfterGaveUp.durationMs,
-                enemyForcedRetreatChance: night.enemy.forcedRetreatAfterGaveUp.chance,
-                enemyForcedRetreatNextStepAtMs: state.elapsedMs + night.enemyTickMs,
-              };
-            }
-            return {
-              ...state,
-              lastEnemyDecision: "waiting_at_door",
-              enemyAtDoorSinceMs: since,
-              enemyDoorHoldTargetMs: target,
-              enemyDoorHoldProgressMs: progress,
-              doorBangSeq: state.doorBangSeq + 1,
-            };
+        // Rozhodovací logika konkrétního hlavního monstra žije mimo reducer
+        // (viz zadání "vyčleň rozhodovací logiku hlavního monstra... do
+        // samostatné testovatelné vrstvy pro Impa") — reducer už jen zjistí
+        // aktivní monstrum podle `night.enemy.id` (jediný zdroj identity,
+        // beze změny) a zavolá jeho resolver. Připraveno na budoucí
+        // `resolveTitanAdvance` (viz zadání "co nedělat" — Titan se v tomhle
+        // kroku NEIMPLEMENTUJE, jen se pro něj nechává místo v switch
+        // větvi). Neznámé/nepodporované monstrum záměrně SELŽE VIDITELNĚ
+        // (throw), ne tiše no-opem — `night.enemy.id` bez odpovídajícího
+        // resolveru je konfigurační chyba (chybějící registrace/resolver),
+        // ne běžný runtime stav, který by šel bezpečně ignorovat. Dnes
+        // nikdy nenastane (jediný registrovaný `MonsterId` je `"imp"`, viz
+        // monsterDefinitions.ts).
+        const monster = getMonsterDefinition(night.enemy.id);
+        if (!monster) {
+          throw new Error(`Unknown monster id: ${night.enemy.id}`);
+        }
+        const decision = ((): Partial<GameState> => {
+          switch (monster.id) {
+            case "imp":
+              return resolveImpAdvance({ state, night, currentNightNumber, requireMonsterRetreatVerification });
+            default:
+              throw new Error(`Unsupported monster resolver: ${monster.id}`);
           }
-
-          // Dveře otevřené a nepřítel je u nich -> útok BY nastal, POKUD
-          // neběží grace period po návratu z minihry (viz
-          // GameState.enemyDoorAttackGraceUntilMs, doorEncounter.ts
-          // #isDoorAttackGraceActive) — hráč dostal krátké okno stihnout
-          // zavřít dveře, monstrum jen dál čeká u dveří, žádná smrt.
-          if (isDoorAttackGraceActive(state)) {
-            return { ...state, lastEnemyDecision: "office_threat_grace" };
-          }
-
-          if (state.playerView === "door") {
-            // Hráč se dívá přímo na dveře — smrt se nefinalizuje hned
-            // (isRunning/screen zůstávají beze změny), nejdřív krátký
-            // doorDeathReveal moment (viz TICK výše), který dokončí přechod
-            // na "death" po DOOR_DEATH_REVEAL_DURATION_MS. Viz GAME_DESIGN.md
-            // "Smrt u dveří". Ruční výměna žárovky je jediný způsob, jak tu
-            // může být bulbReplacement.active === true (jde jen z DoorView,
-            // jen s otevřenými dveřmi) — dostane vlastní death reason/text
-            // (viz DeathScreen.tsx), zbytek sekvence je stejný.
-            return {
-              ...state,
-              enemyStage: "attack",
-              lastEnemyDecision: "attack",
-              deathReason: state.bulbReplacement.active ? "bulb_replacement_attack" : "door_open_at_attack",
-              doorDeathRevealUntilMs: state.elapsedMs + DOOR_DEATH_REVEAL_DURATION_MS,
-            };
-          }
-
-          // Hráč sleduje kamery/generátor, ne dveře — záměrně ho na DoorView
-          // nepřepínáme (na žádost, viz GAME_DESIGN.md), klasická okamžitá
-          // smrt beze změny. Tenhle případ dostane vlastní obrazovku později.
-          return {
-            ...state,
-            enemyStage: "attack",
-            lastEnemyDecision: "attack",
-            isRunning: false,
-            screen: "death",
-            deathReason: "door_open_at_attack",
-            livesRemaining: resolveLivesRemainingAfterDeath(state.gameMode, state.livesRemaining),
-          };
-        }
-
-        // Viditelný útěk po odražení (viz GameState.enemyForcedRetreatUntilMs,
-        // zadání "ať hráč vidí bestii utíkat, ne teleport") — dokud okno
-        // běží, monstrum se nemůže přiblížit (advanceChance 0) a má
-        // vynucenou/zvýšenou šanci na další ústup (enemyForcedRetreatChance)
-        // místo běžných hodnot noci. Vypršené okno se tady vyčistí (jednou),
-        // ať nezůstane navěky "aktivní" v DebugPanelu/testech.
-        const forcedRetreatActive =
-          state.enemyForcedRetreatUntilMs !== null && state.elapsedMs < state.enemyForcedRetreatUntilMs;
-        // ENEMY_ADVANCE běží na vlastním intervalu nezávislém na tom, kdy
-        // repel doopravdy proběhl (viz gameLoop.ts) — bez tohohle gate by
-        // první krok po repelu mohl přijít skoro okamžitě, místo aby hráč
-        // měl jistou celou enemyTickMs periodu monstrum na kameře vidět
-        // (viz zadání "uteklo moc rychle"). Dokud další krok "není due",
-        // ENEMY_ADVANCE jen čeká — žádný roll, žádný pohyb.
-        const forcedRetreatStepDue =
-          !forcedRetreatActive ||
-          state.enemyForcedRetreatNextStepAtMs === null ||
-          state.elapsedMs >= state.enemyForcedRetreatNextStepAtMs;
-
-        if (forcedRetreatActive && !forcedRetreatStepDue) {
-          return { ...state, lastEnemyDecision: "stay" };
-        }
-
-        const forcedRetreatFieldsUpdate: Pick<
-          GameState,
-          "enemyForcedRetreatUntilMs" | "enemyForcedRetreatChance" | "enemyForcedRetreatNextStepAtMs"
-        > = forcedRetreatActive
-          ? {
-              enemyForcedRetreatUntilMs: state.enemyForcedRetreatUntilMs,
-              enemyForcedRetreatChance: state.enemyForcedRetreatChance,
-              // Tenhle krok se právě "spotřebovává" — další smí přijít
-              // nejdřív za další celou enemyTickMs periodu.
-              enemyForcedRetreatNextStepAtMs: state.elapsedMs + night.enemyTickMs,
-            }
-          : { enemyForcedRetreatUntilMs: null, enemyForcedRetreatChance: null, enemyForcedRetreatNextStepAtMs: null };
-
-        // Minimální pobyt v lokaci (viz zadání "hráč má reálnou šanci
-        // monstrum najít, zapnout sonické dělo a reagovat",
-        // game/core/monsterMinStay.ts) — platí JEN pro tenhle běžný
-        // pravděpodobnostní hod, nikdy pro forcedRetreat okno výše (to je
-        // "explicitní retreat window", vlastní nezávislá pacing logika).
-        // Blokovaný tik neprovede žádný roll a nevyprodukuje žádný sonický
-        // rádiový výsledek (viz níže) — čistě "stay", stejně jako
-        // forcedRetreatStepDue gate výše.
-        if (!forcedRetreatActive && isMonsterMinStayBlocking(state)) {
-          return { ...state, ...forcedRetreatFieldsUpdate, lastEnemyDecision: "stay" };
-        }
-
-        // Postup/setrvání/ústup — nezávislé pravděpodobnosti, zbytek (1 - advance - retreat)
-        // znamená setrvání. Běžné sledování kamery samo o sobě NEOVLIVŇUJE
-        // postup (viz zadání "běžné sledování kamer je zdarma a bez vlivu na
-        // monstrum") — jedině aktivní sonické dělo mířící na kameru, kde se
-        // monstrum skutečně nachází, dočasně nahradí výchozí pravděpodobnosti
-        // za SONIC_CANNON_*_CHANCE, PŘESNĚ pro tenhle jeden hod.
-        const sonicEffective = !forcedRetreatActive && isSonicCannonAffectingEnemy(state, night);
-        const advanceChance = forcedRetreatActive ? 0 : sonicEffective ? SONIC_CANNON_ADVANCE_CHANCE : night.enemy.advanceChance;
-        const retreatChance = forcedRetreatActive
-          ? (state.enemyForcedRetreatChance ?? night.enemy.retreatChance)
-          : sonicEffective
-            ? SONIC_CANNON_RETREAT_CHANCE
-            : night.enemy.retreatChance;
-        const roll = Math.random();
-
-        let nextIndex = currentIndex;
-        let decision: GameState["lastEnemyDecision"] = "stay";
-
-        if (roll < advanceChance) {
-          nextIndex = Math.min(currentIndex + 1, route.length - 1);
-          decision = "advance";
-        } else if (roll < advanceChance + retreatChance) {
-          nextIndex = Math.max(currentIndex - 1, 0);
-          // Na první pozici (nebo pokud by index nezměnil) nemá ústup kam jít — bere se jako setrvání.
-          decision = nextIndex === currentIndex ? "stay" : "retreat";
-        }
-
-        // Sonický rádiový výsledek (viz zadání "reducer má pouze emitovat
-        // výsledek success/stay/fail") — VÝHRADNĚ pro tenhle jeden hod, kdy
-        // `sonicEffective` bylo true. "retreat" -> "success" (monstrum
-        // ustoupilo), "stay" -> "stay", "advance" -> "fail" (z pohledu hráče
-        // dělo selhalo). `decision` tady je vždy PO případném "retreat ->
-        // stay" degradování na hranici trasy výše, ale sonické dělo je
-        // efektivní jen na kamerou viditelných stage (index >= 1), kde tahle
-        // degradace nikdy nenastane.
-        const sonicResult: MonsterRepelRadioResult | null = sonicEffective
-          ? decision === "retreat"
-            ? "success"
-            : decision === "advance"
-              ? "fail"
-              : "stay"
-          : null;
-        // Auto-off (viz zadání "doladit... aby se po prvním skutečně
-        // vyhodnoceném movement decision ticku automaticky vypnulo") — PŘESNĚ
-        // ve stejném update objektu jako sonicResult výše, ať výsledek a
-        // vypnutí dorazí do UI ATOMICKY spolu (žádné riziko, že by
-        // side-effect stihl ztratit jedno nebo druhé, viz zadání "rádio event
-        // vznikne před nebo současně s auto-off"). Platí pro VŠECHNY tři
-        // výsledky (success/stay/fail) stejně — sonické dělo je "jeden
-        // pokus", ne trvalý stav, dokud ho hráč znovu nezapne.
-        // `sonicCannonToggleSeq` se zvyšuje STEJNĚ jako u ručního TOGGLE, ať
-        // UI umí přehrát přesně jedno mechanické cvaknutí i pro tohle
-        // automatické vypnutí (viz app/play/page.tsx).
-        const sonicResultUpdate: Pick<
-          GameState,
-          "sonicCannonResultSeq" | "lastSonicCannonResult" | "sonicCannonActive" | "sonicCannonToggleSeq" | "lastSonicCannonToggleReason"
-        > =
-          sonicResult !== null
-            ? {
-                sonicCannonResultSeq: state.sonicCannonResultSeq + 1,
-                lastSonicCannonResult: sonicResult,
-                sonicCannonActive: false,
-                sonicCannonToggleSeq: state.sonicCannonToggleSeq + 1,
-                lastSonicCannonToggleReason: "result_auto_off",
-              }
-            : {
-                sonicCannonResultSeq: state.sonicCannonResultSeq,
-                lastSonicCannonResult: state.lastSonicCannonResult,
-                sonicCannonActive: state.sonicCannonActive,
-                sonicCannonToggleSeq: state.sonicCannonToggleSeq,
-                lastSonicCannonToggleReason: state.lastSonicCannonToggleReason,
-              };
-
-        // Vzácná reakce Ghoula na sonické dělo (viz zadání "finální
-        // chování") — hod proběhne PŘI KAŽDÉM použití sonického děla na
-        // Ghoula (sonicEffective), BEZ OHLEDU na sonicResult (i po
-        // úspěšném odražení). Vrací `state.cameraDamage` beze změny, když
-        // útok nenastal (guardy + 5% hod), takže spread níže je bezpečný
-        // no-op v drtivé většině tiků.
-        const cameraDamage = sonicEffective
-          ? attemptGhoulCameraAttack(
-              state,
-              night,
-              currentNightNumber,
-              isNearRoomLightActive(state),
-              state.debugGhoulCameraAttackChanceOverride,
-            )
-          : state.cameraDamage;
-        const cameraAttackTriggered = cameraDamage !== state.cameraDamage;
-        const cameraAttackUpdate: Pick<GameState, "cameraDamage" | "cameraAttackStartedSeq"> = {
-          cameraDamage,
-          cameraAttackStartedSeq: cameraAttackTriggered ? state.cameraAttackStartedSeq + 1 : state.cameraAttackStartedSeq,
-        };
-
-        // Útok na kameru PŘEBÍRÁ kontrolu nad výsledným pohybem tohohle
-        // hodu (viz zadání "nepřidávej navíc druhý retreat ze sonického
-        // děla") — normální `nextIndex`/`decision`/`forcedRetreatFieldsUpdate`
-        // spočítané výše se v tomhle případě ZAHODÍ, ať k pohybu dojde jen
-        // JEDNOU, ať už by normální hod řekl cokoliv (advance/stay/retreat).
-        // Ghoul ustoupí přesně o jeden krok směrem VEN (stejný `stepBackOneStage`
-        // helper jako gave_up/light_repelled — respektuje skutečnou
-        // levou/pravou větev aktuální trasy, ne obecné odečtení indexu), pak
-        // dostane krátkou pauzu (GHOUL_CAMERA_ATTACK_RETREAT_PAUSE_MS,
-        // advance/retreat chance 0 — stejný "forced retreat window"
-        // mechanismus jako po light/UV repelu, jen s `chance: 0` = žádný
-        // další vynucený pohyb, čisté čekání), než pokračuje normální AI.
-        if (cameraAttackTriggered) {
-          const retreatedTo = stepBackOneStage(route, state.enemyStage);
-          const cameraAttackMovementUpdate: Pick<
-            GameState,
-            "enemyForcedRetreatUntilMs" | "enemyForcedRetreatChance" | "enemyForcedRetreatNextStepAtMs"
-          > = {
-            enemyForcedRetreatUntilMs: state.elapsedMs + GHOUL_CAMERA_ATTACK_RETREAT_PAUSE_MS,
-            enemyForcedRetreatChance: 0,
-            enemyForcedRetreatNextStepAtMs: state.elapsedMs + night.enemyTickMs,
-          };
-          return {
-            ...state,
-            ...sonicResultUpdate,
-            ...cameraAttackUpdate,
-            ...cameraAttackMovementUpdate,
-            enemyStage: retreatedTo,
-            lastEnemyDecision: "ghoul_camera_attack",
-            enemyAtDoorSinceMs: null,
-            enemyDoorHoldTargetMs: null,
-            enemyDoorHoldProgressMs: 0,
-          };
-        }
-
-        // Sonické odražení musí být VIDĚT (viz zadání "preferované pořadí:
-        // sonic hit → přehrání reakce/ústupu v původní lokaci → dokončení
-        // animace → teprve potom stepBackOneStage → 7s forced retreat
-        // pause") — na rozdíl od gave_up/light/UV repelů (ty přesouvají
-        // monstrum NA kamerou viditelnou stage) sonický ústup posouvá
-        // monstrum PRYČ ze sledované kamery, takže by okamžitá změna stage
-        // nikdy nebyla vidět (getCameraImageSrc#isFleeingRetreat čte AŽ
-        // NOVOU enemyStage). `enemyStage` proto zůstává beze změny až do
-        // konce revealu (GameState.sonicCannonPendingRetreat, dokončeno v
-        // TICKu níže) — jen se spustí zvuková reakce (monsterRetreatRoarSeq,
-        // stejný roar→kroky event jako light/UV repel).
-        if (sonicEffective && decision === "retreat") {
-          return {
-            ...state,
-            ...sonicResultUpdate,
-            ...cameraAttackUpdate,
-            lastEnemyDecision: "retreat",
-            monsterRetreatRoarSeq: state.monsterRetreatRoarSeq + 1,
-            sonicCannonPendingRetreat: {
-              targetStage: route[nextIndex],
-              revealUntilMs: state.elapsedMs + SONIC_CANNON_RETREAT_REVEAL_MS,
-            },
-          };
-        }
-
-        if (nextIndex === currentIndex) {
-          return { ...state, ...forcedRetreatFieldsUpdate, ...sonicResultUpdate, ...cameraAttackUpdate, lastEnemyDecision: decision };
-        }
-
-        const nextStage = route[nextIndex];
-        const nextIsAtDoor = nextStage === "at_door" || nextStage === "breach";
-
-        return {
-          ...state,
-          ...forcedRetreatFieldsUpdate,
-          ...sonicResultUpdate,
-          ...cameraAttackUpdate,
-          enemyStage: nextStage,
-          lastEnemyDecision: decision,
-          enemyAtDoorSinceMs: nextIsAtDoor ? state.elapsedMs : null,
-          enemyDoorHoldTargetMs: null,
-          enemyDoorHoldProgressMs: 0,
-        };
+        })();
+        return { ...state, ...decision };
       }
 
       case "RECHARGE_POWER":
