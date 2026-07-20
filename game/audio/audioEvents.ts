@@ -180,6 +180,13 @@ export const AUDIO_EVENTS = {
   // app/dev-sound/page.tsx historie) — teď skutečně použitý pro Titana,
   // žádná duplicitní kopie souboru (viz audioConfig.ts).
   titanFootsteps: "titan_footsteps",
+  // Bušení na dveře (viz zadání "Audio přechod při at_door") — nahrazuje
+  // kroky přesně v okamžiku, kdy Titan dosáhne "at_door"/"breach" (viz
+  // game/audio/titanFootsteps.ts#computeTitanAudioTrack). Reálný, už
+  // existující CC0 soubor (dřív jen "Bušení na dveře" audition kandidát v
+  // app/dev-sound/page.tsx, teď skutečně použitý — žádná duplicitní kopie
+  // souboru, viz audioConfig.ts).
+  titanDoorPounding: "titan_door_pounding",
 } as const;
 
 export type AudioEventId = (typeof AUDIO_EVENTS)[keyof typeof AUDIO_EVENTS];

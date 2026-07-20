@@ -26,7 +26,7 @@ import { CameraId, GhoulCameraAttackAnimationId } from "@/game/core/types";
 import { audioManager } from "@/game/audio/audioManager";
 import { AUDIO_EVENTS } from "@/game/audio/audioEvents";
 import { AUDIO_CONFIG } from "@/game/audio/audioConfig";
-import { computeTitanFootstepVolume } from "@/game/audio/titanFootsteps";
+import { computeTitanAudioTrack, computeTitanFootstepVolume } from "@/game/audio/titanFootsteps";
 import { isTitanEncounterActive } from "@/game/core/titanEncounter";
 import { computeTensionLevel } from "@/game/visuals/atmosphereState";
 import { atmosphereStyleToCssVars, tensionToAtmosphereStyle } from "@/game/visuals/visualEffects";
@@ -1060,44 +1060,55 @@ function PlayPageContent() {
     return () => audioManager.stopLoop(AUDIO_EVENTS.sonicCannonHum);
   }, []);
 
-  // Titanovy kroky na štěrku (viz zadání "Titan nemá během přibližování
-  // správné kroky a stres") — stejný dvouefektový vzor jako sonicCannonHum
-  // výše: jeden reaktivní start/stop na `isTitanEncounterActive(state, night)`
+  // Titanovy kroky na štěrku / bušení na dveře (viz zadání "Titan nemá během
+  // přibližování správné kroky a stres" a "Audio přechod při at_door") —
+  // stejný dvouefektový vzor jako sonicCannonHum výše, ale se TŘEMI
+  // vzájemně se vylučujícími stavy (`computeTitanAudioTrack`, viz
+  // game/audio/titanFootsteps.ts): kroky BĚHEM přibližování, bušení
+  // NA dveřích ("at_door"/"breach"), nikdy obě zároveň. `isTitanEncounterActive`
   // (JEDINÝ zdroj pravdy "encounter právě běží", viz game/core/titanEncounter.ts
   // — pokrývá začátek/konec noci, smrt, zabití generátorem i odchod z
-  // "playing" beze zvláštního kódu na každou cestu zvlášť), plus samostatná
-  // tvrdá pojistka na skutečné odmountování stránky. `startLoop`/`stopLoop`
-  // jsou idempotentní (viz zadání "v jednu chvíli smí hrát jen jedna
-  // instance" — je to zaručené existující architekturou audioManageru, ne
-  // něčím novým tady), takže žádný prevRef diffing navíc není potřeba.
+  // "playing" beze zvláštního kódu na každou cestu zvlášť) řídí, jestli se
+  // track vůbec počítá, plus samostatná tvrdá pojistka na skutečné
+  // odmountování stránky zastaví OBĚ smyčky. `startLoop`/`stopLoop` jsou
+  // idempotentní (viz zadání "v jednu chvíli smí hrát jen jedna instance"),
+  // takže žádný prevRef diffing navíc není potřeba.
   const titanEncounterActiveNow = isTitanEncounterActive(state, night);
+  const titanAudioTrack = titanEncounterActiveNow ? computeTitanAudioTrack(state.enemyStage) : "none";
   useEffect(() => {
-    if (titanEncounterActiveNow) {
+    if (titanAudioTrack === "footsteps") {
+      audioManager.stopLoop(AUDIO_EVENTS.titanDoorPounding);
       audioManager.startLoop(AUDIO_EVENTS.titanFootsteps);
+    } else if (titanAudioTrack === "pounding") {
+      audioManager.stopLoop(AUDIO_EVENTS.titanFootsteps);
+      audioManager.startLoop(AUDIO_EVENTS.titanDoorPounding);
     } else {
       audioManager.stopLoop(AUDIO_EVENTS.titanFootsteps);
+      audioManager.stopLoop(AUDIO_EVENTS.titanDoorPounding);
     }
-  }, [titanEncounterActiveNow]);
+  }, [titanAudioTrack]);
 
   useEffect(() => {
-    return () => audioManager.stopLoop(AUDIO_EVENTS.titanFootsteps);
+    return () => {
+      audioManager.stopLoop(AUDIO_EVENTS.titanFootsteps);
+      audioManager.stopLoop(AUDIO_EVENTS.titanDoorPounding);
+    };
   }, []);
 
   // Hlasitost kroků plynule roste s Titanovou stage (viz zadání "50 % na
-  // začátku, plynule až 100 % u dveří, žádný skok") — `rampLoopVolume`
+  // začátku, plynule až 85 % u dveří chodby, žádný skok") — `rampLoopVolume`
   // (stejná requestAnimationFrame technika jako fadeOutLoop, viz
   // audioManager.ts) se spustí jen na SKUTEČNOU změnu stage, ne na každý
   // TICK/rerender, takže mezi dvěma stage hlasitost zůstává stabilní na
   // poslední dosažené hodnotě — přesně jeden plynulý přechod na jednu
-  // změnu. Mimo aktivní Titanovo setkání se vůbec nespouští (viz `if`
-  // guard) — loop mezitím stejně nehraje (viz efekt výše), takže by ramp
-  // jen zbytečně běžel na pozadí bez slyšitelného efektu.
+  // změnu. Mimo track "footsteps" (bušení má fixní hlasitost z konfigu, viz
+  // audioConfig.ts) se vůbec nespouští.
   useEffect(() => {
-    if (!titanEncounterActiveNow) return;
+    if (titanAudioTrack !== "footsteps") return;
     const targetVolume = computeTitanFootstepVolume(state.enemyStage, AUDIO_CONFIG[AUDIO_EVENTS.titanFootsteps].volume);
     audioManager.rampLoopVolume(AUDIO_EVENTS.titanFootsteps, targetVolume, TITAN_FOOTSTEP_VOLUME_RAMP_MS);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [titanEncounterActiveNow, state.enemyStage]);
+  }, [titanAudioTrack, state.enemyStage]);
 
   useEffect(() => {
     if (prevBulbBreakSeqRef.current !== state.bulbBreakSeq) {

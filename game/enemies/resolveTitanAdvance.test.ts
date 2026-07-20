@@ -147,3 +147,55 @@ describe("resolveTitanStageStayMs — per-stage dwell time (fast door-breach tra
     expect(result.enemyStage).toBeUndefined();
   });
 });
+
+// Oprava race condition (viz zadání "kritický race condition v závěru Titan
+// encounteru") — dokud u dveří běží generátorové přetížení, Titanův vlastní
+// postupový časovač se musí úplně zastavit, ať se garantovaně nedostane do
+// "attack" dřív, než přetížení stihne doběhnout.
+describe("resolveTitanAdvance — freezes at the door while a generator overload is running", () => {
+  it("does not advance from 'at_door' to 'breach' while an overload is running, even long past TITAN_DOOR_BREACH_STAGE_STAY_MS", () => {
+    const state = titanState({
+      enemyStage: "at_door",
+      elapsedMs: TITAN_DOOR_BREACH_STAGE_STAY_MS * 10,
+      enemyLocationEnteredAtMs: 0,
+      doorGeneratorOverloadUntilMs: TITAN_DOOR_BREACH_STAGE_STAY_MS * 20,
+    });
+    const result = resolveTitanAdvance({ state, night: NIGHT_15 });
+    expect(result.enemyStage).toBeUndefined();
+    expect(result.lastEnemyDecision).toBe("stay");
+  });
+
+  it("does not advance from 'breach' to 'attack' (death) while an overload is running", () => {
+    const state = titanState({
+      enemyStage: "breach",
+      elapsedMs: TITAN_DOOR_BREACH_STAGE_STAY_MS * 10,
+      enemyLocationEnteredAtMs: 0,
+      doorGeneratorOverloadUntilMs: TITAN_DOOR_BREACH_STAGE_STAY_MS * 20,
+    });
+    const result = resolveTitanAdvance({ state, night: NIGHT_15 });
+    expect(result.enemyStage).toBeUndefined();
+    expect(result.screen).toBeUndefined();
+  });
+
+  it("resumes advancing normally once the overload is no longer running (doorGeneratorOverloadUntilMs back to null)", () => {
+    const state = titanState({
+      enemyStage: "at_door",
+      elapsedMs: TITAN_DOOR_BREACH_STAGE_STAY_MS,
+      enemyLocationEnteredAtMs: 0,
+      doorGeneratorOverloadUntilMs: null,
+    });
+    const result = resolveTitanAdvance({ state, night: NIGHT_15 });
+    expect(result.enemyStage).toBe("breach");
+  });
+
+  it("an overload running away from the door (not at_door/breach) does not freeze Titan's march", () => {
+    const state = titanState({
+      enemyStage: "left_hallway",
+      elapsedMs: TITAN_STAGE_STAY_MS,
+      enemyLocationEnteredAtMs: 0,
+      doorGeneratorOverloadUntilMs: TITAN_STAGE_STAY_MS * 5,
+    });
+    const result = resolveTitanAdvance({ state, night: NIGHT_15 });
+    expect(result.enemyStage).toBe("door_hallway");
+  });
+});

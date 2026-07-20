@@ -244,6 +244,29 @@ soubor selže (stejný `.catch()`, který jinak zvuk jen tiše zahodí). Jakmile
 sebe — nic se v kódu, který zvuk spouští, nemusí měnit. Hodnoty (frekvence/délka/
 hlasitost) jsou centralizované v `audioConfig.ts`, ať se dají snadno doladit.
 
+## Titanovy kroky a bušení na dveře (dvě vzájemně se vylučující smyčky)
+
+Během Titanova encounteru hraje vždy nejvýš JEDNA ze dvou smyček, nikdy obě zároveň —
+`computeTitanAudioTrack(stage)` (`game/audio/titanFootsteps.ts`) rozhoduje čistě podle
+`state.enemyStage`: `"footsteps"` (`AUDIO_EVENTS.titanFootsteps`, kroky na štěrku) pro
+`outside/outer_yard/left_hallway/door_hallway`, `"pounding"` (`AUDIO_EVENTS.titanDoorPounding`,
+bušení na dveře) pro `at_door/breach`, `"none"` jinde (mimo aktivní Titanovo setkání —
+`isTitanEncounterActive`). `app/play/page.tsx` má jediný `useEffect` reagující na tenhle track
+(ne na `enemyStage` přímo), který při KAŽDÉ změně nejdřív zastaví opačnou smyčku a pak spustí
+tu správnou — plus samostatná pojistka na odmountování stránky zastaví obě. Hlasitost kroků
+plynule roste (`rampLoopVolume`, viz níže) z 50 % (`outside`) na 85 % (`door_hallway`) —
+u dveří (`at_door`/`breach`) kroky už nehrají vůbec, takže ramp tam nemá smysl a bušení má
+místo toho fixní hlasitost přímo z `audioConfig.ts` (0.9, dominantní ale bez klipování).
+
+## Plynulý přechod hlasitosti smyčky (`AudioManager.rampLoopVolume`)
+
+Na rozdíl od `fadeOutLoop` (vždy směřuje k 0 a na konci zastaví přehrávání) `rampLoopVolume(id,
+targetVolume, durationMs)` plynule mění hlasitost k libovolnému cíli stejnou
+`requestAnimationFrame` technikou, beze změny stavu přehrávání. Generation counter
+(`volumeRampGeneration`) zneplatní předchozí probíhající ramp, pokud se na stejné `id` zavolá
+znovu dřív, než doběhne (reálné riziko u rychlých přechodů mezi Titanovými stage) —
+`stopLoop` ho navíc vždy zneplatní, ať nemůže starý ramp doběhnout na už zastavenou smyčku.
+
 ## Pravidlo: hra nesmí spadnout při chybějících audio souborech
 
 `AudioManager.play()` i `startLoop()` obalují `audio.play()` do `try/catch` a `.catch()` na

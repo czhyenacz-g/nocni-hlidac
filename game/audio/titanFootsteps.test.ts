@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { computeTitanFootstepVolume, computeTitanFootstepVolumeRatio, computeTitanStressFloor } from "./titanFootsteps";
+import { computeTitanAudioTrack, computeTitanFootstepVolume, computeTitanFootstepVolumeRatio, computeTitanStressFloor } from "./titanFootsteps";
 
-describe("computeTitanFootstepVolumeRatio — 50% at start, plynule až 100% u dveří", () => {
+describe("computeTitanFootstepVolumeRatio — 50% at start, plynule až 85% u dveří chodby", () => {
   it("starts at 50% ('outside')", () => {
     expect(computeTitanFootstepVolumeRatio("outside")).toBe(0.5);
   });
@@ -12,9 +12,9 @@ describe("computeTitanFootstepVolumeRatio — 50% at start, plynule až 100% u d
     expect(computeTitanFootstepVolumeRatio("door_hallway")).toBe(0.85);
   });
 
-  it("reaches 100% at at_door and breach", () => {
-    expect(computeTitanFootstepVolumeRatio("at_door")).toBe(1);
-    expect(computeTitanFootstepVolumeRatio("breach")).toBe(1);
+  it("stays at the last-reached ratio at at_door/breach (kroky tam už nehrají, viz computeTitanAudioTrack)", () => {
+    expect(computeTitanFootstepVolumeRatio("at_door")).toBe(0.85);
+    expect(computeTitanFootstepVolumeRatio("breach")).toBe(0.85);
   });
 
   it("is monotonically non-decreasing along the real Titan route", () => {
@@ -37,15 +37,32 @@ describe("computeTitanFootstepVolumeRatio — 50% at start, plynule až 100% u d
 });
 
 describe("computeTitanFootstepVolume — scales the ratio against the configured base volume", () => {
-  it("matches the exact example from the spec (base 0.8 -> 50% = 0.4, 100% = 0.8)", () => {
+  it("matches the exact example from the spec (base 0.8 -> 50% = 0.4)", () => {
     expect(computeTitanFootstepVolume("outside", 0.8)).toBeCloseTo(0.4, 5);
-    expect(computeTitanFootstepVolume("at_door", 0.8)).toBeCloseTo(0.8, 5);
   });
 
   it("never exceeds the configured base volume (never louder than its safe max)", () => {
     for (const stage of ["outside", "outer_yard", "left_hallway", "door_hallway", "at_door", "breach"] as const) {
       expect(computeTitanFootstepVolume(stage, 0.8)).toBeLessThanOrEqual(0.8);
     }
+  });
+});
+
+describe("computeTitanAudioTrack — kroky BĚHEM přibližování, bušení NA dveřích, nikdy obě zároveň", () => {
+  it("returns 'footsteps' while approaching (outside/outer_yard/left_hallway/door_hallway)", () => {
+    for (const stage of ["outside", "outer_yard", "left_hallway", "door_hallway"] as const) {
+      expect(computeTitanAudioTrack(stage)).toBe("footsteps");
+    }
+  });
+
+  it("returns 'pounding' exactly at at_door and breach", () => {
+    expect(computeTitanAudioTrack("at_door")).toBe("pounding");
+    expect(computeTitanAudioTrack("breach")).toBe("pounding");
+  });
+
+  it("returns 'none' once the encounter is over (attack/graveyard)", () => {
+    expect(computeTitanAudioTrack("attack")).toBe("none");
+    expect(computeTitanAudioTrack("graveyard")).toBe("none");
   });
 });
 

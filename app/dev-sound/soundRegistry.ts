@@ -526,8 +526,16 @@ export const SOUND_REGISTRY: Record<AudioEventId, SoundRegistryEntry> = {
     id: AUDIO_EVENTS.titanFootsteps,
     label: "Titanovy kroky — štěrk",
     description:
-      "22s smyčka těžkých kroků na štěrku (dřív 'budoucí gigant' kandidát, teď reálně použitý pro Titana), hraje po celou dobu aktivního Titan encounteru, hlasitost 50–100 % podle jeho vzdálenosti od hráče.",
+      "22s smyčka těžkých kroků na štěrku (dřív 'budoucí gigant' kandidát, teď reálně použitý pro Titana), hraje dokud Titan přichází (outside/outer_yard/left_hallway/door_hallway), hlasitost 50–85 % podle jeho vzdálenosti od hráče.",
     guess: "Těžké, pravidelné dunivé kroky na štěrku.",
-    usedIn: "game/audio/titanFootsteps.ts — app/play/page.tsx efekt na isTitanEncounterActive/state.enemyStage.",
+    usedIn: "game/audio/titanFootsteps.ts#computeTitanAudioTrack — app/play/page.tsx efekt na isTitanEncounterActive/state.enemyStage.",
+  },
+  [AUDIO_EVENTS.titanDoorPounding]: {
+    id: AUDIO_EVENTS.titanDoorPounding,
+    label: "Bušení na dveře",
+    description:
+      "~2.1s smyčka zlostného bušení na dveře (dřív audition kandidát, teď reálně použitý pro Titana) — nahradí kroky přesně při vstupu do at_door/breach, dominantní hlasitost.",
+    guess: "Rychlé, agresivní bušení pěstí na dveře.",
+    usedIn: "game/audio/titanFootsteps.ts#computeTitanAudioTrack — app/play/page.tsx efekt na isTitanEncounterActive/state.enemyStage.",
   },
 };

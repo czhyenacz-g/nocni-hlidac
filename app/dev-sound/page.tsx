@@ -270,12 +270,10 @@ const SIREN_SOUND_CANDIDATES = [
 ];
 
 const NEW_MONSTER_SOUND_CANDIDATES = [
-  {
-    file: "door_pound/door_knocking_angry.mp3",
-    label: "Bušení na dveře",
-    source: "freesound.org/people/Macif/sounds/194365/",
-    license: "CC0",
-  },
+  // "Bušení na dveře" (194365) byl dřív tady jako audition kandidát — teď
+  // reálně použitý pro Titana (viz AUDIO_EVENTS.titanDoorPounding,
+  // game/audio/titanFootsteps.ts#computeTitanAudioTrack), takže se z
+  // audition seznamu odstranil (stejná konvence jako "Kroky — štěrk" výše).
   // Původní 60s nahrávka rozřezaná (ffmpeg silencedetect) na 12 samostatných
   // řevů/zavrčení, ať jde každý poslechnout/vybrat zvlášť, ne jen jako jeden
   // dlouhý soubor s víc variantami za sebou. Zdroj/licence stejné jako celek.

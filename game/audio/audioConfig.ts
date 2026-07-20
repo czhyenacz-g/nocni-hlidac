@@ -704,4 +704,18 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
     volume: 0.8,
     loop: true,
   },
+  // Bušení na dveře (viz zadání) — REÁLNÝ existující soubor (~2.1 s, CC0,
+  // freesound.org/people/Macif/sounds/194365/), dřív jen "Bušení na dveře"
+  // audition kandidát v app/dev-sound/page.tsx (NEW_MONSTER_SOUND_CANDIDATES,
+  // teď odsud odstraněný — je to skutečně použitý produkční zvuk, stejná
+  // konvence jako titanFootsteps výše). `loop: true` — krátký klip se musí
+  // bezešvě opakovat, dokud Titan zůstává u dveří (viz
+  // TITAN_DOOR_BREACH_STAGE_STAY_MS). `volume: 0.9` — má být DOMINANTNÍ
+  // (viz zadání "bušení má být dominantní"), ale ne tak hlasité, aby
+  // clippovalo/přehlušilo srozumitelnost běžící rádiové hlášky.
+  [AUDIO_EVENTS.titanDoorPounding]: {
+    src: "/dev-sound-candidates/door_pound/door_knocking_angry.mp3",
+    volume: 0.9,
+    loop: true,
+  },
 };

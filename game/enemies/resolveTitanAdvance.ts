@@ -1,5 +1,6 @@
 import { EnemyStage, GameState, NightDefinition } from "../core/types";
 import { resolveLivesRemainingAfterDeath } from "../core/gameMode";
+import { isMonsterAtDoor } from "../core/doorEncounter";
 import { TITAN_DOOR_BREACH_STAGE_STAY_MS, TITAN_STAGE_STAY_MS } from "../balancing/constants";
 
 // Dveřní stage (at_door/breach) mají mnohem kratší dobu setrvání než hlavní
@@ -53,6 +54,33 @@ export function resolveTitanAdvance(input: ResolveTitanAdvanceInput): TitanAdvan
   // rozhodovat, žádný další postup.
   if (state.enemyStage === "attack" || state.enemyStage === "graveyard") {
     return {};
+  }
+
+  // Oprava race condition (viz zadání "kritický race condition v závěru
+  // Titan encounteru") — dokud u dveří BĚŽÍ generátorové přetížení
+  // (`doorGeneratorOverloadUntilMs !== null`) A Titan je zrovna
+  // `isMonsterAtDoor` (`"at_door"`/`"breach"`), Titanův vlastní časovač
+  // postupu se ÚPLNĚ ZASTAVÍ — žádné odpočítávání dwellu, žádný postup do
+  // "breach"/"attack" — dokud přetížení nedoběhne. Bez tohohle guardu měl
+  // Titan u dveří jen ~1-2s (TITAN_DOOR_BREACH_STAGE_STAY_MS × 2) dřív, než
+  // ho ENEMY_ADVANCE (na svém NEZÁVISLÉM `enemyTickMs` intervalu, dnes 2s)
+  // posunul do "attack"/smrti — VÝRAZNĚ kratší než desetisekundové
+  // přetížení (GENERATOR_OVERLOAD_DOOR_DURATION_MS), takže i platně
+  // spuštěné přetížení mohlo prohrát závod s vlastním Titanovým
+  // postupovým časovačem (hráč viděl "tavicí" countdown animaci, ale Titan
+  // pod ní mezitím tiše doputoval do "attack" a smrt byla rozhodnutá dřív,
+  // než přetížení vůbec doběhlo). S touhle pojistkou platí PŘESNĚ jedna
+  // autoritativní odpověď: Titan zůstane u dveří (`isMonsterAtDoor` pořád
+  // `true`), dokud gameReducer.ts#updateDoorGeneratorOverload přetížení
+  // nevyhodnotí — a PROTO ho tou dobou garantovaně najde pořád na místě
+  // (`titanAtDoor: true` → `enemyStage: "graveyard"`). Nerozšiřuje to okno,
+  // KDY smí hráč přetížení spustit (to řeší jinam beze změny) — jen
+  // zaručuje, že jednou platně spuštěné přetížení už nemůže prohrát
+  // nesouvisející závod s Titanovým vlastním časovačem. Žádné nové
+  // GameState pole — čistě z existujících `doorGeneratorOverloadUntilMs`/
+  // `enemyStage`.
+  if (state.doorGeneratorOverloadUntilMs !== null && isMonsterAtDoor(state)) {
+    return { lastEnemyDecision: "stay" };
   }
 
   const route = state.enemyRoute;

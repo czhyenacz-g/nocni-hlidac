@@ -2668,3 +2668,25 @@ jen s nulovou šancí = čisté čekání.
   segmentech pro ověření shody. Čtvrtý segment ve zdrojové nahrávce zůstal
   nesrozumitelný i po opakovaných pokusech (různé ořezy/denoising/prompty) a byl na
   žádost vynechán — pool má tři varianty, ne čtyři.
+
+## Titanovo zamrznutí u dveří během generátorového přetížení (oprava race condition)
+
+Titanův postup mezi route stage řídí `ENEMY_ADVANCE` na vlastním, NEZÁVISLÉM intervalu
+(`night.enemyTickMs`), zatímco desetisekundové generátorové přetížení
+(`GENERATOR_OVERLOAD_DOOR_DURATION_MS`) se vyhodnocuje přes `TICK` na jiném, kratším
+intervalu. Protože `at_door`+`breach` dohromady trvají jen ~2s
+(`TITAN_DOOR_BREACH_STAGE_STAY_MS × 2`), i platně spuštěné přetížení mohlo dřív "prohrát
+závod" — Titanův vlastní časovač ho stihl posunout do `"attack"`/smrti dřív, než přetížení
+doběhlo, zatímco hráč mezitím viděl jen obecnou countdown/tavicí animaci overloadu (ta má
+v `DoorView.tsx` vizuální prioritu nad breach snímky).
+
+Oprava: `resolveTitanAdvance.ts` má hned na začátku (před dwell-time kontrolou) guard —
+dokud `state.doorGeneratorOverloadUntilMs !== null` A Titan je právě `isMonsterAtDoor`
+(`"at_door"`/`"breach"`), funkce vrátí jen `{ lastEnemyDecision: "stay" }` a Titanův postup
+se ÚPLNĚ zastaví. Titan tak zůstane `isMonsterAtDoor === true` po celou dobu přetížení,
+takže `updateDoorGeneratorOverload` (`gameReducer.ts`) při vypršení garantovaně najde
+podmínku pro `enemyStage: "graveyard"` splněnou — přesně JEDEN autoritativní výsledek, nikdy
+souběžně kill-sekvence a Game Over. Guard používá výhradně existující pole
+(`doorGeneratorOverloadUntilMs`, `isMonsterAtDoor`) — žádné nové `GameState` pole, žádný
+paralelní generation/token systém. Neovlivňuje Titanovu trasu/rychlost mimo dveře, délku
+`at_door`/`breach` dwellu, ani samotné trvání/sílu přetížení.

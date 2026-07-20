@@ -1,31 +1,52 @@
 import { EnemyStage } from "../core/types";
 
-// Čisté rozhodovací funkce pro Titanovy kroky/stres (viz zadání "Titan nemá
-// během přibližování správné kroky a stres") — žádné React/audioManager
-// volání tady (stejný "testuj čistou logiku, ne hook" vzor jako
-// game/audio/heartbeatStress.ts). Volající (app/play/page.tsx pro kroky,
-// game/audio/useHeartbeatStress.ts pro stres) je zavolá s aktuálním
-// `state.enemyStage` a použijí výsledek přes audioManager.
+// Čisté rozhodovací funkce pro Titanovy kroky/bušení/stres (viz zadání
+// "Titan nemá během přibližování správné kroky a stres", "Audio přechod při
+// at_door") — žádné React/audioManager volání tady (stejný "testuj čistou
+// logiku, ne hook" vzor jako game/audio/heartbeatStress.ts). Volající
+// (app/play/page.tsx pro kroky/bušení, game/audio/useHeartbeatStress.ts pro
+// stres) je zavolá s aktuálním `state.enemyStage` a použijí výsledek přes
+// audioManager.
+
+/**
+ * Která zvuková stopa má hrát pro Titana v danou stage (viz zadání "Audio
+ * přechod při at_door" — kroky BĚHEM přibližování, bušení NA dveřích,
+ * ŽÁDNÁ (ne obě zároveň, nikdy) jinde). `"none"` mimo `outside..door_hallway`
+ * a `at_door`/`breach` — pro `attack`/`graveyard` volající navíc vždy
+ * kontroluje `isTitanEncounterActive` (game/core/titanEncounter.ts), takže
+ * se sem prakticky nikdy nedostane, ale i tak vrací bezpečné "none", ne pád.
+ */
+export type TitanAudioTrack = "footsteps" | "pounding" | "none";
+
+const FOOTSTEP_TRACK_STAGES: readonly EnemyStage[] = ["outside", "outer_yard", "left_hallway", "door_hallway"];
+const POUNDING_TRACK_STAGES: readonly EnemyStage[] = ["at_door", "breach"];
+
+export function computeTitanAudioTrack(stage: EnemyStage): TitanAudioTrack {
+  if (FOOTSTEP_TRACK_STAGES.includes(stage)) return "footsteps";
+  if (POUNDING_TRACK_STAGES.includes(stage)) return "pounding";
+  return "none";
+}
 
 /**
  * Poměr (0..1) vůči cílové/konfigurační hlasitosti `AUDIO_EVENTS.titanFootsteps`
- * (viz zadání "50 % na začátku, plynule až 100 % u dveří"). Klíčováno podle
- * SKUTEČNÉ Titanovy stage, ne podle vzdálenosti v metrech — jednoduchá
- * mapa, žádný nový obecný "proximity" systém (ten dnes nikde jinde
- * neexistuje jako sdílená funkce, viz atmosphereState.ts vlastní nezávislá
- * tabulka pro tension, záměrně beze změny/bez sdílení tady).
+ * (viz zadání "50 % na začátku, plynule až 85 % u dveří chodby" — kroky se
+ * teď zastaví PŘESNĚ na hranici `at_door`, viz `computeTitanAudioTrack`
+ * výše, takže dřívější "100 % u at_door/breach" už nedává smysl a bylo
+ * odstraněno). Klíčováno podle SKUTEČNÉ Titanovy stage, ne podle
+ * vzdálenosti v metrech — jednoduchá mapa, žádný nový obecný "proximity"
+ * systém (ten dnes nikde jinde neexistuje jako sdílená funkce, viz
+ * atmosphereState.ts vlastní nezávislá tabulka pro tension, záměrně beze
+ * změny/bez sdílení tady).
  */
 const FOOTSTEP_VOLUME_RATIO_BY_STAGE: Partial<Record<EnemyStage, number>> = {
   outside: 0.5,
   outer_yard: 0.6,
   left_hallway: 0.7,
   door_hallway: 0.85,
-  at_door: 1,
-  breach: 1,
 };
 
-/** Fallback pro stage mimo mapu výše (attack/graveyard — encounter už stejně končí/skončil) — nejvyšší hlasitost, ne tichý skok. */
-const DEFAULT_FOOTSTEP_VOLUME_RATIO = 1;
+/** Fallback pro stage mimo mapu výše (volající beztak kroky pro tyhle stage nespustí, viz computeTitanAudioTrack) — nejvyšší dosažená hlasitost, ne tichý skok. */
+const DEFAULT_FOOTSTEP_VOLUME_RATIO = 0.85;
 
 export function computeTitanFootstepVolumeRatio(stage: EnemyStage): number {
   return FOOTSTEP_VOLUME_RATIO_BY_STAGE[stage] ?? DEFAULT_FOOTSTEP_VOLUME_RATIO;

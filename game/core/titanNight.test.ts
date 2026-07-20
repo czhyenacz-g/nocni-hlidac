@@ -153,6 +153,107 @@ describe("Generator overload remains the sole way to kill Titan", () => {
   });
 });
 
+// Regresní testy pro opravu race condition (viz zadání "kritický race
+// condition v závěru Titan encounteru" a resolveTitanAdvance.ts guard výše)
+// — dřív mohl Titanův vlastní 20s/1s postupový časovač (ENEMY_ADVANCE)
+// posunout Titana do "attack"/smrti DŘÍV, než platně spuštěné desetisekundové
+// přetížení (GENERATOR_OVERLOAD_DOOR_DURATION_MS) doběhlo, protože
+// at_door+breach dohromady trvaly jen ~2s. Fake timers nejsou potřeba — celá
+// hra je řízená čistě dispatchovanými akcemi s explicitním elapsedMs/deltaMs,
+// takže "posunutí času za původní breach timeout" simulujeme přímo
+// opakovaným ENEMY_ADVANCE dispatchem s elapsedMs daleko za
+// TITAN_DOOR_BREACH_STAGE_STAY_MS, přesně jak by to udělal skutečný interval.
+describe("Race condition fix — overload success must win over Titan's own advance timer", () => {
+  it("scenario: overload started BEFORE Titan reaches the door — Titan still marches normally until at_door, then freezes and dies to the overload, never to ENEMY_ADVANCE", () => {
+    const reducer = createGameReducer(NIGHT_15);
+    let state = titanRunningState({ elapsedMs: 0, enemyStage: "left_hallway", enemyLocationEnteredAtMs: 0, playerView: "generator" });
+    state = reducer(state, { type: "START_GENERATOR_OVERLOAD" });
+    expect(state.doorGeneratorOverloadUntilMs).not.toBeNull();
+
+    // Titan continues marching through its own stages normally while the overload counts down.
+    state = { ...state, elapsedMs: TITAN_STAGE_STAY_MS };
+    state = reducer(state, { type: "ENEMY_ADVANCE", currentNight: 15 });
+    expect(state.enemyStage).toBe("door_hallway");
+
+    state = { ...state, elapsedMs: state.elapsedMs + TITAN_STAGE_STAY_MS, enemyLocationEnteredAtMs: state.elapsedMs };
+    state = reducer(state, { type: "ENEMY_ADVANCE", currentNight: 15 });
+    expect(state.enemyStage).toBe("at_door");
+
+    // Now frozen at the door — even far past the door-breach stay time, repeated ENEMY_ADVANCE never reaches "attack".
+    state = { ...state, elapsedMs: state.elapsedMs + TITAN_DOOR_BREACH_STAGE_STAY_MS * 10 };
+    for (let i = 0; i < 5; i++) {
+      state = reducer(state, { type: "ENEMY_ADVANCE", currentNight: 15 });
+    }
+    expect(state.enemyStage).toBe("at_door");
+    expect(state.screen).not.toBe("death");
+
+    // The overload resolves normally — Titan dies via the door, not via ENEMY_ADVANCE.
+    state = reducer(state, { type: "TICK", deltaMs: GENERATOR_OVERLOAD_DOOR_DURATION_MS });
+    expect(state.enemyStage).toBe("graveyard");
+    expect(state.doorDestroyed).toBe(true);
+    expect(state.screen).not.toBe("death");
+  });
+
+  it("scenario: overload started while Titan is already at the door — freezes immediately, a stale ENEMY_ADVANCE dispatched well past the original breach timeout does nothing, then overload completion kills Titan", () => {
+    const reducer = createGameReducer(NIGHT_15);
+    let state = titanRunningState({ elapsedMs: 0, enemyStage: "at_door", enemyLocationEnteredAtMs: 0, playerView: "generator" });
+    state = reducer(state, { type: "START_GENERATOR_OVERLOAD" });
+
+    // Move time well past where the OLD (buggy) 1s-per-stage breach timer would have already killed the player.
+    state = { ...state, elapsedMs: TITAN_DOOR_BREACH_STAGE_STAY_MS * 5 };
+    state = reducer(state, { type: "ENEMY_ADVANCE", currentNight: 15 });
+    expect(state.enemyStage).toBe("at_door");
+    expect(state.lastEnemyDecision).toBe("stay");
+    expect(state.screen).not.toBe("death");
+
+    state = reducer(state, { type: "TICK", deltaMs: GENERATOR_OVERLOAD_DOOR_DURATION_MS });
+    expect(state.enemyStage).toBe("graveyard");
+    expect(state.screen).not.toBe("death");
+
+    // A further stale ENEMY_ADVANCE after death/graveyard is a true no-op (same reference).
+    const again = reducer(state, { type: "ENEMY_ADVANCE", currentNight: 15 });
+    expect(again).toBe(state);
+  });
+
+  it("scenario: overload attempted too late, after Titan's death is already confirmed — must NOT revive/save the player", () => {
+    const reducer = createGameReducer(NIGHT_15);
+    let state = titanRunningState({ elapsedMs: 0, enemyStage: "breach", enemyLocationEnteredAtMs: 0, playerView: "generator" });
+    state = { ...state, elapsedMs: TITAN_DOOR_BREACH_STAGE_STAY_MS };
+    state = reducer(state, { type: "ENEMY_ADVANCE", currentNight: 15 });
+    expect(state.enemyStage).toBe("attack");
+    expect(state.screen).toBe("death");
+    expect(state.isRunning).toBe(false);
+
+    // START_GENERATOR_OVERLOAD is a no-op once the player is dead (isRunning guard) — cannot save the player retroactively.
+    const afterOverloadAttempt = reducer(state, { type: "START_GENERATOR_OVERLOAD" });
+    expect(afterOverloadAttempt).toBe(state);
+    expect(afterOverloadAttempt.doorGeneratorOverloadUntilMs).toBeNull();
+    expect(afterOverloadAttempt.enemyStage).toBe("attack");
+    expect(afterOverloadAttempt.screen).toBe("death");
+  });
+
+  it("never simultaneously reports a kill-sequence outcome and a death outcome — enemyStage is exactly one of graveyard/attack, never both signaled", () => {
+    const reducer = createGameReducer(NIGHT_15);
+    let state = titanRunningState({ elapsedMs: 0, enemyStage: "at_door", enemyLocationEnteredAtMs: 0, playerView: "generator" });
+    state = reducer(state, { type: "START_GENERATOR_OVERLOAD" });
+    state = reducer(state, { type: "TICK", deltaMs: GENERATOR_OVERLOAD_DOOR_DURATION_MS });
+    expect(state.enemyStage).toBe("graveyard");
+    expect(state.screen).not.toBe("death");
+    expect(state.isRunning).toBe(true);
+  });
+
+  it("night restart leaves no pending overload/freeze carried over from a previous Titan encounter", () => {
+    const reducer = createGameReducer(NIGHT_15);
+    let state = titanRunningState({ elapsedMs: 0, enemyStage: "at_door", enemyLocationEnteredAtMs: 0, playerView: "generator" });
+    state = reducer(state, { type: "START_GENERATOR_OVERLOAD" });
+    expect(state.doorGeneratorOverloadUntilMs).not.toBeNull();
+
+    const fresh = createInitialGameState(NIGHT_15);
+    expect(fresh.doorGeneratorOverloadUntilMs).toBeNull();
+    expect(fresh.enemyStage).toBe("outside");
+  });
+});
+
 describe("DEBUG_START_TITAN / DEBUG_ADVANCE_TITAN_STAGE", () => {
   it("DEBUG_START_TITAN sets Titan to the first route stage with a fresh route, when the active night is Titan's", () => {
     const reducer = createGameReducer(NIGHT_15);
