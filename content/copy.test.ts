@@ -182,6 +182,20 @@ describe("COPY.death mode-specific copy", () => {
   });
 });
 
+// Titan má VLASTNÍ death reason (viz zadání "oprav dvojitý Game Over" —
+// dřív sdílel Impovo door_open_at_attack, takže po Titanově smrti naskočil
+// zavádějící "Tvou poslední chybou byly otevřené dveře." text).
+describe("COPY.death.reasons.titan_door_breach", () => {
+  it("does not blame the player for leaving doors open — that's Imp's/Ghoul's cause of death, not Titan's", () => {
+    expect(COPY.death.reasons.titan_door_breach.toLowerCase()).not.toContain("otevřené");
+    expect(COPY.death.reasons.titan_door_breach).not.toBe(COPY.death.reasons.door_open_at_attack);
+  });
+
+  it("mentions Titan specifically", () => {
+    expect(COPY.death.reasons.titan_door_breach).toContain("Titan");
+  });
+});
+
 // Sdílený "Spustit intro" text (viz zadání, content/cinematics.ts#intro,
 // BriefingScreen.tsx, TermsScreen.tsx) — jedna definice, obě obrazovky ji
 // čtou ze stejného místa.

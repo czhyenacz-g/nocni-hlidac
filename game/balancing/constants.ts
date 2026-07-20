@@ -78,11 +78,27 @@ export const DOOR_DEATH_REVEAL_DURATION_MS = 500;
 export const GAME_OVER_REVEAL_DURATION_MS = 4000;
 
 // Titan (viz zadání "Titan pro 15. noc") setrvá v každé běžné route stage
-// (mimo "attack"/"graveyard") přesně tuhle dobu, než postoupí o jednu dál
-// (viz game/enemies/resolveTitanAdvance.ts) — deterministicky odvozeno z
-// existujícího GameState.enemyLocationEnteredAtMs (žádný nový časovací
-// mechanismus, viz zadání "6. TITAN TIMER").
+// PŘED dveřmi (outside/outer_yard/left_hallway/door_hallway) přesně tuhle
+// dobu, než postoupí o jednu dál (viz game/enemies/resolveTitanAdvance.ts)
+// — deterministicky odvozeno z existujícího GameState.enemyLocationEnteredAtMs
+// (žádný nový časovací mechanismus, viz zadání "6. TITAN TIMER").
 export const TITAN_STAGE_STAY_MS = 20_000;
+
+// Dveřní "breach" stage (at_door/breach, viz zadání "oprav příliš dlouhou
+// animaci prorážení dveří") mají VLASTNÍ, mnohem kratší dobu setrvání —
+// jde jen o dvě rychlé přechodové fáze těsně před finálním útokem, ne o
+// další plnohodnotnou "čekací" lokaci jako hlavní trasa. Finální
+// attack/death obrázek (TITAN_ATTACK_SRC) tímhle polem neprochází vůbec —
+// ten se zobrazuje přes doorDeathReveal/GAME_OVER_REVEAL_DURATION_MS, beze
+// změny.
+export const TITAN_DOOR_BREACH_STAGE_STAY_MS = 1000;
+
+// Jak dlouho trvá jeden plynulý přechod hlasitosti Titanových kroků mezi
+// dvěma stage (viz zadání "Titanovy kroky a stres", game/audio/titanFootsteps.ts,
+// app/play/page.tsx#rampLoopVolume) — dost krátké, aby i rychlá
+// at_door->breach změna (TITAN_DOOR_BREACH_STAGE_STAY_MS = 1000ms) stihla
+// ramp dokončit, ale ne tak krátké, aby znělo jako skok/lupnutí.
+export const TITAN_FOOTSTEP_VOLUME_RAMP_MS = 700;
 
 // Noc(i), kdy je aktivní monstrum Titan, už NENÍ jedna pevná konstanta (viz
 // zadání "tři náhodná setkání s Titanem během 30 nocí") — nahrazeno

@@ -688,4 +688,20 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
     volume: 0.85,
     loop: false,
   },
+  // Titanovy kroky na štěrku (viz zadání) — REÁLNÝ, už existující soubor
+  // (22 s, CC0, freesound.org/people/AudioPapkin/sounds/712066/), dřív jen
+  // "budoucí gigant" audition kandidát v app/dev-sound/page.tsx
+  // (NEW_MONSTER_SOUND_CANDIDATES, teď odsud odstraněný — je to skutečně
+  // použitý produkční zvuk, ne kandidát). Cesta je STÁLE
+  // `/dev-sound-candidates/...` — stejný existující precedent jako
+  // `disabledCameraFootsteps` výše, žádná duplicitní kopie souboru nikam
+  // jinam. `volume: 0.8` je CÍLOVÁ (100 %) hlasitost — runtime ji
+  // game/audio/titanFootsteps.ts škáluje na 50–100 % podle Titanovy
+  // vzdálenosti (viz app/play/page.tsx efekt), `loop: true` pro
+  // nepřerušovanou smyčku po celou dobu aktivního encounteru.
+  [AUDIO_EVENTS.titanFootsteps]: {
+    src: "/dev-sound-candidates/footsteps/monster_footsteps_gravel.mp3",
+    volume: 0.8,
+    loop: true,
+  },
 };

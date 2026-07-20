@@ -29,6 +29,15 @@ class AudioManager {
    * potichu, i když `muted` je zase `false`.
    */
   private activeLoops = new Set<AudioEventId>();
+  /**
+   * Generace probíhajícího `rampLoopVolume` na daný `id` — zvyšuje se PŘI
+   * KAŽDÉM volání `rampLoopVolume`, ať starší (ještě neskončený)
+   * `requestAnimationFrame` řetězec pozná, že ho nahradil novější požadavek,
+   * a sám se zastaví (viz zadání "Titanovy kroky" — rychlá změna stage
+   * uprostřed předchozího rampu nesmí nechat dvě konkurenční RAF smyčky
+   * cukat hlasitostí proti sobě).
+   */
+  private volumeRampGeneration = new Map<AudioEventId, number>();
 
   init(): void {
     if (this.initialized || typeof window === "undefined") return;
@@ -134,6 +143,40 @@ class AudioManager {
   }
 
   /**
+   * Plynule změní hlasitost běžícího loopu k `targetVolume` přes `durationMs`
+   * (stejná `requestAnimationFrame` + přímý zápis `audio.volume` technika
+   * jako `fadeOutLoop`, jen bez pauznutí na konci — loop dál hraje na nové
+   * hlasitosti). Na rozdíl od `setVolume` (okamžitý skok, používaný pro
+   * kontinuálně dopočítávanou hodnotu KAŽDÝ tik, viz heartbeat) je tohle
+   * pro SKOKOVOU změnu cíle (např. Titan postoupil o stage) — jeden plynulý
+   * přechod mezi dvěma diskrétními hlasitostmi, ne stovky drobných
+   * `setVolume` volání za sebou. `volumeRampGeneration` zaručí, že když
+   * přijde DALŠÍ `rampLoopVolume` na STEJNÝ `id` dřív, než předchozí
+   * doběhne, starší RAF řetězec se sám tiše ukončí (ne dvě smyčky cukající
+   * hlasitostí proti sobě).
+   */
+  rampLoopVolume(id: AudioEventId, targetVolume: number, durationMs: number): void {
+    const audio = this.elements.get(id);
+    if (!audio) return;
+
+    const generation = (this.volumeRampGeneration.get(id) ?? 0) + 1;
+    this.volumeRampGeneration.set(id, generation);
+
+    const startVolume = audio.volume;
+    const clampedTarget = Math.max(0, Math.min(1, targetVolume));
+    const startedAt = performance.now();
+
+    const step = () => {
+      if (this.volumeRampGeneration.get(id) !== generation) return;
+      const elapsed = performance.now() - startedAt;
+      const t = durationMs > 0 ? Math.min(1, elapsed / durationMs) : 1;
+      audio.volume = startVolume + (clampedTarget - startVolume) * t;
+      if (t < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  /**
    * Mění výšku tónu PŘES rychlost přehrávání (`HTMLAudioElement.playbackRate`)
    * — bez skutečného Web Audio API pitch-shifteru (detune na
    * AudioBufferSourceNode) je tohle nejjednodušší cesta, jak jde vůbec
@@ -163,6 +206,10 @@ class AudioManager {
 
   stopLoop(id: AudioEventId): void {
     this.activeLoops.delete(id);
+    // Zneplatní jakýkoliv probíhající rampLoopVolume na tenhle id — jinak by
+    // jeho RAF řetězec donekonečna běžel a psal do `audio.volume` i po
+    // zastavení (neslyšitelné, ale zbytečné).
+    this.volumeRampGeneration.delete(id);
     const audio = this.elements.get(id);
     if (audio) {
       audio.pause();

@@ -19,3 +19,21 @@ import { GameState, NightDefinition } from "./types";
 export function isTitanEncounterActive(state: GameState, night: NightDefinition): boolean {
   return night.enemy.id === "titan" && state.screen === "playing" && state.enemyStage !== "graveyard";
 }
+
+/**
+ * `true` PŘESNĚ od okamžiku, kdy Titan vstoupí do nevratné "breach" fáze
+ * (viz zadání "Automatické přepnutí na dveře při finálním útoku Titana" —
+ * "at_door" ještě NENÍ tenhle stav, tam má hráč poslední reálnou šanci na
+ * včas rozběhnutý generátorový overload). Používá se pro dvě věci na
+ * STEJNÉM signálu (viz zadání "použij skutečný stav, ne časový odhad"):
+ * 1. jednorázové automatické `LOOK_AT_DOOR` v resolveTitanAdvance.ts PŘI
+ *    přechodu DO "breach" (proběhne přesně jednou — reducer akci dispatchne
+ *    jen na SKUTEČNOU změnu stage, ne opakovaně),
+ * 2. zamčení LOOK_AT_DESK/LOOK_AT_GENERATOR/LOOK_AT_LEFT_WALL/LOOK_AT_MAP
+ *    v gameReducer.ts po dobu, co tohle vrací `true` — hráč se už nemůže
+ *    "utéct" pohledem pryč ze dveří, dokud běží posledních ~1s do útoku.
+ *    LOOK_AT_DOOR samo NENÍ zamčené (odchod NA dveře je vždy v pořádku).
+ */
+export function isTitanBreachIrreversible(state: GameState, night: NightDefinition): boolean {
+  return night.enemy.id === "titan" && state.enemyStage === "breach";
+}

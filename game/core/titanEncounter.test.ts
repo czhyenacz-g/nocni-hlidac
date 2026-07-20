@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isTitanEncounterActive } from "./titanEncounter";
+import { isTitanBreachIrreversible, isTitanEncounterActive } from "./titanEncounter";
 import { createInitialGameState } from "./gameState";
 import { NIGHT_01 } from "../nights/night01";
 import { NIGHT_15 } from "../nights/night15";
@@ -29,5 +29,32 @@ describe("isTitanEncounterActive", () => {
     expect(isTitanEncounterActive(titanState({ screen: "death" }), NIGHT_15)).toBe(false);
     expect(isTitanEncounterActive(titanState({ screen: "win" }), NIGHT_15)).toBe(false);
     expect(isTitanEncounterActive(titanState({ screen: "menu" }), NIGHT_15)).toBe(false);
+  });
+});
+
+// Viz zadání "Automatické přepnutí na dveře při finálním útoku Titana".
+describe("isTitanBreachIrreversible", () => {
+  it("false while Titan is still approaching (outside/outer_yard/left_hallway/door_hallway)", () => {
+    for (const stage of ["outside", "outer_yard", "left_hallway", "door_hallway"] as const) {
+      expect(isTitanBreachIrreversible(titanState({ enemyStage: stage }), NIGHT_15)).toBe(false);
+    }
+  });
+
+  it("false at 'at_door' — the player still has a real chance to react (overload)", () => {
+    expect(isTitanBreachIrreversible(titanState({ enemyStage: "at_door" }), NIGHT_15)).toBe(false);
+  });
+
+  it("true exactly at 'breach'", () => {
+    expect(isTitanBreachIrreversible(titanState({ enemyStage: "breach" }), NIGHT_15)).toBe(true);
+  });
+
+  it("false at 'attack'/'graveyard' — breach specifically, not every later stage", () => {
+    expect(isTitanBreachIrreversible(titanState({ enemyStage: "attack" }), NIGHT_15)).toBe(false);
+    expect(isTitanBreachIrreversible(titanState({ enemyStage: "graveyard" }), NIGHT_15)).toBe(false);
+  });
+
+  it("false on a non-Titan night, even in a stage named 'breach'", () => {
+    const state = { ...createInitialGameState(NIGHT_01), enemyStage: "breach" as const };
+    expect(isTitanBreachIrreversible(state, NIGHT_01)).toBe(false);
   });
 });

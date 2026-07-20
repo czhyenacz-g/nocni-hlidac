@@ -415,6 +415,10 @@ export const COPY = {
       // jen jednu větu na řádek (žádný whitespace-pre-line), proto jedna
       // souvětí varianta místo dvouřádkové z zadání.
       titan_ambush_emergency_run: "Při pokusu o útěk se dveře zasekly a Titan tě zabil.",
+      // Titan prorazil bezpečnostní dveře (viz zadání "oprav dvojitý Game
+      // Over" — VLASTNÍ text, nesmí zmiňovat "otevřené dveře", to je Impova/
+      // Ghoulova příčina smrti, ne Titanova).
+      titan_door_breach: "Titan prorazil bezpečnostní dveře. Nic ho nezastavilo.",
     },
     // Firemně-cynická hláška Objektu 13 po smrti — jedna náhodně vybraná při
     // vstupu na DeathScreen (viz DeathScreen.tsx), stabilní po dobu zobrazení.

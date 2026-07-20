@@ -14,7 +14,7 @@ import {
   THINK_IT_OVER_WINDUP_DURATION_MS,
   TITAN_OVERLOAD_DEATH_REVEAL_DURATION_MS,
 } from "../balancing/constants";
-import { isTitanEncounterActive } from "./titanEncounter";
+import { isTitanBreachIrreversible, isTitanEncounterActive } from "./titanEncounter";
 import { getBlackoutPhaseIndex } from "../visuals/blackoutPhase";
 import { DEFAULT_DIFFICULTY, DIFFICULTY_RULES, Difficulty } from "../difficulty/difficultyConfig";
 import { computeNightScaling, NightScaling } from "../difficulty/nightScaling";
@@ -1091,7 +1091,13 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         };
 
       case "LOOK_AT_DESK":
-        if (!state.isRunning || state.doorDeathRevealUntilMs !== null) return state;
+        // Viz zadání "Automatické přepnutí na dveře při finálním útoku
+        // Titana" — jakmile Titan vstoupí do nevratné "breach" fáze
+        // (game/core/titanEncounter.ts#isTitanBreachIrreversible), odchod
+        // pryč ze dveří je zamčený, ať hráč nemůže "utéct" pohledem z
+        // rozehrané breach/death sekvence. LOOK_AT_DOOR sám tenhle guard
+        // nemá (odchod NA dveře zůstává vždy možný).
+        if (!state.isRunning || state.doorDeathRevealUntilMs !== null || isTitanBreachIrreversible(state, night)) return state;
         // Odchod z DoorView zruší rozběhnutou výměnu žárovky (beze změny
         // životnosti/broken) — riziko je "zůstaň u otevřených dveří", ne jen
         // "klikni a schovej se", viz START_BULB_REPLACEMENT.
@@ -1112,7 +1118,8 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         };
 
       case "LOOK_AT_GENERATOR":
-        if (!state.isRunning || state.doorDeathRevealUntilMs !== null) return state;
+        // Stejný breach-lock jako LOOK_AT_DESK výše.
+        if (!state.isRunning || state.doorDeathRevealUntilMs !== null || isTitanBreachIrreversible(state, night)) return state;
         return {
           ...state,
           playerView: "generator",
@@ -1128,8 +1135,9 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
       case "LOOK_AT_LEFT_WALL":
         // Čistě atmosférický pohled bez vlastní herní logiky — stejně jako
         // LOOK_AT_GENERATOR zavře kamery a odchod od stolu, ale nic dalšího
-        // (žádný drain, žádný nový mechanický stav).
-        if (!state.isRunning || state.doorDeathRevealUntilMs !== null) return state;
+        // (žádný drain, žádný nový mechanický stav). Stejný breach-lock jako
+        // LOOK_AT_DESK výše.
+        if (!state.isRunning || state.doorDeathRevealUntilMs !== null || isTitanBreachIrreversible(state, night)) return state;
         return {
           ...state,
           playerView: "left_wall",
@@ -1146,8 +1154,9 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
       case "LOOK_AT_MAP":
         // Čistě informativní pohled bez vlastní herní logiky — stejný vzor
         // jako LOOK_AT_LEFT_WALL (zavře kamery, zruší rozběhnutou výměnu
-        // žárovky), žádný drain, žádná změna trasy nepřítele.
-        if (!state.isRunning || state.doorDeathRevealUntilMs !== null) return state;
+        // žárovky), žádný drain, žádná změna trasy nepřítele. Stejný
+        // breach-lock jako LOOK_AT_DESK výše.
+        if (!state.isRunning || state.doorDeathRevealUntilMs !== null || isTitanBreachIrreversible(state, night)) return state;
         return {
           ...state,
           playerView: "object_map",

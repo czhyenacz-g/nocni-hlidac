@@ -71,10 +71,18 @@ export default function DeathScreen({
   // přímo pro tenhle death screen, ne pro nějaký mezikrok v DoorView.
   // bulb_replacement_attack prochází stejnou sekvencí (hráč je v DoorView,
   // dveře otevřené) — jen jiný text, stejné pozadí.
+  //
+  // titan_door_breach (viz zadání "oprav dvojitý Game Over") má VLASTNÍ
+  // statické pozadí (BACKGROUND_SCENES.titanDeath — stejný obrázek jako 4s
+  // GAME OVER reveal níže) — bez téhle větve by spadl do generické
+  // deathDoorAttack Ghoul animace, což byla přesně nahlášená chyba
+  // ("hezký Titan obrázek problikne a nahradí ho Ghoul").
   const scene =
-    reason === "door_open_at_attack" || reason === "bulb_replacement_attack"
-      ? BACKGROUND_SCENES.deathDoorAttack
-      : BACKGROUND_SCENES.death;
+    reason === "titan_door_breach"
+      ? BACKGROUND_SCENES.titanDeath
+      : reason === "door_open_at_attack" || reason === "bulb_replacement_attack"
+        ? BACKGROUND_SCENES.deathDoorAttack
+        : BACKGROUND_SCENES.death;
 
   // DeathScreen se mountuje znovu při každé smrti (podmíněný render podle
   // state.screen v app/play/page.tsx) — prázdné závislosti tedy stačí na to,
@@ -91,8 +99,12 @@ export default function DeathScreen({
   // teprve pak se přes to zobrazil dialog") — ne zároveň s namountováním
   // téhle obrazovky, jak fungovalo dřív. `emergency_run` (smrt v nouzové
   // minihře) je výjimka na výslovnou žádost — ta dál dialog zobrazuje rovnou,
-  // beze změny.
-  const skipReveal = reason === "emergency_run";
+  // beze změny. `titan_door_breach` je druhá výjimka: `scene` je statický
+  // jediný snímek (žádná ghoul_death animace na doběhnutí) a hráč navíc už
+  // viděl 4s GAME OVER reveal se stejným obrázkem (viz gameOverPhaseActive
+  // níže) — čekat dalších ~2s (DEATH_SCREEN_REVEAL_DELAY_MS) na stejném
+  // nehybném obrázku by jen zbytečně prodlužovalo obrazovku bez důvodu.
+  const skipReveal = reason === "emergency_run" || reason === "titan_door_breach";
   const [dialogRevealed, setDialogRevealed] = useState(skipReveal);
 
   useEffect(() => {

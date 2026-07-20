@@ -310,7 +310,14 @@ export type DeathReason =
   // game/core/titanEncounter.ts#isTitanEncounterActive,
   // gameReducer.ts#START_EMERGENCY_RUN_WINDUP) — minihra se vůbec nespustí,
   // hráč se nikam nepřesune, jen normální Game Over s vlastním textem.
-  | "titan_ambush_emergency_run";
+  | "titan_ambush_emergency_run"
+  // Titan prorazil dveře u breach stage (viz zadání "oprav dvojitý Game
+  // Over" — dřív sdílel `door_open_at_attack` s Impem, což způsobilo
+  // zavádějící "Tvou poslední chybou byly otevřené dveře." text i u
+  // Titana). VLASTNÍ hodnota, ne sdílená — DeathScreen.tsx podle ní vybere
+  // Titan-specific text i pozadí (BACKGROUND_SCENES.titanDeath), viz
+  // game/enemies/resolveTitanAdvance.ts.
+  | "titan_door_breach";
 
 /**
  * Výsledek jednoho ENEMY_ADVANCE hodu ovlivněného aktivním sonickým dělem

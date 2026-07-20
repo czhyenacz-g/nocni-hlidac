@@ -172,6 +172,14 @@ export const AUDIO_EVENTS = {
   titanEscape03: "titan_escape_03",
   titanEscape04: "titan_escape_04",
   titanEscape05: "titan_escape_05",
+  // Titanovy kroky na štěrku (viz zadání "Titan nemá během přibližování
+  // správné kroky a stres") — smyčka po celou dobu aktivního encounteru
+  // (isTitanEncounterActive, viz game/core/titanEncounter.ts), hlasitost se
+  // plynule mění podle Titanovy stage (viz game/audio/titanFootsteps.ts).
+  // Soubor byl už dřív připravený jako "budoucí gigant" kandidát (viz
+  // app/dev-sound/page.tsx historie) — teď skutečně použitý pro Titana,
+  // žádná duplicitní kopie souboru (viz audioConfig.ts).
+  titanFootsteps: "titan_footsteps",
 } as const;
 
 export type AudioEventId = (typeof AUDIO_EVENTS)[keyof typeof AUDIO_EVENTS];

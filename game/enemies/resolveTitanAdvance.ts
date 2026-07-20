@@ -1,6 +1,18 @@
-import { GameState, NightDefinition } from "../core/types";
+import { EnemyStage, GameState, NightDefinition } from "../core/types";
 import { resolveLivesRemainingAfterDeath } from "../core/gameMode";
-import { TITAN_STAGE_STAY_MS } from "../balancing/constants";
+import { TITAN_DOOR_BREACH_STAGE_STAY_MS, TITAN_STAGE_STAY_MS } from "../balancing/constants";
+
+// Dveřní stage (at_door/breach) mají mnohem kratší dobu setrvání než hlavní
+// trasa (viz TITAN_DOOR_BREACH_STAGE_STAY_MS — oprava "příliš dlouhé
+// animace prorážení dveří") — dvě rychlé přechodové fáze, ne další plná
+// čekací lokace. Explicitní pole (ne jen "poslední N stage"), ať je záměr
+// čitelný a odolný vůči budoucí změně trasy.
+const DOOR_BREACH_STAGES: readonly EnemyStage[] = ["at_door", "breach"];
+
+/** Kolik ms má Titan zůstat v daném route stage, než postoupí dál — jediné místo, které tohle rozhoduje (viz zadání "nastav délky explicitně podle jednotlivých fází"). */
+export function resolveTitanStageStayMs(stage: EnemyStage): number {
+  return DOOR_BREACH_STAGES.includes(stage) ? TITAN_DOOR_BREACH_STAGE_STAY_MS : TITAN_STAGE_STAY_MS;
+}
 
 // Titanovo rozhodování pro ENEMY_ADVANCE (viz zadání "2. TITAN PRO 15. NOC",
 // "6. TITAN TIMER") — záměrně mnohem jednodušší než resolveImpAdvance.ts:
@@ -10,9 +22,11 @@ import { TITAN_STAGE_STAY_MS } from "../balancing/constants";
 // `night.enemy.id === "titan"` guard přímo v gameReducer.ts, viz
 // updateDoorLightRepel/updateDoorHallwayUvRepel). Postup je čistě časový:
 // každou běžnou stage (mimo "attack"/"graveyard") stráví přesně
-// TITAN_STAGE_STAY_MS, pak postoupí o JEDNU stage dál po `state.enemyRoute`
-// (stejné pole jako Imp — vylosované jednou při startu směny, pro Titana má
-// jen jednu možnou variantu, viz monsterDefinitions.ts#TITAN.gameplay.routeVariants).
+// `resolveTitanStageStayMs(stage)` (TITAN_STAGE_STAY_MS mimo dveře,
+// TITAN_DOOR_BREACH_STAGE_STAY_MS v at_door/breach, viz výše), pak postoupí
+// o JEDNU stage dál po `state.enemyRoute` (stejné pole jako Imp — vylosované
+// jednou při startu směny, pro Titana má jen jednu možnou variantu, viz
+// monsterDefinitions.ts#TITAN.gameplay.routeVariants).
 //
 // Deterministický zdroj času je existující `GameState.enemyLocationEnteredAtMs`
 // (viz game/core/monsterMinStay.ts pro stejný vzor) — reducer ho automaticky
@@ -48,7 +62,7 @@ export function resolveTitanAdvance(input: ResolveTitanAdvanceInput): TitanAdvan
   }
 
   const stageElapsedMs = state.elapsedMs - state.enemyLocationEnteredAtMs;
-  if (stageElapsedMs < TITAN_STAGE_STAY_MS) {
+  if (stageElapsedMs < resolveTitanStageStayMs(state.enemyStage)) {
     return { lastEnemyDecision: "stay" };
   }
 
@@ -56,19 +70,52 @@ export function resolveTitanAdvance(input: ResolveTitanAdvanceInput): TitanAdvan
 
   if (nextStage === "attack") {
     // Stejná finalizace jako Impovo "hráč se nedívá na dveře" větev
-    // (resolveImpAdvance.ts) — okamžitá smrt, žádný mezikrok. Titan
-    // ignoruje `playerView`/dveřní reveal úplně (viz zadání "unstoppable
-    // hrozba") — 4s GAME OVER reveal teď žije čistě v DeathScreen.tsx
-    // (game/death/gameOverReveal.ts), ne v reduceru/GameState.
+    // (resolveImpAdvance.ts) — okamžitá smrt, žádný mezikrok. `playerView`
+    // se tu ZÁMĚRNĚ nenastavuje znovu — pokud hráč sledoval dveře (buď
+    // ručně, nebo díky automatickému přepnutí při vstupu do "breach" níže),
+    // zůstává tam beze změny. 4s GAME OVER reveal teď žije čistě v
+    // DeathScreen.tsx (game/death/gameOverReveal.ts), ne v reduceru/GameState.
     return {
       enemyStage: "attack",
       lastEnemyDecision: "attack",
       isRunning: false,
       screen: "death",
-      // Titan prolomil dveře stejně jako Impův door_open_at_attack — sdílí
-      // stejný DeathReason (stejná kategorie smrti, žádný nový text potřeba).
-      deathReason: "door_open_at_attack",
+      // VLASTNÍ DeathReason, ne sdílený s Impovým door_open_at_attack (viz
+      // zadání "oprav dvojitý Game Over" — sdílená hodnota dřív způsobila
+      // zavádějící "otevřené dveře" text/pozadí i u Titana, který dveře
+      // prorazí bez ohledu na jejich stav).
+      deathReason: "titan_door_breach",
       livesRemaining: resolveLivesRemainingAfterDeath(state.gameMode, state.livesRemaining),
+    };
+  }
+
+  if (nextStage === "breach") {
+    // Poslední nevratný okamžik (viz zadání "Automatické přepnutí na dveře
+    // při finálním útoku Titana" — "at_door" ještě NENÍ tenhle stav, tam má
+    // hráč poslední reálnou šanci na overload, viz
+    // game/core/titanEncounter.ts#isTitanBreachIrreversible). Přesně
+    // JEDNOU, PŘI přechodu DO "breach" (ne opakovaně — tahle větev se
+    // vyhodnotí jen na skutečnou změnu stage), automaticky přepne pohled na
+    // dveře. Nastavení `playerView: "door"`, i když tam hráč UŽ je, je
+    // neškodné — stejná hodnota, React na tom nic nepřekreslí navíc, žádné
+    // probliknutí (viz zadání "pokud už se hráč na dveře dívá, nesmí dojít
+    // k probliknutí"). Zpětné přepnutí pryč ze dveří je od tohohle
+    // okamžiku zamčené — viz gameReducer.ts LOOK_AT_DESK/LOOK_AT_GENERATOR/
+    // LOOK_AT_LEFT_WALL/LOOK_AT_MAP guardy.
+    return {
+      enemyStage: nextStage,
+      lastEnemyDecision: "advance",
+      // Stejná pole jako ruční LOOK_AT_DOOR (gameReducer.ts) — vynucené
+      // přepnutí má mít IDENTICKÝ vedlejší efekt jako běžný odchod na dveře,
+      // ne jen samotné playerView.
+      playerView: "door",
+      cameraOpen: false,
+      activeCameraId: null,
+      cameraViewMode: "overview",
+      cameraFocusUntilMs: null,
+      generatorOverloadWindup: state.generatorOverloadWindup.active
+        ? { active: false, startedAtMs: null, progressMs: 0 }
+        : state.generatorOverloadWindup,
     };
   }
 

@@ -25,6 +25,9 @@ import { useGameLoop } from "@/game/core/gameLoop";
 import { CameraId, GhoulCameraAttackAnimationId } from "@/game/core/types";
 import { audioManager } from "@/game/audio/audioManager";
 import { AUDIO_EVENTS } from "@/game/audio/audioEvents";
+import { AUDIO_CONFIG } from "@/game/audio/audioConfig";
+import { computeTitanFootstepVolume } from "@/game/audio/titanFootsteps";
+import { isTitanEncounterActive } from "@/game/core/titanEncounter";
 import { computeTensionLevel } from "@/game/visuals/atmosphereState";
 import { atmosphereStyleToCssVars, tensionToAtmosphereStyle } from "@/game/visuals/visualEffects";
 import { getBlackoutPhaseIndex } from "@/game/visuals/blackoutPhase";
@@ -36,6 +39,7 @@ import {
   LOADING_SCREEN_DURATION_MS,
   MONSTER_DOOR_BANG_COOLDOWN_MS,
   MONSTER_RETREAT_STEPS_DELAY_MS,
+  TITAN_FOOTSTEP_VOLUME_RAMP_MS,
 } from "@/game/balancing/constants";
 import { getTitanEncounterNights, resetTitanEncounterNights } from "@/game/core/titanEncounterNights";
 import { chooseDoorBangPlaybackPlan } from "@/game/audio/doorBangPlayback";
@@ -444,6 +448,17 @@ function PlayPageContent() {
     achievementBaselineRef.current = { stats: getPlayerProfileStats(), reward: getMonsterDefeatReward() };
   }
   const [deathNewlyUnlockedAchievements, setDeathNewlyUnlockedAchievements] = useState<PlayerAchievement[]>([]);
+  // Snímek "kdo/kolikátá noc mě zabila" PŘESNĚ v okamžiku smrti (viz zadání
+  // "oprav dvojitý Game Over" — `night.enemy.id`/`currentNight` se čtou
+  // naživo na každém renderu a `night` se PŘEPOČÍTÁ, jakmile smrt-efekt níže
+  // resetuje survivedNights/titanEncounterNights na novou náhodnou trojici
+  // — bez snímku by <DeathScreen> po pár sekundách dostal `activeMonsterId`
+  // jiného monstra/`nightNumber` jiné noci, než která hráče doopravdy
+  // zabila). Výchozí hodnoty se nikdy nevykreslí — DeathScreen se renderuje
+  // jen po `state.screen === "death"`, což vždy nejdřív projde efektem, co
+  // je nastaví.
+  const [deathMonsterId, setDeathMonsterId] = useState<string>("imp");
+  const [deathNightNumber, setDeathNightNumber] = useState<number>(1);
   const [winNewlyUnlockedAchievements, setWinNewlyUnlockedAchievements] = useState<PlayerAchievement[]>([]);
   const [monsterDefeatedNewlyUnlockedAchievements, setMonsterDefeatedNewlyUnlockedAchievements] = useState<PlayerAchievement[]>(
     [],
@@ -569,6 +584,11 @@ function PlayPageContent() {
           if (achievement) setActiveAchievement(achievement);
         }
       } else {
+        // Snímek monstra/noci PRO TENHLE konkrétní death screen (viz
+        // komentář u deathMonsterId výše) — musí se zapsat PŘED
+        // jakýmkoliv resetem survivedNights/titanEncounterNights níže.
+        setDeathMonsterId(night.enemy.id);
+        setDeathNightNumber(nightThatEnded);
         // Counter se zvyšuje přesně tady — při přechodu hry do "death" stavu,
         // ne při kliknutí na tlačítko restartu (handleRestart) a ne při výhře.
         // Tenhle efekt už díky prevScreenRef diffingu (viz podmínka nahoře)
@@ -1039,6 +1059,45 @@ function PlayPageContent() {
   useEffect(() => {
     return () => audioManager.stopLoop(AUDIO_EVENTS.sonicCannonHum);
   }, []);
+
+  // Titanovy kroky na štěrku (viz zadání "Titan nemá během přibližování
+  // správné kroky a stres") — stejný dvouefektový vzor jako sonicCannonHum
+  // výše: jeden reaktivní start/stop na `isTitanEncounterActive(state, night)`
+  // (JEDINÝ zdroj pravdy "encounter právě běží", viz game/core/titanEncounter.ts
+  // — pokrývá začátek/konec noci, smrt, zabití generátorem i odchod z
+  // "playing" beze zvláštního kódu na každou cestu zvlášť), plus samostatná
+  // tvrdá pojistka na skutečné odmountování stránky. `startLoop`/`stopLoop`
+  // jsou idempotentní (viz zadání "v jednu chvíli smí hrát jen jedna
+  // instance" — je to zaručené existující architekturou audioManageru, ne
+  // něčím novým tady), takže žádný prevRef diffing navíc není potřeba.
+  const titanEncounterActiveNow = isTitanEncounterActive(state, night);
+  useEffect(() => {
+    if (titanEncounterActiveNow) {
+      audioManager.startLoop(AUDIO_EVENTS.titanFootsteps);
+    } else {
+      audioManager.stopLoop(AUDIO_EVENTS.titanFootsteps);
+    }
+  }, [titanEncounterActiveNow]);
+
+  useEffect(() => {
+    return () => audioManager.stopLoop(AUDIO_EVENTS.titanFootsteps);
+  }, []);
+
+  // Hlasitost kroků plynule roste s Titanovou stage (viz zadání "50 % na
+  // začátku, plynule až 100 % u dveří, žádný skok") — `rampLoopVolume`
+  // (stejná requestAnimationFrame technika jako fadeOutLoop, viz
+  // audioManager.ts) se spustí jen na SKUTEČNOU změnu stage, ne na každý
+  // TICK/rerender, takže mezi dvěma stage hlasitost zůstává stabilní na
+  // poslední dosažené hodnotě — přesně jeden plynulý přechod na jednu
+  // změnu. Mimo aktivní Titanovo setkání se vůbec nespouští (viz `if`
+  // guard) — loop mezitím stejně nehraje (viz efekt výše), takže by ramp
+  // jen zbytečně běžel na pozadí bez slyšitelného efektu.
+  useEffect(() => {
+    if (!titanEncounterActiveNow) return;
+    const targetVolume = computeTitanFootstepVolume(state.enemyStage, AUDIO_CONFIG[AUDIO_EVENTS.titanFootsteps].volume);
+    audioManager.rampLoopVolume(AUDIO_EVENTS.titanFootsteps, targetVolume, TITAN_FOOTSTEP_VOLUME_RAMP_MS);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [titanEncounterActiveNow, state.enemyStage]);
 
   useEffect(() => {
     if (prevBulbBreakSeqRef.current !== state.bulbBreakSeq) {
@@ -2172,9 +2231,9 @@ function PlayPageContent() {
           deathCount={deathCount}
           gameMode={state.gameMode}
           livesRemaining={state.livesRemaining}
-          nightNumber={currentNight}
+          nightNumber={deathNightNumber}
           newlyUnlockedAchievements={deathNewlyUnlockedAchievements}
-          activeMonsterId={night.enemy.id}
+          activeMonsterId={deathMonsterId}
           onRetry={handleRestart}
         />
       )}

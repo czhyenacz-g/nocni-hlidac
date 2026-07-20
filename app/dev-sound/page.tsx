@@ -302,22 +302,17 @@ const NEW_MONSTER_SOUND_CANDIDATES = [
     source: "freesound.org/people/Breviceps/sounds/479380/",
     license: "CC0",
   },
-  // Obě "Kroky" varianty níže znějí jako TĚŽKÉ, dunivé monstrum — pro
-  // současného nepřítele (viz game/enemies/) jsou moc masivní/pomalé.
-  // Zatím nikam nezapojujeme, schované na později pro budoucí druhý typ
-  // nepřítele ("gigant") s vlastním, těžším zvukovým profilem.
+  // "Kroky — štěrk" (712066) byl dřív tady jako "budoucí gigant" kandidát —
+  // teď reálně použitý pro Titana (viz AUDIO_EVENTS.titanFootsteps,
+  // game/audio/titanFootsteps.ts), takže se z audition seznamu odstranil
+  // (stejná konvence jako u dřív přijatých kandidátů, viz git historie —
+  // jednou skutečně použitý zvuk zůstává jen v SOUND_REGISTRY přehledu, ne
+  // tady). "Stomp sekvence" pořád čeká na budoucí typ nepřítele ("gigant").
   {
     file: "footsteps/monster_stomp_footsteps_sequence.mp3",
     label: "Kroky — stomp sekvence",
     source: "freesound.org/people/Vilkas_Sound/sounds/753178/",
     license: "CC BY 4.0",
-    note: "Těžké monstrum — použít až pro budoucí typ nepřítele „gigant“.",
-  },
-  {
-    file: "footsteps/monster_footsteps_gravel.mp3",
-    label: "Kroky — štěrk (22 s, opakující se)",
-    source: "freesound.org/people/AudioPapkin/sounds/712066/",
-    license: "CC0",
     note: "Těžké monstrum — použít až pro budoucí typ nepřítele „gigant“.",
   },
   // Lidské kroky (ne monstrum, ne gigant) — kandidáti pro současného nepřítele.

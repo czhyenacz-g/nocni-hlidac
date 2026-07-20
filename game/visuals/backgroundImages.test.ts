@@ -170,3 +170,24 @@ describe("BACKGROUND_SCENES.deathDoorAttack", () => {
     expect(BACKGROUND_SCENES.deathDoorAttack.playOnce).toBe(true);
   });
 });
+
+// Titan (viz zadání "oprav dvojitý Game Over") — vlastní jednosnímková
+// scéna, žádná animace/cyklení, žádné ghoul_death snímky. Musí ukazovat
+// PŘESNĚ stejný obrázek jako 4s GAME OVER reveal (game/death/gameOverReveal.ts),
+// ať mezi revealem a touhle scénou není žádný viditelný přechod.
+describe("BACKGROUND_SCENES.titanDeath", () => {
+  it("is a single static frame, not the Ghoul ghoul_death animation", () => {
+    expect(BACKGROUND_SCENES.titanDeath.frames).toHaveLength(1);
+    for (const src of BACKGROUND_SCENES.death.frames.map((f) => f.src)) {
+      expect(BACKGROUND_SCENES.titanDeath.frames.map((f) => f.src)).not.toContain(src);
+    }
+  });
+
+  it("uses the exact same image as the Titan GAME OVER reveal (game/death/gameOverReveal.ts)", () => {
+    expect(BACKGROUND_SCENES.titanDeath.frames[0].src).toBe("/object_13/monster/titan/titan_attacks_broken_door.webp");
+  });
+
+  it("is not marked playOnce (nothing to play — it's a static background)", () => {
+    expect(BACKGROUND_SCENES.titanDeath.playOnce).toBeFalsy();
+  });
+});

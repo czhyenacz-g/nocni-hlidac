@@ -522,4 +522,12 @@ export const SOUND_REGISTRY: Record<AudioEventId, SoundRegistryEntry> = {
     guess: "Krátká naléhavá rádiová hláška, jedna namluvená věta.",
     usedIn: "game/radio/useTitanEscapeMessage.ts — pickRandomTitanEscapeMessage() na zahájení encounteru.",
   },
+  [AUDIO_EVENTS.titanFootsteps]: {
+    id: AUDIO_EVENTS.titanFootsteps,
+    label: "Titanovy kroky — štěrk",
+    description:
+      "22s smyčka těžkých kroků na štěrku (dřív 'budoucí gigant' kandidát, teď reálně použitý pro Titana), hraje po celou dobu aktivního Titan encounteru, hlasitost 50–100 % podle jeho vzdálenosti od hráče.",
+    guess: "Těžké, pravidelné dunivé kroky na štěrku.",
+    usedIn: "game/audio/titanFootsteps.ts — app/play/page.tsx efekt na isTitanEncounterActive/state.enemyStage.",
+  },
 };

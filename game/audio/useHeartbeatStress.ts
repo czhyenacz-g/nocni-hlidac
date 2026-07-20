@@ -9,6 +9,8 @@ import {
   computeHeartbeatVolumes,
   computeLowPowerStressBonus,
 } from "./heartbeatStress";
+import { computeTitanStressFloor } from "./titanFootsteps";
+import { isTitanEncounterActive } from "../core/titanEncounter";
 import { GameState, NightDefinition } from "../core/types";
 import { HEARTBEAT_STRESS_FALL_MS, HEARTBEAT_STRESS_RISE_MS, MAX_POWER } from "../balancing/constants";
 
@@ -63,7 +65,15 @@ export function useHeartbeatStress(state: GameState, night: NightDefinition): nu
     // computeLowPowerStressBonus) — čerstvě odvozený z state.power každý
     // tik, nepočítá se do recharge, jen do cílové hladiny stresu níže.
     const lowPowerBonus = computeLowPowerStressBonus(state.power, MAX_POWER);
-    const targetStress = Math.min(100, locationStress + generatorBonus + lowPowerBonus);
+    // Titan (viz zadání "Titan nemá během přibližování správné kroky a
+    // stres") nastavuje MINIMÁLNÍ podlahu stresu nezávisle na tom, kam se
+    // hráč zrovna dívá — `Math.max`, NIKDY sčítání s `locationStress` výše
+    // (ten je navíc gated na "dívá se hráč na správnou kameru", Titanova
+    // přítomnost má být cítit VŽDY, i mimo kamery). Mimo Titanovu aktivní
+    // noc (`isTitanEncounterActive` false) vrací volající no-op ekvivalent
+    // (podlaha 0, běžný výpočet beze změny).
+    const titanStressFloor = isTitanEncounterActive(state, night) ? computeTitanStressFloor(state.enemyStage) : 0;
+    const targetStress = Math.min(100, Math.max(locationStress + generatorBonus + lowPowerBonus, titanStressFloor));
 
     const deltaMs = Math.max(0, state.elapsedMs - lastElapsedRef.current);
     lastElapsedRef.current = state.elapsedMs;

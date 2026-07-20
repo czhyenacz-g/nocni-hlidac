@@ -3,6 +3,8 @@
 // (prolínání mezi 1-3 snímky vs. jemné blikání/ztlumení) je jen změna dat tady,
 // vykreslení řeší components/SceneBackground.tsx.
 
+import { TITAN_ATTACK_SRC } from "./titanDoorAssets";
+
 export interface BackgroundFrame {
   src: string;
   /**
@@ -118,6 +120,7 @@ export type BackgroundSceneId =
   | "door"
   | "death"
   | "deathDoorAttack"
+  | "titanDeath"
   | "win"
   | "about"
   | "monsterDefeated";
@@ -261,6 +264,21 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
     crossfadeMs: 40,
     overlay: DEFAULT_OVERLAY,
     playOnce: true,
+  },
+  // Titan (viz zadání "oprav dvojitý Game Over" — DeathScreen.tsx dřív VŽDY
+  // spadl na Ghoulovu `deathDoorAttack` animaci výše, bez ohledu na to, které
+  // monstrum hráče zabilo). Jediný statický snímek — SCHVÁLNĚ STEJNÝ obrázek
+  // (`TITAN_ATTACK_SRC`), jaký už game/death/gameOverReveal.ts použije pro
+  // 4sekundový GAME OVER reveal PŘED touhle obrazovkou — nulová šance na
+  // viditelný "probliknutí na jiný obrázek" přechod, protože je to fakticky
+  // stejný snímek beze změny. Žádná animace/cyklení (na rozdíl od
+  // `death`/`deathDoorAttack`) — Titanova smrt už svůj "dopad" odehrála v
+  // reveal fázi, tahle scéna je jen klidné pozadí pro dialog.
+  titanDeath: {
+    frames: [{ src: TITAN_ATTACK_SRC }],
+    holdMs: DEFAULT_HOLD_MS,
+    crossfadeMs: DEFAULT_CROSSFADE_MS,
+    overlay: DEFAULT_OVERLAY,
   },
   win: {
     frames: [
