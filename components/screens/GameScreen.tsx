@@ -8,6 +8,7 @@ import { canReplaceBulb, canStartGeneratorOverloadWindup } from "@/game/core/gam
 import { canStartBatteryEmergencyRun, canStartShotgunEmergencyRun } from "@/game/core/emergencyMiniGameIntegration";
 import { resolveOfficeBreachPhase } from "@/game/core/officeBreachAftermath";
 import { isMonsterAtDoor } from "@/game/core/doorEncounter";
+import { isTitanEncounterActive } from "@/game/core/titanEncounter";
 import { resolveTitanOverloadFrameSrc } from "@/game/visuals/titanDoorAssets";
 import SceneBackground from "@/components/SceneBackground";
 import DeskView from "../game/DeskView";
@@ -84,8 +85,8 @@ interface GameScreenProps {
   onSetDebugGhoulCameraAttackChance: (chance: number | null) => void;
   onDebugSkipCameraAttackToLastFrame: () => void;
   onDebugSkipCameraAttackToOffline: () => void;
-  /** "SPUSTIT TITANA" / "TITAN: DALŠÍ STAGE" (viz zadání "8. ADMIN / DEBUG OVLÁDÁNÍ", DebugPanel.tsx). */
-  onDebugStartTitan: () => void;
+  /** "SPUSTIT TITANA 1/2/3" / "TITAN: DALŠÍ STAGE" (viz zadání "8. ADMIN / DEBUG OVLÁDÁNÍ", DebugPanel.tsx) — `encounterIndex` vybere, KTERÉ ze tří vylosovaných Titanových nocí (0/1/2) se má spustit. */
+  onDebugStartTitan: (encounterIndex: 0 | 1 | 2) => void;
   onDebugAdvanceTitanStage: () => void;
 }
 
@@ -186,6 +187,11 @@ export default function GameScreen({
     state.doorGeneratorOverloadUntilMs !== null && isTitanNight && isMonsterAtDoor(state)
       ? resolveTitanOverloadFrameSrc(state.elapsedMs, state.doorGeneratorOverloadUntilMs, GENERATOR_OVERLOAD_DOOR_DURATION_MS)
       : null;
+  // Titanova jednorázová "escape" hláška (viz zadání "nová nahrávka...
+  // přehraje se při zahájení Titanova setkání", game/radio/useTitanEscapeMessage.ts)
+  // — jediné místo, které GameState přeloží na jednoduchý boolean
+  // (RadioMessageOverlay.tsx/hook sám o GameState neví).
+  const titanEncounterActive = isTitanEncounterActive(state, night);
   // DEV panel je schválně skrytý ve výchozím stavu (ne jen collapsed <details>
   // jako dřív) — objeví se jen po pravém kliku na popisek "Noc {n}" v
   // ShiftTimeru (viz onNightLabelContextMenu níže). Čistě UI viditelnost dev
@@ -231,6 +237,8 @@ export default function GameScreen({
         lastSonicCannonResult={state.lastSonicCannonResult}
         cameraOfflineSeq={state.cameraOfflineSeq}
         cameraAttackStartedSeq={state.cameraAttackStartedSeq}
+        monsterId={night.enemy.id}
+        titanEncounterActive={titanEncounterActive}
       />
 
       {/* DoorView schválně NENÍ v max-w-[33.6rem] — dveřní scéna (DoorSceneFrame)

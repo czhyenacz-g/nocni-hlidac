@@ -5,6 +5,7 @@ import { useRadioMessage } from "@/game/radio/useRadioMessage";
 import { useMonsterRepelRadioMessage } from "@/game/radio/useMonsterRepelRadioMessage";
 import { useCameraDisabledRadioMessage } from "@/game/radio/useCameraDisabledRadioMessage";
 import { useGhoulCameraAttackWarningMessage } from "@/game/radio/useGhoulCameraAttackWarningMessage";
+import { useTitanEscapeMessage } from "@/game/radio/useTitanEscapeMessage";
 import RadioWaveform from "./RadioWaveform";
 
 interface RadioMessageOverlayProps {
@@ -18,6 +19,10 @@ interface RadioMessageOverlayProps {
   cameraOfflineSeq: number;
   /** Viz GameState.cameraAttackStartedSeq — čtvrtý, nezávislý zdroj rádiové zprávy, VAROVÁNÍ před samotným útokem (viz useGhoulCameraAttackWarningMessage.ts). */
   cameraAttackStartedSeq: number;
+  /** `night.enemy.id` — jen pro `useRadioMessage`'s `enabled` gate (viz komentář tam, Titanova noc nesmí přehrát Impovo "vypuštění monstra" hlášení, má vlastní escape hlášku). */
+  monsterId: string;
+  /** Viz game/core/titanEncounter.ts#isTitanEncounterActive — pátý, nezávislý zdroj (Titanova jednorázová "escape" hláška, viz useTitanEscapeMessage.ts). */
+  titanEncounterActive: boolean;
 }
 
 /**
@@ -29,21 +34,14 @@ interface RadioMessageOverlayProps {
  * `pointer-events-none` na celém bloku (viz zadání), ať nikdy neblokuje
  * klikání na herní prvky pod/kolem sebe.
  *
- * Kombinuje ČTYŘI nezávislé zdroje zprávy (viz zadání "použij existující
- * rádiový informační blok, pokud už existuje... rozšiř ho minimálně") —
- * "vypuštění monstra" (useRadioMessage, trigger = první vstup do outer_yard),
- * "reakce na sonické dělo" (useMonsterRepelRadioMessage, trigger =
- * sonicCannonResultSeq), "Ghoul vyřadil kameru" (useCameraDisabledRadioMessage,
- * trigger = cameraOfflineSeq) a "Ghoul útočí na kameru" — VAROVÁNÍ PŘED
- * útokem (useGhoulCameraAttackWarningMessage, trigger = cameraAttackStartedSeq)
- * — a vykresluje, který je zrovna `visible`. Útočné varování má nejvyšší
- * prioritu (může nastat PŘESNĚ ve stejném tiku jako sonic-cannon reakce,
- * viz gameReducer.ts#attemptGhoulCameraAttack, a je narativně
- * naléhavější), pak kamera-offline (nejvzácnější/narativně nejvýznamnější
- * z klidových zpráv), pak sonic-cannon reakce, pak vypuštění monstra. V
- * praxi ke skutečnému souběhu kamera-offline a sonic-cannon/útočné zprávy
- * nedochází — obě zmizí do ~2.5s, zatímco cameraOfflineSeq se zvýší až PO
- * celém pětisekundovém přechodu (viz zadání), takže první už dávno skončila.
+ * Kombinuje PĚT nezávislých zdrojů zprávy — Titanova jednorázová "escape"
+ * hláška (useTitanEscapeMessage, nejvyšší priorita — Titanova noc jinak
+ * ostatní čtyři zdroje stejně nikdy nespustí, viz níže), "útok Ghoula na
+ * kameru" varování, "kamera vyřazena", "reakce na sonické dělo" a
+ * "vypuštění monstra" (poslední čtyři beze změny). Titanova noc (žádné
+ * abilities, žádný sonic-cannon branch v resolveTitanAdvance) tyhle čtyři
+ * zbylé zdroje nikdy nespustí — Titanova vrstva má přesto formálně
+ * nejvyšší prioritu pro případ budoucí změny.
  */
 export default function RadioMessageOverlay({
   monsterStage,
@@ -52,18 +50,23 @@ export default function RadioMessageOverlay({
   lastSonicCannonResult,
   cameraOfflineSeq,
   cameraAttackStartedSeq,
+  monsterId,
+  titanEncounterActive,
 }: RadioMessageOverlayProps) {
-  const releaseMessage = useRadioMessage(monsterStage, nightNumber);
+  const titanMessage = useTitanEscapeMessage(titanEncounterActive);
+  const releaseMessage = useRadioMessage(monsterStage, nightNumber, monsterId !== "titan");
   const repelMessage = useMonsterRepelRadioMessage(sonicCannonResultSeq, lastSonicCannonResult);
   const cameraDisabledMessage = useCameraDisabledRadioMessage(cameraOfflineSeq);
   const attackWarningMessage = useGhoulCameraAttackWarningMessage(cameraAttackStartedSeq);
-  const { visible, text } = attackWarningMessage.visible
-    ? attackWarningMessage
-    : cameraDisabledMessage.visible
-      ? cameraDisabledMessage
-      : repelMessage.visible
-        ? repelMessage
-        : releaseMessage;
+  const { visible, text } = titanMessage.visible
+    ? titanMessage
+    : attackWarningMessage.visible
+      ? attackWarningMessage
+      : cameraDisabledMessage.visible
+        ? cameraDisabledMessage
+        : repelMessage.visible
+          ? repelMessage
+          : releaseMessage;
 
   if (!visible || !text) return null;
 

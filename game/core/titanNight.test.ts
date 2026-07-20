@@ -207,3 +207,64 @@ describe("DEBUG_START_TITAN / DEBUG_ADVANCE_TITAN_STAGE", () => {
     expect(reducer(state, { type: "DEBUG_ADVANCE_TITAN_STAGE" })).toBe(state);
   });
 });
+
+// Titan blocks the emergency-run minigame entirely (viz zadání "Pokus odejít
+// do minihry během Titanova útoku").
+describe("START_EMERGENCY_RUN_WINDUP — Titan active blocks the minigame and kills the player instead", () => {
+  it("dispatching START_EMERGENCY_RUN_WINDUP while Titan is active ends the game immediately, without ever starting a windup", () => {
+    const reducer = createGameReducer(NIGHT_15);
+    const state = titanRunningState({
+      enemyStage: "left_hallway",
+      playerView: "left_wall",
+      doorClosed: false,
+      screen: "playing",
+      nightFeatures: { ...DEFAULT_NIGHT_FEATURES, emergencyRunsEnabled: true, batteryRunEnabled: true },
+    });
+    const result = reducer(state, { type: "START_EMERGENCY_RUN_WINDUP" });
+    expect(result.isRunning).toBe(false);
+    expect(result.screen).toBe("death");
+    expect(result.deathReason).toBe("titan_ambush_emergency_run");
+    expect(result.emergencyRunWindup.active).toBe(false);
+  });
+
+  it("fires even from a playerView/door state where the windup would normally be blocked anyway (guard runs BEFORE canStartEmergencyRunWindup)", () => {
+    const reducer = createGameReducer(NIGHT_15);
+    const state = titanRunningState({
+      enemyStage: "door_hallway",
+      playerView: "desk",
+      screen: "playing",
+      nightFeatures: { ...DEFAULT_NIGHT_FEATURES, emergencyRunsEnabled: true, batteryRunEnabled: true },
+    });
+    const result = reducer(state, { type: "START_EMERGENCY_RUN_WINDUP" });
+    expect(result.screen).toBe("death");
+    expect(result.deathReason).toBe("titan_ambush_emergency_run");
+  });
+
+  it("does NOT trigger once Titan is already graveyarded (encounter over)", () => {
+    const reducer = createGameReducer(NIGHT_15);
+    const state = titanRunningState({
+      enemyStage: "graveyard",
+      playerView: "left_wall",
+      doorClosed: false,
+      screen: "playing",
+      nightFeatures: { ...DEFAULT_NIGHT_FEATURES, emergencyRunsEnabled: true, batteryRunEnabled: true },
+    });
+    const result = reducer(state, { type: "START_EMERGENCY_RUN_WINDUP" });
+    expect(result.screen).toBe("playing");
+    expect(result.deathReason).toBe(state.deathReason);
+  });
+
+  it("regression: on a normal Imp night, START_EMERGENCY_RUN_WINDUP behaves exactly as before (no Titan guard interference)", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = {
+      ...createInitialGameState(NIGHT_01, { nightFeatures: { ...DEFAULT_NIGHT_FEATURES, emergencyRunsEnabled: true, batteryRunEnabled: true } }),
+      isRunning: true,
+      screen: "playing" as const,
+      playerView: "left_wall" as const,
+      doorClosed: false,
+    };
+    const result = reducer(state, { type: "START_EMERGENCY_RUN_WINDUP" });
+    expect(result.emergencyRunWindup.active).toBe(true);
+    expect(result.screen).toBe("playing");
+  });
+});

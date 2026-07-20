@@ -300,7 +300,17 @@ export interface GeneratorDefinition {
  * EmergencyMiniGame, app/play/page.tsx#handleEmergencyMiniGameComplete) —
  * stejný death flow jako ostatní důvody, jen jiný text na DeathScreen.
  */
-export type DeathReason = "door_open_at_attack" | "blackout_timeout" | "bulb_replacement_attack" | "emergency_run";
+export type DeathReason =
+  | "door_open_at_attack"
+  | "blackout_timeout"
+  | "bulb_replacement_attack"
+  | "emergency_run"
+  // Pokus opustit stanoviště / vstoupit do nouzové minihry, dokud je Titan
+  // aktivní (viz zadání "Pokus odejít do minihry během Titanova útoku",
+  // game/core/titanEncounter.ts#isTitanEncounterActive,
+  // gameReducer.ts#START_EMERGENCY_RUN_WINDUP) — minihra se vůbec nespustí,
+  // hráč se nikam nepřesune, jen normální Game Over s vlastním textem.
+  | "titan_ambush_emergency_run";
 
 /**
  * Výsledek jednoho ENEMY_ADVANCE hodu ovlivněného aktivním sonickým dělem

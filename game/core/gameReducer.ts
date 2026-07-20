@@ -14,6 +14,7 @@ import {
   THINK_IT_OVER_WINDUP_DURATION_MS,
   TITAN_OVERLOAD_DEATH_REVEAL_DURATION_MS,
 } from "../balancing/constants";
+import { isTitanEncounterActive } from "./titanEncounter";
 import { getBlackoutPhaseIndex } from "../visuals/blackoutPhase";
 import { DEFAULT_DIFFICULTY, DIFFICULTY_RULES, Difficulty } from "../difficulty/difficultyConfig";
 import { computeNightScaling, NightScaling } from "../difficulty/nightScaling";
@@ -881,6 +882,24 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
       }
 
       case "START_EMERGENCY_RUN_WINDUP": {
+        // Titan aktivní -> pokus opustit stanoviště je okamžitý Game Over
+        // (viz zadání "Pokus odejít do minihry během Titanova útoku"),
+        // KONTROLOVANÉ PŘED `canStartEmergencyRunWindup` (a tedy před
+        // jakoukoliv navigací do minihry) — minihra se vůbec nezaloží,
+        // hráč se nikam nepřesune, `setActiveMiniGame` v app/play/page.tsx
+        // se nikdy nezavolá, protože windup nikdy nedoběhne (viz zadání
+        // "kliknutí na minihru nesmí nejdřív změnit obrazovku a teprve
+        // potom vyvolat smrt"). Stejná finalizace smrti jako ostatní
+        // reasony (isRunning/screen/livesRemaining) — jen jiný `deathReason`.
+        if (isTitanEncounterActive(state, night)) {
+          return {
+            ...state,
+            isRunning: false,
+            screen: "death",
+            deathReason: "titan_ambush_emergency_run",
+            livesRemaining: resolveLivesRemainingAfterDeath(state.gameMode, state.livesRemaining),
+          };
+        }
         // Stejný vzor jako START_BULB_REPLACEMENT — riskantní ruční akce,
         // jde jen z left_wall, jen s otevřenými dveřmi, jen jednou. Nesplněná
         // podmínka je tichý no-op, ne chyba.

@@ -36,8 +36,8 @@ import {
   LOADING_SCREEN_DURATION_MS,
   MONSTER_DOOR_BANG_COOLDOWN_MS,
   MONSTER_RETREAT_STEPS_DELAY_MS,
-  TITAN_NIGHT_NUMBER,
 } from "@/game/balancing/constants";
+import { getTitanEncounterNights, resetTitanEncounterNights } from "@/game/core/titanEncounterNights";
 import { chooseDoorBangPlaybackPlan } from "@/game/audio/doorBangPlayback";
 import CinematicScreen from "@/components/screens/CinematicScreen";
 import { CinematicSceneId } from "@/content/cinematics";
@@ -149,6 +149,15 @@ function PlayPageContent() {
   const selectedGameModeRef = useRef<GameMode>(DEFAULT_GAME_MODE);
   const [survivedNights, setSurvivedNights] = useState(() => getSurvivedNights());
   const [serverRunState, setServerRunState] = useState<GuardRunState | null>(null);
+  // Persistovaná trojice náhodně vylosovaných "Titanových nocí" pro AKTUÁLNÍ
+  // průchod (viz zadání "tři náhodná setkání s Titanem během 30 nocí",
+  // game/core/titanEncounterNights.ts) — lazy initializer čte/losuje jen
+  // JEDNOU při mountu (viz zadání "nevylosovávej při každém renderu"),
+  // vyresetuje se explicitně (setTitanEncounterNights(resetTitanEncounterNights()))
+  // VÝHRADNĚ na stejném místě jako survivedNights/serverRunState reset po
+  // skutečném konci runu (viz efekt na state.screen === "death" níže) —
+  // NIKDY na pouhý restart stejné noci.
+  const [titanEncounterNights, setTitanEncounterNights] = useState<number[]>(() => getTitanEncounterNights());
 
   // Stejný vzorec jako `currentNight` dřív (viz níže) — jen s
   // `debugNightOverride` (mirror výše) místo `state.debugNightOverride`,
@@ -160,7 +169,10 @@ function PlayPageContent() {
   const currentNightEstimate =
     debugNightOverride ??
     (selectedGameModeRef.current === "hardcore" && serverRunState ? serverRunState.currentRun + 1 : survivedNights + 1);
-  const night = useMemo(() => resolveNightDefinition(currentNightEstimate), [currentNightEstimate]);
+  const night = useMemo(
+    () => resolveNightDefinition(currentNightEstimate, titanEncounterNights),
+    [currentNightEstimate, titanEncounterNights],
+  );
   const gameReducer = useMemo(() => createGameReducer(night), [night]);
   // Kamera nejblíž hráči (nejvyšší order) — používá se pro podmíněný
   // heartbeat při výběru kamery, viz handleSelectCamera níže.
@@ -619,9 +631,19 @@ function PlayPageContent() {
           // Aktuální hlídač skončil — survival streak jde na 0 (viz
           // game/core/survivedNights.ts), death counter nahoře tím není dotčený.
           setSurvivedNights(resetSurvivedNights());
+          // Stejná "run skutečně skončil" hranice jako survivedNights reset
+          // výše — vylosuje NOVOU trojici Titanových nocí pro příští run
+          // (viz zadání "teprve nový kompletní průchod smí vylosovat jinou
+          // trojici", game/core/titanEncounterNights.ts). Restart stejné
+          // noci (isNormalContinuing===true) tohle nikdy nezavolá.
+          setTitanEncounterNights(resetTitanEncounterNights());
         }
 
         if (state.gameMode === "hardcore") {
+          // Hardcore má jediný život (GAME_MODE_CONFIG.hardcore.startingLives
+          // === 1) — KAŽDÁ Hardcore smrt je tedy vždy skutečný konec runu,
+          // stejná "run skončil" hranice jako Normal bez životů výše.
+          setTitanEncounterNights(resetTitanEncounterNights());
           // Hardcore je nové jméno pro původní soutěžní chování (viz zadání)
           // — jediný gameMode, který smí zapisovat na server. Best-effort
           // online stav (viz TECH_DESIGN.md "VPS API specifikace") — server
@@ -1861,16 +1883,19 @@ function PlayPageContent() {
     dispatch({ type: "SET_DEBUG_NIGHT", night: nightNumber });
   }
 
-  // ADMIN-ONLY "SPUSTIT TITANA" (viz zadání "8. ADMIN / DEBUG OVLÁDÁNÍ") —
-  // JEN přepne night/reducer na Titanovu NightDefinition (přes
-  // debugNightOverride mirror); samotný DEBUG_START_TITAN dispatch přijde
-  // AŽ z efektu níže, poté co `night`/`gameReducer` skutečně ukazují na
-  // Titana (viz komentář u pendingDebugStartTitanRef) — jinak by hrozilo, že
-  // by ho zpracoval JEŠTĚ starý (Impův) reducer ve stejném dávkovém update.
+  // ADMIN-ONLY "SPUSTIT TITANA 1/2/3" (viz zadání "8. ADMIN / DEBUG
+  // OVLÁDÁNÍ" — tři samostatné debug akce, ať jde ručně ověřit KAŽDÉ ze tří
+  // setkání zvlášť, včetně jeho vlastní náhodně vybrané "escape" hlášky, viz
+  // useTitanEscapeMessage.ts). `encounterIndex` (0/1/2) jen vybere
+  // KTEROU z persistovaných `titanEncounterNights` hodnot použít jako
+  // debugNightOverride — samotný mechanismus (přepnutí night/reducer PŘED
+  // dispatchem DEBUG_START_TITAN, viz pendingDebugStartTitanRef) je beze
+  // změny. Nezávislé na aktuálním čísle dne (viz zadání) — funguje i když
+  // hráč zrovna hraje úplně jinou noc, přepíše ji.
   const pendingDebugStartTitanRef = useRef(false);
-  function handleDebugStartTitan() {
+  function handleDebugStartTitan(encounterIndex: 0 | 1 | 2) {
     pendingDebugStartTitanRef.current = true;
-    setDebugNightOverride(TITAN_NIGHT_NUMBER);
+    setDebugNightOverride(titanEncounterNights[encounterIndex]);
   }
   useEffect(() => {
     if (!pendingDebugStartTitanRef.current || night.enemy.id !== "titan") return;

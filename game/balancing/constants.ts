@@ -84,10 +84,12 @@ export const GAME_OVER_REVEAL_DURATION_MS = 4000;
 // mechanismus, viz zadání "6. TITAN TIMER").
 export const TITAN_STAGE_STAY_MS = 20_000;
 
-// Noc, ve které je aktivní monstrum Titan (viz game/nights/nightRegistry.ts,
-// app/play/page.tsx debug "SPUSTIT TITANA") — jediné místo, které tohle
-// číslo definuje, ať se neseje po komponentách/reduceru.
-export const TITAN_NIGHT_NUMBER = 15;
+// Noc(i), kdy je aktivní monstrum Titan, už NENÍ jedna pevná konstanta (viz
+// zadání "tři náhodná setkání s Titanem během 30 nocí") — nahrazeno
+// persistovanou trojicí náhodně vylosovaných čísel, viz
+// game/core/titanEncounterNights.ts (`getTitanEncounterNights`/
+// `resetTitanEncounterNights`) a game/nights/nightRegistry.ts
+// (`resolveNightDefinition(nightNumber, titanNights)`).
 
 // Kroky ústupu (monster_retreat_steps) hrají krátce PO řevu (monster_retreat_roar,
 // stejný trigger — monsterRetreatRoarSeq), ne současně — nejdřív leknutí, pak

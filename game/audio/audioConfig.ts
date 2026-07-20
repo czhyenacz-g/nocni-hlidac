@@ -656,4 +656,36 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
     volume: 0.8,
     loop: false,
   },
+  // Titanův útěk (viz zadání, game/radio/titanEscapeMessages.ts) — pět
+  // skutečně namluvených, rozřezaných variant (source master viz
+  // public/object_13/sound/titan_escape/source/titan_escape_raw.wav).
+  // Stejný "žádný fallbackSynth" princip jako radioReleaseMonster* výše —
+  // chybějící/nenačtený soubor se tiše ignoruje (viz audioManager.ts#play),
+  // titulek se zobrazí i tak (text je zdroj pravdy, viz
+  // titanEscapeMessages.ts hlavička).
+  [AUDIO_EVENTS.titanEscape01]: {
+    src: "/object_13/sound/titan_escape/titan_escape_01.mp3",
+    volume: 0.85,
+    loop: false,
+  },
+  [AUDIO_EVENTS.titanEscape02]: {
+    src: "/object_13/sound/titan_escape/titan_escape_02.mp3",
+    volume: 0.85,
+    loop: false,
+  },
+  [AUDIO_EVENTS.titanEscape03]: {
+    src: "/object_13/sound/titan_escape/titan_escape_03.mp3",
+    volume: 0.85,
+    loop: false,
+  },
+  [AUDIO_EVENTS.titanEscape04]: {
+    src: "/object_13/sound/titan_escape/titan_escape_04.mp3",
+    volume: 0.85,
+    loop: false,
+  },
+  [AUDIO_EVENTS.titanEscape05]: {
+    src: "/object_13/sound/titan_escape/titan_escape_05.mp3",
+    volume: 0.85,
+    loop: false,
+  },
 };

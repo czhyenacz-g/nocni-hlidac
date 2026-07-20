@@ -410,6 +410,11 @@ export const COPY = {
       blackout_timeout: "Nabíjení selhalo. Nouzová baterie vydržela jen pár sekund. Ve tmě povolil zámek.",
       bulb_replacement_attack: "Jít vyměnit tu žárovku nebylo hrdinství, ale poslední chyba v tvém životě.",
       emergency_run: "Nouzová výprava mimo kancelář byla poslední, kterou jsi kdy podnikl.",
+      // Pokus o útěk/minihru během aktivního Titana (viz zadání "Pokus odejít
+      // do minihry během Titanova útoku") — DeathScreen.tsx zatím podporuje
+      // jen jednu větu na řádek (žádný whitespace-pre-line), proto jedna
+      // souvětí varianta místo dvouřádkové z zadání.
+      titan_ambush_emergency_run: "Při pokusu o útěk se dveře zasekly a Titan tě zabil.",
     },
     // Firemně-cynická hláška Objektu 13 po smrti — jedna náhodně vybraná při
     // vstupu na DeathScreen (viz DeathScreen.tsx), stabilní po dobu zobrazení.

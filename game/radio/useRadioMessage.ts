@@ -55,8 +55,18 @@ const TRANSMISSION_STATUS_LABEL = "Přenos probíhá…";
  * `useGhoulCameraAttackWarningMessage.ts`, které místo toho sledují
  * nízkofrekvenční `...Seq` čítač měnící se jen při skutečné události, takže
  * tenhle konkrétní bug samy o sobě nemají).
+ *
+ * `enabled` (výchozí `true`, beze změny pro Impa) — `false` na Titanově noci
+ * (viz RadioMessageOverlay.tsx, game/core/titanEncounter.ts) — Impovo
+ * "vypuštění monstra" hlášení je monstrum-agnostické (triggeruje se na
+ * KTEROUKOLIV `enemyStage === "outer_yard"`, ne jen Impovo), takže by se bez
+ * tohohle guardu přehrálo špatné (Impovo) rádiové hlášení i na Titanovu noc,
+ * přes/místo Titanovy vlastní jednorázové "escape" hlášky (viz
+ * game/radio/useTitanEscapeMessage.ts). Tracker se pořád aktualizuje i když
+ * `enabled` je `false` (ať `previousStage` zůstane v souladu), jen se nikdy
+ * nespustí samotné přehrání/zobrazení.
  */
-export function useRadioMessage(monsterStage: EnemyStage, nightNumber: number): RadioMessageState {
+export function useRadioMessage(monsterStage: EnemyStage, nightNumber: number, enabled: boolean = true): RadioMessageState {
   const trackerRef = useRef<RadioTriggerTrackerState>(createInitialRadioTriggerTracker(nightNumber));
   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [state, setState] = useState<RadioMessageState>({ visible: false, text: null });
@@ -64,7 +74,7 @@ export function useRadioMessage(monsterStage: EnemyStage, nightNumber: number): 
   useEffect(() => {
     const { next, shouldTrigger } = advanceRadioTriggerTracker(trackerRef.current, nightNumber, monsterStage);
     trackerRef.current = next;
-    if (!shouldTrigger) return;
+    if (!shouldTrigger || !enabled) return;
 
     // Prázdný pool (teoreticky, viz pickRandomReleaseMonsterMessage) —
     // tiše nic nepřehraj/nezobraz, ne pád. Netriggeruje se tak `next`
@@ -84,7 +94,7 @@ export function useRadioMessage(monsterStage: EnemyStage, nightNumber: number): 
       hideTimeoutRef.current = null;
       setState({ visible: false, text: null });
     }, resolveReleaseMonsterOverlayDurationMs(message.id));
-  }, [monsterStage, nightNumber]);
+  }, [monsterStage, nightNumber, enabled]);
 
   // Úklid při unmountu (viz zadání "při unmountu zrušit aktivní timery") —
   // samostatný efekt s prázdným dependency polem, ať se spustí přesně

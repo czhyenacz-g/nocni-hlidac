@@ -57,8 +57,8 @@ interface DebugPanelProps {
   onDebugPlayDisabledCameraFootsteps: () => void;
   /** Viz GameState.debugGhoulCameraAttackChanceOverride — `null` = produkční 5 %. */
   onSetDebugGhoulCameraAttackChance: (chance: number | null) => void;
-  /** "SPUSTIT TITANA" (viz zadání "8. ADMIN / DEBUG OVLÁDÁNÍ") — přepne night/reducer na Titanovu NightDefinition a nastaví ho na první stage. Admin-only, nezávislé na aktuálním čísle dne. */
-  onDebugStartTitan: () => void;
+  /** "SPUSTIT TITANA 1/2/3" (viz zadání "8. ADMIN / DEBUG OVLÁDÁNÍ") — přepne night/reducer na jednu ze tří vylosovaných Titanových nocí (`encounterIndex` 0/1/2) a nastaví ho na první stage. Admin-only, nezávislé na aktuálním čísle dne. */
+  onDebugStartTitan: (encounterIndex: 0 | 1 | 2) => void;
   /** "TITAN: DALŠÍ STAGE" — posune Titana o jednu stage po jeho trase; no-op mimo Titanovu noc / v attack/graveyard. */
   onDebugAdvanceTitanStage: () => void;
 }
@@ -548,20 +548,30 @@ export default function DebugPanel({
               ))}
             </div>
 
-            {/* Titan (viz zadání "8. ADMIN / DEBUG OVLÁDÁNÍ") — "SPUSTIT
-                TITANA" přepne night/reducer na Titanovu NightDefinition
-                (TITAN_NIGHT_NUMBER, nezávisle na aktuálním čísle dne) a
-                nastaví ho na první stage; "TITAN: DALŠÍ STAGE" jen posune o
+            {/* Titan (viz zadání "8. ADMIN / DEBUG OVLÁDÁNÍ") — tři
+                samostatná tlačítka "SPUSTIT TITANA 1/2/3" (ne jedno se
+                selectorem), ať jde KAŽDÉ ze tří setkání (a jeho vlastní
+                náhodně vybranou "escape" hlášku, viz useTitanEscapeMessage.ts)
+                spustit jedním klikem, nezávisle na aktuálním čísle dne — přepne
+                night/reducer na odpovídající vylosovanou Titanovu noc a
+                nastaví ho na první stage. "TITAN: DALŠÍ STAGE" jen posune o
                 jednu stage po stejné trase jako běžná hra. Stejný prostý
                 button vzor jako "DEV: Restartovat generátor" níže. */}
-            <div className="flex gap-1.5 mt-1.5">
-              <button type="button" className="pixel-button px-2 py-1 text-xs flex-1" onClick={onDebugStartTitan}>
-                SPUSTIT TITANA
+            <div className="text-amber-400 mb-1 mt-1.5">Titan:</div>
+            <div className="flex gap-1.5">
+              <button type="button" className="pixel-button px-2 py-1 text-xs flex-1" onClick={() => onDebugStartTitan(0)}>
+                SPUSTIT TITANA 1
               </button>
-              <button type="button" className="pixel-button px-2 py-1 text-xs flex-1" onClick={onDebugAdvanceTitanStage}>
-                TITAN: DALŠÍ STAGE
+              <button type="button" className="pixel-button px-2 py-1 text-xs flex-1" onClick={() => onDebugStartTitan(1)}>
+                SPUSTIT TITANA 2
+              </button>
+              <button type="button" className="pixel-button px-2 py-1 text-xs flex-1" onClick={() => onDebugStartTitan(2)}>
+                SPUSTIT TITANA 3
               </button>
             </div>
+            <button type="button" className="pixel-button px-2 py-1 text-xs w-full mt-1.5" onClick={onDebugAdvanceTitanStage}>
+              TITAN: DALŠÍ STAGE
+            </button>
           </div>
         )}
 

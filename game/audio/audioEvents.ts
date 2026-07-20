@@ -159,6 +159,19 @@ export const AUDIO_EVENTS = {
   // "začátek poškození" zvuk výše) — vrstva stvůry navrch vrstvy techniky.
   ghoulCameraAttackWarning0: "ghoul_camera_attack_warning_0",
   ghoulCameraAttackWarning1: "ghoul_camera_attack_warning_1",
+  // Titanův útěk (viz zadání "5 hlášek namluvených v tomto pořadí",
+  // game/radio/titanEscapeMessages.ts) — pět skutečně namluvených variant,
+  // NÁHODNĚ vybraná JEDNA se přehraje přesně jednou při ZAHÁJENÍ Titanova
+  // setkání (ne při každé změně stage), stejný "1 event = 1 předem načtený
+  // <audio> element" vzor jako radioReleaseMonster*/radioMonsterRepel*.
+  // Nahrazuje dřívější dlouhou vícekrokovou tutorialovou/kontextovou
+  // rádiovou vrstvu (viz git historie) — jedna krátká hláška místo
+  // postupných nápověd napříč Titanovou trasou.
+  titanEscape01: "titan_escape_01",
+  titanEscape02: "titan_escape_02",
+  titanEscape03: "titan_escape_03",
+  titanEscape04: "titan_escape_04",
+  titanEscape05: "titan_escape_05",
 } as const;
 
 export type AudioEventId = (typeof AUDIO_EVENTS)[keyof typeof AUDIO_EVENTS];

@@ -45,4 +45,12 @@ export const OBJECT13_JUMPSCARES: Record<DeathReason, JumpscareDefinition> = {
     silenceBeforeMs: 800,
     effectDurationMs: 600,
   },
+  titan_ambush_emergency_run: {
+    id: "titan_ambush_emergency_run",
+    reason: "titan_ambush_emergency_run",
+    title: "Pokus o útěk se nezdařil.",
+    message: "Dveře se zasekly a Titan tě dostihl.",
+    silenceBeforeMs: 800,
+    effectDurationMs: 600,
+  },
 };
