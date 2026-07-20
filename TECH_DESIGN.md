@@ -2690,3 +2690,15 @@ souběžně kill-sekvence a Game Over. Guard používá výhradně existující 
 (`doorGeneratorOverloadUntilMs`, `isMonsterAtDoor`) — žádné nové `GameState` pole, žádný
 paralelní generation/token systém. Neovlivňuje Titanovu trasu/rychlost mimo dveře, délku
 `at_door`/`breach` dwellu, ani samotné trvání/sílu přetížení.
+
+## Oprava: kamery během Titana zobrazovaly jen Titana, klasické záběry chyběly
+
+`TITAN_CAMERA_ASSETS` (`game/enemies/monsterPresentation.ts`) mělo prázdné `normal` pole pro
+každou kameru — `getCameraImageSrc` tak na kamerách BEZ Titana spadalo na `pickCycling([])`
+→ `null` (prázdná kamera), a jediná kamera, kde Titan zrovna byl, ukázala jen samotný Titan
+obrázek bez okolního kontextu. Oprava: `normal` teď sdílí stejná pole jako `IMP_CAMERA_ASSETS`
+pro danou `CameraId` (stejná fyzická lokace/kamera, nezávislá na aktivním monstru), takže
+kamera vždy zobrazí aspoň základní záběr. Titanovy `monster` obrázky (ověřeno vizuálně) jsou
+kompletní kompozitní záběry (celé prostředí + Titan), ne průhledný overlay, takže se dál
+používají jako CELÁ scéna, ne jako vrstva nad `normal` — žádná nová kompozitní/overlay
+renderovací vrstva nebyla potřeba.

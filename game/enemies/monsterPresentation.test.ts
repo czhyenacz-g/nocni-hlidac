@@ -42,12 +42,13 @@ describe("4/5. outcomes.playerKill.default — same death sequence as before, ju
   });
 });
 
-// Titan camera visuals (viz zadání "Napoj Titanovy kamerové vizuály") —
-// každá ze čtyř běžných CameraId má teď vlastní monster-přítomný obrázek
-// (viz TITAN_CAMERA_PATH v monsterPresentation.ts). `normal`/`fleeing`
-// zůstávají prázdné (žádný Titan art bez monstra/na útěku zatím dodaný) —
-// getCameraImageSrc na TĚCHTO prázdných polích musí dál bezpečně spadnout
-// na `null`, nikdy nespadnout na chybějícím assetu.
+// Titan camera visuals (viz zadání "Napoj Titanovy kamerové vizuály", opraveno
+// v "regresní bug — kamery během Titana zobrazují jen Titana") — každá ze
+// čtyř běžných CameraId má vlastní monster-přítomný obrázek (viz
+// TITAN_CAMERA_PATH v monsterPresentation.ts, ověřeně kompletní kompozitní
+// záběry). `normal` sdílí Impovo pole pro stejnou fyzickou kameru (žádný
+// Titan-specific "bez monstra" art, ale lokace je stejná bez ohledu na
+// monstrum), `fleeing` zůstává prázdné (Titan nikdy neustupuje).
 describe("TITAN_CAMERA_ASSETS — real monster art per stage, empty-only for truly unsupported cases", () => {
   it("11. outer_yard uses outdoor_titan.webp", () => {
     expect(TITAN_CAMERA_ASSETS.outer_yard.default.monster).toEqual(["/object_13/monster/titan/outdoor_titan.webp"]);
@@ -101,9 +102,12 @@ describe("TITAN_CAMERA_ASSETS — real monster art per stage, empty-only for tru
     );
   });
 
-  it("without the monster present, these stages still fall back to null (no 'normal' Titan art supplied)", () => {
+  it("without the monster present, these cameras fall back to Imp's shared base ('normal') shot for the same physical camera, never null/Titan art", () => {
     for (const cameraId of ALL_CAMERA_IDS) {
-      expect(getCameraImageSrc(cameraId, false, false, 0, cameraId, undefined, 0, TITAN_PRESENTATION.camera)).toBeNull();
+      const src = getCameraImageSrc(cameraId, false, false, 0, cameraId, undefined, 0, TITAN_PRESENTATION.camera);
+      expect(src).not.toBeNull();
+      expect(src).not.toContain("titan");
+      expect(IMP_CAMERA_ASSETS[cameraId].default.normal).toContain(src);
     }
   });
 

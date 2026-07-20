@@ -152,24 +152,36 @@ export const IMP_CAMERA_ASSETS: Record<CameraId, CameraAssetsEntry> = {
   },
 };
 
-// Titan (viz zadání "Napoj Titanovy kamerové vizuály") má teď vlastní
-// monster-přítomný obrázek pro každou ze čtyř běžných CameraId — stejná
-// `monster`/`normal`/`fleeing` struktura jako IMP_CAMERA_ASSETS výše, jen
-// s jedinou variantou v `monster` poli (žádné cyklování/varianty jako u
-// Impa, jeden obrázek na stage). `normal` (bez monstra) a `fleeing` (útěk)
-// zůstávají prázdné — pro tyhle stavy zatím žádný Titan-specific art
-// nedodaný, `getCameraImageSrc` na prázdném poli bezpečně spadne zpět na
-// `pickCycling` fallback (`null` -> CameraView.tsx ukáže prázdnou kameru),
-// stejný mechanismus jako dřív, jen teď zúžený na SKUTEČNĚ nepokryté
-// případy (viz zadání "6. FALLBACK"). Titanovy DVEŘNÍ vizuály (at_door/
-// breach/attack/overload) jsou samostatné a beze změny — viz
-// game/visuals/titanDoorAssets.ts, DoorView.tsx — tenhle registr se jich
-// netýká (DoorView vůbec nečte `presentation.camera`).
+// Titan (viz zadání "Napoj Titanovy kamerové vizuály", opraveno v "regresní
+// bug — kamery během Titana zobrazují jen Titana") má vlastní monster-přítomný
+// obrázek pro každou ze čtyř běžných CameraId — stejná `monster`/`normal`/
+// `fleeing` struktura jako IMP_CAMERA_ASSETS výše, jen s jedinou variantou v
+// `monster` poli (žádné cyklování/varianty jako u Impa, jeden obrázek na
+// stage). Tyhle `monster` obrázky jsou OVĚŘENĚ kompletní kompozitní záběry
+// (celé prostředí dané lokace + Titan v popředí, ne průhledný/černý overlay —
+// viz zadání "Správný model", varianta 2 "předpřipravená kompletní varianta
+// stejné kamery"), takže se bezpečně použijí jako CELÁ scéna, ne jako vrstva
+// nad `normal`.
+//
+// `normal` (bez monstra) ZÁMĚRNĚ NENÍ prázdné, i když Titan žádný vlastní
+// "bez monstra" art nemá — kamera je pořád STEJNÁ fyzická lokace/kamera bez
+// ohledu na to, které monstrum zrovna běží (viz IMP_CAMERA_ASSETS výše,
+// stejné `CameraId`), takže se sdílí Impovo `normal` pole. Bez tohohle
+// sdílení `getCameraImageSrc` na prázdném poli spadne na `pickCycling` →
+// `null` → CameraView.tsx ukáže prázdnou kameru na VŠECH kamerách, kde
+// Titan zrovna není (a na jediné kameře, kde JE, jen samotného Titana bez
+// jakékoliv jiné kamery kolem) — přesně reprodukovaný regresní bug. `fleeing`
+// zůstává prázdné (Titan nikdy neustupuje, viz resolveTitanAdvance.ts — žádný
+// `lastEnemyDecision` z `RETREATING_DECISIONS` pro Titana nikdy nenastane),
+// `getCameraImageSrc` na prázdném `fleeing` bezpečně spadne zpět na `monster`.
+// Titanovy DVEŘNÍ vizuály (at_door/breach/attack/overload) jsou samostatné a
+// beze změny — viz game/visuals/titanDoorAssets.ts, DoorView.tsx — tenhle
+// registr se jich netýká (DoorView vůbec nečte `presentation.camera`).
 const TITAN_CAMERA_PATH = "/object_13/monster/titan";
 
 export const TITAN_CAMERA_ASSETS: Record<CameraId, CameraAssetsEntry> = {
   outer_yard: {
-    default: { normal: [], monster: [`${TITAN_CAMERA_PATH}/outdoor_titan.webp`], fleeing: [] },
+    default: { normal: IMP_CAMERA_ASSETS.outer_yard.default.normal, monster: [`${TITAN_CAMERA_PATH}/outdoor_titan.webp`], fleeing: [] },
   },
   // Hlavní Titan route (viz monsterDefinitions.ts#TITAN.gameplay.routeVariants)
   // dnes vede přes left_hallway, right_hallway proto v běžné hře nikdy
@@ -178,17 +190,33 @@ export const TITAN_CAMERA_ASSETS: Record<CameraId, CameraAssetsEntry> = {
   // budoucí alternativní route) a manuální nastavení stage nikdy nespadne
   // na prázdný placeholder.
   right_hallway: {
-    default: { normal: [], monster: [`${TITAN_CAMERA_PATH}/right_hallway_titan.webp`], fleeing: [] },
+    default: {
+      normal: IMP_CAMERA_ASSETS.right_hallway.default.normal,
+      monster: [`${TITAN_CAMERA_PATH}/right_hallway_titan.webp`],
+      fleeing: [],
+    },
   },
   left_hallway: {
-    default: { normal: [], monster: [`${TITAN_CAMERA_PATH}/left_hallway_titan.webp`], fleeing: [] },
+    default: {
+      normal: IMP_CAMERA_ASSETS.left_hallway.default.normal,
+      monster: [`${TITAN_CAMERA_PATH}/left_hallway_titan.webp`],
+      fleeing: [],
+    },
   },
   door_hallway: {
-    default: { normal: [], monster: [`${TITAN_CAMERA_PATH}/titan_door_hallway.webp`], fleeing: [] },
+    default: {
+      normal: IMP_CAMERA_ASSETS.door_hallway.default.normal,
+      monster: [`${TITAN_CAMERA_PATH}/titan_door_hallway.webp`],
+      fleeing: [],
+    },
     // Stejný mechanismus jako IMP_CAMERA_ASSETS.door_hallway.lightOn výše
     // (`resolveAssetSet` v cameraAssets.object13.ts — `state.lightOn`
     // rozhoduje, žádné nové Titan-specific "je světlo zapnuté" pole).
-    lightOn: { normal: [], monster: [`${TITAN_CAMERA_PATH}/titan_door_hallway_light.webp`], fleeing: [] },
+    lightOn: {
+      normal: IMP_CAMERA_ASSETS.door_hallway.lightOn!.normal,
+      monster: [`${TITAN_CAMERA_PATH}/titan_door_hallway_light.webp`],
+      fleeing: [],
+    },
   },
 };
 
