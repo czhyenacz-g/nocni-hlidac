@@ -890,6 +890,20 @@ export interface GameState {
    * tohle pole řídí jen dveře.
    */
   doorGeneratorOverloadUntilMs: number | null;
+  /**
+   * `elapsedMs`, kdy skončí "reveal" mrtvého Titana po dokončeném přetížení
+   * generátoru (viz zadání "napoj kompletní dveřní vizuální sekvenci
+   * Titana", TITAN_OVERLOAD_DEATH_REVEAL_DURATION_MS, gameReducer.ts#updateDoorGeneratorOverload)
+   * — `null` mimo reveal. Nastaví se atomicky ve STEJNÉM dispatchi jako
+   * `enemyStage: "graveyard"`, jen když byl aktivní monstrum Titan u dveří v
+   * okamžiku dokončení. Čistě prezentační (DoorView.tsx zobrazí
+   * TITAN_OVERLOAD_DEATH_SRC + potvrzující text) — NEOVLIVŇUJE
+   * `monsterDefeated`, `isRunning`, `screen` ani délku noci, stejně jako
+   * `doorDeathRevealUntilMs` neovlivňuje nic mimo DoorView vzhled. Resetuje
+   * se jako všechen ostatní runtime stav při `createInitialGameState`
+   * příští noci.
+   */
+  titanOverloadDeathRevealUntilMs: number | null;
 
   /**
    * Které mechaniky jsou tuhle noc zapnuté (viz game/difficulty/nightConfig.ts)

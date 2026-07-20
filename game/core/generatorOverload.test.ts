@@ -3,7 +3,11 @@ import { canStartGeneratorOverloadWindup, createGameReducer } from "./gameReduce
 import { createInitialGameState } from "./gameState";
 import { NIGHT_01 } from "../nights/night01";
 import { DEFAULT_NIGHT_FEATURES } from "../difficulty/nightConfig";
-import { GENERATOR_OVERLOAD_DOOR_DURATION_MS, GENERATOR_OVERLOAD_WINDUP_DURATION_MS } from "../balancing/constants";
+import {
+  GENERATOR_OVERLOAD_DOOR_DURATION_MS,
+  GENERATOR_OVERLOAD_WINDUP_DURATION_MS,
+  TITAN_OVERLOAD_DEATH_REVEAL_DURATION_MS,
+} from "../balancing/constants";
 import { GameState, NightDefinition } from "./types";
 
 // Přetížení generátoru dnes VŽDY zničí dveře. Pokud je aktivní monstrum
@@ -399,5 +403,84 @@ describe("Titan overload outcome — door always destroyed, Titan graveyarded on
     expect(finished.monsterKilledThisRun).toBe(false);
     expect(finished.screen).toBe("playing");
     expect(finished.isRunning).toBe(true);
+  });
+});
+
+// Prezentační 3s "reveal" mrtvého Titana po úspěšném zabití přetížením (viz
+// zadání "napoj kompletní dveřní vizuální sekvenci Titana",
+// GameState.titanOverloadDeathRevealUntilMs, DoorView.tsx). Nastavuje se
+// VÝHRADNĚ na stejný TICK jako `enemyStage: "graveyard"` výše — testováno
+// odděleně, ať se test souboru drží u existujícího "Titan overload outcome"
+// popisu logiky přesunu do graveyardu.
+describe("titanOverloadDeathRevealUntilMs — cosmetic 3s reveal after a successful Titan overload kill", () => {
+  it("is set to elapsedMs + TITAN_OVERLOAD_DEATH_REVEAL_DURATION_MS exactly when Titan is graveyarded", () => {
+    const reducer = createGameReducer(TITAN_NIGHT);
+    const started = reducer(titanStateAtGenerator({ elapsedMs: 0, enemyStage: "at_door" }), {
+      type: "START_GENERATOR_OVERLOAD",
+    });
+    const finished = reducer(started, { type: "TICK", deltaMs: GENERATOR_OVERLOAD_DOOR_DURATION_MS });
+    expect(finished.enemyStage).toBe("graveyard");
+    expect(finished.titanOverloadDeathRevealUntilMs).toBe(
+      GENERATOR_OVERLOAD_DOOR_DURATION_MS + TITAN_OVERLOAD_DEATH_REVEAL_DURATION_MS,
+    );
+  });
+
+  it("stays null when the overload completes without killing Titan (Imp night — regression)", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const started = reducer(stateAtGenerator({ elapsedMs: 0, enemyStage: "at_door" }), { type: "START_GENERATOR_OVERLOAD" });
+    const finished = reducer(started, { type: "TICK", deltaMs: GENERATOR_OVERLOAD_DOOR_DURATION_MS });
+    expect(finished.doorDestroyed).toBe(true);
+    expect(finished.titanOverloadDeathRevealUntilMs).toBeNull();
+  });
+
+  it("stays null when Titan's overload completes but Titan wasn't actually at the door", () => {
+    const reducer = createGameReducer(TITAN_NIGHT);
+    const started = reducer(titanStateAtGenerator({ elapsedMs: 0, enemyStage: "outer_yard" }), {
+      type: "START_GENERATOR_OVERLOAD",
+    });
+    const finished = reducer(started, { type: "TICK", deltaMs: GENERATOR_OVERLOAD_DOOR_DURATION_MS });
+    expect(finished.enemyStage).toBe("outer_yard");
+    expect(finished.titanOverloadDeathRevealUntilMs).toBeNull();
+  });
+
+  it("lasts exactly TITAN_OVERLOAD_DEATH_REVEAL_DURATION_MS: still set 1ms before the deadline", () => {
+    const reducer = createGameReducer(TITAN_NIGHT);
+    const started = reducer(titanStateAtGenerator({ elapsedMs: 0, enemyStage: "at_door" }), {
+      type: "START_GENERATOR_OVERLOAD",
+    });
+    const killed = reducer(started, { type: "TICK", deltaMs: GENERATOR_OVERLOAD_DOOR_DURATION_MS });
+    const almostExpired = reducer(killed, { type: "TICK", deltaMs: TITAN_OVERLOAD_DEATH_REVEAL_DURATION_MS - 1 });
+    expect(almostExpired.titanOverloadDeathRevealUntilMs).not.toBeNull();
+  });
+
+  it("expires back to null exactly once TITAN_OVERLOAD_DEATH_REVEAL_DURATION_MS elapses after the kill", () => {
+    const reducer = createGameReducer(TITAN_NIGHT);
+    const started = reducer(titanStateAtGenerator({ elapsedMs: 0, enemyStage: "at_door" }), {
+      type: "START_GENERATOR_OVERLOAD",
+    });
+    const killed = reducer(started, { type: "TICK", deltaMs: GENERATOR_OVERLOAD_DOOR_DURATION_MS });
+    const expired = reducer(killed, { type: "TICK", deltaMs: TITAN_OVERLOAD_DEATH_REVEAL_DURATION_MS });
+    expect(expired.titanOverloadDeathRevealUntilMs).toBeNull();
+    // After the reveal window, the door stays in its normal destroyed state
+    // — same generic doorDestroyed flag as any other overload kill.
+    expect(expired.doorDestroyed).toBe(true);
+  });
+
+  it("does not affect monsterDefeated, isRunning, or screen — purely cosmetic", () => {
+    const reducer = createGameReducer(TITAN_NIGHT);
+    const started = reducer(titanStateAtGenerator({ elapsedMs: 0, enemyStage: "at_door", screen: "playing" }), {
+      type: "START_GENERATOR_OVERLOAD",
+    });
+    const killed = reducer(started, { type: "TICK", deltaMs: GENERATOR_OVERLOAD_DOOR_DURATION_MS });
+    expect(killed.titanOverloadDeathRevealUntilMs).not.toBeNull();
+    expect(killed.monsterDefeated).toBe(false);
+    expect(killed.isRunning).toBe(true);
+    expect(killed.screen).toBe("playing");
+  });
+
+  it("resets to null on the next night's initial state", () => {
+    const state = titanStateAtGenerator({ titanOverloadDeathRevealUntilMs: 12345 });
+    const initial = createInitialGameState(TITAN_NIGHT, { nightFeatures: state.nightFeatures });
+    expect(initial.titanOverloadDeathRevealUntilMs).toBeNull();
   });
 });

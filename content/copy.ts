@@ -388,6 +388,13 @@ export const COPY = {
     // (viz GameState.doorGeneratorOverloadUntilMs) — {seconds} nahrazuje
     // zaokrouhlený počet zbývajících celých sekund.
     doorGeneratorOverloadCountdownLabel: "PŘETÍŽENÍ: {seconds} s",
+    // Zobrazí se na DoorView.tsx po dobu titanOverloadDeathRevealUntilMs
+    // (viz gameReducer.ts#updateDoorGeneratorOverload, TITAN_OVERLOAD_DEATH_REVEAL_DURATION_MS)
+    // — jen v tom vzácném případě, kdy přetížení generátoru u dveří skutečně
+    // zabilo Titana (enemyStage -> "graveyard"). Čistě kosmetické potvrzení,
+    // netýká se generického zničení dveří (doorViewHintDestroyed výše).
+    titanOverloadDeathTitleLabel: "PŘETÍŽENÍ DOKONČENO",
+    titanOverloadDeathBodyLabel: "Kontakt eliminován.\nBezpečnostní dveře byly zničeny.",
     // Zobrazí se, když hráč otevře dveře bez ověření kamerou, kam monstrum
     // odešlo (medium/hard, viz game/difficulty/difficultyConfig.ts
     // monster_check_or_return) — zatím nikde ve UI nenapojeno, jen připraveno.

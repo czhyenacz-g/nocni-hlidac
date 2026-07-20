@@ -232,6 +232,14 @@ export const THINK_IT_OVER_WINDUP_DURATION_MS = 10_000;
 export const GENERATOR_OVERLOAD_WINDUP_DURATION_MS = EMERGENCY_RUN_WINDUP_DURATION_MS;
 export const GENERATOR_OVERLOAD_DOOR_DURATION_MS = 10_000;
 
+// Titan zabitý přetížením u dveří (viz gameReducer.ts#updateDoorGeneratorOverload,
+// EnemyStage "graveyard") — čistě prezentační "reveal" mrtvého Titana
+// (titan_doors_overdrive_5.webp + potvrzující zpráva v DoorView.tsx), NEnÍ
+// gameplay stav (neovlivňuje monsterDefeated/isRunning/screen, viz zadání).
+// Stejný "krátký pevný reveal po rozhodnutém výsledku" vzor jako
+// DOOR_DEATH_REVEAL_DURATION_MS výše, jen delší a bez vlivu na smrt hráče.
+export const TITAN_OVERLOAD_DEATH_REVEAL_DURATION_MS = 3000;
+
 // Sekvence útoku/smrti (viz app/play/page.tsx, efekt na state.screen ===
 // "death", AUDIO_DESIGN.md "Ticho před lekačkou"): ambience plynule ztlumí
 // přes AMBIENCE_DEATH_FADE_MS, pak JUMPSCARE_SILENT_GAP_MS ticha, teprve

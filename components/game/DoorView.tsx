@@ -10,6 +10,7 @@ import {
 } from "@/game/visuals/backgroundImages";
 import { BULB_REPLACE_DURATION_MS, BULB_REPLACE_SUCCESS_MESSAGE_MS } from "@/game/balancing/constants";
 import { computeBulbReplacementProgressRatio } from "@/game/core/bulbReplacementProgress";
+import { TITAN_AT_DOOR_SRC, TITAN_ATTACK_SRC, TITAN_BREACH_SRC, TITAN_OVERLOAD_DEATH_SRC } from "@/game/visuals/titanDoorAssets";
 import DoorSceneFrame from "./DoorSceneFrame";
 import ViewSwitchArrow from "./ViewSwitchArrow";
 
@@ -42,6 +43,26 @@ interface DoorViewProps {
    * akce (onToggleDoor), jen naléhavější prezentace.
    */
   closeDoorUrgent: boolean;
+  /**
+   * Titan (viz zadání "napoj kompletní dveřní vizuální sekvenci Titana",
+   * `night.enemy.id === "titan"`, ŽÁDNÉ nové `isTitan` pole v GameState) je
+   * PRÁVĚ TEĎ u dveří v idle fázi probourávání — `at_door` nebo `breach`
+   * (`isMonsterAtDoor`, stejná definice jako zbytek hry). Vzájemně se
+   * vylučují, oba `false` mimo Titanovu noc nebo mimo tyhle dvě stage.
+   */
+  isTitanAtDoor: boolean;
+  isTitanBreach: boolean;
+  /** Titanova stage je `"attack"` — jen když `isDoorDeathReveal` je `true`, nahrazuje Impovo `deathRevealIndex` snímkem `titan_attacks_broken_door.webp`. */
+  isTitanAttack: boolean;
+  /**
+   * Snímek countdownu přetížení specifický pro Titana (viz
+   * resolveTitanOverloadFrameSrc, GameScreen.tsx) — `null`, pokud přetížení
+   * neběží NEBO Titan není u dveří (pak zůstává generický
+   * DOOR_GENERATOR_OVERLOAD_FRAME_INDEX beze změny, viz zadání).
+   */
+  titanOverloadFrameSrc: string | null;
+  /** viz GameState.titanOverloadDeathRevealUntilMs !== null — 3s "reveal" mrtvého Titana po úspěšném zabití přetížením. */
+  isTitanOverloadDeathReveal: boolean;
   onToggleDoor: () => void;
   onLookAtDesk: () => void;
   onStartBulbReplacement: () => void;
@@ -74,6 +95,11 @@ export default function DoorView({
   bulbReplacementProgressMs,
   bulbReplaceSuccessSeq,
   closeDoorUrgent,
+  isTitanAtDoor,
+  isTitanBreach,
+  isTitanAttack,
+  titanOverloadFrameSrc,
+  isTitanOverloadDeathReveal,
   onToggleDoor,
   onLookAtDesk,
   onStartBulbReplacement,
@@ -102,10 +128,30 @@ export default function DoorView({
     return () => clearTimeout(timeout);
   }, [doorClosed, isDoorDeathReveal, closedFrameStep]);
   // Priorita: doorDeathReveal (monstrum u dveří, smrt už rozhodnuta) >
+  // titanOverloadDeathReveal (Titan zabitý přetížením, viz zadání) >
   // doorDestroyed (trvale, do konce noci) > probíhající přetížení > zavřeno/
   // otevřeno. doorDestroyed a doorGeneratorOverloadActive se nikdy nesejdou
   // současně (viz gameReducer.ts#updateDoorGeneratorOverload — pole se
   // vzájemně vylučují), pořadí je tu jen pro čitelnost/budoucí jistotu.
+  //
+  // `titanOverrideSrc` (jiný obrázek než generický `doorScene.frames`,
+  // podle zadání "napoj Titanovu dveřní sekvenci") se, pokud existuje,
+  // vykreslí jako JEDINÝ snímek (aktivní index 0) místo generického pole —
+  // Titanovy assety nejsou součástí `BACKGROUND_SCENES.door` (viz
+  // titanDoorAssets.ts hlavička), takže nejdou vyjádřit jako index do NĚJ.
+  const titanOverrideSrc = isDoorDeathReveal
+    ? isTitanAttack
+      ? TITAN_ATTACK_SRC
+      : null
+    : isTitanOverloadDeathReveal
+      ? TITAN_OVERLOAD_DEATH_SRC
+      : doorGeneratorOverloadActive
+        ? titanOverloadFrameSrc
+        : !doorDestroyed && (isTitanAtDoor || isTitanBreach)
+          ? isTitanAtDoor
+            ? TITAN_AT_DOOR_SRC
+            : TITAN_BREACH_SRC
+          : null;
   const activeIndex = isDoorDeathReveal
     ? deathRevealIndex
     : doorDestroyed
@@ -115,6 +161,8 @@ export default function DoorView({
         : doorClosed
           ? DOOR_CLOSED_FRAME_START_INDEX + doorClosedFrameOffsetForStep(closedFrameStep)
           : 0;
+  const sceneFrames = titanOverrideSrc !== null ? [{ src: titanOverrideSrc }] : doorScene.frames;
+  const sceneActiveIndex = titanOverrideSrc !== null ? 0 : activeIndex;
   // Dveře nereagují na hráče (viz TOGGLE_DOOR guard v gameReducer.ts) —
   // hotspot zůstává vizuálně přítomný (žádný layout skok), ale bez akce a s
   // odlišným textem, ať klik viditelně "nic neudělá" místo tichého no-opu.
@@ -177,7 +225,7 @@ export default function DoorView({
 
   return (
     <div className="flex flex-col gap-3">
-      <DoorSceneFrame frames={doorScene.frames} activeIndex={activeIndex} crossfadeMs={doorScene.crossfadeMs}>
+      <DoorSceneFrame frames={sceneFrames} activeIndex={sceneActiveIndex} crossfadeMs={doorScene.crossfadeMs}>
         <button
           className={`door-hotspot tap-target-critical absolute flex items-end justify-center ${doorControlsLocked ? "opacity-50 cursor-not-allowed" : ""}`}
           style={{ left: "30%", top: "14%", width: "40%", height: "70%" }}
@@ -224,6 +272,20 @@ export default function DoorView({
             style={{ left: "50%", top: "6%", transform: "translateX(-50%)" }}
           >
             {COPY.game.doorGeneratorOverloadCountdownLabel.replace("{seconds}", String(doorGeneratorOverloadSecondsRemaining))}
+          </div>
+        )}
+
+        {isTitanOverloadDeathReveal && (
+          // Stejné umístění/styl jako countdown box výše (jen zelený místo
+          // červeného — potvrzení úspěchu, ne varování) — viz zadání
+          // "PŘETÍŽENÍ DOKONČENO" po úspěšném zabití Titana přetížením.
+          <div
+            className="absolute pointer-events-none text-center text-sm font-bold text-emerald-300 bg-black/70 border border-emerald-600 px-3 py-1 rounded whitespace-pre-line"
+            style={{ left: "50%", top: "6%", transform: "translateX(-50%)" }}
+          >
+            {COPY.game.titanOverloadDeathTitleLabel}
+            {"\n"}
+            {COPY.game.titanOverloadDeathBodyLabel}
           </div>
         )}
 

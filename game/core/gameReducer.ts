@@ -12,6 +12,7 @@ import {
   OFFICE_THREAT_GRACE_LOW_MS,
   OFFICE_THREAT_GRACE_MEDIUM_MS,
   THINK_IT_OVER_WINDUP_DURATION_MS,
+  TITAN_OVERLOAD_DEATH_REVEAL_DURATION_MS,
 } from "../balancing/constants";
 import { getBlackoutPhaseIndex } from "../visuals/blackoutPhase";
 import { DEFAULT_DIFFICULTY, DIFFICULTY_RULES, Difficulty } from "../difficulty/difficultyConfig";
@@ -594,7 +595,8 @@ function updateDoorGeneratorOverload(
   state: GameState,
   night: NightDefinition,
   elapsedMs: number,
-): Pick<GameState, "doorGeneratorOverloadUntilMs" | "doorDestroyed" | "doorClosed"> & Partial<Pick<GameState, "enemyStage">> {
+): Pick<GameState, "doorGeneratorOverloadUntilMs" | "doorDestroyed" | "doorClosed" | "titanOverloadDeathRevealUntilMs"> &
+  Partial<Pick<GameState, "enemyStage">> {
   if (state.doorGeneratorOverloadUntilMs === null) {
     // Žádný `enemyStage` klíč v návratu — tenhle update se spreaduje do
     // TICKu AŽ PO doorLightRepel/doorHallwayUvRepel update (viz volání
@@ -602,7 +604,18 @@ function updateDoorGeneratorOverload(
     // (PŘED-tikovou hodnotu), přebil by jejich legitimní změnu stage zpátky
     // na starou hodnotu. Klíč se objeví jen tehdy, když tahle funkce
     // SKUTEČNĚ o přesunu do graveyardu rozhoduje (viz níže).
-    return { doorGeneratorOverloadUntilMs: null, doorDestroyed: state.doorDestroyed, doorClosed: state.doorClosed };
+    //
+    // `titanOverloadDeathRevealUntilMs` je naproti tomu VÝHRADNĚ v
+    // majetku téhle funkce (jen ona ho nastavuje, viz níže), takže ho lze
+    // bezpečně vracet nepodmíněně ve všech větvích — buď probíhající
+    // reveal vyprší (elapsedMs ho přesáhl), nebo prochází beze změny.
+    const revealExpired = state.titanOverloadDeathRevealUntilMs !== null && elapsedMs >= state.titanOverloadDeathRevealUntilMs;
+    return {
+      doorGeneratorOverloadUntilMs: null,
+      doorDestroyed: state.doorDestroyed,
+      doorClosed: state.doorClosed,
+      titanOverloadDeathRevealUntilMs: revealExpired ? null : state.titanOverloadDeathRevealUntilMs,
+    };
   }
   if (elapsedMs >= state.doorGeneratorOverloadUntilMs) {
     const titanAtDoor = night.enemy.id === "titan" && isMonsterAtDoor(state);
@@ -610,6 +623,9 @@ function updateDoorGeneratorOverload(
       doorGeneratorOverloadUntilMs: null,
       doorDestroyed: true,
       doorClosed: false,
+      titanOverloadDeathRevealUntilMs: titanAtDoor
+        ? elapsedMs + TITAN_OVERLOAD_DEATH_REVEAL_DURATION_MS
+        : state.titanOverloadDeathRevealUntilMs,
       ...(titanAtDoor ? { enemyStage: "graveyard" as const } : {}),
     };
   }
@@ -617,6 +633,7 @@ function updateDoorGeneratorOverload(
     doorGeneratorOverloadUntilMs: state.doorGeneratorOverloadUntilMs,
     doorDestroyed: state.doorDestroyed,
     doorClosed: state.doorClosed,
+    titanOverloadDeathRevealUntilMs: state.titanOverloadDeathRevealUntilMs,
   };
 }
 
@@ -1346,6 +1363,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
               ? INACTIVE_GENERATOR_OVERLOAD_WINDUP
               : state.generatorOverloadWindup,
             doorGeneratorOverloadUntilMs: null,
+            titanOverloadDeathRevealUntilMs: null,
           };
         }
 
@@ -1431,6 +1449,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
               ? INACTIVE_GENERATOR_OVERLOAD_WINDUP
               : state.generatorOverloadWindup,
             doorGeneratorOverloadUntilMs: null,
+            titanOverloadDeathRevealUntilMs: null,
           };
         }
 

@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { CameraId, GameState, GhoulCameraAttackAnimationId, NightDefinition } from "@/game/core/types";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
-import { STRESS_DEV_HUD_ENABLED } from "@/game/balancing/constants";
+import { GENERATOR_OVERLOAD_DOOR_DURATION_MS, STRESS_DEV_HUD_ENABLED } from "@/game/balancing/constants";
 import { COPY } from "@/content/copy";
 import { computeNearRoomBulbWearRatio } from "@/game/core/roomBulbs";
 import { canReplaceBulb, canStartGeneratorOverloadWindup } from "@/game/core/gameReducer";
 import { canStartBatteryEmergencyRun, canStartShotgunEmergencyRun } from "@/game/core/emergencyMiniGameIntegration";
 import { resolveOfficeBreachPhase } from "@/game/core/officeBreachAftermath";
+import { isMonsterAtDoor } from "@/game/core/doorEncounter";
+import { resolveTitanOverloadFrameSrc } from "@/game/visuals/titanDoorAssets";
 import SceneBackground from "@/components/SceneBackground";
 import DeskView from "../game/DeskView";
 import DoorView from "../game/DoorView";
@@ -162,6 +164,23 @@ export default function GameScreen({
     state.doorGeneratorOverloadUntilMs !== null
       ? Math.max(0, Math.ceil((state.doorGeneratorOverloadUntilMs - state.elapsedMs) / 1000))
       : null;
+  // Titan (viz zadání "napoj kompletní dveřní vizuální sekvenci Titana") se
+  // identifikuje výhradně přes `night.enemy.id === "titan"` (stejná
+  // podmínka jako gameReducer.ts#updateDoorGeneratorOverload) — ŽÁDNÉ nové
+  // `isTitan` pole v GameState. `isMonsterAtDoor` je stejná sdílená
+  // definice jako zbytek hry (`"at_door"` i `"breach"`).
+  const isTitanNight = night.enemy.id === "titan";
+  const isTitanAtDoor = isTitanNight && state.enemyStage === "at_door";
+  const isTitanBreach = isTitanNight && state.enemyStage === "breach";
+  const isTitanAttack = isTitanNight && state.enemyStage === "attack";
+  // Countdown snímek specifický pro Titana — jen když přetížení SKUTEČNĚ
+  // běží A Titan je zrovna u dveří (viz zadání "pokud Titan není u dveří,
+  // ponech generický obrázek"). `null` jinak, DoorView.tsx pak sám spadne
+  // zpět na generický DOOR_GENERATOR_OVERLOAD_FRAME_INDEX.
+  const titanOverloadFrameSrc =
+    state.doorGeneratorOverloadUntilMs !== null && isTitanNight && isMonsterAtDoor(state)
+      ? resolveTitanOverloadFrameSrc(state.elapsedMs, state.doorGeneratorOverloadUntilMs, GENERATOR_OVERLOAD_DOOR_DURATION_MS)
+      : null;
   // DEV panel je schválně skrytý ve výchozím stavu (ne jen collapsed <details>
   // jako dřív) — objeví se jen po pravém kliku na popisek "Noc {n}" v
   // ShiftTimeru (viz onNightLabelContextMenu níže). Čistě UI viditelnost dev
@@ -287,6 +306,11 @@ export default function GameScreen({
                 bulbReplacementProgressMs={state.bulbReplacement.progressMs}
                 bulbReplaceSuccessSeq={state.bulbReplaceSuccessSeq}
                 closeDoorUrgent={officeBreachPhase === "close_door"}
+                isTitanAtDoor={isTitanAtDoor}
+                isTitanBreach={isTitanBreach}
+                isTitanAttack={isTitanAttack}
+                titanOverloadFrameSrc={titanOverloadFrameSrc}
+                isTitanOverloadDeathReveal={state.titanOverloadDeathRevealUntilMs !== null}
                 onToggleDoor={onToggleDoor}
                 onLookAtDesk={onLookAtDesk}
                 onStartBulbReplacement={onStartBulbReplacement}

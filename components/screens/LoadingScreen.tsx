@@ -7,6 +7,7 @@ import { LOADING_SCREEN_DURATION_MS, LOADING_SCREEN_HINT_COUNT } from "@/game/ba
 import { preloadBackgroundImages, BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 import { preloadCameraImages } from "@/game/cameras/cameraAssets.object13";
 import { preloadGhoulCameraAttackAnimations } from "@/game/cameras/cameraAttackAnimation.object13";
+import { preloadTitanDoorImages } from "@/game/visuals/titanDoorAssets";
 import { getMonsterDefinition } from "@/game/enemies/monsterDefinitions";
 import { NIGHT_01 } from "@/game/nights/night01";
 import SceneBackground from "@/components/SceneBackground";
@@ -53,6 +54,13 @@ export default function LoadingScreen({ gameMode }: LoadingScreenProps) {
       preloadCameraImages(monster.presentation.camera, monster.presentation.cameraByEnemyStage);
     }
     preloadGhoulCameraAttackAnimations();
+    // Titan zatím žádnou NightDefinition nepoužívá (viz gameReducer.ts
+    // komentář "dnes nikdy nenastane"), ale preload je stejně jen výkonnostní
+    // věc (viz komentář nad preloadCameraImages) — připraveno na dřívější
+    // dostažení, jakmile Titanova noc přibude, beze změny tady.
+    if (NIGHT_01.enemy.id === "titan") {
+      preloadTitanDoorImages();
+    }
   }, []);
 
   useEffect(() => {
