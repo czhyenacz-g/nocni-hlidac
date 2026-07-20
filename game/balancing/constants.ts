@@ -65,6 +65,30 @@ export const LOADING_SCREEN_HINT_COUNT = 1;
 // GameState.doorDeathRevealUntilMs, gameReducer.ts ENEMY_ADVANCE/TICK.
 export const DOOR_DEATH_REVEAL_DURATION_MS = 500;
 
+// "GAME OVER" reveal na DeathScreen.tsx (viz zadání "vrátit krátký GAME OVER
+// reveal před zobrazením restart dialogu") — 4s celoobrazovkový poslední
+// attack/death obrázek aktivního monstra (viz game/death/gameOverReveal.ts)
+// PŘED existujícím dialogRevealed průběhem téhle obrazovky (ghoul_death
+// animace + terminálový dialog, beze změny). TICK v tuhle chvíli už neběží
+// (isRunning je false hned jak screen přejde na "death", stejně jako u
+// VŠECH ostatních smrtí) — proto se tenhle konkrétní reveal, na rozdíl od
+// doorDeathRevealUntilMs/titanOverloadDeathRevealUntilMs výše, časuje
+// STEJNÝM stávajícím vzorem jako DeathScreen.tsx#dialogRevealed
+// (setTimeout v komponentě), ne novým GameState polem + TICKem.
+export const GAME_OVER_REVEAL_DURATION_MS = 4000;
+
+// Titan (viz zadání "Titan pro 15. noc") setrvá v každé běžné route stage
+// (mimo "attack"/"graveyard") přesně tuhle dobu, než postoupí o jednu dál
+// (viz game/enemies/resolveTitanAdvance.ts) — deterministicky odvozeno z
+// existujícího GameState.enemyLocationEnteredAtMs (žádný nový časovací
+// mechanismus, viz zadání "6. TITAN TIMER").
+export const TITAN_STAGE_STAY_MS = 20_000;
+
+// Noc, ve které je aktivní monstrum Titan (viz game/nights/nightRegistry.ts,
+// app/play/page.tsx debug "SPUSTIT TITANA") — jediné místo, které tohle
+// číslo definuje, ať se neseje po komponentách/reduceru.
+export const TITAN_NIGHT_NUMBER = 15;
+
 // Kroky ústupu (monster_retreat_steps) hrají krátce PO řevu (monster_retreat_roar,
 // stejný trigger — monsterRetreatRoarSeq), ne současně — nejdřív leknutí, pak
 // slyšitelné vzdalování. Viz app/play/page.tsx.

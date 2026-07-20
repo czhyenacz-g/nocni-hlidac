@@ -152,6 +152,36 @@ export const IMP_CAMERA_ASSETS: Record<CameraId, CameraAssetsEntry> = {
   },
 };
 
+// Titan (viz zadání "9. TITAN CAMERA VISUALS") zatím nemá vlastní kamerový
+// art pro žádnou z běžných stage — VŠECHNY čtyři CameraId dostávají prázdné
+// sady. `getCameraImageSrc` (cameraAssets.object13.ts) je navržené přesně
+// pro tenhle případ: prázdné pole -> `pickCycling`/`pickDeterministic`
+// vrátí `null` -> volající (CameraView.tsx) zobrazí základní prázdnou
+// kameru bez monstra, hra nikdy nespadne na chybějícím assetu. Titanovy
+// DVEŘNÍ vizuály (at_door/breach/attack/overload) jsou samostatné a už plně
+// hotové — viz game/visuals/titanDoorAssets.ts, DoorView.tsx — tenhle
+// registr se jich netýká (DoorView vůbec nečte `presentation.camera`).
+export const TITAN_CAMERA_ASSETS: Record<CameraId, CameraAssetsEntry> = {
+  outer_yard: { default: { normal: [], monster: [], fleeing: [] } },
+  right_hallway: { default: { normal: [], monster: [], fleeing: [] } },
+  left_hallway: { default: { normal: [], monster: [], fleeing: [] } },
+  door_hallway: { default: { normal: [], monster: [], fleeing: [] } },
+};
+
+export const TITAN_PRESENTATION: MonsterPresentation = {
+  camera: TITAN_CAMERA_ASSETS,
+  // Žádný cameraByEnemyStage (Titanovo "at_door" na kameře door_hallway
+  // zatím taky nemá vlastní obrázek — stejný bezpečný fallback jako výše).
+  outcomes: {
+    // GameOverReveal (game/death/gameOverReveal.ts) používá pro Titana
+    // titan_attacks_broken_door.webp PŘÍMO (mimo BACKGROUND_SCENES), takže
+    // playerKill.default tady nikdy nedostane šanci se skutečně vykreslit —
+    // pole je ale povinné (viz MonsterOutcomePresentation), takže dostává
+    // stejnou hodnotu jako Imp jako bezpečný, nikdy-nepoužitý fallback.
+    playerKill: { default: "death" },
+  },
+};
+
 export const IMP_PRESENTATION: MonsterPresentation = {
   camera: IMP_CAMERA_ASSETS,
   cameraByEnemyStage: {

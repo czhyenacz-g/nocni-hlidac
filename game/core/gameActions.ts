@@ -248,4 +248,13 @@ export type GameAction =
   | { type: "DEBUG_SKIP_CAMERA_ATTACK_TO_LAST_FRAME" }
   // Dev-only: okamžitě dokončí právě probíhající útok (viz zadání
   // "přeskočit rovnou do offline stavu") — no-op bez aktivního útoku.
-  | { type: "DEBUG_SKIP_CAMERA_ATTACK_TO_OFFLINE" };
+  | { type: "DEBUG_SKIP_CAMERA_ATTACK_TO_OFFLINE" }
+  // Dev-only "SPUSTIT TITANA" (viz zadání "8. ADMIN / DEBUG OVLÁDÁNÍ") —
+  // no-op mimo Titanovu aktivní `night` (app/play/page.tsx přepne
+  // night/reducer na Titanovu NightDefinition PŘED tímhle dispatchem).
+  // Nastaví Titana na první stage jeho trasy s normálním 20s tempem.
+  | { type: "DEBUG_START_TITAN" }
+  // Dev-only "TITAN: DALŠÍ STAGE" — posune Titana přesně o jednu stage po
+  // stejné trase jako běžná hra. No-op mimo Titanovu noc, v "attack"/
+  // "graveyard", nebo na poslední stage trasy.
+  | { type: "DEBUG_ADVANCE_TITAN_STAGE" };

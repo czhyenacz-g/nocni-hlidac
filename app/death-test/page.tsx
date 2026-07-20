@@ -140,6 +140,7 @@ export default function DeathTestPage() {
             gameMode="normal"
             livesRemaining={2}
             nightNumber={2}
+            activeMonsterId="imp"
             onRetry={handleRetry}
           />
         )}

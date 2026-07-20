@@ -57,6 +57,10 @@ interface DebugPanelProps {
   onDebugPlayDisabledCameraFootsteps: () => void;
   /** Viz GameState.debugGhoulCameraAttackChanceOverride — `null` = produkční 5 %. */
   onSetDebugGhoulCameraAttackChance: (chance: number | null) => void;
+  /** "SPUSTIT TITANA" (viz zadání "8. ADMIN / DEBUG OVLÁDÁNÍ") — přepne night/reducer na Titanovu NightDefinition a nastaví ho na první stage. Admin-only, nezávislé na aktuálním čísle dne. */
+  onDebugStartTitan: () => void;
+  /** "TITAN: DALŠÍ STAGE" — posune Titana o jednu stage po jeho trase; no-op mimo Titanovu noc / v attack/graveyard. */
+  onDebugAdvanceTitanStage: () => void;
 }
 
 export default function DebugPanel({
@@ -77,6 +81,8 @@ export default function DebugPanel({
   onSetDebugGhoulCameraAttackChance,
   onDebugSkipCameraAttackToLastFrame,
   onDebugSkipCameraAttackToOffline,
+  onDebugStartTitan,
+  onDebugAdvanceTitanStage,
 }: DebugPanelProps) {
   // Vybraná sekvence pro "DEV: Vyřadit s konkrétní sekvencí" (viz zadání
   // "vybrat konkrétní sekvenci") — čistě UI výběr PŘED odesláním, ne
@@ -540,6 +546,21 @@ export default function DebugPanel({
                   Noc {quickNight}
                 </button>
               ))}
+            </div>
+
+            {/* Titan (viz zadání "8. ADMIN / DEBUG OVLÁDÁNÍ") — "SPUSTIT
+                TITANA" přepne night/reducer na Titanovu NightDefinition
+                (TITAN_NIGHT_NUMBER, nezávisle na aktuálním čísle dne) a
+                nastaví ho na první stage; "TITAN: DALŠÍ STAGE" jen posune o
+                jednu stage po stejné trase jako běžná hra. Stejný prostý
+                button vzor jako "DEV: Restartovat generátor" níže. */}
+            <div className="flex gap-1.5 mt-1.5">
+              <button type="button" className="pixel-button px-2 py-1 text-xs flex-1" onClick={onDebugStartTitan}>
+                SPUSTIT TITANA
+              </button>
+              <button type="button" className="pixel-button px-2 py-1 text-xs flex-1" onClick={onDebugAdvanceTitanStage}>
+                TITAN: DALŠÍ STAGE
+              </button>
             </div>
           </div>
         )}

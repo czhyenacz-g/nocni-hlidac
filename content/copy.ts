@@ -401,6 +401,9 @@ export const COPY = {
     monsterReturnedUnverifiedHint: "Nevěděl jsi, kam zmizelo. Než jsi otevřel dveře, bylo zpátky.",
   },
   death: {
+    // 4s celoobrazovkový GAME OVER reveal PŘED zbytkem DeathScreen.tsx (viz
+    // zadání "vrátit krátký GAME OVER reveal", game/death/gameOverReveal.ts).
+    gameOverLabel: "GAME OVER",
     title: "Předčasný konec směny.",
     reasons: {
       door_open_at_attack: "Tvou poslední chybou byly otevřené dveře.",

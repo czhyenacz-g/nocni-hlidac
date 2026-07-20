@@ -84,6 +84,9 @@ interface GameScreenProps {
   onSetDebugGhoulCameraAttackChance: (chance: number | null) => void;
   onDebugSkipCameraAttackToLastFrame: () => void;
   onDebugSkipCameraAttackToOffline: () => void;
+  /** "SPUSTIT TITANA" / "TITAN: DALŠÍ STAGE" (viz zadání "8. ADMIN / DEBUG OVLÁDÁNÍ", DebugPanel.tsx). */
+  onDebugStartTitan: () => void;
+  onDebugAdvanceTitanStage: () => void;
 }
 
 export default function GameScreen({
@@ -128,6 +131,8 @@ export default function GameScreen({
   onSetDebugGhoulCameraAttackChance,
   onDebugSkipCameraAttackToLastFrame,
   onDebugSkipCameraAttackToOffline,
+  onDebugStartTitan,
+  onDebugAdvanceTitanStage,
 }: GameScreenProps) {
   // Pozadí pro desk/generator (BACKGROUND_SCENES.play) — jen mimo blackout,
   // kdy BlackoutView stejně celou obrazovku nahrazuje vlastní atmosférou.
@@ -373,6 +378,8 @@ export default function GameScreen({
               onDebugToggleDoor={onDebugToggleDoor}
               onDebugRestartGenerator={onDebugRestartGenerator}
               onSetDebugNight={onSetDebugNight}
+              onDebugStartTitan={onDebugStartTitan}
+              onDebugAdvanceTitanStage={onDebugAdvanceTitanStage}
               onDebugTriggerGhoulCameraAttack={onDebugTriggerGhoulCameraAttack}
               onDebugResetCameraDamage={onDebugResetCameraDamage}
               onDebugMoveEnemyToDisabledCamera={onDebugMoveEnemyToDisabledCamera}

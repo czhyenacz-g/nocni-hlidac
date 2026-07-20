@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useReducer, useRef, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import MainMenuScreen from "@/components/screens/MainMenuScreen";
 import LoadingScreen from "@/components/screens/LoadingScreen";
 import BriefingScreen from "@/components/screens/BriefingScreen";
@@ -11,7 +11,7 @@ import Night30EndingScreen from "@/components/screens/Night30EndingScreen";
 import MonsterDefeatedScreen from "@/components/screens/MonsterDefeatedScreen";
 import DeathSequenceOverlay from "@/components/death/DeathSequenceOverlay";
 import { getLiveDeathSequenceConfig, isDoorAttackDeath } from "@/game/death/liveDeathSequenceConfig";
-import { NIGHT_01 } from "@/game/nights/night01";
+import { resolveNightDefinition } from "@/game/nights/nightRegistry";
 import { createInitialGameState } from "@/game/core/gameState";
 import {
   canStartGeneratorOverloadWindup,
@@ -36,6 +36,7 @@ import {
   LOADING_SCREEN_DURATION_MS,
   MONSTER_DOOR_BANG_COOLDOWN_MS,
   MONSTER_RETREAT_STEPS_DELAY_MS,
+  TITAN_NIGHT_NUMBER,
 } from "@/game/balancing/constants";
 import { chooseDoorBangPlaybackPlan } from "@/game/audio/doorBangPlayback";
 import CinematicScreen from "@/components/screens/CinematicScreen";
@@ -110,13 +111,6 @@ import {
 } from "@/game/equipment/weaponAcquisitionController";
 import { resolveExistingPlayerWeaponMigrationAction } from "@/game/equipment/existingPlayerWeaponMigration";
 
-const night = NIGHT_01;
-const gameReducer = createGameReducer(night);
-
-// Kamera nejblíž hráči (nejvyšší order) — používá se pro podmíněný heartbeat
-// při výběru kamery, viz handleSelectCamera níže.
-const nearestCamera = [...night.cameras].sort((a, b) => (b.order ?? 0) - (a.order ?? 0))[0];
-
 /**
  * Object13PlayerProfileProvider (viz zadání "krok 1B" a "profilový kontrakt
  * V1 + inventář žárovek") obaluje CELOU stránku ZVENKU — `PlayPageContent`
@@ -134,6 +128,44 @@ export default function PlayPage() {
 
 function PlayPageContent() {
   const object13Profile = useObject13PlayerProfile();
+
+  // Noc/reducer/nearestCamera musí být PŘED useReducer níže (potřebuje
+  // `night` pro svůj lazy initializer) — proto jsou tyhle tři hooky (dřív
+  // deklarované až za useReducer, viz zadání kontext "hoisted") teď tady,
+  // hned na začátku. Nezávisí na `state` ani na sobě navzájem v žádném
+  // problematickém pořadí (plain useState/useRef bez GameState reference).
+  //
+  // `debugNightOverride` je NOVÝ, čistě komponentový mirror
+  // GameState.debugNightOverride (viz gameReducer.ts SET_DEBUG_NIGHT) —
+  // existuje VÝHRADNĚ proto, aby šlo přepnout `night`/`gameReducer`
+  // (viz useMemo níže) DŘÍV, než je vůbec spočítaný `state` (kruhová
+  // závislost: state potřebuje gameReducer, gameReducer potřebuje night,
+  // night potřebuje "kolikátá noc", a tahle hodnota byla dřív počítaná AŽ
+  // ZE state.debugNightOverride). GameState.debugNightOverride samo dál
+  // existuje beze změny (zobrazení/scaling/getNightConfig níže) —
+  // `handleSetDebugNight`/`handleDebugStartTitan` teď jen aktualizují OBĚ
+  // hodnoty atomicky, ať zůstanou v souladu.
+  const [debugNightOverride, setDebugNightOverride] = useState<number | null>(null);
+  const selectedGameModeRef = useRef<GameMode>(DEFAULT_GAME_MODE);
+  const [survivedNights, setSurvivedNights] = useState(() => getSurvivedNights());
+  const [serverRunState, setServerRunState] = useState<GuardRunState | null>(null);
+
+  // Stejný vzorec jako `currentNight` dřív (viz níže) — jen s
+  // `debugNightOverride` (mirror výše) místo `state.debugNightOverride`,
+  // protože `state` tady ještě neexistuje. Jakmile jednou night/gameReducer
+  // ukáže na Titanovu NightDefinition, `night`/`gameReducer` se PŘES
+  // useMemo přepočítají PŘED tím, než React zpracuje jakýkoliv nově
+  // dispatchnutý action (viz zadání "8. ADMIN / DEBUG OVLÁDÁNÍ" a
+  // handleDebugStartTitan níže, který spoléhá přesně na tohle pořadí).
+  const currentNightEstimate =
+    debugNightOverride ??
+    (selectedGameModeRef.current === "hardcore" && serverRunState ? serverRunState.currentRun + 1 : survivedNights + 1);
+  const night = useMemo(() => resolveNightDefinition(currentNightEstimate), [currentNightEstimate]);
+  const gameReducer = useMemo(() => createGameReducer(night), [night]);
+  // Kamera nejblíž hráči (nejvyšší order) — používá se pro podmíněný
+  // heartbeat při výběru kamery, viz handleSelectCamera níže.
+  const nearestCamera = useMemo(() => [...night.cameras].sort((a, b) => (b.order ?? 0) - (a.order ?? 0))[0], [night]);
+
   const [state, dispatch] = useReducer(gameReducer, undefined, () => createInitialGameState(night));
 
   // Orchestrace inventářových operací se žárovkami (viz zadání "profilový
@@ -195,19 +227,8 @@ function PlayPageContent() {
   // counter (viz game/core/deathCount.ts), nezávislý na herním stavu/reduceru.
   // Lazy initializer čte aktuální hodnotu jen jednou při prvním mountu.
   const [deathCount, setDeathCount] = useState(() => getDeathCount());
-  // Kolik nocí v řadě aktuální hlídač přežil bez smrti (viz
-  // game/core/survivedNights.ts) — na rozdíl od deathCount se smrtí vynuluje.
-  // Tohle je jen FALLBACK pro nepřihlášeného hráče (nebo dokud se ještě
-  // nenačetl serverový stav) — přihlášený hráč má přednostně navazovat na
-  // serverRunState níže, ne na tenhle lokální localStorage counter.
-  const [survivedNights, setSurvivedNights] = useState(() => getSurvivedNights());
-  // Serverový run stav (bestRun/currentRun) přihlášeného hráče — `null`, dokud
-  // se nenačte (nebo hráč není přihlášený/hub API nedostupné). Nastavuje se
-  // (1) při mountu z /api/auth/me, (2) po úspěšném /api/player/survive-night,
-  // (3) po úspěšném /api/player/death — NIKDY při pouhém startu/rozehrání
-  // směny, ať zavření prohlížeče uprostřed noci currentRun nezmění (viz
-  // handleBeginShift níže — ten jen ČTE, nikdy nezapisuje serverRunState).
-  const [serverRunState, setServerRunState] = useState<GuardRunState | null>(null);
+  // survivedNights/serverRunState jsou teď deklarované výše (viz komentář
+  // "hoisted" u useReducer) — dřívější druhá deklarace tady byla odstraněna.
   // Jestli je hráč přihlášený přes Discord (viz /api/auth/me efekt níže) —
   // jediný zdroj pravdy pro handleStart#hardcore safety fallback (viz zadání
   // "i start handler by měl být bezpečný"), ať se nemusí volat druhý
@@ -219,11 +240,7 @@ function PlayPageContent() {
   // nightFeatures níže), plus trvalý badge (AdminBadge) vidět na všech
   // obrazovkách.
   const [isAdmin, setIsAdmin] = useState(false);
-  // Režim zvolený na MainMenuScreen (viz game/core/gameMode.ts) — čte se v
-  // handleBeginShift (START_SHIFT gameMode/livesRemaining) i v `currentNight`
-  // níže. Deklarováno tady (ne u ostatních refů, viz pendingShiftKindRef níže)
-  // jen proto, že `currentNight` na něj musí odkazovat hned za deklarací.
-  const selectedGameModeRef = useRef<GameMode>(DEFAULT_GAME_MODE);
+  // selectedGameModeRef je teď deklarovaný výše (viz komentář "hoisted").
   // Jediný zdroj "kolikátá noc" — používá ho HUD (ShiftTimer přes nightNumber
   // prop níže), night scaling (game/difficulty/nightScaling.ts) i briefing
   // (getNightConfig). Serverový currentRun má přednost, ale JEN pro Hardcore
@@ -1832,9 +1849,40 @@ function PlayPageContent() {
   }
 
   // ADMIN-ONLY: viz zadání "testovací nástroj pro late-run scény",
-  // DebugPanel.tsx "Test noci" sekce — jen dispatch, žádný jiný side effect.
-  function handleSetDebugNight(night: number) {
-    dispatch({ type: "SET_DEBUG_NIGHT", night });
+  // DebugPanel.tsx "Test noci" sekce. Aktualizuje OBĚ reprezentace "kolikátá
+  // noc pro debug override" atomicky — GameState.debugNightOverride
+  // (zobrazení/scaling/getNightConfig, beze změny) I komponentový
+  // `debugNightOverride` mirror výše (ten reálně přepíná `night`/
+  // `gameReducer`, viz komentář u useMemo nahoře). Bez druhého by třeba
+  // ruční "Nastavit noc" na 15 přepnulo ČÍSLO, ale ne skutečnou
+  // NightDefinition/monstrum.
+  function handleSetDebugNight(nightNumber: number) {
+    setDebugNightOverride(nightNumber);
+    dispatch({ type: "SET_DEBUG_NIGHT", night: nightNumber });
+  }
+
+  // ADMIN-ONLY "SPUSTIT TITANA" (viz zadání "8. ADMIN / DEBUG OVLÁDÁNÍ") —
+  // JEN přepne night/reducer na Titanovu NightDefinition (přes
+  // debugNightOverride mirror); samotný DEBUG_START_TITAN dispatch přijde
+  // AŽ z efektu níže, poté co `night`/`gameReducer` skutečně ukazují na
+  // Titana (viz komentář u pendingDebugStartTitanRef) — jinak by hrozilo, že
+  // by ho zpracoval JEŠTĚ starý (Impův) reducer ve stejném dávkovém update.
+  const pendingDebugStartTitanRef = useRef(false);
+  function handleDebugStartTitan() {
+    pendingDebugStartTitanRef.current = true;
+    setDebugNightOverride(TITAN_NIGHT_NUMBER);
+  }
+  useEffect(() => {
+    if (!pendingDebugStartTitanRef.current || night.enemy.id !== "titan") return;
+    pendingDebugStartTitanRef.current = false;
+    dispatch({ type: "DEBUG_START_TITAN" });
+  }, [night]);
+
+  // ADMIN-ONLY "TITAN: DALŠÍ STAGE" — na rozdíl od výše žádné přepínání
+  // night/reducer, jen prostý dispatch (reducer sám no-opuje mimo Titanovu
+  // noc, viz gameReducer.ts DEBUG_ADVANCE_TITAN_STAGE).
+  function handleDebugAdvanceTitanStage() {
+    dispatch({ type: "DEBUG_ADVANCE_TITAN_STAGE" });
   }
 
   // DEV-ONLY: ručně spustí útok Ghoula na PRÁVĚ AKTIVNÍ kameru (viz zadání
@@ -2030,6 +2078,8 @@ function PlayPageContent() {
           onDebugToggleDoor={handleDebugToggleDoor}
           onDebugRestartGenerator={handleDebugRestartGenerator}
           onSetDebugNight={handleSetDebugNight}
+          onDebugStartTitan={handleDebugStartTitan}
+          onDebugAdvanceTitanStage={handleDebugAdvanceTitanStage}
           onDebugTriggerGhoulCameraAttack={handleDebugTriggerGhoulCameraAttack}
           onDebugResetCameraDamage={handleDebugResetCameraDamage}
           onDebugMoveEnemyToDisabledCamera={handleDebugMoveEnemyToDisabledCamera}
@@ -2099,6 +2149,7 @@ function PlayPageContent() {
           livesRemaining={state.livesRemaining}
           nightNumber={currentNight}
           newlyUnlockedAchievements={deathNewlyUnlockedAchievements}
+          activeMonsterId={night.enemy.id}
           onRetry={handleRestart}
         />
       )}

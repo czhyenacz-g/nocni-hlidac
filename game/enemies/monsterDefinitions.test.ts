@@ -76,8 +76,19 @@ describe("getMonsterDefinition", () => {
   });
 
   it("returns undefined for an unregistered id, never throws", () => {
-    expect(getMonsterDefinition("titan")).toBeUndefined();
+    // "titan" is now registered (see game/enemies/titan.ts, "Titan for
+    // night 15") — asserted separately below; "" and other bogus ids stay
+    // undefined, never throw.
     expect(getMonsterDefinition("")).toBeUndefined();
+    expect(getMonsterDefinition("bogus_monster_id")).toBeUndefined();
+  });
+
+  it("resolves 'titan' to a registered MonsterDefinition (id/displayName/no abilities)", () => {
+    const titan = getMonsterDefinition("titan");
+    expect(titan).toBeDefined();
+    expect(titan?.id).toBe("titan");
+    expect(titan?.displayName).toBe("Titan");
+    expect(titan?.abilities).toEqual([]);
   });
 });
 

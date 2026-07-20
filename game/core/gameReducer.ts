@@ -45,6 +45,7 @@ import {
 import { stepBackOneStage } from "./enemyRoute";
 import { getMonsterDefinition } from "../enemies/monsterDefinitions";
 import { resolveImpAdvance } from "../enemies/resolveImpAdvance";
+import { resolveTitanAdvance } from "../enemies/resolveTitanAdvance";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -205,6 +206,14 @@ function updateDoorLightRepel(state: GameState, night: NightDefinition, deltaMs:
     enemyForcedRetreatNextStepAtMs: state.enemyForcedRetreatNextStepAtMs,
   };
 
+  // Titan je na světlo/UV/sonic/forced-retreat mechaniky imunní (viz zadání
+  // "5. TITAN A OBRANNÉ MECHANIKY") — na rozdíl od sonic cannon/gave_up/
+  // ghoul-camera-attack (ty žijí jen uvnitř resolveImpAdvance, Titan se k
+  // nim nikdy nedostane) je tenhle TICK subroutine monstrum-agnostický
+  // (spouští se podle `state.enemyStage`/`doorClosed`/`lightOn`, ne podle
+  // aktivního resolveru), takže potřebuje explicitní guard tady.
+  if (night.enemy.id === "titan") return unchanged;
+
   const conditionsMet = shouldDoorLightForceRetreat(state);
   if (!conditionsMet) {
     return state.doorLightRepelMs === 0 ? unchanged : { ...unchanged, doorLightRepelMs: 0 };
@@ -279,6 +288,9 @@ function updateDoorHallwayUvRepel(
   deltaMs: number,
   requireMonsterRetreatVerification: boolean,
 ): DoorHallwayUvRepelResult {
+  // Stejný guard/důvod jako updateDoorLightRepel výše — Titan ignoruje UV repel.
+  if (night.enemy.id === "titan") return { doorHallwayUvRepelMs: 0 };
+
   const conditionsMet = shouldDoorHallwayUvForceRetreat(state);
   if (!conditionsMet) {
     return { doorHallwayUvRepelMs: 0 };
@@ -1566,6 +1578,8 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           switch (monster.id) {
             case "imp":
               return resolveImpAdvance({ state, night, currentNightNumber, requireMonsterRetreatVerification });
+            case "titan":
+              return resolveTitanAdvance({ state, night });
             default:
               throw new Error(`Unsupported monster resolver: ${monster.id}`);
           }
@@ -1849,6 +1863,36 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         const targetCamera = night.cameras.find((c) => c.id === firstDisabledCameraId);
         if (!targetCamera) return state;
         return { ...state, enemyStage: targetCamera.enemyVisibleAtStage };
+      }
+
+      // Dev-only "SPUSTIT TITANA" (viz zadání "8. ADMIN / DEBUG OVLÁDÁNÍ") —
+      // no-op, pokud aktivní `night` zrovna NENÍ Titanova (app/play/page.tsx
+      // přepne night/reducer na NIGHT_15 PŘED tímhle dispatchem, viz
+      // handleDebugStartTitan tam). Nastaví Titana na první stage jeho
+      // (jediné) trasy A přepíše `enemyRoute` na tuhle trasu — nutné i
+      // tehdy, kdyby `state.enemyRoute` ještě držel Impovu trasu z
+      // předchozí, jinak právě dohrávané noci. `enemyLocationEnteredAtMs`/
+      // `enemyStageVisitSeq` se aktualizují samy (withEnemyStageVisitSeed
+      // níže), žádný ruční reset timeru tady.
+      case "DEBUG_START_TITAN": {
+        if (!state.isRunning || night.enemy.id !== "titan") return state;
+        const route = night.enemy.routeVariants[0];
+        return { ...state, enemyRoute: route, enemyStage: route[0] };
+      }
+
+      // Dev-only "TITAN: DALŠÍ STAGE" — posune Titana přesně o jednu stage
+      // po JEHO současné trase (`state.enemyRoute`), stejná trasa jako
+      // normální gameplay. No-op mimo Titanovu noc, v "attack"/"graveyard",
+      // nebo už na poslední stage trasy — nikdy nepřeskakuje rovnou do
+      // "graveyard" (ten je vyhrazený VÝHRADNĚ generátorovému přetížení,
+      // viz updateDoorGeneratorOverload, beze změny).
+      case "DEBUG_ADVANCE_TITAN_STAGE": {
+        if (!state.isRunning || night.enemy.id !== "titan") return state;
+        if (state.enemyStage === "attack" || state.enemyStage === "graveyard") return state;
+        const route = state.enemyRoute;
+        const currentIndex = route.indexOf(state.enemyStage);
+        if (currentIndex === -1 || currentIndex >= route.length - 1) return state;
+        return { ...state, enemyStage: route[currentIndex + 1] };
       }
 
       // Dev-only: ručně přehraje zvuk kroků z mikrofonu bez ohledu na

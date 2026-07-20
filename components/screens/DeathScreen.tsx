@@ -9,8 +9,9 @@ import { resolveDeathScreenStatus } from "@/game/core/deathScreenStatus";
 import SceneBackground from "@/components/SceneBackground";
 import { BACKGROUND_SCENES, getPlayOnceLastFrameDelayMs } from "@/game/visuals/backgroundImages";
 import AchievementResultPanel from "@/components/achievements/AchievementResultPanel";
-import { DEATH_SCREEN_REVEAL_DELAY_MS } from "@/game/balancing/constants";
+import { DEATH_SCREEN_REVEAL_DELAY_MS, GAME_OVER_REVEAL_DURATION_MS } from "@/game/balancing/constants";
 import { useShakeOffset } from "@/game/death/useShakeOffset";
+import { resolveGameOverImageSrc } from "@/game/death/gameOverReveal";
 
 /**
  * Krátký "doznívající" shake NA odhalení ghoula (viz zadání "zkus ten shake
@@ -43,6 +44,8 @@ interface DeathScreenProps {
    * AchievementResultPanel.tsx).
    */
   newlyUnlockedAchievements?: PlayerAchievement[];
+  /** `night.enemy.id` aktivní směny (viz zadání "GAME OVER reveal" — vybere Impův/Titanův obrázek, game/death/gameOverReveal.ts). */
+  activeMonsterId: string;
   onRetry: () => void;
 }
 
@@ -53,6 +56,7 @@ export default function DeathScreen({
   livesRemaining,
   nightNumber,
   newlyUnlockedAchievements = [],
+  activeMonsterId,
   onRetry,
 }: DeathScreenProps) {
   // Normal se zbývajícím životem pokračuje stejnou nocí ("POKRAČOVAT"),
@@ -103,6 +107,46 @@ export default function DeathScreen({
   // fázi na navázání (viz skipReveal výše) — bez ní by tenhle shake působil
   // nemotivovaně, ne jako pokračování úderu.
   const shakeOffset = useShakeOffset(!skipReveal, GHOUL_REVEAL_SHAKE_DURATION_MS, GHOUL_REVEAL_SHAKE_INTENSITY_PX);
+
+  // GAME OVER reveal (viz zadání "vrátit krátký GAME OVER reveal před
+  // zobrazením restart dialogu") — celoobrazovkový poslední attack/death
+  // obrázek aktivního monstra + nápis "GAME OVER" po PŘESNĚ
+  // GAME_OVER_REVEAL_DURATION_MS (4 s), PŘED vším ostatním na týhle
+  // obrazovce (ghoul_death animace na pozadí i `dialogRevealed` dialog výše
+  // zůstávají beze změny, jen začnou počítat AŽ potom, protože se vůbec
+  // nevykreslí, dokud je tahle fáze aktivní). TICK v tuhle chvíli už neběží
+  // (isRunning je false od stejného dispatche, který nastavil screen na
+  // "death" — beze změny pro VŠECHNY death cesty, viz zadání "nezměň logiku
+  // samotné smrti hráče"), takže na rozdíl od doorDeathRevealUntilMs/
+  // titanOverloadDeathRevealUntilMs (ty TICK/reducer pole vyžadují) se
+  // časuje STEJNÝM vzorem, jaký tahle obrazovka už používá pro
+  // `dialogRevealed` o pár řádků výš — setTimeout v komponentě, ne nové pole
+  // v GameState. Mountuje/resetuje se automaticky při KAŽDÉ smrti (celá
+  // DeathScreen se v app/play/page.tsx renderuje jen podmíněně podle
+  // `state.screen === "death"`, takže restart = nový mount = čerstvý stav
+  // znovu `true`, viz zadání "reveal stav se správně resetuje při restartu").
+  const [gameOverPhaseActive, setGameOverPhaseActive] = useState(true);
+  useEffect(() => {
+    const timeout = setTimeout(() => setGameOverPhaseActive(false), GAME_OVER_REVEAL_DURATION_MS);
+    return () => clearTimeout(timeout);
+  }, []);
+
+  if (gameOverPhaseActive) {
+    return (
+      <main className="relative min-h-screen flex items-center justify-center p-4 bg-black overflow-hidden">
+        <img
+          src={resolveGameOverImageSrc(activeMonsterId)}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-black/40" aria-hidden="true" />
+        <p className="relative z-10 text-4xl sm:text-6xl font-bold tracking-widest uppercase text-red-500 text-center px-4 drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]">
+          {COPY.death.gameOverLabel}
+        </p>
+      </main>
+    );
+  }
 
   return (
     <main

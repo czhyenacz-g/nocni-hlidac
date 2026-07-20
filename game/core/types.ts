@@ -220,7 +220,7 @@ export interface EnemyDefinition {
 // hlavní monstrum, jen animace útoku na kameru přiřazená Impovi") — žádný
 // obecný ability framework, žádný registr pro víc monster najednou.
 
-export type MonsterId = "imp";
+export type MonsterId = "imp" | "titan";
 
 export type MonsterAbilityId = "summon_ghoul_camera_attack";
 

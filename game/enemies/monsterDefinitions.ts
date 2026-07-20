@@ -1,5 +1,5 @@
 import { EnemyDefinition, MonsterAbilityId, MonsterId } from "../core/types";
-import { IMP_PRESENTATION, MonsterPresentation } from "./monsterPresentation";
+import { IMP_PRESENTATION, MonsterPresentation, TITAN_PRESENTATION } from "./monsterPresentation";
 
 // JEDINÝ centrální registr hlavních monster (viz zadání "sjednoť definici
 // Impa" — zrušen dřívější druhý paralelní `MONSTER_PRESENTATION_REGISTRY" v
@@ -85,8 +85,52 @@ export const IMP: MonsterDefinition = {
   },
 };
 
+// Titan (viz zadání "Titan pro 15. noc") — jednoduchá, pomalá,
+// NEZASTAVITELNÁ hrozba. Na rozdíl od Impa nepoužívá `advanceChance`/
+// `retreatChance`/`doorHoldRangeMs`/repel časy/forced-retreat pravidla VŮBEC
+// (viz game/enemies/resolveTitanAdvance.ts — deterministický 20s timer,
+// žádný Math.random hod, žádné couvání) — pole tu ale musí být přítomná
+// (`EnemyDefinition` je má všechna povinná), takže dostávají neutrální/
+// nedosažitelné hodnoty, ne skutečně používaná čísla. Retreat/repel
+// mechaniky navíc Titana nikdy nezasáhnou ani z JINÉHO směru: light/UV
+// repel v gameReducer.ts (updateDoorLightRepel/updateDoorHallwayUvRepel)
+// mají explicitní `night.enemy.id === "titan"` guard, sonic cannon a
+// "gave_up" standoff žijí jen uvnitř resolveImpAdvance (Titan je nikdy
+// nezavolá) a ghoul-camera-attack schopnost Titan v `abilities` nemá.
+export const TITAN: MonsterDefinition = {
+  id: "titan",
+  displayName: "Titan",
+  // Žádné schopnosti (viz zadání "žádný paralelní pohybový systém, jen
+  // existující infrastruktura") — Ghoul-kamera-útok zůstává výhradně Impova.
+  abilities: [],
+  presentation: TITAN_PRESENTATION,
+  gameplay: {
+    name: "Titan",
+    // Jediná, pevná trasa (viz zadání "3. TITAN ROUTE") — na rozdíl od Impa
+    // žádné dvě varianty pravá/levá chodba, jen jedna přímá cesta.
+    routeVariants: [["outside", "outer_yard", "left_hallway", "door_hallway", "at_door", "breach", "attack"]],
+    // Nepoužito resolveTitanAdvance.ts (postup je čistě časový, ne
+    // pravděpodobnostní) — 1/0 dokumentuje záměr ("vždy postoupí, nikdy
+    // neustoupí"), i když se hodnoty samy nikdy nečtou.
+    advanceChance: 1,
+    retreatChance: 0,
+    doorHoldRangeMs: { min: 0, max: 0 },
+    // Titan retreat/repel mechaniky vůbec nevolá (viz komentář výše) —
+    // Infinity dokumentuje "nikdy nedosažitelné", i když guard v
+    // gameReducer.ts stejně vrací no-op dřív, než by na tahle čísla došlo.
+    doorLightRepelRequiredMs: Infinity,
+    doorHallwayUvRepelRequiredMs: Infinity,
+    forcedRetreatAfterLightRepel: { durationMs: 0, chance: 0 },
+    forcedRetreatAfterUvRepel: { durationMs: 0, chance: 0 },
+    forcedRetreatAfterGaveUp: { durationMs: 0, chance: 0 },
+    // Nedosažitelné (Titan nikdy neustupuje) — pole je přesto povinné.
+    monsterRetreatStage: "outside",
+  },
+};
+
 const MONSTER_REGISTRY: Record<MonsterId, MonsterDefinition> = {
   imp: IMP,
+  titan: TITAN,
 };
 
 /**
