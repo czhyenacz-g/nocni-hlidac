@@ -42,44 +42,91 @@ describe("4/5. outcomes.playerKill.default — same death sequence as before, ju
   });
 });
 
-// Titan camera visuals (viz zadání "9. TITAN CAMERA VISUALS") — Titan zatím
-// nemá vlastní kamerový art pro žádnou běžnou stage, jen prázdné sady pro
-// všechny čtyři CameraId. getCameraImageSrc musí na tomhle vstupu VŽDY
-// vrátit `null` (bezpečný fallback na prázdnou kameru), nikdy nespadnout.
-describe("TITAN_CAMERA_ASSETS — safe empty fallback, never crashes", () => {
-  it("has an entry for every CameraId, all with empty normal/monster/fleeing arrays", () => {
-    for (const cameraId of ALL_CAMERA_IDS) {
-      const entry = TITAN_CAMERA_ASSETS[cameraId];
-      expect(entry).toBeDefined();
-      expect(entry.default).toEqual({ normal: [], monster: [], fleeing: [] });
-    }
+// Titan camera visuals (viz zadání "Napoj Titanovy kamerové vizuály") —
+// každá ze čtyř běžných CameraId má teď vlastní monster-přítomný obrázek
+// (viz TITAN_CAMERA_PATH v monsterPresentation.ts). `normal`/`fleeing`
+// zůstávají prázdné (žádný Titan art bez monstra/na útěku zatím dodaný) —
+// getCameraImageSrc na TĚCHTO prázdných polích musí dál bezpečně spadnout
+// na `null`, nikdy nespadnout na chybějícím assetu.
+describe("TITAN_CAMERA_ASSETS — real monster art per stage, empty-only for truly unsupported cases", () => {
+  it("11. outer_yard uses outdoor_titan.webp", () => {
+    expect(TITAN_CAMERA_ASSETS.outer_yard.default.monster).toEqual(["/object_13/monster/titan/outdoor_titan.webp"]);
   });
 
-  it("getCameraImageSrc returns null (never throws) for every camera, with or without the monster present", () => {
-    for (const cameraId of ALL_CAMERA_IDS) {
-      for (const hasMonster of [true, false]) {
-        expect(() =>
-          getCameraImageSrc(cameraId, hasMonster, false, 0, "outer_yard", undefined, 0, TITAN_PRESENTATION.camera),
-        ).not.toThrow();
-        expect(getCameraImageSrc(cameraId, hasMonster, false, 0, "outer_yard", undefined, 0, TITAN_PRESENTATION.camera)).toBeNull();
+  it("11. left_hallway uses left_hallway_titan.webp", () => {
+    expect(TITAN_CAMERA_ASSETS.left_hallway.default.monster).toEqual(["/object_13/monster/titan/left_hallway_titan.webp"]);
+  });
+
+  it("11. right_hallway uses right_hallway_titan.webp", () => {
+    expect(TITAN_CAMERA_ASSETS.right_hallway.default.monster).toEqual(["/object_13/monster/titan/right_hallway_titan.webp"]);
+  });
+
+  it("11. door_hallway without light uses titan_door_hallway.webp", () => {
+    expect(TITAN_CAMERA_ASSETS.door_hallway.default.monster).toEqual(["/object_13/monster/titan/titan_door_hallway.webp"]);
+  });
+
+  it("11. door_hallway with light uses titan_door_hallway_light.webp", () => {
+    expect(TITAN_CAMERA_ASSETS.door_hallway.lightOn?.monster).toEqual(["/object_13/monster/titan/titan_door_hallway_light.webp"]);
+  });
+
+  it("3. registry uses only .webp paths, never .png", () => {
+    for (const entry of Object.values(TITAN_CAMERA_ASSETS)) {
+      for (const set of [entry.default, entry.lightOn]) {
+        if (!set) continue;
+        for (const src of [...set.normal, ...set.monster, ...set.fleeing]) {
+          expect(src.endsWith(".webp")).toBe(true);
+          expect(src.endsWith(".png")).toBe(false);
+        }
       }
     }
   });
 
-  it("TITAN_PRESENTATION has no cameraByEnemyStage (no at_door art either) — getCameraImageSrc still degrades gracefully", () => {
+  it("getCameraImageSrc resolves the real Titan asset for every normal stage when the monster is present", () => {
+    expect(getCameraImageSrc("outer_yard", true, false, 0, "outer_yard", undefined, 0, TITAN_PRESENTATION.camera)).toBe(
+      "/object_13/monster/titan/outdoor_titan.webp",
+    );
+    expect(getCameraImageSrc("left_hallway", true, false, 0, "left_hallway", undefined, 0, TITAN_PRESENTATION.camera)).toBe(
+      "/object_13/monster/titan/left_hallway_titan.webp",
+    );
+    expect(getCameraImageSrc("right_hallway", true, false, 0, "right_hallway", undefined, 0, TITAN_PRESENTATION.camera)).toBe(
+      "/object_13/monster/titan/right_hallway_titan.webp",
+    );
+    expect(getCameraImageSrc("door_hallway", true, false, 0, "door_hallway", undefined, 0, TITAN_PRESENTATION.camera)).toBe(
+      "/object_13/monster/titan/titan_door_hallway.webp",
+    );
+    // 7/8. door_hallway light varianta — stejný `lightOn`/`resolveAssetSet`
+    // mechanismus jako Imp, žádné nové Titan-specific "je světlo" pole.
+    expect(getCameraImageSrc("door_hallway", true, true, 0, "door_hallway", undefined, 0, TITAN_PRESENTATION.camera)).toBe(
+      "/object_13/monster/titan/titan_door_hallway_light.webp",
+    );
+  });
+
+  it("without the monster present, these stages still fall back to null (no 'normal' Titan art supplied)", () => {
+    for (const cameraId of ALL_CAMERA_IDS) {
+      expect(getCameraImageSrc(cameraId, false, false, 0, cameraId, undefined, 0, TITAN_PRESENTATION.camera)).toBeNull();
+    }
+  });
+
+  it("12. an unknown/unsupported CameraId still returns null, never throws", () => {
+    expect(() =>
+      getCameraImageSrc("not_a_real_camera" as CameraId, true, false, 0, "outer_yard", undefined, 0, TITAN_PRESENTATION.camera),
+    ).not.toThrow();
+    expect(getCameraImageSrc("not_a_real_camera" as CameraId, true, false, 0, "outer_yard", undefined, 0, TITAN_PRESENTATION.camera)).toBeNull();
+  });
+
+  it("9. 'outside' is not a CameraId at all — no camera ever shows a Titan asset for it (stays invisible by construction)", () => {
+    expect(Object.keys(TITAN_CAMERA_ASSETS)).not.toContain("outside");
+  });
+
+  it("TITAN_PRESENTATION has no cameraByEnemyStage — at_door/breach/attack art lives in titanDoorAssets.ts/DoorView.tsx instead, unaffected by this registry", () => {
+    // Bez `cameraByEnemyStage` override getCameraImageSrc pro "at_door"
+    // spadne zpět na běžný door_hallway monster obrázek (teď už reálný, ne
+    // `null`, viz zadání "Napoj Titanovy kamerové vizuály") — pořád ale
+    // BEZE stage-specific "at_door" varianty, kterou Imp má
+    // (door_hallway_10_monster_at_door.webp) a Titan nemá.
     expect(TITAN_PRESENTATION.cameraByEnemyStage).toBeUndefined();
     expect(
-      getCameraImageSrc(
-        "door_hallway",
-        true,
-        false,
-        0,
-        "at_door",
-        undefined,
-        0,
-        TITAN_PRESENTATION.camera,
-        TITAN_PRESENTATION.cameraByEnemyStage,
-      ),
-    ).toBeNull();
+      getCameraImageSrc("door_hallway", true, false, 0, "at_door", undefined, 0, TITAN_PRESENTATION.camera, TITAN_PRESENTATION.cameraByEnemyStage),
+    ).toBe("/object_13/monster/titan/titan_door_hallway.webp");
   });
 });
