@@ -230,7 +230,7 @@ export const COPY = {
     // do hlavní hry, zatím vývojářské tlačítko bez finálního artu. Text
     // záměrně ne "Jít ven" — má znít jako riskantní, nevratné rozhodnutí, ne
     // ležérní odchod.
-    startEmergencyRunLabel: "Nouzově opustit místnost",
+    startEmergencyRunLabel: "NOUZOVÁ VÝPRAVA\nDO SKLADOVACÍ ČÁSTI",
     // Nahrazuje startEmergencyRunLabel, jakmile hráč monstrum tuhle noc
     // aspoň jednou zranil brokovnicí (viz GameState.monsterHitsToday,
     // game/core/monsterEnding.ts) — hidden true ending loot smyčka, hráč už

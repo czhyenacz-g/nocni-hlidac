@@ -282,7 +282,7 @@ export default function LeftWallView({
               <span className="console-icon-block" aria-hidden="true">
                 <ConsoleIcon id="warn" />
               </span>
-              <span>
+              <span className="whitespace-pre-line">
                 {emergencyRunWindupActive
                   ? COPY.game.emergencyRunHoldingLabel.replace("{seconds}", windupSeconds)
                   : hasWoundedMonsterToday
