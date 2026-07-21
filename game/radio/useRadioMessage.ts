@@ -57,14 +57,16 @@ const TRANSMISSION_STATUS_LABEL = "Přenos probíhá…";
  * tenhle konkrétní bug samy o sobě nemají).
  *
  * `enabled` (výchozí `true`, beze změny pro Impa) — `false` na Titanově noci
- * (viz RadioMessageOverlay.tsx, game/core/titanEncounter.ts) — Impovo
- * "vypuštění monstra" hlášení je monstrum-agnostické (triggeruje se na
- * KTEROUKOLIV `enemyStage === "outer_yard"`, ne jen Impovo), takže by se bez
- * tohohle guardu přehrálo špatné (Impovo) rádiové hlášení i na Titanovu noc,
- * přes/místo Titanovy vlastní jednorázové "escape" hlášky (viz
- * game/radio/useTitanEscapeMessage.ts). Tracker se pořád aktualizuje i když
- * `enabled` je `false` (ať `previousStage` zůstane v souladu), jen se nikdy
- * nespustí samotné přehrání/zobrazení.
+ * A na nocích 1-4 (viz RadioMessageOverlay.tsx#RELEASE_MONSTER_MESSAGE_MIN_NIGHT,
+ * game/core/titanEncounter.ts) — Impovo "vypuštění monstra" hlášení je
+ * monstrum-agnostické (triggeruje se na KTEROUKOLIV `enemyStage ===
+ * "outer_yard"`, ne jen Impovo), takže by se bez tohohle guardu přehrálo
+ * špatné (Impovo) rádiové hlášení i na Titanovu noc, přes/místo Titanovy
+ * vlastní jednorázové "escape" hlášky (viz game/radio/useTitanEscapeMessage.ts),
+ * a taky příliš brzy (noci 1-4, viz zadání "nepřehrávej je noci 1-4").
+ * Tracker se pořád aktualizuje i když `enabled` je `false` (ať
+ * `previousStage` zůstane v souladu), jen se nikdy nespustí samotné
+ * přehrání/zobrazení.
  */
 export function useRadioMessage(monsterStage: EnemyStage, nightNumber: number, enabled: boolean = true): RadioMessageState {
   const trackerRef = useRef<RadioTriggerTrackerState>(createInitialRadioTriggerTracker(nightNumber));

@@ -43,14 +43,14 @@ describe("getNightConfig", () => {
     expect(config.features.monsterRetreatVerificationEnabled).toBe(true);
     expect(config.features.generatorFaultsEnabled).toBe(true);
     expect(config.features.bulbLifetimeEnabled).toBe(true);
-    expect(config.briefing.lines).toEqual(["Na kameře nebylo nic vidět.", "Do dveří stejně něco udeřilo."]);
+    expect(config.briefing.lines).toEqual(["Dnes tu technici dělali něco generátorem.", "Jak to ale šlo, tak utekli."]);
   });
 
   // shotgunLootEnabled je vždy dopočítané z canSpawnShotgun (viz níže), proto
   // se tu porovnává relativně k SHOTGUN_LOOT_MIN_NIGHT, ne natvrdo — hodnota
   // je DOČASNĚ 1 (ruční testování brokovnice, viz nightConfig.ts), časem se
   // vrátí na 10, tenhle test má projít v obou případech.
-  it.each([5, 6, 7, 8, 9])("night %i: everything on (default) except shotgunLootEnabled by threshold, shared fallback-style briefing", (nightNumber) => {
+  it.each([5, 7, 8, 9])("night %i: everything on (default) except shotgunLootEnabled by threshold, shared fallback-style briefing", (nightNumber) => {
     const config = getNightConfig(nightNumber);
     expect(config.features).toEqual({
       ...DEFAULT_NIGHT_FEATURES,
@@ -59,6 +59,22 @@ describe("getNightConfig", () => {
     });
     expect(config.briefing.title).toBe(`Noc ${nightNumber}`);
     expect(config.briefing.lines).toEqual(["Služby jsou čím dál horší.", "Tohle místo se rozpadá."]);
+  });
+
+  it("night 6: has its own briefing text (message from T.), features still default/threshold-based (shared fallback-style features)", () => {
+    const config = getNightConfig(6);
+    expect(config.features).toEqual({
+      ...DEFAULT_NIGHT_FEATURES,
+      shotgunLootEnabled: canSpawnShotgun(6),
+      generatorOverloadEnabled: canOverloadGenerator(6),
+    });
+    expect(config.briefing.title).toBe("Noc 6");
+    expect(config.briefing.lines).toEqual([
+      "Na stole jsem našel vzkaz:",
+      '"Je zázrak, že jsi přežil! Jsi BOREC!',
+      "Od teď se ti budu snažit posílat varování do vysílačky.",
+      'Podpis T."',
+    ]);
   });
 
   it("night SHOTGUN_LOOT_MIN_NIGHT: shotgunLootEnabled turns on (other features may still have per-night overrides, see NIGHT_CONFIGS)", () => {

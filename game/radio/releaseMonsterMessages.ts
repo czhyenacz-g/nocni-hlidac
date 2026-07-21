@@ -16,6 +16,17 @@ export interface ReleaseMonsterMessage {
 }
 
 /**
+ * Od jaké noci se "vypuštění monstra" hlášení vůbec smí přehrát (viz zadání
+ * "nepřehrávej je noci 1-4") — noci 1-4 jsou záměrně tiché, hráč se s rádiem
+ * ještě neseznámil. RadioMessageOverlay.tsx tímhle prahem podmiňuje
+ * `useRadioMessage`'s `enabled` (spolu s existující `monsterId !== "titan"`
+ * podmínkou — noc 5 je navíc VŽDY Titanova, viz
+ * game/core/titanEncounterNights.ts#TITAN_FIRST_ENCOUNTER_NIGHT, takže by ji
+ * tahle podmínka stejně vyloučila).
+ */
+export const RELEASE_MONSTER_MESSAGE_MIN_NIGHT = 5;
+
+/**
  * Zdrojový dlouhý záznam (`public/object_13/sound/release_monster/source/
  * release_monster_raw.wav`) záměrně NENÍ v tomhle poli — hráč by jinak mohl
  * dostat celou 64s nahrávku všech hlášek za sebou místo jedné krátké (viz

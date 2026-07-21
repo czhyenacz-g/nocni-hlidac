@@ -2762,3 +2762,20 @@ začne samotné prorážení. `breach` zůstává beze změny (`TITAN_DOOR_BREAC
 mezitím neběží generátorové přetížení (to Titana u dveří úplně zamrzne, viz výše). Bušení na
 dveře (`titanDoorPounding`, viz `computeTitanAudioTrack` v `game/audio/titanFootsteps.ts`)
 hraje po celou dobu `at_door` i `breach` beze změny, takže teď pokrývá celých ~8s místo ~2s.
+
+## Titanovo pevné první setkání v noci 5 + posunuté přetížení generátoru + rádiové ticho 1-4
+
+- **Noc 5 = vždy Titan** — `TITAN_FIRST_ENCOUNTER_NIGHT` (`game/core/titanEncounterNights.ts`,
+  hodnota 5) je PEVNÉ první setkání, nezávislé na `TITAN_ENCOUNTER_RANGES`/
+  `rollTitanEncounterNights`. `game/nights/nightRegistry.ts#resolveNightDefinition` vrací
+  `NIGHT_15` (Titan) i pro `nightNumber === TITAN_FIRST_ENCOUNTER_NIGHT`, nezávisle na
+  losované `titanNights` trojici — run tak má celkem ČTYŘI Titanova setkání (1 pevné + 3
+  losovaná z `[11,15]`/`[16,21]`/`[22,30]`, beze změny), ne tři.
+- **`GENERATOR_OVERLOAD_MIN_NIGHT`** (`game/difficulty/nightConfig.ts`) posunuto z 5 na 4 —
+  hráč má funkční "PŘETÍŽIT GENERÁTOR" hotové ještě PŘED prvním (pevným) Titanovým setkáním.
+- **Rádiové "vypuštění monstra" ticho v nocích 1-4** — `RELEASE_MONSTER_MESSAGE_MIN_NIGHT`
+  (`game/radio/releaseMonsterMessages.ts`, hodnota 5, schválně stejná jako
+  `TITAN_FIRST_ENCOUNTER_NIGHT`) přidává druhou podmínku do `RadioMessageOverlay.tsx`'s
+  `useRadioMessage(...)` `enabled` argumentu vedle existující `monsterId !== "titan"` — obě
+  podmínky společně zajišťují, že Impovo hlášení mlčí noci 1-4 A na Titanově pevné noci 5
+  (kde by ho `monsterId !== "titan"` samo o sobě stejně vyloučilo).

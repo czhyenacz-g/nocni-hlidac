@@ -16,10 +16,21 @@
 const STORAGE_KEY = "nocni-hlidac:object13:titan-encounter-nights";
 
 /**
+ * Noc 5 je VŽDY Titanovo první setkání (viz zadání "5. noc pevně - 1.
+ * titan") — pevné číslo, ne losované, nezávislé na `TITAN_ENCOUNTER_RANGES`/
+ * `rollTitanEncounterNights` níže. Tři náhodně vylosovaná setkání zůstávají
+ * beze změny — výsledkem je čtyři setkání za run (1 pevné + 3 losovaná), ne
+ * náhrada jednoho z nich. `game/nights/nightRegistry.ts#resolveNightDefinition`
+ * je jediné místo, které tohle číslo kontroluje.
+ */
+export const TITAN_FIRST_ENCOUNTER_NIGHT = 5;
+
+/**
  * Tři disjunktní intervaly (viz zadání "Důležitá pravidla losování") —
  * noc 10 nikdy nemůže padnout (žádný interval ji neobsahuje), a protože
  * intervaly se nikdy nepřekrývají, tři vylosované hodnoty nemůžou nikdy
- * kolidovat mezi sebou.
+ * kolidovat mezi sebou. Žádný z nich neobsahuje ani TITAN_FIRST_ENCOUNTER_NIGHT
+ * (5), takže se pevná noc 5 nemůže nikdy shodovat s losovanou hodnotou.
  */
 export const TITAN_ENCOUNTER_RANGES: readonly (readonly [number, number])[] = [
   [11, 15],

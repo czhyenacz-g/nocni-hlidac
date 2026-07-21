@@ -90,10 +90,13 @@ export function canSpawnShotgun(nightNumber: number, isAdmin: boolean = false): 
 }
 
 /**
- * Od jaké noci je "PŘETÍŽIT GENERÁTOR" vidět pro běžného hráče (viz zadání
- * "zobrazit od 5. noci") — jediné místo, které tohle číslo definuje.
+ * Od jaké noci je "PŘETÍŽIT GENERÁTOR" vidět pro běžného hráče — jediné
+ * místo, které tohle číslo definuje. Posunuto na noc 4 (viz zadání "posuň
+ * povolení možnosti přetížit generátor na 4. noc" — hráč tak má funkční
+ * přetížení hotové ještě PŘED pevným prvním Titanovým setkáním v noci 5,
+ * viz TITAN_FIRST_ENCOUNTER_NIGHT v game/core/titanEncounterNights.ts).
  */
-export const GENERATOR_OVERLOAD_MIN_NIGHT = 5;
+export const GENERATOR_OVERLOAD_MIN_NIGHT = 4;
 
 /**
  * Stejný vzor jako canSpawnShotgun výše — čistá funkce nezávislá na
@@ -177,14 +180,33 @@ const NIGHT_CONFIGS: NightConfig[] = [
     nightNumber: 4,
     briefing: {
       title: "Noc 4",
-      lines: ["Na kameře nebylo nic vidět.", "Do dveří stejně něco udeřilo."],
+      lines: ["Dnes tu technici dělali něco generátorem.", "Jak to ale šlo, tak utekli."],
     },
     // Beze změn features — od tuhle noci je všechno zapnuté jako dnes.
   },
+  // Noc 5 nemá vlastní briefing (spadá do fallbacku níže) — je to Titanovo
+  // PEVNÉ první setkání (viz TITAN_FIRST_ENCOUNTER_NIGHT v
+  // game/core/titanEncounterNights.ts), hráč se to dozví přímo v encounteru
+  // (Titanova vlastní "escape" rádiová hláška, viz useTitanEscapeMessage.ts),
+  // ne v předsměnovém briefingu.
+  {
+    nightNumber: 6,
+    briefing: {
+      title: "Noc 6",
+      lines: [
+        "Na stole jsem našel vzkaz:",
+        '"Je zázrak, že jsi přežil! Jsi BOREC!',
+        "Od teď se ti budu snažit posílat varování do vysílačky.",
+        'Podpis T."',
+      ],
+    },
+    // Beze změn features — beze změny oproti noci 4 (features se dál dědí z DEFAULT_NIGHT_FEATURES).
+  },
 ];
 
-// Noci 5+ (bez vlastního záznamu v NIGHT_CONFIGS výše) dostanou tenhle
-// fallback — noci 5–10 i 11+ mají záměrně stejný text (viz zadání).
+// Noci bez vlastního záznamu v NIGHT_CONFIGS výše (5, 7-10, 11+) dostanou
+// tenhle fallback — noc 5 (Titanovo pevné první setkání) záměrně taky, viz
+// komentář u ní výše.
 const FALLBACK_BRIEFING_LINES: string[] = ["Služby jsou čím dál horší.", "Tohle místo se rozpadá."];
 
 /**

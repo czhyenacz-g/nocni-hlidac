@@ -6,6 +6,7 @@ import { useMonsterRepelRadioMessage } from "@/game/radio/useMonsterRepelRadioMe
 import { useCameraDisabledRadioMessage } from "@/game/radio/useCameraDisabledRadioMessage";
 import { useGhoulCameraAttackWarningMessage } from "@/game/radio/useGhoulCameraAttackWarningMessage";
 import { useTitanEscapeMessage } from "@/game/radio/useTitanEscapeMessage";
+import { RELEASE_MONSTER_MESSAGE_MIN_NIGHT } from "@/game/radio/releaseMonsterMessages";
 import RadioWaveform from "./RadioWaveform";
 
 interface RadioMessageOverlayProps {
@@ -54,7 +55,11 @@ export default function RadioMessageOverlay({
   titanEncounterActive,
 }: RadioMessageOverlayProps) {
   const titanMessage = useTitanEscapeMessage(titanEncounterActive);
-  const releaseMessage = useRadioMessage(monsterStage, nightNumber, monsterId !== "titan");
+  const releaseMessage = useRadioMessage(
+    monsterStage,
+    nightNumber,
+    monsterId !== "titan" && nightNumber >= RELEASE_MONSTER_MESSAGE_MIN_NIGHT,
+  );
   const repelMessage = useMonsterRepelRadioMessage(sonicCannonResultSeq, lastSonicCannonResult);
   const cameraDisabledMessage = useCameraDisabledRadioMessage(cameraOfflineSeq);
   const attackWarningMessage = useGhoulCameraAttackWarningMessage(cameraAttackStartedSeq);

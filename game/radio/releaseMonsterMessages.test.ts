@@ -3,11 +3,27 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   pickRandomReleaseMonsterMessage,
+  RELEASE_MONSTER_MESSAGE_MIN_NIGHT,
   RELEASE_MONSTER_MESSAGES,
   ReleaseMonsterMessage,
   resolveReleaseMonsterOverlayDurationMs,
 } from "./releaseMonsterMessages";
 import { AUDIO_EVENTS } from "../audio/audioEvents";
+import { TITAN_FIRST_ENCOUNTER_NIGHT } from "../core/titanEncounterNights";
+
+// Regresní testy pro "nepřehrávej je noci 1-4" (viz zadání) — samotné
+// zapojení (RadioMessageOverlay.tsx#enabled) je React hook wiring bez
+// existující testovací infrastruktury (RTL) v projektu, takže se testuje
+// aspoň hodnota prahu samotná + shoda s Titanovým pevným prvním setkáním.
+describe("RELEASE_MONSTER_MESSAGE_MIN_NIGHT", () => {
+  it("is exactly 5 (nights 1-4 stay silent)", () => {
+    expect(RELEASE_MONSTER_MESSAGE_MIN_NIGHT).toBe(5);
+  });
+
+  it("matches TITAN_FIRST_ENCOUNTER_NIGHT — night 5 is excluded by both the min-night gate AND the Titan gate", () => {
+    expect(RELEASE_MONSTER_MESSAGE_MIN_NIGHT).toBe(TITAN_FIRST_ENCOUNTER_NIGHT);
+  });
+});
 
 describe("RELEASE_MONSTER_MESSAGES", () => {
   it("is not empty", () => {
