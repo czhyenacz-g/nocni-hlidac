@@ -95,6 +95,13 @@ export const DOOR_CLOSED_FRAME_HOLD_MS = 1000;
 // v DoorView.tsx zůstane platné beze změny.
 export const DOOR_GENERATOR_OVERLOAD_FRAME_INDEX = 5;
 export const DOOR_DESTROYED_FRAME_INDEX = 6;
+// Imp fyzicky u dveří (`enemyStage === "at_door"`), dveře OTEVŘENÉ (viz
+// zadání "at_door obrázky") — vložený PŘED death-reveal snímek (ne přidaný na
+// konec), ať `deathRevealIndex = frames.length-1` v DoorView.tsx zůstane
+// platné beze změny. Titan má svůj vlastní `TITAN_AT_DOOR_SRC` mimo tenhle
+// registr (viz titanDoorAssets.ts) — tenhle index se týká jen Impa/ostatních
+// non-Titan monster, DoorView.tsx ho použije jen když `!doorClosed`.
+export const IMP_AT_DOOR_FRAME_INDEX = 7;
 
 /**
  * Which door_closed_* frame offset (0..DOOR_CLOSED_FRAME_COUNT-1) to show for
@@ -209,9 +216,11 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
       { src: `${OBJECT_13_BACKGROUND_PATH}/door_closed_1.webp` },
       { src: `${OBJECT_13_BACKGROUND_PATH}/door_closed_2.webp` },
       { src: `${OBJECT_13_BACKGROUND_PATH}/door_closed_3.webp` },
-      // Indexy DOOR_GENERATOR_OVERLOAD_FRAME_INDEX/DOOR_DESTROYED_FRAME_INDEX výše.
+      // Indexy DOOR_GENERATOR_OVERLOAD_FRAME_INDEX/DOOR_DESTROYED_FRAME_INDEX/
+      // IMP_AT_DOOR_FRAME_INDEX výše.
       { src: `${OBJECT_13_BACKGROUND_PATH}/door_generator_overload_0.webp` },
       { src: `${OBJECT_13_BACKGROUND_PATH}/door_destroyed_0.webp` },
+      { src: "/object_13/monster/imp/imp_at_door.webp" },
       { src: `${OBJECT_13_BACKGROUND_PATH}/door_open_death_0.webp` },
     ],
     holdMs: DEFAULT_HOLD_MS,

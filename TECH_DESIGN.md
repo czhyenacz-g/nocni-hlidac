@@ -2702,3 +2702,32 @@ kamera vždy zobrazí aspoň základní záběr. Titanovy `monster` obrázky (ov
 kompletní kompozitní záběry (celé prostředí + Titan), ne průhledný overlay, takže se dál
 používají jako CELÁ scéna, ne jako vrstva nad `normal` — žádná nová kompozitní/overlay
 renderovací vrstva nebyla potřeba.
+
+## at_door obrázky, bezpečnostní pravidlo světla, Titan rozbíjí žárovku, kratší overload hold
+
+- **`at_door` obrázky u OTEVŘENÝCH dveří** (viz zadání "Nové obrázky pro stav at_door") —
+  `game/visuals/doorMonsterOverlay.ts#resolveDoorMonsterOverlay` je čistá funkce se čtyřmi
+  vstupy (`doorClosed`, `isImpAtDoor`, `isTitanAtDoor`, `isTitanBreach`), kterou DoorView.tsx
+  konzultuje AŽ PO vyloučení vyšší priority (deathReveal/overloadDeathReveal/destroyed/
+  probíhající přetížení). Imp: nový snímek `imp_at_door.webp` vložený do
+  `BACKGROUND_SCENES.door.frames` (`IMP_AT_DOOR_FRAME_INDEX`, PŘED death-reveal snímkem, ať
+  `deathRevealIndex = frames.length-1` zůstane platné). Titan: `TITAN_AT_DOOR_SRC` teď
+  ukazuje na VLASTNÍ `titan_at_door.webp` (dřív sdílel `breakthrough[0]` s neaktivní breach
+  sekvencí) — `breach` obrázek (`TITAN_BREACH_SRC`) zůstává beze změny a nezávisí na
+  `doorClosed`. Obojí platí VÝHRADNĚ při otevřených dveřích — zavřené dveře se propadnou na
+  běžnou zavřenou idle animaci.
+- **Nelze rozsvítit při otevřených dveřích** (viz zadání) — `TOGGLE_LIGHT` v gameReducer.ts
+  blokuje jen ZAPNUTÍ (`!state.lightOn`) při `!state.doorClosed`; vypnutí zůstává vždy možné.
+  Blokovaný pokus nemění `lightOn`, jen zvýší `GameState.lightToggleBlockedSeq` — stejný "seq
+  counter, komponenta si sama hlídá krátké zobrazení" vzor jako
+  `generatorAccidentalRestartSeq`. `LightControl.tsx` na změnu ukáže krátké bliknutí +
+  hlášku (`LIGHT_TOGGLE_BLOCKED_MESSAGE_MS`), žádné nové dialogové okno.
+- **Titan rozbíjí žárovku u dveří** (viz zadání) — `resolveTitanAdvance.ts`, PŘESNĚ při
+  přechodu `nextStage === "at_door"` (jednorázová větev, stejný vzor jako breach-transition
+  auto-view-switch), pokud `isNearRoomLightActive(state)` byla v tu chvíli `true`. Použije
+  stejný `roomBulbs`/`bulbBreakSeq` mechanismus jako zbytek hry (žádný nový systém) — bez
+  podmínky by se žárovka mohla "rozbít" i podruhé, ale `isNearRoomLightActive` je po prvním
+  rozbití vždy `false`, takže se větev sama neopakuje.
+- **Kratší držení pro přetížení generátoru** — `GENERATOR_OVERLOAD_WINDUP_DURATION_MS` už
+  není odvozené od `EMERGENCY_RUN_WINDUP_DURATION_MS` (3000ms), ale VLASTNÍ nezávislá
+  hodnota 1500ms — emergency run/"Nechat si to projít hlavou" beze změny.

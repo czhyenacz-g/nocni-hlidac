@@ -7,10 +7,12 @@ import {
   DOOR_CLOSED_FRAME_START_INDEX,
   DOOR_DESTROYED_FRAME_INDEX,
   DOOR_GENERATOR_OVERLOAD_FRAME_INDEX,
+  IMP_AT_DOOR_FRAME_INDEX,
 } from "@/game/visuals/backgroundImages";
 import { BULB_REPLACE_DURATION_MS, BULB_REPLACE_SUCCESS_MESSAGE_MS } from "@/game/balancing/constants";
 import { computeBulbReplacementProgressRatio } from "@/game/core/bulbReplacementProgress";
 import { TITAN_AT_DOOR_SRC, TITAN_ATTACK_SRC, TITAN_BREACH_SRC, TITAN_OVERLOAD_DEATH_SRC } from "@/game/visuals/titanDoorAssets";
+import { resolveDoorMonsterOverlay } from "@/game/visuals/doorMonsterOverlay";
 import DoorSceneFrame from "./DoorSceneFrame";
 import ViewSwitchArrow from "./ViewSwitchArrow";
 
@@ -52,6 +54,14 @@ interface DoorViewProps {
    */
   isTitanAtDoor: boolean;
   isTitanBreach: boolean;
+  /**
+   * Non-Titan monstrum (dnes Imp) je fyzicky u dveří (`enemyStage ===
+   * "at_door"`) — viz zadání "at_door obrázky". Vzájemně se vylučuje s
+   * `isTitanAtDoor` (GameScreen.tsx je počítá podle `night.enemy.id`),
+   * DoorView tenhle obrázek použije jen když dveře jsou zrovna OTEVŘENÉ
+   * (`!doorClosed`) — zavřené dveře/jiná stage ho nikdy nezobrazí.
+   */
+  isImpAtDoor: boolean;
   /** Titanova stage je `"attack"` — jen když `isDoorDeathReveal` je `true`, nahrazuje Impovo `deathRevealIndex` snímkem `titan_attacks_broken_door.webp`. */
   isTitanAttack: boolean;
   /**
@@ -97,6 +107,7 @@ export default function DoorView({
   closeDoorUrgent,
   isTitanAtDoor,
   isTitanBreach,
+  isImpAtDoor,
   isTitanAttack,
   titanOverloadFrameSrc,
   isTitanOverloadDeathReveal,
@@ -134,6 +145,13 @@ export default function DoorView({
   // současně (viz gameReducer.ts#updateDoorGeneratorOverload — pole se
   // vzájemně vylučují), pořadí je tu jen pro čitelnost/budoucí jistotu.
   //
+  // Monstrum-u-otevřených-dveří obrázek (viz zadání "at_door obrázky") —
+  // čistá funkce (game/visuals/doorMonsterOverlay.ts), konzultovaná jen
+  // když žádná vyšší priorita (deathReveal/overloadDeathReveal/destroyed/
+  // probíhající přetížení) neplatí. `doorMonsterOverlay` je `null` mimo
+  // at_door/breach nebo se zavřenými dveřmi (Imp/Titan at_door) — pak se
+  // použije obvyklá otevřená/zavřená animace beze změny.
+  const doorMonsterOverlay = resolveDoorMonsterOverlay({ doorClosed, isImpAtDoor, isTitanAtDoor, isTitanBreach });
   // `titanOverrideSrc` (jiný obrázek než generický `doorScene.frames`,
   // podle zadání "napoj Titanovu dveřní sekvenci") se, pokud existuje,
   // vykreslí jako JEDINÝ snímek (aktivní index 0) místo generického pole —
@@ -147,11 +165,11 @@ export default function DoorView({
       ? TITAN_OVERLOAD_DEATH_SRC
       : doorGeneratorOverloadActive
         ? titanOverloadFrameSrc
-        : !doorDestroyed && (isTitanAtDoor || isTitanBreach)
-          ? isTitanAtDoor
+        : !doorDestroyed && doorMonsterOverlay === "titan_breach"
+          ? TITAN_BREACH_SRC
+          : !doorDestroyed && doorMonsterOverlay === "titan_at_door"
             ? TITAN_AT_DOOR_SRC
-            : TITAN_BREACH_SRC
-          : null;
+            : null;
   const activeIndex = isDoorDeathReveal
     ? deathRevealIndex
     : doorDestroyed
@@ -160,7 +178,9 @@ export default function DoorView({
         ? DOOR_GENERATOR_OVERLOAD_FRAME_INDEX
         : doorClosed
           ? DOOR_CLOSED_FRAME_START_INDEX + doorClosedFrameOffsetForStep(closedFrameStep)
-          : 0;
+          : doorMonsterOverlay === "imp_at_door"
+            ? IMP_AT_DOOR_FRAME_INDEX
+            : 0;
   const sceneFrames = titanOverrideSrc !== null ? [{ src: titanOverrideSrc }] : doorScene.frames;
   const sceneActiveIndex = titanOverrideSrc !== null ? 0 : activeIndex;
   // Dveře nereagují na hráče (viz TOGGLE_DOOR guard v gameReducer.ts) —

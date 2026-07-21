@@ -83,12 +83,66 @@ describe("TOGGLE_LIGHT with a broken bulb", () => {
     expect(result.lightOn).toBe(false);
   });
 
-  it("toggles normally when the bulb is healthy", () => {
+  it("toggles normally when the bulb is healthy and the door is closed", () => {
     const reducer = createGameReducer(NIGHT_01);
-    const state: GameState = { ...createInitialGameState(NIGHT_01), isRunning: true, lightOn: false };
+    const state: GameState = { ...createInitialGameState(NIGHT_01), isRunning: true, lightOn: false, doorClosed: true };
 
     const result = reducer(state, { type: "TOGGLE_LIGHT" });
 
     expect(result.lightOn).toBe(true);
+  });
+});
+
+// Bezpečnostní pravidlo "Nelze rozsvítit při otevřených dveřích" (viz
+// zadání) — regresní testy pro TOGGLE_LIGHT.
+describe("TOGGLE_LIGHT — cannot turn the light on while the door is open", () => {
+  it("open door -> turning the light on is blocked, lightOn stays false", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state: GameState = { ...createInitialGameState(NIGHT_01), isRunning: true, lightOn: false, doorClosed: false };
+
+    const result = reducer(state, { type: "TOGGLE_LIGHT" });
+
+    expect(result.lightOn).toBe(false);
+  });
+
+  it("open door -> the blocked attempt shows the correct warning (lightToggleBlockedSeq bumps exactly once)", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state: GameState = { ...createInitialGameState(NIGHT_01), isRunning: true, lightOn: false, doorClosed: false };
+
+    const result = reducer(state, { type: "TOGGLE_LIGHT" });
+
+    expect(result.lightToggleBlockedSeq).toBe(state.lightToggleBlockedSeq + 1);
+  });
+
+  it("closed door -> turning the light on works normally", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state: GameState = { ...createInitialGameState(NIGHT_01), isRunning: true, lightOn: false, doorClosed: true };
+
+    const result = reducer(state, { type: "TOGGLE_LIGHT" });
+
+    expect(result.lightOn).toBe(true);
+    expect(result.lightToggleBlockedSeq).toBe(state.lightToggleBlockedSeq);
+  });
+
+  it("open door -> turning an already-on light OFF is always allowed (only turning ON is blocked)", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state: GameState = { ...createInitialGameState(NIGHT_01), isRunning: true, lightOn: true, doorClosed: false };
+
+    const result = reducer(state, { type: "TOGGLE_LIGHT" });
+
+    expect(result.lightOn).toBe(false);
+    expect(result.lightToggleBlockedSeq).toBe(state.lightToggleBlockedSeq);
+  });
+
+  it("closing the door after a blocked attempt immediately lets the light be turned on again", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const blockedState: GameState = { ...createInitialGameState(NIGHT_01), isRunning: true, lightOn: false, doorClosed: false };
+    const afterBlockedAttempt = reducer(blockedState, { type: "TOGGLE_LIGHT" });
+    expect(afterBlockedAttempt.lightOn).toBe(false);
+
+    const doorClosed: GameState = { ...afterBlockedAttempt, doorClosed: true };
+    const afterClose = reducer(doorClosed, { type: "TOGGLE_LIGHT" });
+
+    expect(afterClose.lightOn).toBe(true);
   });
 });

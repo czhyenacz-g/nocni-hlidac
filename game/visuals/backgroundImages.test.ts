@@ -121,7 +121,7 @@ describe("BACKGROUND_SCENES.death", () => {
 // "přidal jsem door_closed_1/2/3.png"), na indexech 1-4 mezi otevřenými (0)
 // a death reveal (poslední).
 describe("BACKGROUND_SCENES.door", () => {
-  it("has open, 4 closed idle frames, generator-overload, destroyed, and the death-reveal frame last, in that order", () => {
+  it("has open, 4 closed idle frames, generator-overload, destroyed, imp-at-door-open, and the death-reveal frame last, in that order", () => {
     const srcs = BACKGROUND_SCENES.door.frames.map((f) => f.src);
     expect(srcs).toEqual([
       "/object_13/background/door_open_0.webp",
@@ -131,6 +131,7 @@ describe("BACKGROUND_SCENES.door", () => {
       "/object_13/background/door_closed_3.webp",
       "/object_13/background/door_generator_overload_0.webp",
       "/object_13/background/door_destroyed_0.webp",
+      "/object_13/monster/imp/imp_at_door.webp",
       "/object_13/background/door_open_death_0.webp",
     ]);
   });

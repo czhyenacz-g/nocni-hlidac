@@ -167,8 +167,24 @@ describe("generator overload windup — reaches ready via TICK, same duration as
     expect(ticked.generatorOverloadReadySeq).toBe(1);
   });
 
-  it("GENERATOR_OVERLOAD_WINDUP_DURATION_MS is exactly 3000ms, matching the emergency-run hold", () => {
-    expect(GENERATOR_OVERLOAD_WINDUP_DURATION_MS).toBe(3000);
+  it("GENERATOR_OVERLOAD_WINDUP_DURATION_MS is exactly 1500ms (shortened hold, viz zadání)", () => {
+    expect(GENERATOR_OVERLOAD_WINDUP_DURATION_MS).toBe(1500);
+  });
+
+  it("holding for exactly 1.5s (1500ms, hardcoded per zadání) activates the overload readiness", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const started = reducer(stateAtGenerator(), { type: "START_GENERATOR_OVERLOAD_WINDUP" });
+    const ticked = reducer(started, { type: "TICK", deltaMs: 1500 });
+    expect(ticked.generatorOverloadWindup.active).toBe(false);
+    expect(ticked.generatorOverloadReadySeq).toBe(1);
+  });
+
+  it("holding for less than 1.5s (e.g. 1400ms) does NOT activate the overload readiness", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const started = reducer(stateAtGenerator(), { type: "START_GENERATOR_OVERLOAD_WINDUP" });
+    const ticked = reducer(started, { type: "TICK", deltaMs: 1400 });
+    expect(ticked.generatorOverloadWindup.active).toBe(true);
+    expect(ticked.generatorOverloadReadySeq).toBe(0);
   });
 
   it("holding for the full duration bumps readySeq exactly once, even across further ticks (dispatched exactly once)", () => {

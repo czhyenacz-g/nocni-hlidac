@@ -156,6 +156,8 @@ export const COPY = {
     /** Tooltip po chvíli podržení myši nad LightControl.tsx (viz zadání) — jen atmosférická narážka, nic herně nemění. */
     lightControlTooltip:
       "Za dveřmi je asi největší žárovka, co jsi kdy viděl. Řev monstra ti říká, že to nebude jen UV světlo.",
+    /** Krátká hláška po zablokovaném pokusu rozsvítit při otevřených dveřích (viz zadání, LightControl.tsx, GameState.lightToggleBlockedSeq). */
+    lightBlockedByOpenDoorMessage: "Nejprve zavři dveře.\nHrozilo by ozáření chodby.",
     powerLabel: "Energie",
     // Dev-only hodnota vedle energie (viz STRESS_DEV_HUD_ENABLED, PowerMeter.tsx) — časem se skryje.
     stressLabel: "Stres",

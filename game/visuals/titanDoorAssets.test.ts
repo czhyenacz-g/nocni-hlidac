@@ -26,6 +26,7 @@ const EXPECTED_DIMENSIONS: Record<string, { width: number; height: number }> = {
   titan_doors_overdrive_3: { width: 1672, height: 941 },
   titan_doors_overdrive_4: { width: 1672, height: 941 },
   titan_doors_overdrive_5: { width: 1672, height: 941 },
+  titan_at_door: { width: 1403, height: 1121 },
 };
 
 // Minimální ruční parser PNG IHDR (bajty 16-23: width/height, big-endian) —
@@ -80,7 +81,12 @@ describe("Titan door assets — WebP source files", () => {
 
 describe("TITAN_DOOR_ASSETS registry", () => {
   it("uses only .webp paths, never .png, anywhere in the registry", () => {
-    const allSrcs = [...TITAN_DOOR_ASSETS.breakthrough, ...TITAN_DOOR_ASSETS.overdrive, TITAN_DOOR_ASSETS.attack];
+    const allSrcs = [
+      ...TITAN_DOOR_ASSETS.breakthrough,
+      ...TITAN_DOOR_ASSETS.overdrive,
+      TITAN_DOOR_ASSETS.attack,
+      TITAN_DOOR_ASSETS.atDoorOpen,
+    ];
     for (const src of allSrcs) {
       expect(src.endsWith(".webp"), `expected .webp, got: ${src}`).toBe(true);
       expect(src.endsWith(".png")).toBe(false);
@@ -92,9 +98,14 @@ describe("TITAN_DOOR_ASSETS registry", () => {
     expect(TITAN_DOOR_ASSETS.overdrive).toHaveLength(6);
   });
 
-  it("at_door maps to breakthrough_0, breach maps to breakthrough_2", () => {
-    expect(TITAN_AT_DOOR_SRC).toBe("/object_13/monster/titan/titan_doors_breakthrough_0.webp");
+  it("at_door (door open) maps to its own dedicated titan_at_door.webp asset, breach maps to breakthrough_2", () => {
+    expect(TITAN_AT_DOOR_SRC).toBe("/object_13/monster/titan/titan_at_door.webp");
     expect(TITAN_BREACH_SRC).toBe("/object_13/monster/titan/titan_doors_breakthrough_2.webp");
+  });
+
+  it("breakthrough[0] remains registered (reserved, per file header) but is no longer TITAN_AT_DOOR_SRC", () => {
+    expect(TITAN_DOOR_ASSETS.breakthrough[0]).toBe("/object_13/monster/titan/titan_doors_breakthrough_0.webp");
+    expect(TITAN_AT_DOOR_SRC).not.toBe(TITAN_DOOR_ASSETS.breakthrough[0]);
   });
 
   it("attack maps to titan_attacks_broken_door.webp", () => {

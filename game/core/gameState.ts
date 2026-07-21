@@ -81,6 +81,7 @@ export function createInitialGameState(night: NightDefinition, options: CreateIn
     doorGeneratorOverloadUntilMs: null,
     titanOverloadDeathRevealUntilMs: null,
     lightOn: false,
+    lightToggleBlockedSeq: 0,
 
     cameraOpen: false,
     activeCameraId: night.defaultCameraId,

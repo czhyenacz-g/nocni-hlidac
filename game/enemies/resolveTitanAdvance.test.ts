@@ -199,3 +199,65 @@ describe("resolveTitanAdvance — freezes at the door while a generator overload
     expect(result.enemyStage).toBe("door_hallway");
   });
 });
+
+// Titan rozbíjí žárovku u dveří, PŘESNĚ při vstupu do "at_door" (viz zadání
+// "Titan při at_door rozbije žárovku").
+describe("resolveTitanAdvance — breaks the near-room bulb entering 'at_door' if the light is on", () => {
+  function stateEnteringAtDoor(overrides: Partial<GameState> = {}): GameState {
+    return titanState({
+      enemyStage: "door_hallway",
+      elapsedMs: TITAN_STAGE_STAY_MS,
+      enemyLocationEnteredAtMs: 0,
+      ...overrides,
+    });
+  }
+
+  it("light on, bulb healthy -> breaks the bulb and bumps bulbBreakSeq exactly once, while still advancing to at_door", () => {
+    const state = stateEnteringAtDoor({
+      lightOn: true,
+      roomBulbs: { nearRoom: { remainingMs: 20_000, maxMs: 30_000, broken: false } },
+      bulbBreakSeq: 0,
+    });
+    const result = resolveTitanAdvance({ state, night: NIGHT_15 });
+    expect(result.enemyStage).toBe("at_door");
+    expect(result.roomBulbs?.nearRoom.broken).toBe(true);
+    expect(result.roomBulbs?.nearRoom.remainingMs).toBe(0);
+    expect(result.bulbBreakSeq).toBe(1);
+  });
+
+  it("light off -> nothing happens to the bulb (still healthy, bulbBreakSeq unchanged)", () => {
+    const state = stateEnteringAtDoor({
+      lightOn: false,
+      roomBulbs: { nearRoom: { remainingMs: 20_000, maxMs: 30_000, broken: false } },
+      bulbBreakSeq: 0,
+    });
+    const result = resolveTitanAdvance({ state, night: NIGHT_15 });
+    expect(result.enemyStage).toBe("at_door");
+    expect(result.roomBulbs).toBeUndefined();
+    expect(result.bulbBreakSeq).toBeUndefined();
+  });
+
+  it("light on but the bulb is already broken -> does not break it a second time (bulbBreakSeq unchanged)", () => {
+    const state = stateEnteringAtDoor({
+      lightOn: true,
+      roomBulbs: { nearRoom: { remainingMs: 0, maxMs: 30_000, broken: true } },
+      bulbBreakSeq: 3,
+    });
+    const result = resolveTitanAdvance({ state, night: NIGHT_15 });
+    expect(result.enemyStage).toBe("at_door");
+    // isNearRoomLightActive is false once the bulb is already broken, so the
+    // "light on" branch never fires — no roomBulbs/bulbBreakSeq key at all.
+    expect(result.roomBulbs).toBeUndefined();
+    expect(result.bulbBreakSeq).toBeUndefined();
+  });
+
+  it("a broken bulb stays broken (survives through breach/attack unaffected by this transition)", () => {
+    const state = stateEnteringAtDoor({
+      lightOn: true,
+      roomBulbs: { nearRoom: { remainingMs: 15_000, maxMs: 30_000, broken: false } },
+      bulbBreakSeq: 0,
+    });
+    const result = resolveTitanAdvance({ state, night: NIGHT_15 });
+    expect(result.roomBulbs?.nearRoom.broken).toBe(true);
+  });
+});

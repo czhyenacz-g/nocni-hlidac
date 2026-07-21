@@ -1,6 +1,7 @@
 import { EnemyStage, GameState, NightDefinition } from "../core/types";
 import { resolveLivesRemainingAfterDeath } from "../core/gameMode";
 import { isMonsterAtDoor } from "../core/doorEncounter";
+import { isNearRoomLightActive } from "../core/roomBulbs";
 import { TITAN_DOOR_BREACH_STAGE_STAY_MS, TITAN_STAGE_STAY_MS } from "../balancing/constants";
 
 // Dveřní stage (at_door/breach) mají mnohem kratší dobu setrvání než hlavní
@@ -114,6 +115,35 @@ export function resolveTitanAdvance(input: ResolveTitanAdvanceInput): TitanAdvan
       // prorazí bez ohledu na jejich stav).
       deathReason: "titan_door_breach",
       livesRemaining: resolveLivesRemainingAfterDeath(state.gameMode, state.livesRemaining),
+    };
+  }
+
+  if (nextStage === "at_door") {
+    // Titan rozbije žárovku u dveří, PŘESNĚ při vstupu do "at_door" (viz
+    // zadání "Titan při at_door rozbije žárovku") — jen pokud světlo v tu
+    // chvíli SKUTEČNĚ svítí (`isNearRoomLightActive`, ne jen poloha
+    // vypínače — prasklá/vybitá žárovka se nerozbíjí podruhé). Přesně
+    // JEDNOU, stejný "jen PŘI přechodu do stage" vzor jako `breach` větev
+    // níže (tahle větev se vyhodnotí jen na skutečnou změnu stage, ne na
+    // každý tik strávený v at_door) — "Nerozbíjej žárovku dvakrát" je tak
+    // zaručené strukturou kódu, ne extra podmínkou navíc. Stejný
+    // roomBulbs/bulbBreakSeq mechanismus jako zbytek hry (viz
+    // gameReducer.ts APPLY_OFFICE_THREAT_ON_RETURN) — žádný nový systém.
+    // Světlo tím efektivně zhasne (`isNearRoomLightActive` počítá i s
+    // `broken`), aniž by se muselo měnit `state.lightOn` samotné.
+    const shouldBreakBulb = isNearRoomLightActive(state);
+    return {
+      enemyStage: nextStage,
+      lastEnemyDecision: "advance",
+      ...(shouldBreakBulb
+        ? {
+            roomBulbs: {
+              ...state.roomBulbs,
+              nearRoom: { ...state.roomBulbs.nearRoom, remainingMs: 0, broken: true },
+            },
+            bulbBreakSeq: state.bulbBreakSeq + 1,
+          }
+        : {}),
     };
   }
 

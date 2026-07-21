@@ -46,10 +46,17 @@ export const TITAN_DOOR_ASSETS = {
   ],
   /** Titan útočí na hráče u (už prolomených) dveří — nahrazuje Impovo `door_open_death_0` jen pro Titana, viz zadání. */
   attack: `${TITAN_DOOR_PATH}/titan_attacks_broken_door.webp`,
+  /**
+   * Titan `at_door`, dveře OTEVŘENÉ, hráč se dívá (viz zadání "at_door
+   * obrázky") — VLASTNÍ dedikovaný asset, ne `breakthrough[0]` (ten zůstává
+   * v poli beze změny, i když ho `TITAN_AT_DOOR_SRC` níže už nepoužívá —
+   * viz zadání "breach obrázky zůstávají beze změny").
+   */
+  atDoorOpen: `${TITAN_DOOR_PATH}/titan_at_door.webp`,
 } as const;
 
-/** `enemyStage === "at_door"` (viz zadání). */
-export const TITAN_AT_DOOR_SRC = TITAN_DOOR_ASSETS.breakthrough[0];
+/** `enemyStage === "at_door"` A dveře OTEVŘENÉ (viz zadání "at_door obrázky") — DoorView.tsx tenhle override použije jen když `!doorClosed`. */
+export const TITAN_AT_DOOR_SRC = TITAN_DOOR_ASSETS.atDoorOpen;
 /** `enemyStage === "breach"` (viz zadání). */
 export const TITAN_BREACH_SRC = TITAN_DOOR_ASSETS.breakthrough[2];
 /** `enemyStage === "attack"` (Titanův death-reveal, viz zadání). */
@@ -86,7 +93,12 @@ export function resolveTitanOverloadFrameSrc(elapsedMs: number, overloadUntilMs:
  */
 export function preloadTitanDoorImages(): void {
   if (typeof window === "undefined") return;
-  const allSrcs = [...TITAN_DOOR_ASSETS.breakthrough, ...TITAN_DOOR_ASSETS.overdrive, TITAN_DOOR_ASSETS.attack];
+  const allSrcs = [
+    ...TITAN_DOOR_ASSETS.breakthrough,
+    ...TITAN_DOOR_ASSETS.overdrive,
+    TITAN_DOOR_ASSETS.attack,
+    TITAN_DOOR_ASSETS.atDoorOpen,
+  ];
   for (const src of allSrcs) {
     const img = new Image();
     img.src = src;

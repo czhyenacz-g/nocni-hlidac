@@ -520,6 +520,14 @@ export interface GameState {
    * `false` každou novou noc, žádná persistence mezi nocemi.
    */
   doorDestroyed: boolean;
+  /**
+   * Zvyšuje se přesně jednou při KAŽDÉM pokusu rozsvítit (ne zhasnout) při
+   * otevřených dveřích (viz zadání "Nelze rozsvítit při otevřených dveřích",
+   * gameReducer.ts TOGGLE_LIGHT) — stejný "seq counter, UI si sama hlídá
+   * krátké zobrazení" vzor jako `generatorAccidentalRestartSeq`/
+   * `bulbReplaceSuccessSeq`. `lightOn` se v tomhle případě VŮBEC nezmění.
+   */
+  lightToggleBlockedSeq: number;
 
   /**
    * true jen v `cameraViewMode === "detail"` — overview (mřížka náhledů) se

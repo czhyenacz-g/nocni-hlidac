@@ -230,6 +230,13 @@ export const BULB_REPLACE_SUCCESS_MESSAGE_MS = 1800;
 // lokální React timeout vzor jako BULB_REPLACE_SUCCESS_MESSAGE_MS výše.
 export const GENERATOR_ACCIDENTAL_RESTART_MESSAGE_MS = 2500;
 
+// Jak dlouho (ms) zůstane v LightControl vidět upozornění + krátké bliknutí
+// tlačítka po zablokovaném pokusu rozsvítit při otevřených dveřích (viz
+// zadání "Nelze rozsvítit při otevřených dveřích", GameState.lightToggleBlockedSeq,
+// content/copy.ts lightBlockedByOpenDoorMessage) — stejný čistě kosmetický
+// lokální React timeout vzor jako GENERATOR_ACCIDENTAL_RESTART_MESSAGE_MS výše.
+export const LIGHT_TOGGLE_BLOCKED_MESSAGE_MS = 2500;
+
 // Jak dlouho (ms) zůstane v LeftWallView vidět hláška po kliknutí na dávkovač
 // munice BEZ brokovnice (viz content/copy.ts#requestAmmoNoWeaponLabel) —
 // stejný čistě kosmetický lokální React timeout vzor jako
@@ -262,16 +269,18 @@ export const THINK_IT_OVER_WINDUP_DURATION_MS = 10_000;
 
 // "PŘETÍŽIT GENERÁTOR" (viz GeneratorView.tsx, gameReducer.ts
 // START_GENERATOR_OVERLOAD_WINDUP/START_GENERATOR_OVERLOAD) — hráč tlačítko
-// drží GENERATOR_OVERLOAD_WINDUP_DURATION_MS (STEJNÁ hodnota jako
-// EMERGENCY_RUN_WINDUP_DURATION_MS výše — "stejný mechanismus jako Nouzové
-// opuštění kanceláře", viz zadání; vlastní konstanta jen ať jde odemknutí
-// tlačítka a jeho trvání laďovat nezávisle na emergency run, kdyby se to v
-// budoucnu rozešlo). Po doběhnutí držení následuje samotné přetížení, které
-// trvá GENERATOR_OVERLOAD_DOOR_DURATION_MS — po tu dobu se generátor chová
-// energeticky stejně jako "restarting" (viz gameReducer.ts#updateGenerator,
-// beze změny té logiky) a dveře zůstávají zamčené na door_generator_overload
-// obrázku, než se na konci nevratně zničí (GameState.doorDestroyed).
-export const GENERATOR_OVERLOAD_WINDUP_DURATION_MS = EMERGENCY_RUN_WINDUP_DURATION_MS;
+// drží GENERATOR_OVERLOAD_WINDUP_DURATION_MS. Dřív byla stejná hodnota jako
+// EMERGENCY_RUN_WINDUP_DURATION_MS (odvozená konstanta), ale na žádost
+// "zkrať potřebnou dobu držení na 1.5 sekundy" je teď VLASTNÍ, nezávislá
+// hodnota — přesně důvod, proč měla konstanta vlastní jméno už od začátku
+// (viz "kdyby se to v budoucnu rozešlo" v dřívějším komentáři). Emergency
+// run/"Nechat si to projít hlavou" beze změny. Po doběhnutí držení následuje
+// samotné přetížení, které trvá GENERATOR_OVERLOAD_DOOR_DURATION_MS — po tu
+// dobu se generátor chová energeticky stejně jako "restarting" (viz
+// gameReducer.ts#updateGenerator, beze změny té logiky) a dveře zůstávají
+// zamčené na door_generator_overload obrázku, než se na konci nevratně
+// zničí (GameState.doorDestroyed).
+export const GENERATOR_OVERLOAD_WINDUP_DURATION_MS = 1500;
 export const GENERATOR_OVERLOAD_DOOR_DURATION_MS = 10_000;
 
 // Titan zabitý přetížením u dveří (viz gameReducer.ts#updateDoorGeneratorOverload,

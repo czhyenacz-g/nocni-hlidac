@@ -179,6 +179,10 @@ export default function GameScreen({
   const isTitanAtDoor = isTitanNight && state.enemyStage === "at_door";
   const isTitanBreach = isTitanNight && state.enemyStage === "breach";
   const isTitanAttack = isTitanNight && state.enemyStage === "attack";
+  // Non-Titan monstrum (dnes Imp) u dveří (viz zadání "at_door obrázky") —
+  // mutuálně vyloučené s isTitanAtDoor, DoorView.tsx sám navíc podmiňuje
+  // otevřenými dveřmi (viz komentář tam).
+  const isImpAtDoor = !isTitanNight && state.enemyStage === "at_door";
   // Countdown snímek specifický pro Titana — jen když přetížení SKUTEČNĚ
   // běží A Titan je zrovna u dveří (viz zadání "pokud Titan není u dveří,
   // ponech generický obrázek"). `null` jinak, DoorView.tsx pak sám spadne
@@ -321,6 +325,7 @@ export default function GameScreen({
                 closeDoorUrgent={officeBreachPhase === "close_door"}
                 isTitanAtDoor={isTitanAtDoor}
                 isTitanBreach={isTitanBreach}
+                isImpAtDoor={isImpAtDoor}
                 isTitanAttack={isTitanAttack}
                 titanOverloadFrameSrc={titanOverloadFrameSrc}
                 isTitanOverloadDeathReveal={state.titanOverloadDeathRevealUntilMs !== null}

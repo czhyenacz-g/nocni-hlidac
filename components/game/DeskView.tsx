@@ -62,7 +62,12 @@ export default function DeskView({
         />
       </div>
 
-      <LightControl lightOn={state.lightOn} bulbBroken={state.roomBulbs.nearRoom.broken} onToggle={onToggleLight} />
+      <LightControl
+        lightOn={state.lightOn}
+        bulbBroken={state.roomBulbs.nearRoom.broken}
+        blockedSeq={state.lightToggleBlockedSeq}
+        onToggle={onToggleLight}
+      />
 
       {/* Spodní navigace jako prostorová orientace v místnosti, ne 2×2 grid
           stejných boxů: vlevo/vpravo boční pohledy (stěna/generátor), úplně

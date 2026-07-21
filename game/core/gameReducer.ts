@@ -1069,6 +1069,17 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         // invariant, na kterém stojí výběr osvětleného snímku kamery i drain
         // životnosti v TICKu.
         if (state.roomBulbs.nearRoom.broken) return state;
+        // Bezpečnostní pravidlo (viz zadání "Nelze rozsvítit při otevřených
+        // dveřích" — hrozilo by ozáření chodby): ZAPNUTÍ je zablokované,
+        // dokud jsou dveře otevřené. VYPNUTÍ zůstává vždy možné (snižuje
+        // riziko, nikdy ho nezvyšuje) — proto se podmínka váže jen na
+        // `!state.lightOn` (chystané zapnutí), ne na `doorClosed` samotné.
+        // `lightOn` se v tomhle případě vůbec nezmění, jen se zvýší
+        // `lightToggleBlockedSeq`, ať LightControl.tsx zobrazí krátké
+        // upozornění (stejný vzor jako generatorAccidentalRestartSeq).
+        if (!state.lightOn && !state.doorClosed) {
+          return { ...state, lightToggleBlockedSeq: state.lightToggleBlockedSeq + 1 };
+        }
         return { ...state, lightOn: !state.lightOn };
 
       case "LOOK_AT_DOOR":
