@@ -12,6 +12,7 @@ import AchievementResultPanel from "@/components/achievements/AchievementResultP
 import { DEATH_SCREEN_REVEAL_DELAY_MS, GAME_OVER_REVEAL_DURATION_MS } from "@/game/balancing/constants";
 import { useShakeOffset } from "@/game/death/useShakeOffset";
 import { resolveGameOverImageSrc } from "@/game/death/gameOverReveal";
+import { resolveDeathScreenScene } from "@/game/death/deathScreenScene";
 
 /**
  * Krátký "doznívající" shake NA odhalení ghoula (viz zadání "zkus ten shake
@@ -77,12 +78,15 @@ export default function DeathScreen({
   // GAME OVER reveal níže) — bez téhle větve by spadl do generické
   // deathDoorAttack Ghoul animace, což byla přesně nahlášená chyba
   // ("hezký Titan obrázek problikne a nahradí ho Ghoul").
-  const scene =
-    reason === "titan_door_breach"
-      ? BACKGROUND_SCENES.titanDeath
-      : reason === "door_open_at_attack" || reason === "bulb_replacement_attack"
-        ? BACKGROUND_SCENES.deathDoorAttack
-        : BACKGROUND_SCENES.death;
+  //
+  // emergency_run (smrt v nouzové minihře) a blackout_timeout (smrt vybitím
+  // energie) NEJSOU útokem žádného konkrétního monstra (viz zadání "Death
+  // flow pro minihru a vybitou energii") — dostávají stejné VLASTNÍ statické
+  // pozadí (BACKGROUND_SCENES.genericDeath, `death_bg_0.webp`) jako 4s GAME
+  // OVER reveal (game/death/gameOverReveal.ts), ne Ghoulovu `death`
+  // animaci ani Impovu `deathDoorAttack`. Výběr je čistá funkce
+  // (game/death/deathScreenScene.ts), ať jde nezávisle otestovat.
+  const scene = BACKGROUND_SCENES[resolveDeathScreenScene(reason)];
 
   // DeathScreen se mountuje znovu při každé smrti (podmíněný render podle
   // state.screen v app/play/page.tsx) — prázdné závislosti tedy stačí na to,
@@ -99,12 +103,13 @@ export default function DeathScreen({
   // teprve pak se přes to zobrazil dialog") — ne zároveň s namountováním
   // téhle obrazovky, jak fungovalo dřív. `emergency_run` (smrt v nouzové
   // minihře) je výjimka na výslovnou žádost — ta dál dialog zobrazuje rovnou,
-  // beze změny. `titan_door_breach` je druhá výjimka: `scene` je statický
-  // jediný snímek (žádná ghoul_death animace na doběhnutí) a hráč navíc už
-  // viděl 4s GAME OVER reveal se stejným obrázkem (viz gameOverPhaseActive
-  // níže) — čekat dalších ~2s (DEATH_SCREEN_REVEAL_DELAY_MS) na stejném
-  // nehybném obrázku by jen zbytečně prodlužovalo obrazovku bez důvodu.
-  const skipReveal = reason === "emergency_run" || reason === "titan_door_breach";
+  // beze změny. `titan_door_breach`/`blackout_timeout` jsou další výjimky:
+  // `scene` je v obou případech statický jediný snímek (žádná ghoul_death
+  // animace na doběhnutí) a hráč navíc už viděl 4s GAME OVER reveal se
+  // STEJNÝM obrázkem (viz gameOverPhaseActive níže, game/death/gameOverReveal.ts)
+  // — čekat dalších ~2s (DEATH_SCREEN_REVEAL_DELAY_MS) na stejném nehybném
+  // obrázku by jen zbytečně prodlužovalo obrazovku bez důvodu.
+  const skipReveal = reason === "emergency_run" || reason === "titan_door_breach" || reason === "blackout_timeout";
   const [dialogRevealed, setDialogRevealed] = useState(skipReveal);
 
   useEffect(() => {
@@ -147,7 +152,7 @@ export default function DeathScreen({
     return (
       <main className="relative min-h-screen flex items-center justify-center p-4 bg-black overflow-hidden">
         <img
-          src={resolveGameOverImageSrc(activeMonsterId)}
+          src={resolveGameOverImageSrc(reason, activeMonsterId)}
           alt=""
           aria-hidden="true"
           className="absolute inset-0 w-full h-full object-cover"

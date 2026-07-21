@@ -2,18 +2,13 @@ import { EnemyStage, GameState, NightDefinition } from "../core/types";
 import { resolveLivesRemainingAfterDeath } from "../core/gameMode";
 import { isMonsterAtDoor } from "../core/doorEncounter";
 import { isNearRoomLightActive } from "../core/roomBulbs";
-import { TITAN_DOOR_BREACH_STAGE_STAY_MS, TITAN_STAGE_STAY_MS } from "../balancing/constants";
+import { TITAN_AT_DOOR_STAGE_STAY_MS, TITAN_DOOR_BREACH_STAGE_STAY_MS, TITAN_STAGE_STAY_MS } from "../balancing/constants";
 
-// Dveřní stage (at_door/breach) mají mnohem kratší dobu setrvání než hlavní
-// trasa (viz TITAN_DOOR_BREACH_STAGE_STAY_MS — oprava "příliš dlouhé
-// animace prorážení dveří") — dvě rychlé přechodové fáze, ne další plná
-// čekací lokace. Explicitní pole (ne jen "poslední N stage"), ať je záměr
-// čitelný a odolný vůči budoucí změně trasy.
-const DOOR_BREACH_STAGES: readonly EnemyStage[] = ["at_door", "breach"];
-
-/** Kolik ms má Titan zůstat v daném route stage, než postoupí dál — jediné místo, které tohle rozhoduje (viz zadání "nastav délky explicitně podle jednotlivých fází"). */
+/** Kolik ms má Titan zůstat v daném route stage, než postoupí dál — jediné místo, které tohle rozhoduje (viz zadání "nastav délky explicitně podle jednotlivých fází"). `at_door` a `breach` mají KAŽDÝ svou VLASTNÍ hodnotu (viz zadání "zvyš at_door na 3.5s" — breach zůstává beze změny), zbytek trasy sdílí `TITAN_STAGE_STAY_MS`. */
 export function resolveTitanStageStayMs(stage: EnemyStage): number {
-  return DOOR_BREACH_STAGES.includes(stage) ? TITAN_DOOR_BREACH_STAGE_STAY_MS : TITAN_STAGE_STAY_MS;
+  if (stage === "at_door") return TITAN_AT_DOOR_STAGE_STAY_MS;
+  if (stage === "breach") return TITAN_DOOR_BREACH_STAGE_STAY_MS;
+  return TITAN_STAGE_STAY_MS;
 }
 
 // Titanovo rozhodování pro ENEMY_ADVANCE (viz zadání "2. TITAN PRO 15. NOC",
@@ -63,7 +58,7 @@ export function resolveTitanAdvance(input: ResolveTitanAdvanceInput): TitanAdvan
   // `isMonsterAtDoor` (`"at_door"`/`"breach"`), Titanův vlastní časovač
   // postupu se ÚPLNĚ ZASTAVÍ — žádné odpočítávání dwellu, žádný postup do
   // "breach"/"attack" — dokud přetížení nedoběhne. Bez tohohle guardu měl
-  // Titan u dveří jen ~1-2s (TITAN_DOOR_BREACH_STAGE_STAY_MS × 2) dřív, než
+  // Titan u dveří jen pár sekund (TITAN_AT_DOOR_STAGE_STAY_MS + TITAN_DOOR_BREACH_STAGE_STAY_MS) dřív, než
   // ho ENEMY_ADVANCE (na svém NEZÁVISLÉM `enemyTickMs` intervalu, dnes 2s)
   // posunul do "attack"/smrti — VÝRAZNĚ kratší než desetisekundové
   // přetížení (GENERATOR_OVERLOAD_DOOR_DURATION_MS), takže i platně

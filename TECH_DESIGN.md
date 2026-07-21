@@ -2731,3 +2731,32 @@ renderovací vrstva nebyla potřeba.
 - **Kratší držení pro přetížení generátoru** — `GENERATOR_OVERLOAD_WINDUP_DURATION_MS` už
   není odvozené od `EMERGENCY_RUN_WINDUP_DURATION_MS` (3000ms), ale VLASTNÍ nezávislá
   hodnota 1500ms — emergency run/"Nechat si to projít hlavou" beze změny.
+
+## Death flow pro minihru a vybitou energii — žádný Ghoul/Imp/Titan reveal
+
+Smrt v nouzové minihře (`deathReason: "emergency_run"`) a smrt vybitím energie
+(`"blackout_timeout"`) NEJSOU útokem konkrétního monstra — obě dřív spadaly do generického
+`BACKGROUND_SCENES.death` fallbacku (Ghoulova animace) jak pro 4s GAME OVER reveal
+(`game/death/gameOverReveal.ts#resolveGameOverImageSrc`, dřív rozhodoval podle
+`activeMonsterId`), tak pro druhou fázi DeathScreen.tsx. Obě místa teď rozhodují PRIMÁRNĚ
+podle `deathReason` (ne `monsterId` — `monsterId` je jen fallback pro skutečný útok
+monstra, kde `deathReason` sám nerozlišuje mezi monstry), sdílí novou statickou scénu
+`BACKGROUND_SCENES.genericDeath` (`death_bg_0.webp`, stejný soubor pro reveal i druhou fázi,
+nulová šance na probliknutí). Výběr druhé fáze je vyňatý do čisté funkce
+`game/death/deathScreenScene.ts#resolveDeathScreenScene`, stejný "žádná komponenta nepočítá
+odvozený stav sama" vzor jako `doorMonsterOverlay.ts`. `DeathScreen.tsx`'s `skipReveal`
+(žádné čekání na doběhnutí animace, dialog se objeví hned po 4s reveal fázi) teď zahrnuje i
+`blackout_timeout` (stejný důvod jako `titan_door_breach` — statická scéna, stejný obrázek
+už byl vidět v reveal fázi). `deathReason` samo o sobě je stabilní pole `GameState` (nikdy se
+po smrti nepřepisuje) a `activeMonsterId` už byl snapshotovaný dřívější Titan opravou —
+žádný nový snapshot mechanismus nebyl potřeba.
+
+## at_door dostal vlastní (delší) dobu setrvání než breach
+
+`resolveTitanStageStayMs` (`game/enemies/resolveTitanAdvance.ts`) dřív používal STEJNOU
+`TITAN_DOOR_BREACH_STAGE_STAY_MS` (1000ms) pro `at_door` i `breach`. Na žádost "zvyš at_door
+na 3.5s" má teď `at_door` vlastní `TITAN_AT_DOOR_STAGE_STAY_MS` (3500ms, `game/balancing/constants.ts`)
+— víc reálného času všimnout si Titana u dveří a zareagovat (zavřít, spustit přetížení), než
+začne samotné prorážení. `breach` zůstává beze změny (`TITAN_DOOR_BREACH_STAGE_STAY_MS`,
+1000ms) — celkový čas od vstupu do `at_door` do útoku je teď ~4.5s místo dřívějších ~2s,
+pokud mezitím neběží generátorové přetížení (to Titana u dveří úplně zamrzne, viz výše).

@@ -4,7 +4,12 @@ import { createInitialGameState } from "./gameState";
 import { NIGHT_15 } from "../nights/night15";
 import { NIGHT_01 } from "../nights/night01";
 import { GameState } from "./types";
-import { TITAN_STAGE_STAY_MS, TITAN_DOOR_BREACH_STAGE_STAY_MS, GENERATOR_OVERLOAD_DOOR_DURATION_MS } from "../balancing/constants";
+import {
+  TITAN_STAGE_STAY_MS,
+  TITAN_AT_DOOR_STAGE_STAY_MS,
+  TITAN_DOOR_BREACH_STAGE_STAY_MS,
+  GENERATOR_OVERLOAD_DOOR_DURATION_MS,
+} from "../balancing/constants";
 import { DEFAULT_NIGHT_FEATURES } from "../difficulty/nightConfig";
 
 // Integrace přes skutečný reducer (ne jen izolovaný resolveTitanAdvance) —
@@ -455,7 +460,7 @@ describe("Titan breach — automatic one-shot switch to DoorView, then view-lock
     const reducer = createGameReducer(NIGHT_15);
     const started = titanRunningState({
       enemyStage: "at_door",
-      elapsedMs: TITAN_DOOR_BREACH_STAGE_STAY_MS,
+      elapsedMs: TITAN_AT_DOOR_STAGE_STAY_MS,
       enemyLocationEnteredAtMs: 0,
       playerView: "generator",
     });
@@ -468,7 +473,7 @@ describe("Titan breach — automatic one-shot switch to DoorView, then view-lock
     const reducer = createGameReducer(NIGHT_15);
     const started = titanRunningState({
       enemyStage: "at_door",
-      elapsedMs: TITAN_DOOR_BREACH_STAGE_STAY_MS,
+      elapsedMs: TITAN_AT_DOOR_STAGE_STAY_MS,
       enemyLocationEnteredAtMs: 0,
       playerView: "door",
     });

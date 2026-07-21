@@ -128,6 +128,7 @@ export type BackgroundSceneId =
   | "death"
   | "deathDoorAttack"
   | "titanDeath"
+  | "genericDeath"
   | "win"
   | "about"
   | "monsterDefeated";
@@ -285,6 +286,21 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
   // reveal fázi, tahle scéna je jen klidné pozadí pro dialog.
   titanDeath: {
     frames: [{ src: TITAN_ATTACK_SRC }],
+    holdMs: DEFAULT_HOLD_MS,
+    crossfadeMs: DEFAULT_CROSSFADE_MS,
+    overlay: DEFAULT_OVERLAY,
+  },
+  // Smrt, která NENÍ přímým útokem konkrétního monstra (viz zadání "Death
+  // flow pro minihru a vybitou energii" — smrt v nouzové minihře
+  // `"emergency_run"`, smrt vybitím energie `"blackout_timeout"`). Jediný
+  // statický snímek (`death_bg_0.webp`, dřív jediné death pozadí ve hře, viz
+  // komentář u `death` scény výše — soubor zůstal na disku, jen se přestal
+  // používat) — ŽÁDNÝ Imp/Ghoul/Titan obrázek, stejný "klidné statické
+  // pozadí, dopad se odehrál v reveal fázi" princip jako `titanDeath` výše
+  // (`game/death/gameOverReveal.ts` použije STEJNÝ soubor pro 4s GAME OVER
+  // reveal PŘED touhle obrazovkou — nulová šance na viditelné probliknutí).
+  genericDeath: {
+    frames: [{ src: `${OBJECT_13_BACKGROUND_PATH}/death_bg_0.webp` }],
     holdMs: DEFAULT_HOLD_MS,
     crossfadeMs: DEFAULT_CROSSFADE_MS,
     overlay: DEFAULT_OVERLAY,

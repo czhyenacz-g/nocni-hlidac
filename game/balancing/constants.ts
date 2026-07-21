@@ -84,14 +84,19 @@ export const GAME_OVER_REVEAL_DURATION_MS = 4000;
 // (žádný nový časovací mechanismus, viz zadání "6. TITAN TIMER").
 export const TITAN_STAGE_STAY_MS = 20_000;
 
-// Dveřní "breach" stage (at_door/breach, viz zadání "oprav příliš dlouhou
-// animaci prorážení dveří") mají VLASTNÍ, mnohem kratší dobu setrvání —
-// jde jen o dvě rychlé přechodové fáze těsně před finálním útokem, ne o
-// další plnohodnotnou "čekací" lokaci jako hlavní trasa. Finální
-// attack/death obrázek (TITAN_ATTACK_SRC) tímhle polem neprochází vůbec —
-// ten se zobrazuje přes doorDeathReveal/GAME_OVER_REVEAL_DURATION_MS, beze
-// změny.
+// Dveřní "breach" stage (viz zadání "oprav příliš dlouhou animaci prorážení
+// dveří") má VLASTNÍ, mnohem kratší dobu setrvání než hlavní trasa — jde jen
+// o rychlou přechodovou fázi těsně před finálním útokem, ne o další
+// plnohodnotnou "čekací" lokaci. Finální attack/death obrázek
+// (TITAN_ATTACK_SRC) tímhle polem neprochází vůbec — ten se zobrazuje přes
+// doorDeathReveal/GAME_OVER_REVEAL_DURATION_MS, beze změny.
 export const TITAN_DOOR_BREACH_STAGE_STAY_MS = 1000;
+
+// "at_door" má VLASTNÍ (delší) dobu setrvání než "breach" výše (na žádost
+// "zvyš at_door na 3.5s") — hráč má víc reálného času všimnout si Titana u
+// dveří a zareagovat (zavřít, spustit přetížení), než start samotného
+// prorážení. `breach` zůstává beze změny (1000ms, viz výše).
+export const TITAN_AT_DOOR_STAGE_STAY_MS = 3500;
 
 // Jak dlouho trvá jeden plynulý přechod hlasitosti Titanových kroků mezi
 // dvěma stage (viz zadání "Titanovy kroky a stres", game/audio/titanFootsteps.ts,

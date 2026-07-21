@@ -157,7 +157,7 @@ export const COPY = {
     lightControlTooltip:
       "Za dveřmi je asi největší žárovka, co jsi kdy viděl. Řev monstra ti říká, že to nebude jen UV světlo.",
     /** Krátká hláška po zablokovaném pokusu rozsvítit při otevřených dveřích (viz zadání, LightControl.tsx, GameState.lightToggleBlockedSeq). */
-    lightBlockedByOpenDoorMessage: "Nejprve zavři dveře.\nHrozilo by ozáření chodby.",
+    lightBlockedByOpenDoorMessage: "Nejdřív zavři dveře, ať tě to neuškvaří!",
     powerLabel: "Energie",
     // Dev-only hodnota vedle energie (viz STRESS_DEV_HUD_ENABLED, PowerMeter.tsx) — časem se skryje.
     stressLabel: "Stres",
@@ -409,7 +409,10 @@ export const COPY = {
     title: "Předčasný konec směny.",
     reasons: {
       door_open_at_attack: "Tvou poslední chybou byly otevřené dveře.",
-      blackout_timeout: "Nabíjení selhalo. Nouzová baterie vydržela jen pár sekund. Ve tmě povolil zámek.",
+      // Vybitá energie NENÍ útok konkrétního monstra (viz zadání "Death flow
+      // pro minihru a vybitou energii" — dřívější "Ve tmě povolil zámek."
+      // zavádějícně naznačovalo vniknutí monstra dovnitř).
+      blackout_timeout: "Energie byla vyčerpána. Bez proudu přestaly fungovat všechny bezpečnostní systémy.",
       bulb_replacement_attack: "Jít vyměnit tu žárovku nebylo hrdinství, ale poslední chyba v tvém životě.",
       emergency_run: "Nouzová výprava mimo kancelář byla poslední, kterou jsi kdy podnikl.",
       // Pokus o útěk/minihru během aktivního Titana (viz zadání "Pokus odejít
