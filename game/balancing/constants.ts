@@ -93,10 +93,10 @@ export const TITAN_STAGE_STAY_MS = 20_000;
 export const TITAN_DOOR_BREACH_STAGE_STAY_MS = 1000;
 
 // "at_door" má VLASTNÍ (delší) dobu setrvání než "breach" výše (na žádost
-// "zvyš at_door na 3.5s") — hráč má víc reálného času všimnout si Titana u
+// "zvyš at_door na 7s") — hráč má víc reálného času všimnout si Titana u
 // dveří a zareagovat (zavřít, spustit přetížení), než start samotného
 // prorážení. `breach` zůstává beze změny (1000ms, viz výše).
-export const TITAN_AT_DOOR_STAGE_STAY_MS = 3500;
+export const TITAN_AT_DOOR_STAGE_STAY_MS = 7000;
 
 // Jak dlouho trvá jeden plynulý přechod hlasitosti Titanových kroků mezi
 // dvěma stage (viz zadání "Titanovy kroky a stres", game/audio/titanFootsteps.ts,

@@ -81,10 +81,10 @@ describe("resolveTitanAdvance — deterministic 20s-per-stage march, never retre
 // breach mají VLASTNÍ, mnohem kratší dobu setrvání než zbytek trasy
 // (TITAN_STAGE_STAY_MS = 20000ms), ať jsou to rychlé přechodové fáze těsně
 // před finálním útokem, ne další plnohodnotná čekací lokace. at_door
-// (TITAN_AT_DOOR_STAGE_STAY_MS = 3500ms) a breach (TITAN_DOOR_BREACH_STAGE_STAY_MS
-// = 1000ms) mají KAŽDÝ svou VLASTNÍ hodnotu (viz zadání "zvyš at_door na 3.5s").
+// (TITAN_AT_DOOR_STAGE_STAY_MS = 7000ms) a breach (TITAN_DOOR_BREACH_STAGE_STAY_MS
+// = 1000ms) mají KAŽDÝ svou VLASTNÍ hodnotu (viz zadání "zvyš at_door na 7s").
 describe("resolveTitanStageStayMs — per-stage dwell time (fast door-breach transitions)", () => {
-  it("at_door uses TITAN_AT_DOOR_STAGE_STAY_MS (~3.5s), breach uses the shorter TITAN_DOOR_BREACH_STAGE_STAY_MS (~1s)", () => {
+  it("at_door uses TITAN_AT_DOOR_STAGE_STAY_MS (~7s), breach uses the shorter TITAN_DOOR_BREACH_STAGE_STAY_MS (~1s)", () => {
     expect(resolveTitanStageStayMs("at_door")).toBe(TITAN_AT_DOOR_STAGE_STAY_MS);
     expect(resolveTitanStageStayMs("breach")).toBe(TITAN_DOOR_BREACH_STAGE_STAY_MS);
     expect(TITAN_AT_DOOR_STAGE_STAY_MS).toBeLessThan(TITAN_STAGE_STAY_MS);

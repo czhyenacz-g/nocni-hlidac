@@ -2755,8 +2755,10 @@ po smrti nepřepisuje) a `activeMonsterId` už byl snapshotovaný dřívější 
 
 `resolveTitanStageStayMs` (`game/enemies/resolveTitanAdvance.ts`) dřív používal STEJNOU
 `TITAN_DOOR_BREACH_STAGE_STAY_MS` (1000ms) pro `at_door` i `breach`. Na žádost "zvyš at_door
-na 3.5s" má teď `at_door` vlastní `TITAN_AT_DOOR_STAGE_STAY_MS` (3500ms, `game/balancing/constants.ts`)
+na 7s" má teď `at_door` vlastní `TITAN_AT_DOOR_STAGE_STAY_MS` (7000ms, `game/balancing/constants.ts`)
 — víc reálného času všimnout si Titana u dveří a zareagovat (zavřít, spustit přetížení), než
 začne samotné prorážení. `breach` zůstává beze změny (`TITAN_DOOR_BREACH_STAGE_STAY_MS`,
-1000ms) — celkový čas od vstupu do `at_door` do útoku je teď ~4.5s místo dřívějších ~2s,
-pokud mezitím neběží generátorové přetížení (to Titana u dveří úplně zamrzne, viz výše).
+1000ms) — celkový čas od vstupu do `at_door` do útoku je teď ~8s místo dřívějších ~2s, pokud
+mezitím neběží generátorové přetížení (to Titana u dveří úplně zamrzne, viz výše). Bušení na
+dveře (`titanDoorPounding`, viz `computeTitanAudioTrack` v `game/audio/titanFootsteps.ts`)
+hraje po celou dobu `at_door` i `breach` beze změny, takže teď pokrývá celých ~8s místo ~2s.
