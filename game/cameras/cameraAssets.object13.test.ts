@@ -154,13 +154,22 @@ describe("getCameraImageSrc — enemyStageVisitSeq drives monster/fleeing image 
   });
 
   it("also varies the fleeing image by enemyStageVisitSeq when a camera has multiple fleeing assets", () => {
-    // Většina kamer má jen 1 fleeing asset (žádná variabilita možná) — tenhle
-    // test jen ověří, že seed string obsahuje seq (fleeing volání neselže,
-    // vrací pořád platný asset), skutečnou variabilitu pokrývá monster test výše.
-    const a = getCameraImageSrc("left_hallway", true, false, 0, "left_hallway", "retreat", 1, cameraAssets);
-    const b = getCameraImageSrc("left_hallway", true, false, 0, "left_hallway", "retreat", 2, cameraAssets);
-    expect(a).toBe("/object_13/camera/left_hallway/left_hallway_fleeing_monster.webp");
-    expect(b).toBe("/object_13/camera/left_hallway/left_hallway_fleeing_monster.webp");
+    // left_hallway má 2 fleeing snímky (viz IMP_CAMERA_ASSETS) — dost na to,
+    // aby se přes několik různých seq hodnot projevila variabilita, stejně
+    // jako u monster testu výše. Ostatní kamery mají jen 1 fleeing asset
+    // (žádná variabilita možná), proto tenhle test cílí právě na left_hallway.
+    const picks = new Set<string | null>();
+    for (let seq = 0; seq < 10; seq++) {
+      picks.add(getCameraImageSrc("left_hallway", true, false, 0, "left_hallway", "retreat", seq, cameraAssets));
+    }
+    expect(picks.size).toBeGreaterThan(1);
+    for (const pick of picks) {
+      expect(pick).toContain("fleeing_monster");
+    }
+
+    const first = getCameraImageSrc("left_hallway", true, false, 0, "left_hallway", "retreat", 3, cameraAssets);
+    const second = getCameraImageSrc("left_hallway", true, false, 0, "left_hallway", "retreat", 3, cameraAssets);
+    expect(first).toBe(second);
   });
 });
 

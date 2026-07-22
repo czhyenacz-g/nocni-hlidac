@@ -1078,8 +1078,6 @@ export interface GameState {
 export interface TensionInput {
   power: number;
   startPower: number;
-  remainingMs: number;
-  durationMs: number;
   enemyStage: EnemyStage;
   doorClosed: boolean;
   /** Blackout je vždy maximální napětí bez ohledu na ostatní vstupy. */

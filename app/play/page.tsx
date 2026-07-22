@@ -2121,8 +2121,6 @@ function PlayPageContent() {
   const tensionLevel = computeTensionLevel({
     power: state.power,
     startPower: night.startPower,
-    remainingMs: state.remainingMs,
-    durationMs: night.durationMs,
     enemyStage: state.enemyStage,
     doorClosed: state.doorClosed,
     gameStatus: state.gameStatus,
