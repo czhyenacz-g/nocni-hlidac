@@ -89,7 +89,7 @@ export default function LoadingScreen({ gameMode }: LoadingScreenProps) {
 
         <div className="menu-terminal-screen pixel-screen-static p-6">
           <div className="flex items-center justify-between mb-1">
-            <h1 className="text-sm font-bold text-green-400">{COPY.loading.title}</h1>
+            <h1 className="text-sm font-bold text-gray-200">{COPY.loading.title}</h1>
             <span className="menu-terminal-led" aria-hidden="true" />
           </div>
           <p className="text-[10px] text-gray-500 mb-4">{COPY.loading.subtitle}</p>
@@ -97,14 +97,14 @@ export default function LoadingScreen({ gameMode }: LoadingScreenProps) {
           <div className="flex flex-col gap-1.5 text-xs text-gray-400 min-h-32">
             {gameMode === "normal" && (
               <p>
-                <span className="text-green-500">{"> "}</span>
+                <span className="text-gray-400">{"> "}</span>
                 {COPY.loading.difficultyNormalLabel}
               </p>
             )}
             <p>
-              <span className="text-green-500">{"> "}</span>
+              <span className="text-gray-400">{"> "}</span>
               {sentences.slice(0, visibleCount).join(" ")}
-              {visibleCount < sentences.length && <span className="text-green-500 animate-pulse"> _</span>}
+              {visibleCount < sentences.length && <span className="text-gray-400 animate-pulse"> _</span>}
             </p>
           </div>
         </div>

@@ -40,7 +40,7 @@ export default function WinScreen({ survivedNights, newlyUnlockedAchievements = 
         <span className="camera-monitor-screw" style={{ bottom: 5, right: 5 }} aria-hidden="true" />
 
         <div className="menu-terminal-screen pixel-screen-static text-center p-8">
-          <h1 className="text-2xl font-bold mb-2 text-green-400">{COPY.win.title}</h1>
+          <h1 className="text-2xl font-bold mb-2 text-gray-100">{COPY.win.title}</h1>
           <p className="text-sm text-gray-400 mb-2">{COPY.win.subtitle}</p>
           <p className="text-xs text-gray-500 mb-8">{formatSurvivedNights(survivedNights)}</p>
 

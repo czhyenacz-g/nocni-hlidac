@@ -9,10 +9,10 @@ export default function DatabaseSubjectCard({ subject }: DatabaseSubjectCardProp
   return (
     <div className="pixel-panel p-4 sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 mb-2">
-        <h3 className="text-base font-bold text-red-400 tracking-wide">
+        <h3 className="text-base font-bold text-gray-200 tracking-wide">
           {subject.code} · {subject.name}
         </h3>
-        <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wide">{subject.status}</span>
+        <span className="text-[10px] font-bold text-gray-300 uppercase tracking-wide">{subject.status}</span>
       </div>
 
       <div className="grid grid-cols-2 gap-2 text-[11px] mb-3">
@@ -22,7 +22,7 @@ export default function DatabaseSubjectCard({ subject }: DatabaseSubjectCardProp
         </div>
         <div>
           <span className="text-gray-500 block">Nebezpečnost:</span>
-          <span className="text-red-400 font-bold">{subject.threatLevel}</span>
+          <span className="text-gray-200 font-bold">{subject.threatLevel}</span>
         </div>
       </div>
 
@@ -43,8 +43,8 @@ export default function DatabaseSubjectCard({ subject }: DatabaseSubjectCardProp
         ))}
       </dl>
 
-      <div className="pixel-panel p-3 border-amber-800">
-        <p className="text-[10px] font-bold text-amber-400 uppercase tracking-wide mb-1">Poznámka</p>
+      <div className="pixel-panel p-3 border-gray-600">
+        <p className="text-[10px] font-bold text-gray-300 uppercase tracking-wide mb-1">Poznámka</p>
         <p className="text-[10px] text-gray-500 leading-relaxed">
           Číselné údaje jsou zatím pouze ukázkou budoucí databáze. V této fázi nejsou napojené na skutečný výzkum hráče ani na
           dynamickou herní konfiguraci.

@@ -347,7 +347,7 @@ export default function LeftWallView({
           <span>{COPY.game.requestAmmoLabel.replace("{ammo}", String(shotgunAmmo)).replace("{max}", String(shotgunMaxAmmo))}</span>
         </button>
         {showNoWeaponMessage && (
-          <div className="text-[10px] text-amber-300 bg-black/70 px-2 py-1 rounded">{COPY.game.requestAmmoNoWeaponLabel}</div>
+          <div className="text-[10px] text-gray-300 bg-black/70 px-2 py-1 rounded">{COPY.game.requestAmmoNoWeaponLabel}</div>
         )}
 
         {/* Posuvník "za jak dlouho se dveře do kanceláře samy odemknou" (viz
@@ -364,7 +364,7 @@ export default function LeftWallView({
               step={1000}
               value={officeDoorLockMs}
               onChange={handleOfficeDoorLockMsChange}
-              className="w-full accent-amber-500"
+              className="w-full accent-gray-400"
             />
             <span className="text-gray-600">{COPY.game.officeDoorLockSliderHint}</span>
           </label>
@@ -399,7 +399,7 @@ export default function LeftWallView({
         )}
         {hasShotgun && thinkItOverWindupActive && (
           <div className="w-full h-1 bg-gray-800 border border-gray-700 rounded overflow-hidden">
-            <div className="h-full bg-amber-500 transition-all duration-150" style={{ width: `${thinkItOverPercent}%` }} />
+            <div className="h-full bg-gray-300 transition-all duration-150" style={{ width: `${thinkItOverPercent}%` }} />
           </div>
         )}
       </div>

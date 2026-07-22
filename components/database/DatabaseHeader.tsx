@@ -19,18 +19,18 @@ export default function DatabaseHeader({ viewer }: DatabaseHeaderProps) {
   return (
     <div className="pixel-panel p-5 sm:p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h1 className="text-lg sm:text-xl font-bold text-red-500 tracking-wide">{COPY.database.facilityLabel}</h1>
+        <h1 className="text-lg sm:text-xl font-bold text-gray-200 tracking-wide">{COPY.database.facilityLabel}</h1>
         <span className="text-[11px] text-gray-500 uppercase tracking-widest">{COPY.database.databaseLabel}</span>
       </div>
 
       <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-[11px]">
         <div className="flex justify-between sm:block">
           <span className="text-gray-500">{COPY.database.accessLevelLabel}</span>
-          <span className="sm:block font-bold text-amber-300 tracking-wide">{accessLevel}</span>
+          <span className="sm:block font-bold text-gray-200 tracking-wide">{accessLevel}</span>
         </div>
         <div className="flex justify-between sm:block">
           <span className="text-gray-500">{COPY.database.connectionStatusLabel}</span>
-          <span className="sm:block font-bold text-green-400 tracking-wide">{COPY.database.connectionStatusOnline}</span>
+          <span className="sm:block font-bold text-gray-300 tracking-wide">{COPY.database.connectionStatusOnline}</span>
         </div>
         {viewer.isAuthenticated && (
           <div className="flex justify-between sm:block sm:col-span-2">

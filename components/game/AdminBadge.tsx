@@ -11,7 +11,9 @@
 export default function AdminBadge() {
   return (
     <div className="fixed top-0 inset-x-0 z-[200] flex justify-center pointer-events-none">
-      <div className="pixel-panel px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-300">Jsi ADMIN!</div>
+      <div className="pixel-panel px-2 py-0.5 text-[9px] font-normal uppercase tracking-wider text-gray-500 opacity-80">
+        Jsi ADMIN!
+      </div>
     </div>
   );
 }

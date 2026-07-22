@@ -25,8 +25,8 @@ export default function DatabaseTodoBlock({ title, description, items, status }:
   return (
     <div className="pixel-panel p-4" data-todo-status={status}>
       <div className="flex items-center justify-between gap-2 mb-2">
-        <h3 className="text-xs font-bold text-amber-300 uppercase tracking-wide">{title}</h3>
-        <span className="pixel-panel px-2 py-0.5 text-[9px] uppercase tracking-wide text-amber-400 border-amber-700 whitespace-nowrap">
+        <h3 className="text-xs font-bold text-gray-300 uppercase tracking-wide">{title}</h3>
+        <span className="pixel-panel px-2 py-0.5 text-[9px] uppercase tracking-wide text-gray-400 border-gray-600 whitespace-nowrap">
           {badgeLabel}
         </span>
       </div>

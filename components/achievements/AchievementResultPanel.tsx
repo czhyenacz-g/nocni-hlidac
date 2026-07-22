@@ -36,15 +36,15 @@ export default function AchievementResultPanel({ achievements }: AchievementResu
 
   return (
     <section className="pixel-panel p-3 mt-4 text-left" aria-label={COPY.achievements.newResultsHeading}>
-      <div className="text-[10px] uppercase tracking-wide text-amber-400 mb-2">{COPY.achievements.newResultsHeading}</div>
+      <div className="text-[10px] uppercase tracking-wide text-gray-300 mb-2">{COPY.achievements.newResultsHeading}</div>
       <div className="flex flex-col gap-2">
         {achievements.map((achievement) => (
           <div key={achievement.id} className="flex items-start gap-2">
-            <span className="shrink-0 text-amber-300 text-sm font-bold" aria-hidden="true">
+            <span className="shrink-0 text-gray-300 text-sm font-bold" aria-hidden="true">
               {COPY.profile.achievementUnlockedMark}
             </span>
             <div>
-              <div className="text-sm font-bold text-amber-300">{achievement.title}</div>
+              <div className="text-sm font-bold text-gray-200">{achievement.title}</div>
               <div className="text-xs text-gray-400">{achievement.description}</div>
             </div>
           </div>

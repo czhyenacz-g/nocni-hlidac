@@ -60,7 +60,7 @@ export default function AchievementToast({ achievement, onDismiss }: Achievement
       }}
     >
       <div className="pixel-panel p-3">
-        <div className="text-[10px] text-amber-400 mb-1">{COPY.achievements.unlockedLabel}</div>
+        <div className="text-[10px] text-gray-300 mb-1">{COPY.achievements.unlockedLabel}</div>
         <div className="text-sm font-bold mb-1">{achievement.title}</div>
         <div className="text-xs text-gray-400">{achievement.description}</div>
       </div>

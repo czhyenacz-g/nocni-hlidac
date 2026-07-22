@@ -86,7 +86,7 @@ export default function CameraDetailView({
             nejde zapnout, overlay by tak zůstal navždy vidět zbytečně). */}
         {sonicCannonActive && !isFullyOffline && (
           <div className="absolute inset-0 pointer-events-none sonic-cannon-overlay" aria-hidden="true">
-            <span className="absolute bottom-1 right-2 text-[9px] tracking-widest text-cyan-300">
+            <span className="absolute bottom-1 right-2 text-[9px] tracking-widest text-gray-300">
               {COPY.game.sonicCannonOnLabel}
             </span>
           </div>

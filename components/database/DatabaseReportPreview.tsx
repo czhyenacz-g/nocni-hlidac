@@ -29,7 +29,7 @@ export default function DatabaseReportPreview({ report }: DatabaseReportPreviewP
         </div>
         <div>
           <span className="text-gray-500 block">Výsledek:</span>
-          <span className="text-green-400 font-bold">{report.outcome}</span>
+          <span className="text-gray-200 font-bold">{report.outcome}</span>
         </div>
       </div>
       <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1">Události</h4>

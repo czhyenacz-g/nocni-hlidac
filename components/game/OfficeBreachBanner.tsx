@@ -32,11 +32,10 @@ export default function OfficeBreachBanner({ phase }: OfficeBreachBannerProps) {
       className="p-3 text-center"
       style={{
         background: "rgba(40, 4, 4, 0.92)",
-        border: "1px solid #ef4444",
-        boxShadow: "0 0 14px rgba(239,68,68,0.5)",
+        border: "1px solid #b91c1c",
       }}
     >
-      <div className="text-sm font-bold uppercase" style={{ color: "#ff8a8a", textShadow: "0 0 6px rgba(255,92,92,0.7)" }}>
+      <div className="text-sm font-bold uppercase" style={{ color: "#ff8a8a" }}>
         {headline}
       </div>
       <div className="text-xs mt-1" style={{ color: "#ffb4b4" }}>

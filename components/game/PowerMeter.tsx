@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { COPY } from "@/content/copy";
-import { CRITICAL_POWER_THRESHOLD, LOW_POWER_THRESHOLD, POWER_RECHARGE_ANIMATION_MS } from "@/game/balancing/constants";
-import { PALETTE } from "@/game/visuals/palette";
+import { CRITICAL_POWER_THRESHOLD, POWER_RECHARGE_ANIMATION_MS } from "@/game/balancing/constants";
 import ConsoleIcon from "./ConsoleIcon";
 
 interface PowerMeterProps {
@@ -41,12 +40,10 @@ export default function PowerMeter({
   nearRoomBulbLabel,
   nearRoomBulbCountingDown,
 }: PowerMeterProps) {
-  const color =
-    power <= CRITICAL_POWER_THRESHOLD
-      ? PALETTE.powerCritical
-      : power <= LOW_POWER_THRESHOLD
-        ? PALETTE.powerLow
-        : PALETTE.powerFull;
+  // Lišta i ikonka baterie jsou vždy neutrálně šedé (viz zadání "nemá
+  // přeskakovat mezi neonově zelenou, žlutou a červenou") — kritickou energii
+  // signalizuje jen tlumeně červený text procent níže, ne barva pruhu.
+  const isCritical = power <= CRITICAL_POWER_THRESHOLD;
 
   // Normální odčerpávání v TICKu se mění plynule každý snímek samo o sobě
   // (žádná animace navíc potřeba) — jen SKUTEČNÉ dobití (RECHARGE_POWER,
@@ -66,14 +63,15 @@ export default function PowerMeter({
 
   return (
     <div className="console-panel p-2 flex items-center gap-2.5">
-      <span className="console-icon-block console-icon-block--sm" style={{ color }} aria-hidden="true">
+      <span className="console-icon-block console-icon-block--sm console-icon-block--muted" aria-hidden="true">
         <ConsoleIcon id="battery" />
       </span>
       <div className="flex-1">
         <div className="flex justify-between text-[10px] text-gray-400 mb-1">
           <span>{COPY.game.powerLabel}</span>
-          <span>
-            {Math.round(power)}%
+          <span className="flex items-center gap-1">
+            {isCritical && <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500/80" aria-hidden="true" />}
+            <span className={isCritical ? "text-red-400" : undefined}>{Math.round(power)}%</span>
             {stressPercent !== undefined && (
               <span className="text-gray-500"> · {COPY.game.stressLabel}: {stressPercent}</span>
             )}
@@ -84,10 +82,9 @@ export default function PowerMeter({
         </div>
         <div className="h-3 bg-gray-800 border border-gray-700">
           <div
-            className="h-full transition-[width,background-color] ease-out"
+            className="h-full bg-gray-300 transition-[width] ease-out"
             style={{
               width: `${power}%`,
-              backgroundColor: color,
               transitionDuration: isRecharging ? `${POWER_RECHARGE_ANIMATION_MS}ms` : "300ms",
             }}
           />

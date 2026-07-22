@@ -23,7 +23,7 @@ export default function DatabaseReportsTab({ viewer }: DatabaseReportsTabProps) 
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-lg font-bold text-red-500 mb-1">HLÁŠENÍ</h2>
+        <h2 className="text-lg font-bold text-gray-200 mb-1">HLÁŠENÍ</h2>
         <p className="text-xs text-gray-500 leading-relaxed">
           Evidence nočních směn, incidentů, poškození vybavení a kontaktů s testovacími subjekty.
         </p>

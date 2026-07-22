@@ -15,7 +15,7 @@ export default function DatabaseManualCard({ manual }: DatabaseManualCardProps) 
           <li key={instruction}>{instruction}</li>
         ))}
       </ul>
-      {manual.note && <p className="text-[10px] text-amber-400 leading-relaxed">{manual.note}</p>}
+      {manual.note && <p className="text-[10px] text-gray-400 leading-relaxed">{manual.note}</p>}
       {manual.todos && manual.todos.length > 0 && (
         <ul className="mt-2 flex flex-col gap-1 text-[10px] text-gray-600 list-disc list-inside">
           {manual.todos.map((todo) => (

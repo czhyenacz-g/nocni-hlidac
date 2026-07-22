@@ -316,7 +316,7 @@ export default function DoorView({
           >
             <button
               type="button"
-              className={`tap-target flex items-center justify-center rounded-full border border-amber-400/70 bg-black/70 text-amber-300 touch-none select-none ${canReplaceBulb ? "" : "cursor-not-allowed"}`}
+              className={`tap-target flex items-center justify-center rounded-full border border-gray-500/70 bg-black/70 text-gray-300 touch-none select-none ${canReplaceBulb ? "" : "cursor-not-allowed"}`}
               style={{ width: "64px", height: "64px", ...bulbIconStyle }}
               onPointerDown={handlePointerDown}
               onPointerUp={handlePointerUp}
@@ -332,7 +332,7 @@ export default function DoorView({
                 <span className="text-2xl leading-none">💡</span>
               )}
             </button>
-            <span className="text-[10px] text-amber-300 bg-black/70 px-1.5 py-0.5 rounded whitespace-nowrap">
+            <span className="text-[10px] text-gray-300 bg-black/70 px-1.5 py-0.5 rounded whitespace-nowrap">
               {bulbReplacementActive
                 ? COPY.game.bulbReplaceInProgressLabel.replace("{seconds}", bulbReplacementSeconds)
                 : COPY.game.bulbReplaceLabel}
@@ -340,7 +340,7 @@ export default function DoorView({
             {bulbReplacementActive && (
               <div className="w-16 h-1 bg-gray-800 border border-gray-700 rounded overflow-hidden">
                 <div
-                  className="h-full bg-amber-400 transition-all duration-150"
+                  className="h-full bg-gray-300 transition-all duration-150"
                   style={{ width: `${bulbReplacementPercent}%` }}
                 />
               </div>
@@ -352,7 +352,7 @@ export default function DoorView({
           // pointer-events-none: čistě informativní hláška, nikdy nesmí bránit
           // klikání na dveře pod ní (i kdyby se pozičně sešla s hotspotem).
           <div
-            className="absolute pointer-events-none text-sm text-amber-300 bg-black/70 px-3 py-1 rounded whitespace-nowrap"
+            className="absolute pointer-events-none text-sm text-gray-300 bg-black/70 px-3 py-1 rounded whitespace-nowrap"
             style={{ left: "50%", top: "8%", transform: "translate(-50%, -50%)" }}
           >
             {COPY.game.bulbReplaceSuccessLabel}

@@ -92,8 +92,11 @@ export default function GeneratorView({
       {/* Stejný "terminál" obal jako MainMenuScreen/LoadingScreen/BriefingScreen
           (viz zadání "udělej ve stejným stylu jako úvodní stránka") — kovový
           rám + 4 šrouby kolem, samotné tlačítko restartu dostane navíc třídu
-          .menu-terminal-screen (zapuštěná tmavší obrazovka + zelený CRT
-          nádech), beze změny klikatelnosti/data-active/obsahu. */}
+          .menu-terminal-screen (zapuštěná tmavší obrazovka, neutrální šedý
+          nádech), beze změny klikatelnosti/obsahu. `data-fault` (ne obecné
+          `data-active`) — generátor v poruše je jediný "aktivní" stav v GUI,
+          který skutečně znamená nebezpečí, proto má vlastní tlumeně červenou
+          variantu (viz styles/pixel.css). */}
       <div className="menu-terminal-frame">
         <span className="camera-monitor-screw" style={{ top: 5, left: 5 }} aria-hidden="true" />
         <span className="camera-monitor-screw" style={{ top: 5, right: 5 }} aria-hidden="true" />
@@ -102,7 +105,7 @@ export default function GeneratorView({
 
         <button
           className="pixel-button pixel-screen-static menu-terminal-screen tap-target-critical h-48 w-full flex flex-col items-center justify-center gap-3 text-sm relative"
-          data-active={generatorState !== "normal"}
+          data-fault={generatorState !== "normal"}
           onClick={onRestartGenerator}
           aria-label="Restartovat generátor"
         >
@@ -119,7 +122,7 @@ export default function GeneratorView({
             // pointer-events-none: čistě informativní hláška, nesmí bránit
             // dalším kliknutím na tlačítko pod ní.
             <div
-              className="absolute pointer-events-none text-sm text-amber-300 bg-black/70 px-3 py-1 rounded whitespace-nowrap"
+              className="absolute pointer-events-none text-sm text-gray-300 bg-black/70 px-3 py-1 rounded whitespace-nowrap"
               style={{ left: "50%", top: "8%", transform: "translate(-50%, -50%)" }}
             >
               {COPY.game.generatorAccidentalRestartMessage}
@@ -129,9 +132,10 @@ export default function GeneratorView({
       </div>
 
       {/* "PŘETÍŽIT GENERÁTOR" — přes celou šířku, výrazně nebezpečně vypadající
-          (silný červený rámeček + tmavě rudé pozadí + glow při hoveru/držení),
-          jasně odlišené od klidného zeleného restart-terminálu nad ním (viz
-          zadání "musí působit nebezpečně"). Hold-to-activate, ne klik —
+          (silný červený rámeček + tmavě rudé pozadí, BEZ neonového glow —
+          jen fyzická výstražná barva na štítku, viz zadání "ne neonovou, bez
+          velkých glow efektů"), jasně odlišené od klidného šedého
+          restart-terminálu nad ním. Hold-to-activate, ne klik —
           pointerDown/Up/Leave/Cancel, stejný fyzický vzor jako LeftWallView.tsx
           "Jít ven". Progress se plní ZLEVA DOPRAVA jako poloprůhledná vrstva
           uvnitř tlačítka (ne samostatný bar pod ním jako u "Jít ven") — na
@@ -139,15 +143,14 @@ export default function GeneratorView({
       {canOverloadGenerator && (
         <button
           type="button"
-          className={`pixel-button tap-target-critical relative w-full overflow-hidden flex flex-col items-center justify-center gap-0.5 px-3 py-3 text-sm border-4 border-red-600 bg-red-950/80 text-red-100 touch-none select-none transition-shadow duration-150 hover:shadow-[0_0_14px_rgba(239,68,68,0.65)] ${
+          className={`pixel-button tap-target-critical relative w-full overflow-hidden flex flex-col items-center justify-center gap-0.5 px-3 py-3 text-sm border-4 border-red-700 bg-red-950/80 text-red-100 touch-none select-none ${
             !overloadWindupActive && !canStartOverload ? "opacity-50" : ""
           }`}
           style={
             overloadWindupActive
               ? {
                   animation: "pixel-blink 0.35s steps(2) infinite",
-                  borderColor: "#fca5a5",
-                  boxShadow: "0 0 20px rgba(239,68,68,0.85)",
+                  borderColor: "#b91c1c",
                 }
               : undefined
           }

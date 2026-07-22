@@ -20,7 +20,7 @@ export default function DatabaseViewerStatus({ viewer, playerPreview }: Database
   if (!viewer.isAuthenticated) {
     return (
       <div className="pixel-panel p-5 sm:p-6">
-        <h2 className="text-sm font-bold text-red-400 uppercase tracking-wide mb-2">{COPY.database.publicAccessHeading}</h2>
+        <h2 className="text-sm font-bold text-gray-200 uppercase tracking-wide mb-2">{COPY.database.publicAccessHeading}</h2>
         <p className="text-xs text-gray-400 mb-3">{COPY.database.publicAccessIntro}</p>
         <p className="text-[11px] text-gray-500 mb-2">{COPY.database.publicAccessFutureIntro}</p>
         <ul className="flex flex-col gap-1 text-[11px] text-gray-500 list-disc list-inside mb-4">
@@ -43,7 +43,7 @@ export default function DatabaseViewerStatus({ viewer, playerPreview }: Database
 
   return (
     <div className="pixel-panel p-5 sm:p-6">
-      <h2 className="text-sm font-bold text-amber-300 uppercase tracking-wide mb-3">{COPY.database.personalRecordHeading}</h2>
+      <h2 className="text-sm font-bold text-gray-200 uppercase tracking-wide mb-3">{COPY.database.personalRecordHeading}</h2>
       <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-[11px]">
         <div className="flex justify-between sm:block">
           <dt className="text-gray-500">{COPY.database.highestNightLabel}</dt>

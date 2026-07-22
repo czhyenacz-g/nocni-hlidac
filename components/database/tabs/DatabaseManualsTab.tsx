@@ -7,7 +7,7 @@ export default function DatabaseManualsTab() {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-lg font-bold text-red-500 mb-1">MANUÁLY</h2>
+        <h2 className="text-lg font-bold text-gray-200 mb-1">MANUÁLY</h2>
         <p className="text-xs text-gray-500 leading-relaxed">Nouzové postupy a základní rady pro hlídací personál.</p>
         <p className="text-xs text-gray-600 leading-relaxed mt-1">
           Tato sekce bude sloužit hráčům, kteří se ve hře ztratili, nerozumějí některé mechanice nebo opakovaně umírají.

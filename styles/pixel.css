@@ -31,9 +31,22 @@
   background: rgba(75, 85, 99, 0.9);
 }
 
+/* Obecný "aktivní/zatlačený" stav (světlo zapnuté, mute, dveře zavřené,
+ * vybraný režim NORMAL/HARDCORE, aktivní záložka databáze) — neutrální
+ * fyzicky zatlačené tlačítko, ne barevný neonový stav (viz zadání "active =
+ * zatlačený fyzický stav + vyšší kontrast"). Skutečné nebezpečí (generátor
+ * v poruše) má vlastní `[data-fault="true"]` níže. */
 .pixel-button[data-active="true"] {
-  background: rgba(185, 28, 28, 0.9);
-  border-color: #ef4444;
+  background: rgba(75, 85, 99, 0.95);
+  border-color: #d1d5db;
+}
+
+/* Generátor mimo normální provoz — jediné místo, kde "aktivní" stav
+ * skutečně znamená nebezpečí, proto zůstává tlumeně červené (bez silné
+ * záře). */
+.pixel-button[data-fault="true"] {
+  background: rgba(127, 29, 29, 0.55);
+  border-color: #b91c1c;
 }
 
 /* Hotspot, který chce na sebe upozornit (např. rozbitý generátor mimo GeneratorView). */
@@ -155,7 +168,7 @@
 
 .camera-monitor-tile:hover,
 .camera-monitor-tile:focus-visible {
-  outline: 2px solid #f59e0b;
+  outline: 2px solid #d1d5db;
   outline-offset: -2px;
 }
 
@@ -365,7 +378,7 @@
 
 .camera-monitor-bezel:hover,
 .camera-monitor-bezel:focus-visible {
-  outline: 2px solid #f59e0b;
+  outline: 2px solid #d1d5db;
   outline-offset: 1px;
 }
 
@@ -388,8 +401,7 @@
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: #22c55e;
-  box-shadow: 0 0 4px 1px rgba(34, 197, 94, 0.8);
+  background: #4b7a5e;
   animation: pixel-blink 2.4s steps(2) infinite;
 }
 
@@ -399,8 +411,7 @@
  * u dveří/na kameře, kterou tenhle monitor sleduje. Nikdy se nezobrazí
  * běžnému hráči. */
 .camera-monitor-led--alert {
-  background: #ef4444;
-  box-shadow: 0 0 6px 2px rgba(239, 68, 68, 0.9);
+  background: #b91c1c;
   animation: pixel-blink 0.6s steps(2) infinite;
 }
 
@@ -433,7 +444,7 @@
 }
 
 /* Zapuštěná "obrazovka" uvnitř kovového rámu — tmavší, vlastní vnitřní
- * bevel, jemný zelenavý CRT nádech (stejná barva jako camera-monitor-led). */
+ * bevel, neutrální šedý nádech (žádná barevná CRT aureola). */
 .menu-terminal-screen {
   position: relative;
   background: rgba(8, 10, 13, 0.92);
@@ -442,7 +453,7 @@
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.04),
     inset 0 3px 16px rgba(0, 0, 0, 0.85),
-    inset 0 0 46px rgba(34, 197, 94, 0.035);
+    inset 0 0 46px rgba(148, 163, 184, 0.03);
 }
 
 .menu-terminal-header {
@@ -461,8 +472,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #22c55e;
-  box-shadow: 0 0 5px 1px rgba(34, 197, 94, 0.85);
+  background: #4b7a5e;
   animation: pixel-blink 2.4s steps(2) infinite;
   flex: none;
 }
@@ -501,11 +511,12 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.07),
     inset 0 -2px 5px rgba(0, 0, 0, 0.55),
-    0 0 10px rgba(100, 116, 139, 0.35);
+    0 1px 0 rgba(255, 255, 255, 0.03);
+  background: linear-gradient(180deg, rgba(48, 52, 59, 0.92), rgba(26, 29, 33, 0.94));
 }
 
 .console-button:focus-visible {
-  outline: 2px solid #93c5fd;
+  outline: 2px solid #d1d5db;
   outline-offset: 2px;
 }
 
@@ -518,68 +529,71 @@
   height: 30px;
   border-radius: 4px;
   border: 1px solid #48566b;
-  background: linear-gradient(180deg, rgba(51, 65, 85, 0.55), rgba(15, 23, 42, 0.7));
-  color: #93c5fd;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 0 6px rgba(59, 130, 246, 0.25);
-  transition: box-shadow 0.12s steps(2), color 0.12s steps(2);
+  background: linear-gradient(180deg, rgba(75, 85, 99, 0.4), rgba(17, 24, 39, 0.7));
+  color: #d1d5db;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  transition: box-shadow 0.12s steps(2), color 0.12s steps(2), background-color 0.12s steps(2);
+}
+
+/* Energetický panel (PowerMeter.tsx) — čistě informativní, neklikací panel,
+ * beze změny vzhledu vůči běžnému .console-icon-block (žádný glow navíc). */
+.console-icon-block--muted {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
 .console-button:hover .console-icon-block,
 .console-button:focus-visible .console-icon-block {
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06), 0 0 12px rgba(96, 165, 250, 0.55);
-  color: #bfdbfe;
+  background: linear-gradient(180deg, rgba(107, 114, 128, 0.45), rgba(31, 41, 55, 0.75));
+  color: #f3f4f6;
 }
 
-/* Hlavní akce ("Otočit se ke dveřím") — výstražný oranžový akcent, větší
- * ikonový blok, jemný amber glow. */
+/* Hlavní akce ("Otočit se ke dveřím") — dominantní jen přes rozměr/
+ * typografii/silnější neutrální rámeček a vyšší kontrast (viz zadání "ne
+ * pomocí barvy"), žádný barevný akcent ani glow. */
 .console-button--primary {
-  border-color: rgba(245, 158, 11, 0.55);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    inset 0 -2px 5px rgba(0, 0, 0, 0.55),
-    0 0 12px rgba(245, 158, 11, 0.22);
+  border-color: #9ca3af;
+  border-width: 2px;
+  background: linear-gradient(180deg, rgba(58, 63, 71, 0.94), rgba(24, 27, 31, 0.95));
 }
 
 .console-button--primary:hover,
 .console-button--primary:focus-visible {
-  border-color: rgba(251, 191, 36, 0.85);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    inset 0 -2px 5px rgba(0, 0, 0, 0.55),
-    0 0 18px rgba(245, 158, 11, 0.45);
+  border-color: #e5e7eb;
+  background: linear-gradient(180deg, rgba(72, 78, 88, 0.95), rgba(32, 35, 40, 0.96));
 }
 
 .console-icon-block--primary {
   width: 38px;
   height: 38px;
-  border-color: rgba(245, 158, 11, 0.6);
-  background: linear-gradient(180deg, rgba(120, 53, 15, 0.4), rgba(20, 12, 4, 0.7));
-  color: #fbbf24;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 0 8px rgba(245, 158, 11, 0.35);
+  border-color: #9ca3af;
+  background: linear-gradient(180deg, rgba(107, 114, 128, 0.5), rgba(17, 24, 39, 0.75));
+  color: #e5e7eb;
 }
 
 .console-button--primary:hover .console-icon-block--primary,
 .console-button--primary:focus-visible .console-icon-block--primary {
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 0 16px rgba(245, 158, 11, 0.6);
-  color: #fde68a;
+  background: linear-gradient(180deg, rgba(124, 132, 145, 0.55), rgba(31, 41, 55, 0.8));
+  color: #f9fafb;
 }
 
 /* Urgentní stav (viz .pixel-button[data-urgent="true"] výše) nastavuje
  * `color` na tlačítku, ale .console-icon-block má vlastní `color` (dědění
  * by ho jinak nepřebilo) — tenhle selektor ho pro urgentní stav vrátí zpět
- * do souladu, ať ikona zčervená spolu se zbytkem blikajícího tlačítka. */
+ * do souladu, ať ikona zčervená spolu se zbytkem blikajícího tlačítka.
+ * Skutečné nebezpečí, proto tlumená červená zůstává. */
 .pixel-button[data-urgent="true"] .console-icon-block {
-  color: #fecaca;
-  border-color: #ef4444;
+  color: #fca5a5;
+  border-color: #b91c1c;
 }
 
-/* Stejný důvod jako u data-urgent výše — vybraný stav (NORMAL/HARDCORE
- * přepínač, MainMenuScreen.tsx) nastavuje `.pixel-button[data-active="true"]`
- * na rodiči, ikonový blok ho bez tohohle selektoru neodrazí. */
-.pixel-button[data-active="true"] .console-icon-block {
-  color: #fecaca;
-  border-color: #ef4444;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06), 0 0 10px rgba(239, 68, 68, 0.45);
+/* Generátor v poruše (viz .pixel-button[data-fault="true"] výše) — jediný
+ * data-active-like stav, který je skutečné nebezpečí, proto ikonka zůstává
+ * tlumeně červená (bez glow). Běžný data-active (světlo/mute/dveře/gamemode)
+ * dědí barvu z .console-icon-block beze změny — jen fyzicky zatlačený vzhled
+ * tlačítka samotného. */
+.pixel-button[data-fault="true"] .console-icon-block {
+  color: #fca5a5;
+  border-color: #b91c1c;
 }
 
 /* Malý ikonový blok pro kompaktní tlačítka (viz MainMenuScreen.tsx

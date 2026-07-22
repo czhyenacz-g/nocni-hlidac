@@ -45,7 +45,7 @@ export default function CameraDamageOverlay({ phase, animationId, attackStartedA
         <div className="relative text-red-500 text-xs tracking-widest animate-pulse">{COPY.game.cameraOfflineSignalLostLabel}</div>
         <div className="relative text-gray-400 text-[10px] tracking-wide">{COPY.game.cameraOfflineOutOfServiceLabel}</div>
         <div className="relative text-gray-500 text-[9px] tracking-wide">{COPY.game.cameraOfflineServiceAtLabel}</div>
-        <div className="relative text-cyan-400 text-[9px] tracking-wide mt-1">{COPY.game.cameraOfflineMicActiveLabel}</div>
+        <div className="relative text-gray-400 text-[9px] tracking-wide mt-1">{COPY.game.cameraOfflineMicActiveLabel}</div>
       </div>
     );
   }

@@ -20,7 +20,7 @@ export default function DatabaseEquipmentCard({ equipment }: DatabaseEquipmentCa
       <div>
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           <h3 className="text-sm font-bold text-gray-200 tracking-wide">{equipment.name}</h3>
-          <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wide">{equipment.status}</span>
+          <span className="text-[10px] font-bold text-gray-300 uppercase tracking-wide">{equipment.status}</span>
         </div>
         <p className="text-[10px] text-gray-500 mt-0.5">Interní označení: {equipment.internalCode}</p>
         <p className="text-[11px] text-gray-400 mt-2 leading-relaxed">{equipment.description}</p>

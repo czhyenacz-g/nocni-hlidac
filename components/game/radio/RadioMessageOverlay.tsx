@@ -80,7 +80,7 @@ export default function RadioMessageOverlay({
       className="absolute top-4 left-4 z-40 pixel-panel pixel-screen-static px-3 py-2 max-w-[16rem] pointer-events-none"
       aria-hidden="true"
     >
-      <div className="text-[10px] font-bold tracking-wide text-amber-400 animate-pulse mb-1">ZACHYCENÝ PŘENOS</div>
+      <div className="text-[10px] font-bold tracking-wide text-gray-300 animate-pulse mb-1">ZACHYCENÝ PŘENOS</div>
       <RadioWaveform />
       <div className="text-xs text-gray-200 mt-1">{text}</div>
     </div>

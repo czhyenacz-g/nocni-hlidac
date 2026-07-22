@@ -207,7 +207,7 @@ function ProfileScreenContent() {
                 zadání bod 4) — jen pro přihlášeného hráče, jen když jsme se
                 o server opravdu pokusili a nepovedlo se. */}
             {authStatus.status === "authenticated" && serverError && !usingServerData && (
-              <p className="mb-4 text-center text-[11px] text-amber-600 italic">{COPY.profile.serverLoadFailedWarning}</p>
+              <p className="mb-4 text-center text-[11px] text-gray-500 italic">{COPY.profile.serverLoadFailedWarning}</p>
             )}
 
             {/* Sekce 1: Služební karta. */}
@@ -223,13 +223,13 @@ function ProfileScreenContent() {
               <div className="flex flex-col gap-1.5 text-sm">
                 <p>
                   <span className="text-gray-500">{COPY.profile.statusLabel}: </span>
-                  <span className={effectiveReward.hasDefeatedMonster ? "text-amber-300 font-bold" : "text-gray-300"}>
+                  <span className={effectiveReward.hasDefeatedMonster ? "text-gray-100 font-bold" : "text-gray-300"}>
                     {effectiveReward.hasDefeatedMonster ? COPY.profile.statusGolden : COPY.profile.statusRookie}
                   </span>
                 </p>
                 <p>
                   <span className="text-gray-500">{COPY.profile.rewardLabel}: </span>
-                  <span className={effectiveReward.doubleBarrelUnlocked ? "text-amber-300" : "text-gray-500"}>
+                  <span className={effectiveReward.doubleBarrelUnlocked ? "text-gray-100" : "text-gray-500"}>
                     {effectiveReward.doubleBarrelUnlocked ? COPY.profile.rewardUnlocked : COPY.profile.rewardLocked}
                   </span>
                 </p>
@@ -279,14 +279,14 @@ function ProfileScreenContent() {
                     >
                       <span
                         className={`shrink-0 w-6 h-6 flex items-center justify-center rounded-full border text-xs font-bold ${
-                          achievement.unlocked ? "border-amber-400 text-amber-300" : "border-gray-600 text-gray-500"
+                          achievement.unlocked ? "border-gray-300 text-gray-200" : "border-gray-600 text-gray-500"
                         }`}
                         aria-hidden="true"
                       >
                         {achievement.unlocked ? COPY.profile.achievementUnlockedMark : COPY.profile.achievementLockedMark}
                       </span>
                       <div>
-                        <div className={`text-sm font-bold ${achievement.unlocked ? "text-amber-300" : "text-gray-400"}`}>{title}</div>
+                        <div className={`text-sm font-bold ${achievement.unlocked ? "text-gray-100" : "text-gray-400"}`}>{title}</div>
                         <div className="text-xs text-gray-500 mt-0.5">{description}</div>
                       </div>
                     </div>
@@ -308,7 +308,7 @@ function ProfileScreenContent() {
                     className="w-20 h-16 object-cover rounded border border-gray-700"
                   />
                   <div>
-                    <div className="text-sm font-bold text-amber-300">{COPY.profile.loadoutDoubleBarrelName}</div>
+                    <div className="text-sm font-bold text-gray-100">{COPY.profile.loadoutDoubleBarrelName}</div>
                     <div className="text-xs text-gray-500 mt-0.5">{COPY.profile.loadoutDoubleBarrelNote}</div>
                   </div>
                 </div>

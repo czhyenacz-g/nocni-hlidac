@@ -191,7 +191,7 @@ export default function DeathScreen({
             </p>
 
             {status.kind === "normal_continue" ? (
-              <p className="text-sm text-amber-400 mb-6">
+              <p className="text-sm text-gray-300 mb-6">
                 {COPY.death.normalContinueLivesLabel.replace("{lives}", String(status.livesRemaining))}
                 <br />
                 {COPY.death.normalContinueNightLabel.replace("{night}", String(status.nightNumber))}

@@ -191,10 +191,9 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
 
             {/* Výběr režimu — výraznější než spodní odkazy, ale menší než
                 hlavní tlačítko (viz zadání). Vybraný režim čte existující
-                .pixel-button data-active stav (stejný "červený zvýrazněný"
-                vzor jako jinde v projektu — ikonový blok ho teď taky
-                odráží, viz styles/pixel.css #console-icon-block[data-active]).
-                Normal je uzamčený, dokud běží Hardcore šňůra (viz
+                .pixel-button data-active stav (neutrální "zatlačený" šedý
+                vzhled, ne barva — viz styles/pixel.css). Normal je uzamčený,
+                dokud běží Hardcore šňůra (viz
                 hasActiveHardcoreRun) — aria-disabled + ztlumený vzhled, ale
                 POŘÁD skutečné tlačítko (ne `disabled` atribut), ať tooltip i
                 tap-to-focus fungují stejně jako u ostatních (group-focus-within
