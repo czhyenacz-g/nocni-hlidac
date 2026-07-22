@@ -30,6 +30,9 @@ import { computeTitanAudioTrack, computeTitanFootstepVolume } from "@/game/audio
 import { isTitanEncounterActive } from "@/game/core/titanEncounter";
 import { computeTensionLevel } from "@/game/visuals/atmosphereState";
 import { atmosphereStyleToCssVars, tensionToAtmosphereStyle } from "@/game/visuals/visualEffects";
+import { useAtmosphereFlicker } from "@/game/visuals/useAtmosphereFlicker";
+import { computeAtmosphereFlickerActive } from "@/game/visuals/atmosphereFlicker";
+import { usePrefersReducedMotion } from "@/game/visuals/usePrefersReducedMotion";
 import { getBlackoutPhaseIndex } from "@/game/visuals/blackoutPhase";
 import {
   AMBIENCE_DEATH_FADE_MS,
@@ -2126,13 +2129,30 @@ function PlayPageContent() {
   });
   const atmosphereStyle = tensionToAtmosphereStyle(tensionLevel);
   const atmosphereVars = atmosphereStyleToCssVars(atmosphereStyle);
+  // Probliknutí žárovky (viz zadání "4. Přidej systém simulace probliknutí
+  // žárovky", "5. Ochrany") smí běžet jen během SKUTEČNÉHO hraní — ne v
+  // menu/briefingu/na death screenu (tensionLevel tam beztak nemá herní
+  // smysl), ne v nouzové minihře (ta se řídí vlastním vizuálním stavem, viz
+  // zadání) a ne během "Nechat si to projít hlavou" cinematiky. Pomalá
+  // saturace/kontrast/jas na .atmosphere-root níže zůstávají beze změny na
+  // VŠECH obrazovkách (to je jen atmosférický filtr, ne blikání). Podmínky
+  // samy jsou čistá funkce (computeAtmosphereFlickerActive), ať jde
+  // nezávisle otestovat bez React/DOM (viz atmosphereFlicker.test.ts).
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const atmosphereFlickerActive = computeAtmosphereFlickerActive({
+    screen: state.screen,
+    activeMiniGame: activeMiniGame !== null,
+    thinkItOverCinematicActive,
+    prefersReducedMotion,
+  });
+  const flickerBrightness = useAtmosphereFlicker(tensionLevel, atmosphereFlickerActive);
 
   return (
     <>
+    <div className="atmosphere-root" style={atmosphereVars as React.CSSProperties}>
     <div
-      className="atmosphere-root"
-      data-flicker={atmosphereStyle.flicker}
-      style={atmosphereVars as React.CSSProperties}
+      className="atmosphere-flicker-layer"
+      style={{ "--atmosphere-flicker-brightness": String(flickerBrightness) } as React.CSSProperties}
     >
       {state.screen === "menu" && <MainMenuScreen onStart={handleStart} />}
       {state.screen === "loading" && <LoadingScreen gameMode={selectedGameModeRef.current} />}
@@ -2278,6 +2298,7 @@ function PlayPageContent() {
           newlyUnlockedAchievements={monsterDefeatedNewlyUnlockedAchievements}
         />
       )}
+    </div>
     </div>
     {/* Skutečná smrt (near-miss jede přes cinematicPending/activeCinematicSceneId
         výše, nikdy sem) — nejdřív death sekvence (ticho -> bílý záblesk ->
