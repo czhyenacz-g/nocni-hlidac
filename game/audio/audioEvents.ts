@@ -118,6 +118,12 @@ export const AUDIO_EVENTS = {
   // vlastní event — znovupoužívá existující `lightClick` (viz
   // app/dev-sound/soundRegistry.ts, "Cvaknutí vypínače" sedí i sem).
   sonicCannonHum: "sonic_cannon_hum",
+  // Delší namluvená (německy) stopa, hraje po celou dobu, kdy je sonické
+  // dělo skutečně aktivní (viz game/audio/useSonicCannonAudio.ts) — NEZÁVISLÉ
+  // na sonicCannonHum výše (jemné technické bzučení), tohle je hlasový track
+  // s vlastním fade-in/fade-out a náhodným startem, protože je k dispozici
+  // jen jedna dlouhá nahrávka, ne krátký loopovatelný klip.
+  sonicCannonVoice: "sonic_cannon_voice",
   // ── Dávkovač munice na LeftWallView.tsx (viz zadání "systém brokovnice a
   // přebíjení") — tři samostatné eventy. ammoDispenseClick = úspěšné přidání
   // náboje. ammoRequestRejected = kliknutí bez efektu (sdílený pro OBA

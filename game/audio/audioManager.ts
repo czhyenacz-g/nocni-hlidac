@@ -227,19 +227,32 @@ class AudioManager {
    * vrátí na výchozí hlasitost z configu (pro příští `startLoop`) — na
    * rozdíl od `stopLoop` (okamžité, tvrdé zastavení). Používá se před
    * jumpscare/smrtí, viz app/play/page.tsx a AUDIO_DESIGN.md "Ticho před
-   * lekačkou".
+   * lekačkou", a před zastavením sonického děla (viz
+   * game/audio/useSonicCannonAudio.ts).
+   *
+   * Sdílí `volumeRampGeneration` se `startLoopWithFadeIn`/`rampLoopVolume` na
+   * STEJNÝ `id` (viz zadání "rychlé vypnutí během fade-inu musí okamžitě
+   * změnit směr na fade-out" a naopak) — každé nové volání kterékoliv z
+   * těchhle tří metod na tenhle `id` zvýší generaci a starší RAF řetězec
+   * (ať už šlo o fade-in nebo předchozí fade-out) se na dalším kroku sám
+   * tiše ukončí, včetně finálního `pause()`/resetu níže — jinak by starý,
+   * již neplatný fade-out mohl zastavit čerstvě spuštěné audio.
    */
   fadeOutLoop(id: AudioEventId, durationMs: number): void {
     const audio = this.elements.get(id);
     if (!audio) return;
 
     const config = AUDIO_CONFIG[id];
+    const generation = (this.volumeRampGeneration.get(id) ?? 0) + 1;
+    this.volumeRampGeneration.set(id, generation);
+
     const startVolume = audio.volume;
     const startedAt = performance.now();
 
     const step = () => {
+      if (this.volumeRampGeneration.get(id) !== generation) return;
       const elapsed = performance.now() - startedAt;
-      const t = Math.min(1, elapsed / durationMs);
+      const t = durationMs > 0 ? Math.min(1, elapsed / durationMs) : 1;
       audio.volume = startVolume * (1 - t);
       if (t < 1) {
         requestAnimationFrame(step);
@@ -254,6 +267,62 @@ class AudioManager {
       }
     };
     requestAnimationFrame(step);
+  }
+
+  /**
+   * Spustí loop s plynulým fade-inem (viz zadání sonické dělo,
+   * game/audio/useSonicCannonAudio.ts) — hlasitost nastaví na 0, zavolá
+   * `startLoop` (respektuje `muted`/`activeLoops` stejně jako běžný loop) a
+   * pak `rampLoopVolume` k cílové hlasitosti z configu. Sdílí generation
+   * guard s `fadeOutLoop` (viz tam) — rychlé vypnutí uprostřed náběhu ho
+   * bezpečně přeruší a plynule naváže fade-outem ze skutečné aktuální
+   * hlasitosti, ne od nuly.
+   */
+  startLoopWithFadeIn(id: AudioEventId, fadeInMs: number): void {
+    const audio = this.elements.get(id);
+    if (!audio) return;
+    audio.volume = 0;
+    this.startLoop(id);
+    this.rampLoopVolume(id, AUDIO_CONFIG[id].volume, fadeInMs);
+  }
+
+  /** Přesune přehrávací hlavu na `seconds` (viz zadání "náhodný začátek stopy") — no-op, pokud element neexistuje. */
+  seekTo(id: AudioEventId, seconds: number): void {
+    const audio = this.elements.get(id);
+    if (!audio) return;
+    audio.currentTime = Math.max(0, seconds);
+  }
+
+  /** Délka stopy v sekundách, `0` pokud metadata ještě nejsou načtená/element neexistuje — volající si sám ověří přes `onceLoadedMetadata` níže. */
+  getDuration(id: AudioEventId): number {
+    const duration = this.elements.get(id)?.duration;
+    return duration && Number.isFinite(duration) ? duration : 0;
+  }
+
+  /**
+   * Zavolá `handler` jednou, jakmile jsou pro `id` dostupná audio metadata
+   * (`duration`) — pokud už jsou (běžný případ, `AudioManager.init()` má
+   * `preload: "auto"` a hráč aktivuje sonické dělo obvykle až hluboko ve
+   * hře), zavolá se hned synchronně. Jinak počká na `loadedmetadata`.
+   * Chybějící soubor = handler se nikdy nezavolá (tichá stejná konvence
+   * jako zbytek AudioManageru — "chybějící soubor nikdy nesmí shodit hru").
+   */
+  onceLoadedMetadata(id: AudioEventId, handler: () => void): void {
+    const audio = this.elements.get(id);
+    if (!audio) return;
+    if (Number.isFinite(audio.duration) && audio.duration > 0) {
+      handler();
+      return;
+    }
+    audio.addEventListener("loadedmetadata", () => handler(), { once: true });
+  }
+
+  /** Registruje posluchač nativní `ended` události (přehrávání doběhlo na konec, jen pro `loop: false` eventy) — vrací odhlašovací funkci pro cleanup v useEffect. */
+  onEnded(id: AudioEventId, handler: () => void): () => void {
+    const audio = this.elements.get(id);
+    if (!audio) return () => {};
+    audio.addEventListener("ended", handler);
+    return () => audio.removeEventListener("ended", handler);
   }
 
   stopAll(): void {

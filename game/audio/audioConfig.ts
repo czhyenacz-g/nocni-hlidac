@@ -541,6 +541,17 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
       waveform: "sawtooth",
     },
   },
+  // Dlouhá namluvená (německy) hlasová stopa sonického děla (viz zadání) —
+  // `loop: false` je ZÁMĚRNÉ (na rozdíl od sonicCannonHum výše): náhodný
+  // start/pokračování po konci stopy řídí ručně game/audio/useSonicCannonAudio.ts
+  // (audioManager.seekTo/onEnded), ne nativní <audio loop>, který by na konci
+  // vždycky skočil zpátky na 0. Bez fallbackSynth — je to jedna konkrétní
+  // namluvená nahrávka, syntetizovaný tón by ji smysluplně nenahradil.
+  [AUDIO_EVENTS.sonicCannonVoice]: {
+    src: "/object_13/sound/sonic_cannon.wav",
+    volume: 0.8,
+    loop: false,
+  },
   // Dávkovač munice (viz zadání) — žádné soubory zatím nedodané, vždy
   // spadne na fallbackSynth. Dvě stoupající noty ("cvak-cvak" nabíjení).
   [AUDIO_EVENTS.ammoDispenseClick]: {

@@ -83,6 +83,7 @@ import { getBulbsRemaining, setBulbsRemaining } from "@/game/core/bulbInventory"
 import { shouldPlaySonicCannonToggleClick } from "@/game/core/sonicCannon";
 import { applyDailyBulbService, getRoomBulbs, setRoomBulbs } from "@/game/core/roomBulbs";
 import { useHeartbeatStress } from "@/game/audio/useHeartbeatStress";
+import { useSonicCannonAudio } from "@/game/audio/useSonicCannonAudio";
 import { getNightConfig } from "@/game/difficulty/nightConfig";
 import {
   applyEmergencyWorldEffects,
@@ -1064,6 +1065,11 @@ function PlayPageContent() {
   useEffect(() => {
     return () => audioManager.stopLoop(AUDIO_EVENTS.sonicCannonHum);
   }, []);
+
+  // Namluvená hlasová stopa sonického děla (viz zadání, game/audio/useSonicCannonAudio.ts)
+  // — nezávislá na sonicCannonHum výše, stejný jediný zdroj pravdy
+  // (state.sonicCannonActive), vlastní fade-in/fade-out/náhodný start.
+  useSonicCannonAudio({ active: state.sonicCannonActive });
 
   // Titanovy kroky na štěrku / bušení na dveře (viz zadání "Titan nemá během
   // přibližování správné kroky a stres" a "Audio přechod při at_door") —

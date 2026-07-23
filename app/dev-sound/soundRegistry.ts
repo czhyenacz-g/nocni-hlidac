@@ -410,6 +410,14 @@ export const SOUND_REGISTRY: Record<AudioEventId, SoundRegistryEntry> = {
     guess: "Hluboké elektrické 'bzzz' (95Hz sawtooth), velmi tiché, bez melodie.",
     usedIn: "app/play/page.tsx — efekt na state.sonicCannonActive (startLoop/stopLoop).",
   },
+  [AUDIO_EVENTS.sonicCannonVoice]: {
+    id: AUDIO_EVENTS.sonicCannonVoice,
+    label: "Sonické dělo / Namluvená hlasová stopa",
+    description:
+      "Jedna dlouhá namluvená (německy) nahrávka, hraje jen dokud je state.sonicCannonActive === true, s fade-inem/fade-outem a náhodným startem (viz game/audio/useSonicCannonAudio.ts).",
+    guess: "Dlouhý namluvený track v němčině.",
+    usedIn: "app/play/page.tsx — useSonicCannonAudio({ active: state.sonicCannonActive }).",
+  },
   [AUDIO_EVENTS.ammoDispenseClick]: {
     id: AUDIO_EVENTS.ammoDispenseClick,
     label: "Dávkovač munice / Úspěšné dávkování",
