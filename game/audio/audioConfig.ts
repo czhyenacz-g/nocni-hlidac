@@ -541,14 +541,18 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
       waveform: "sawtooth",
     },
   },
-  // Dlouhá namluvená (německy) hlasová stopa sonického děla (viz zadání) —
-  // `loop: false` je ZÁMĚRNÉ (na rozdíl od sonicCannonHum výše): náhodný
-  // start/pokračování po konci stopy řídí ručně game/audio/useSonicCannonAudio.ts
-  // (audioManager.seekTo/onEnded), ne nativní <audio loop>, který by na konci
-  // vždycky skočil zpátky na 0. Bez fallbackSynth — je to jedna konkrétní
-  // namluvená nahrávka, syntetizovaný tón by ji smysluplně nenahradil.
+  // Dlouhá namluvená (německy) hlasová stopa sonického děla (v2, viz zadání)
+  // — zdrojový wav (public/object_13/sound/source/sonic_cannon_raw.wav)
+  // převeden na mp3 (`ffmpeg -codec:a libmp3lame -b:a 128k`, stejná
+  // konvence jako ostatní servírované kopie, viz assets/audio/README.md),
+  // 4.7 MB -> ~760 KB. `loop: false` je ZÁMĚRNÉ (na rozdíl od sonicCannonHum
+  // výše): náhodný start/pokračování po konci stopy řídí ručně
+  // game/audio/useSonicCannonAudio.ts (audioManager.seekTo/onEnded), ne
+  // nativní <audio loop>, který by na konci vždycky skočil zpátky na 0. Bez
+  // fallbackSynth — je to jedna konkrétní namluvená nahrávka, syntetizovaný
+  // tón by ji smysluplně nenahradil.
   [AUDIO_EVENTS.sonicCannonVoice]: {
-    src: "/object_13/sound/sonic_cannon.wav",
+    src: "/object_13/sound/sonic_cannon.mp3",
     volume: 0.8,
     loop: false,
   },
