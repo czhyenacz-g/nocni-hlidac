@@ -1,19 +1,10 @@
 import { OfficeBreachPhase } from "@/game/core/officeBreachAftermath";
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 
 interface OfficeBreachBannerProps {
   /** `null` = krize neběží (nebo je vyřešená) — banner se vůbec nevykreslí, viz resolveOfficeBreachPhase. */
   phase: OfficeBreachPhase | null;
 }
-
-const PHASE_COPY: Record<OfficeBreachPhase, { headline: string; hint: string }> = {
-  close_door: { headline: COPY.game.officeBreachCloseDoorLabel, hint: COPY.game.officeBreachCloseDoorHintLabel },
-  restart_generator: {
-    headline: COPY.game.officeBreachRestartGeneratorLabel,
-    hint: COPY.game.officeBreachRestartGeneratorHintLabel,
-  },
-  replace_bulb: { headline: COPY.game.officeBreachReplaceBulbLabel, hint: COPY.game.officeBreachReplaceBulbHintLabel },
-};
 
 // Trvalý krizový panel po "monster_reached_office" (viz zadání,
 // game/core/officeBreachAftermath.ts#resolveOfficeBreachPhase) — sourozenec
@@ -24,7 +15,16 @@ const PHASE_COPY: Record<OfficeBreachPhase, { headline: string; hint: string }> 
 // VŠECHNO rozhodování (která fáze, kdy zmizet) žije v resolveOfficeBreachPhase,
 // tenhle soubor jen mapuje fázi na text.
 export default function OfficeBreachBanner({ phase }: OfficeBreachBannerProps) {
+  const COPY = useCopy();
   if (phase === null) return null;
+  const PHASE_COPY: Record<OfficeBreachPhase, { headline: string; hint: string }> = {
+    close_door: { headline: COPY.game.officeBreachCloseDoorLabel, hint: COPY.game.officeBreachCloseDoorHintLabel },
+    restart_generator: {
+      headline: COPY.game.officeBreachRestartGeneratorLabel,
+      hint: COPY.game.officeBreachRestartGeneratorHintLabel,
+    },
+    replace_bulb: { headline: COPY.game.officeBreachReplaceBulbLabel, hint: COPY.game.officeBreachReplaceBulbHintLabel },
+  };
   const { headline, hint } = PHASE_COPY[phase];
 
   return (

@@ -5,6 +5,11 @@ import {
   MONSTER_DEFEATED_CINEMATIC_DURATION_MS,
   resolveActiveCaptionIndex,
 } from "./monsterDefeatedCinematic";
+import { COPY_CS } from "./copy";
+
+function captionText(id: string): string {
+  return COPY_CS.monsterDefeatedCinematicCaptions[id as keyof typeof COPY_CS.monsterDefeatedCinematicCaptions];
+}
 
 describe("monsterDefeatedCinematic config", () => {
   it("points at the actual asset location", () => {
@@ -12,7 +17,7 @@ describe("monsterDefeatedCinematic config", () => {
   });
 
   it("has all 9 lines from the spec, in order, with corrected spelling", () => {
-    const texts = MONSTER_DEFEATED_CINEMATIC_CAPTIONS.map((c) => c.text);
+    const texts = MONSTER_DEFEATED_CINEMATIC_CAPTIONS.map((c) => captionText(c.id));
     expect(texts).toEqual([
       "Blahopřeji a uznávám, že už nejsi ucho!",
       "Máš v sobě ducha bojovníka.",
@@ -27,7 +32,7 @@ describe("monsterDefeatedCinematic config", () => {
   });
 
   it("does not contain the original typo 'Věřmi'", () => {
-    expect(MONSTER_DEFEATED_CINEMATIC_CAPTIONS.some((c) => c.text.includes("Věřmi"))).toBe(false);
+    expect(MONSTER_DEFEATED_CINEMATIC_CAPTIONS.some((c) => captionText(c.id).includes("Věřmi"))).toBe(false);
   });
 
   it("starts at 0ms and is strictly increasing", () => {

@@ -6,7 +6,8 @@
 // (jen text + atMs), žádné responseLabel/audioSrc per-segment.
 
 export interface TimedCaption {
-  text: string;
+  /** Klíč do content/copy.ts#monsterDefeatedCinematicCaptions (jazykově nezávislý, viz i18n) — samotný text titulku žije tam, tady jen timing. */
+  id: string;
   /** Kdy (ms od startu přehrávání) se má tenhle titulek zobrazit — poslední caption s `atMs <= currentMs` je ta aktivní, viz resolveActiveCaptionIndex. */
   atMs: number;
 }
@@ -27,15 +28,15 @@ export const MONSTER_DEFEATED_CINEMATIC_DURATION_MS = 37_480;
 // (viz report). Texty jsou přesně podle zadání, jen s opravou pravopisu
 // ("Věřmi" -> "Věř mi").
 export const MONSTER_DEFEATED_CINEMATIC_CAPTIONS: TimedCaption[] = [
-  { text: "Blahopřeji a uznávám, že už nejsi ucho!", atMs: 0 },
-  { text: "Máš v sobě ducha bojovníka.", atMs: 5300 },
-  { text: "Věř mi ale, že ta bestie nebyla první, ani poslední.", atMs: 8950 },
-  { text: "Přijdou další.", atMs: 15_900 },
-  { text: "Za odměnu pro tebe něco mám.", atMs: 17_800 },
-  { text: "Dal jsem ti to na stěnu v kanceláři.", atMs: 21_400 },
-  { text: "Chceš vědět, o čem to reálně je?", atMs: 26_300 },
-  { text: "Potkáme se až nastane 30. den...", atMs: 30_650 },
-  { text: "...nebo ve Valhale.", atMs: 35_000 },
+  { id: "congrats_not_a_rookie", atMs: 0 },
+  { id: "warrior_spirit", atMs: 5300 },
+  { id: "not_first_not_last", atMs: 8950 },
+  { id: "more_will_come", atMs: 15_900 },
+  { id: "reward_for_you", atMs: 17_800 },
+  { id: "left_on_office_wall", atMs: 21_400 },
+  { id: "want_to_know_truth", atMs: 26_300 },
+  { id: "meet_on_day_30", atMs: 30_650 },
+  { id: "or_in_valhalla", atMs: 35_000 },
 ];
 
 /**

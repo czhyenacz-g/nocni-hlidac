@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import { APP_VERSION, BUILD_COMMIT } from "@/game/core/buildInfo";
 
 // Nenápadná patička pro menu/prezentační stránky (MainMenuScreen, /about) —
 // záměrně se nepoužívá na herních obrazovkách (GameScreen/LoadingScreen), aby
 // nerušila hru. Texty jsou v content/copy.ts, ne natvrdo tady.
 export default function Footer() {
+  const COPY = useCopy();
   return (
     <footer className="w-full py-3 px-4 text-center text-[10px] text-gray-600">
       <p className="mb-1">

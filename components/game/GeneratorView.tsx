@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import { GeneratorState } from "@/game/core/types";
 import { GENERATOR_ACCIDENTAL_RESTART_MESSAGE_MS, GENERATOR_OVERLOAD_WINDUP_DURATION_MS } from "@/game/balancing/constants";
 import ViewSwitchArrow from "./ViewSwitchArrow";
@@ -48,6 +48,7 @@ export default function GeneratorView({
   onStartGeneratorOverloadWindup,
   onCancelGeneratorOverloadWindup,
 }: GeneratorViewProps) {
+  const COPY = useCopy();
   // Kontrolka v "normal" stavu je jinak statická zelená — key na beepSeq ji
   // při každém pípnutí remountne, což znovu spustí jednorázovou pixel-flash
   // animaci (viz styles/pixel.css) přesně v okamžiku zvuku.

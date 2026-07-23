@@ -1,4 +1,4 @@
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import {
   DATABASE_PLANNED_SUBJECTS,
   DATABASE_SUBJECTS,
@@ -21,6 +21,7 @@ interface DatabaseSubjectsTabProps {
  * plánované subjekty (Ghost/Titan/Praetorián) a závěrečný TODO blok.
  */
 export default function DatabaseSubjectsTab({ viewer, playerPreview }: DatabaseSubjectsTabProps) {
+  const COPY = useCopy();
   return (
     <div className="flex flex-col gap-5">
       <div>
@@ -69,7 +70,7 @@ export default function DatabaseSubjectsTab({ viewer, playerPreview }: DatabaseS
             čistě prezentační, dokud výzkum subjektů vůbec neexistuje. */}
         {viewer.isAuthenticated && playerPreview.discoveredSubjectCount !== undefined && (
           <p className="text-[10px] text-gray-600 mt-2">
-            Objevené subjekty: {formatDatabasePlaceholderValue(playerPreview.discoveredSubjectCount)}
+            Objevené subjekty: {formatDatabasePlaceholderValue(playerPreview.discoveredSubjectCount, COPY.database.notConnectedValue)}
           </p>
         )}
       </div>

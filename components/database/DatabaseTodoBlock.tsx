@@ -1,4 +1,4 @@
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import { DatabaseTodoStatus, resolveDatabaseTodoBadgeKey } from "@/lib/database/databaseTypes";
 
 interface DatabaseTodoBlockProps {
@@ -17,6 +17,7 @@ interface DatabaseTodoBlockProps {
  * Čistě prezentační — žádný stav, žádná logika, jen data dovnitř/render ven.
  */
 export default function DatabaseTodoBlock({ title, description, items, status }: DatabaseTodoBlockProps) {
+  const COPY = useCopy();
   if (items.length === 0) return null;
 
   const badgeLabel =

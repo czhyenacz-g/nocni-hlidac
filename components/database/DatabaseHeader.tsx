@@ -1,4 +1,4 @@
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import { DatabaseViewer } from "@/lib/database/databaseTypes";
 
 interface DatabaseHeaderProps {
@@ -14,6 +14,7 @@ interface DatabaseHeaderProps {
  * "AUTORIZOVANÝ UŽIVATEL" (viz zadání).
  */
 export default function DatabaseHeader({ viewer }: DatabaseHeaderProps) {
+  const COPY = useCopy();
   const accessLevel = viewer.isAuthenticated ? COPY.database.accessLevelStaff : COPY.database.accessLevelPublic;
 
   return (

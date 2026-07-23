@@ -1,4 +1,4 @@
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import { CameraDefinition, EnemyMoveDecision, EnemyStage } from "@/game/core/types";
 import { getCameraImageSrc } from "@/game/cameras/cameraAssets.object13";
 import { resolveCameraMotionConfig } from "@/game/cameras/cameraMotionConfig";
@@ -36,6 +36,7 @@ export default function CameraView({
   enemyStageVisitSeq,
   monsterId,
 }: CameraViewProps) {
+  const COPY = useCopy();
   if (!camera) {
     return (
       <div className="pixel-panel pixel-screen-static h-48 flex items-center justify-center text-gray-500 text-sm">

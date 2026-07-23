@@ -1,4 +1,4 @@
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import { CameraAttackVisualPhase, GhoulCameraAttackAnimationId } from "@/game/core/types";
 import { getGhoulCameraAttackAnimation } from "@/game/cameras/cameraAttackAnimation.object13";
 import GhoulCameraAttackAnimation from "./GhoulCameraAttackAnimation";
@@ -36,6 +36,7 @@ interface CameraDamageOverlayProps {
  * "vyřazení kamery znamená pouze ztrátu obrazu, ne zvuku").
  */
 export default function CameraDamageOverlay({ phase, animationId, attackStartedAtMs, nowMs }: CameraDamageOverlayProps) {
+  const COPY = useCopy();
   if (phase === "idle") return null;
 
   if (phase === "offline") {

@@ -3,9 +3,9 @@ import { AUDIO_EVENTS } from "../audio/audioEvents";
 import {
   GHOUL_CAMERA_ATTACK_WARNING_DURATION_MS,
   GHOUL_CAMERA_ATTACK_WARNING_SOUNDS,
-  GHOUL_CAMERA_ATTACK_WARNING_TEXT,
   pickRandomGhoulCameraAttackWarningSound,
 } from "./ghoulCameraAttackWarningMessage";
+import { COPY_CS } from "../../content/copy";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -16,9 +16,9 @@ afterEach(() => {
 // renderHook infrastruktura v projektu, viz cameraDisabledRadioMessage.test.ts)
 // — testuje se proto jen datová definice tady.
 
-describe("GHOUL_CAMERA_ATTACK_WARNING_TEXT", () => {
+describe("COPY_CS.radio.ghoulCameraAttackWarningText", () => {
   it("is the exact warning text from the spec", () => {
-    expect(GHOUL_CAMERA_ATTACK_WARNING_TEXT).toBe("To ne! Sonické dělo přilákalo ghoula!");
+    expect(COPY_CS.radio.ghoulCameraAttackWarningText).toBe("To ne! Sonické dělo přilákalo ghoula!");
   });
 });
 

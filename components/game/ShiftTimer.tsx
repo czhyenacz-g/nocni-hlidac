@@ -1,4 +1,4 @@
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import ConsoleIcon from "./ConsoleIcon";
 
 interface ShiftTimerProps {
@@ -22,6 +22,7 @@ function formatTime(ms: number): string {
 }
 
 export default function ShiftTimer({ remainingMs, nightNumber, onNightLabelContextMenu }: ShiftTimerProps) {
+  const COPY = useCopy();
   return (
     <div className="console-panel p-2 flex items-center gap-2.5">
       <span className="console-icon-block console-icon-block--sm" aria-hidden="true">

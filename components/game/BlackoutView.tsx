@@ -1,4 +1,4 @@
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import { BlackoutDefinition } from "@/game/core/types";
 import { getBlackoutPhaseIndex } from "@/game/visuals/blackoutPhase";
 
@@ -11,6 +11,7 @@ interface BlackoutViewProps {
 // blackout — všechny systémy jsou mrtvé, není co ovládat. Ukazuje jen
 // postupující atmosférický text podle fáze (viz game/visuals/blackoutPhase.ts).
 export default function BlackoutView({ blackoutElapsedMs, blackout }: BlackoutViewProps) {
+  const COPY = useCopy();
   const phaseIndex = getBlackoutPhaseIndex(blackoutElapsedMs, blackout);
   const visiblePhases = COPY.blackout.phaseTexts.slice(0, phaseIndex + 1);
 

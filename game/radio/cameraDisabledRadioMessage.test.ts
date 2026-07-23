@@ -6,6 +6,7 @@ import {
   resolveCameraDisabledOverlayDurationMs,
 } from "./cameraDisabledRadioMessage";
 import { AUDIO_EVENTS } from "../audio/audioEvents";
+import { COPY_CS } from "../../content/copy";
 
 // Hook-level chování (useCameraDisabledRadioMessage.ts) sdílí stejný
 // `[seq]`-keyed useEffect + cleanup vzor jako useMonsterRepelRadioMessage.ts/
@@ -23,15 +24,18 @@ describe("CAMERA_DISABLED_RADIO_MESSAGES", () => {
     expect(CAMERA_DISABLED_RADIO_MESSAGES).toHaveLength(3);
   });
 
-  it("every variant has a non-empty text and a real audioSrc (never null)", () => {
+  it("every variant has a matching non-empty translation and a real audioSrc (never null)", () => {
     for (const message of CAMERA_DISABLED_RADIO_MESSAGES) {
-      expect(message.text.length).toBeGreaterThan(0);
+      const text = COPY_CS.radio.cameraDisabledMessages[message.id as keyof typeof COPY_CS.radio.cameraDisabledMessages];
+      expect(text.length).toBeGreaterThan(0);
       expect(message.audioSrc).toMatch(/^\/object_13\/sound\/camera_destroid\/radio_camera_destroyed_\d\.mp3$/);
     }
   });
 
   it("contains the exact transcribed lines", () => {
-    const texts = CAMERA_DISABLED_RADIO_MESSAGES.map((m) => m.text);
+    const texts = CAMERA_DISABLED_RADIO_MESSAGES.map(
+      (m) => COPY_CS.radio.cameraDisabledMessages[m.id as keyof typeof COPY_CS.radio.cameraDisabledMessages],
+    );
     expect(texts).toEqual(["No, tak do rána jsme po tmě.", "Kamera zničena!", "Zbývá už jenom mikrofon."]);
   });
 

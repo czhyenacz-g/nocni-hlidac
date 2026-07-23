@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Achievement } from "@/content/achievements";
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import { ACHIEVEMENT_TOAST_TRANSITION_MS, ACHIEVEMENT_TOAST_VISIBLE_MS } from "@/game/balancing/constants";
 
 interface AchievementToastProps {
@@ -21,6 +21,7 @@ interface AchievementToastProps {
 // CinematicScreen.tsx), takže by se toast jinak nepřichytil ke skutečnému
 // rohu viewportu.
 export default function AchievementToast({ achievement, onDismiss }: AchievementToastProps) {
+  const COPY = useCopy();
   // `visible` řídí jen inline transform/opacity — start na `false` (mimo
   // obrazovku vpravo), efekt ho hned po mountu přepne na `true` (slide-in),
   // pak zpátky na `false` (slide-out) těsně před odmountováním.
@@ -61,8 +62,8 @@ export default function AchievementToast({ achievement, onDismiss }: Achievement
     >
       <div className="pixel-panel p-3">
         <div className="text-[10px] text-gray-300 mb-1">{COPY.achievements.unlockedLabel}</div>
-        <div className="text-sm font-bold mb-1">{achievement.title}</div>
-        <div className="text-xs text-gray-400">{achievement.description}</div>
+        <div className="text-sm font-bold mb-1">{COPY.achievementDefinitions[achievement.id].title}</div>
+        <div className="text-xs text-gray-400">{COPY.achievementDefinitions[achievement.id].description}</div>
       </div>
     </div>
   );

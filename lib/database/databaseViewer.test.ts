@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { buildDatabasePlayerPreview, buildDatabaseViewer, formatDatabasePlaceholderValue } from "./databaseViewer";
-import { COPY } from "../../content/copy";
 
 // Testuje jediné místo, které smí sahat na DiscordPlayer/AuthenticatedPlayer
 // pro /database (viz zadání "5. STAV PŘIHLÁŠENÍ", "18. TESTY" #2-5, #18).
@@ -63,15 +62,15 @@ describe("buildDatabasePlayerPreview", () => {
 });
 
 describe("formatDatabasePlaceholderValue", () => {
-  it("5. undefined -> ZATÍM NENAPOJENO placeholder text", () => {
-    expect(formatDatabasePlaceholderValue(undefined)).toBe(COPY.database.notConnectedValue);
+  it("5. undefined -> caller-supplied placeholder text", () => {
+    expect(formatDatabasePlaceholderValue(undefined, "ZATÍM NENAPOJENO")).toBe("ZATÍM NENAPOJENO");
   });
 
   it("0 is a real value, not a placeholder", () => {
-    expect(formatDatabasePlaceholderValue(0)).toBe("0");
+    expect(formatDatabasePlaceholderValue(0, "ZATÍM NENAPOJENO")).toBe("0");
   });
 
   it("passes real numbers through as strings", () => {
-    expect(formatDatabasePlaceholderValue(7)).toBe("7");
+    expect(formatDatabasePlaceholderValue(7, "ZATÍM NENAPOJENO")).toBe("7");
   });
 });

@@ -1,4 +1,4 @@
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import {
   DATABASE_REPORT_FORM_FIELDS,
   DATABASE_REPORTS_TAB_TODO_ITEMS,
@@ -20,6 +20,7 @@ interface DatabaseReportsTabProps {
  * pak náhled budoucího formuláře (disabled) a závěrečný TODO blok.
  */
 export default function DatabaseReportsTab({ viewer }: DatabaseReportsTabProps) {
+  const COPY = useCopy();
   return (
     <div className="flex flex-col gap-5">
       <div>

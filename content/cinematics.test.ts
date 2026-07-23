@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CINEMATIC_SCENES, getCinematicScene } from "./cinematics";
+import { COPY_CS } from "./copy";
 
 describe("cinematics config", () => {
   it("contains old_guard_first_death_warning", () => {
@@ -16,26 +17,31 @@ describe("cinematics config", () => {
     expect(scene?.segments).toHaveLength(13);
   });
 
-  it("the first segment is 'Baf.'", () => {
+  it("the first segment is 'baf', translated to 'Baf.'", () => {
     const scene = getCinematicScene("old_guard_first_death_warning");
-    expect(scene?.segments[0].text).toBe("Baf.");
+    expect(scene?.segments[0].id).toBe("baf");
+    expect(COPY_CS.cinematics.old_guard_first_death_warning.segments.baf.text).toBe("Baf.");
   });
 
   it("the last segment's responseLabel is 'Zpátky ke stolu.'", () => {
     const scene = getCinematicScene("old_guard_first_death_warning");
-    expect(scene?.segments.at(-1)?.responseLabel).toBe("Zpátky ke stolu.");
+    const lastId = scene?.segments.at(-1)?.id as keyof typeof COPY_CS.cinematics.old_guard_first_death_warning.segments;
+    expect(COPY_CS.cinematics.old_guard_first_death_warning.segments[lastId].responseLabel).toBe("Zpátky ke stolu.");
   });
 
   it("includes the technician introduction line", () => {
-    const scene = getCinematicScene("old_guard_first_death_warning");
-    expect(scene?.segments.some((segment) => segment.text === "Jsem místní technik. Máš kliku, že jsem to já.")).toBe(
-      true,
+    expect(COPY_CS.cinematics.old_guard_first_death_warning.segments.im_the_tech.text).toBe(
+      "Jsem místní technik. Máš kliku, že jsem to já.",
     );
   });
 
-  it("every segment has a responseLabel", () => {
+  it("every segment id has a matching translation entry with a responseLabel", () => {
     const scene = getCinematicScene("old_guard_first_death_warning");
-    expect(scene?.segments.every((segment) => Boolean(segment.responseLabel))).toBe(true);
+    const segments = COPY_CS.cinematics.old_guard_first_death_warning.segments as Record<
+      string,
+      { text: string; responseLabel: string }
+    >;
+    expect(scene?.segments.every((segment) => Boolean(segments[segment.id]?.responseLabel))).toBe(true);
   });
 
   it("every segment has an audioSrc pointing into public/object_13/story/segments/", () => {
@@ -65,21 +71,20 @@ describe("think_it_over_warning cinematic", () => {
     expect(scene?.imageSrc).toBe("/object_13/story/think_it_over_warning.webp");
   });
 
-  it("the first segment is 'Nedělej to!'", () => {
+  it("the first segment is 'dont' -> 'Nedělej to!'", () => {
     const scene = getCinematicScene("think_it_over_warning");
-    expect(scene?.segments[0].text).toBe("Nedělej to!");
+    expect(scene?.segments[0].id).toBe("dont");
+    expect(COPY_CS.cinematics.think_it_over_warning.segments.dont.text).toBe("Nedělej to!");
   });
 
   it("the last segment mentions ten hits and its responseLabel is 'Zpátky ke stolu a vrhnout se do boje.'", () => {
-    const scene = getCinematicScene("think_it_over_warning");
-    const last = scene?.segments.at(-1);
-    expect(last?.text).toContain("DESETKRÁT");
-    expect(last?.responseLabel).toBe("Zpátky ke stolu a vrhnout se do boje.");
+    const last = COPY_CS.cinematics.think_it_over_warning.segments.ten_hits;
+    expect(last.text).toContain("DESETKRÁT");
+    expect(last.responseLabel).toBe("Zpátky ke stolu a vrhnout se do boje.");
   });
 
-  it("every segment has a responseLabel (no audioSrc required — no narration recorded)", () => {
+  it("no segment has an audioSrc (no narration recorded)", () => {
     const scene = getCinematicScene("think_it_over_warning");
-    expect(scene?.segments.every((segment) => Boolean(segment.responseLabel))).toBe(true);
     expect(scene?.segments.every((segment) => segment.audioSrc === undefined)).toBe(true);
   });
 });
@@ -91,30 +96,22 @@ describe("valhala_ending cinematic", () => {
   });
 
   it("has the UI title VALHALA", () => {
-    const scene = getCinematicScene("valhala_ending");
-    expect(scene?.title).toBe("VALHALA");
+    expect(COPY_CS.cinematics.valhala_ending.title).toBe("VALHALA");
   });
 
-  it("the first segment is 'Ticho.'", () => {
+  it("the first segment is 'silence' -> 'Ticho.'", () => {
     const scene = getCinematicScene("valhala_ending");
-    expect(scene?.segments[0].text).toBe("Ticho.");
+    expect(scene?.segments[0].id).toBe("silence");
+    expect(COPY_CS.cinematics.valhala_ending.segments.silence.text).toBe("Ticho.");
   });
 
   it("includes the thirty-night-or-valhalla line", () => {
-    const scene = getCinematicScene("valhala_ending");
-    expect(
-      scene?.segments.some((segment) => segment.text.includes("třicátou noc") && segment.text.includes("Valhale")),
-    ).toBe(true);
+    const text = COPY_CS.cinematics.valhala_ending.segments.thirty_or_valhalla.text;
+    expect(text.includes("třicátou noc") && text.includes("Valhale")).toBe(true);
   });
 
   it("the last segment's responseLabel is 'Napiju se.'", () => {
-    const scene = getCinematicScene("valhala_ending");
-    expect(scene?.segments.at(-1)?.responseLabel).toBe("Napiju se.");
-  });
-
-  it("every segment has a responseLabel", () => {
-    const scene = getCinematicScene("valhala_ending");
-    expect(scene?.segments.every((segment) => Boolean(segment.responseLabel))).toBe(true);
+    expect(COPY_CS.cinematics.valhala_ending.segments.not_bad_guard.responseLabel).toBe("Napiju se.");
   });
 
   it("the three Hynek quote segments have audioSrc pointing into public/object_13/story/segments/", () => {
@@ -132,23 +129,17 @@ describe("warrior_ending cinematic", () => {
   });
 
   it("has the UI title POSLEDNÍ SMĚNA", () => {
-    const scene = getCinematicScene("warrior_ending");
-    expect(scene?.title).toBe("POSLEDNÍ SMĚNA");
+    expect(COPY_CS.cinematics.warrior_ending.title).toBe("POSLEDNÍ SMĚNA");
   });
 
-  it("the first segment is 'Třicátý den.'", () => {
+  it("the first segment is 'thirtieth_day' -> 'Třicátý den.'", () => {
     const scene = getCinematicScene("warrior_ending");
-    expect(scene?.segments[0].text).toBe("Třicátý den.");
+    expect(scene?.segments[0].id).toBe("thirtieth_day");
+    expect(COPY_CS.cinematics.warrior_ending.segments.thirtieth_day.text).toBe("Třicátý den.");
   });
 
   it("includes the 'you became a warrior' line", () => {
-    const scene = getCinematicScene("warrior_ending");
-    expect(scene?.segments.some((segment) => segment.text.includes("válečník"))).toBe(true);
-  });
-
-  it("every segment has a responseLabel", () => {
-    const scene = getCinematicScene("warrior_ending");
-    expect(scene?.segments.every((segment) => Boolean(segment.responseLabel))).toBe(true);
+    expect(COPY_CS.cinematics.warrior_ending.segments.you_became_warrior.text).toContain("válečník");
   });
 
   it("the eleven Hynek quote segments have audioSrc pointing into public/object_13/story/segments/", () => {
@@ -168,23 +159,17 @@ describe("no_kill_ending cinematic", () => {
   });
 
   it("has the UI title PRVNÍ VÝPLATA", () => {
-    const scene = getCinematicScene("no_kill_ending");
-    expect(scene?.title).toBe("PRVNÍ VÝPLATA");
+    expect(COPY_CS.cinematics.no_kill_ending.title).toBe("PRVNÍ VÝPLATA");
   });
 
-  it("the first segment is 'Třicátý den.'", () => {
+  it("the first segment is 'thirtieth_day' -> 'Třicátý den.'", () => {
     const scene = getCinematicScene("no_kill_ending");
-    expect(scene?.segments[0].text).toBe("Třicátý den.");
+    expect(scene?.segments[0].id).toBe("thirtieth_day");
+    expect(COPY_CS.cinematics.no_kill_ending.segments.thirtieth_day.text).toBe("Třicátý den.");
   });
 
   it("the last segment's responseLabel is 'Zpátky ke stolu.'", () => {
-    const scene = getCinematicScene("no_kill_ending");
-    expect(scene?.segments.at(-1)?.responseLabel).toBe("Zpátky ke stolu.");
-  });
-
-  it("every segment has a responseLabel", () => {
-    const scene = getCinematicScene("no_kill_ending");
-    expect(scene?.segments.every((segment) => Boolean(segment.responseLabel))).toBe(true);
+    expect(COPY_CS.cinematics.no_kill_ending.segments.see_you_in_a_month.responseLabel).toBe("Zpátky ke stolu.");
   });
 
   it("the three Hynek quote segments have audioSrc pointing into public/object_13/story/segments/", () => {
@@ -212,13 +197,14 @@ describe("cinematics config — intro", () => {
   });
 
   it("has the UI title PRACOVNÍ POHOVOR", () => {
-    const scene = getCinematicScene("intro");
-    expect(scene?.title).toBe("PRACOVNÍ POHOVOR");
+    expect(COPY_CS.cinematics.intro.title).toBe("PRACOVNÍ POHOVOR");
   });
 
-  it("has all 10 segments in the exact required order", () => {
+  it("has all 10 segments in the exact required order, translated", () => {
     const scene = getCinematicScene("intro");
-    const texts = scene?.segments.map((segment) => segment.text) ?? [];
+    const ids = scene?.segments.map((segment) => segment.id) ?? [];
+    const segments = COPY_CS.cinematics.intro.segments as Record<string, { text: string }>;
+    const texts = ids.map((id) => segments[id].text);
     expect(texts).toEqual([
       "Dobrý den. Děkujeme, že jste přišel.",
       "Váš profil odpovídá tomu, co hledáme. Posledních dvacet let jste pracoval jako noční hlídač v místní chemičce, než závod uzavřeli.",
@@ -231,11 +217,6 @@ describe("cinematics config — intro", () => {
       "Pokud budete dodržovat pokyny, neměl by nastat žádný problém. Vítejte v Objektu 13.",
       "P.S.: Výplata je standardně každých 30 dní.",
     ]);
-  });
-
-  it("every segment has a responseLabel (all clickable through to completion)", () => {
-    const scene = getCinematicScene("intro");
-    expect(scene?.segments.every((segment) => Boolean(segment.responseLabel))).toBe(true);
   });
 
   it("has no audioSrc on any segment (no audio requested for this cinematic)", () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import { CinematicSceneId } from "@/content/cinematics";
 import { PlayerAchievement } from "@/game/core/playerAchievements";
 import AchievementResultPanel from "@/components/achievements/AchievementResultPanel";
@@ -35,6 +35,7 @@ type Phase = "intro" | "epilogue" | "record";
 // "record" — ztemnělá obrazovka, úmrtní záznam + achievementy + návrat do
 //   menu. Po ní run končí, žádné pokračování na noc 31 (viz app/play/page.tsx).
 export default function Night30EndingScreen({ kind, newlyUnlockedAchievements = [], onGoToMenu }: Night30EndingScreenProps) {
+  const COPY = useCopy();
   const [phase, setPhase] = useState<Phase>("intro");
   const copy = kind === "no_kill" ? COPY.night30Ending.noKill : COPY.night30Ending.warrior;
 

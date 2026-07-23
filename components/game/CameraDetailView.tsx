@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import { CameraDamageState, CameraDefinition, EnemyMoveDecision, EnemyStage } from "@/game/core/types";
 import { resolveCameraAttackVisualPhase } from "@/game/core/cameraDamage";
 import CameraView from "./CameraView";
@@ -41,6 +41,7 @@ export default function CameraDetailView({
   cameraDamage,
   monsterId,
 }: CameraDetailViewProps) {
+  const COPY = useCopy();
   // Vizuální fáze PRO PRÁVĚ TUHLE kameru (viz
   // game/core/cameraDamage.ts#resolveCameraAttackVisualPhase) — čistě
   // odvozená z cameraDamage + elapsedMs, může se týkat víc kamer za noc

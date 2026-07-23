@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import { DeathReason } from "@/game/core/types";
 import { GameMode } from "@/game/core/gameMode";
 import { PlayerAchievement } from "@/game/core/playerAchievements";
@@ -60,6 +60,7 @@ export default function DeathScreen({
   activeMonsterId,
   onRetry,
 }: DeathScreenProps) {
+  const COPY = useCopy();
   // Normal se zbývajícím životem pokračuje stejnou nocí ("POKRAČOVAT"),
   // cokoliv jiné (Normal bez životů, nebo Hardcore — ten vždy, bez ohledu na
   // livesRemaining) run definitivně ukončí ("NOVÁ HRA") — viz

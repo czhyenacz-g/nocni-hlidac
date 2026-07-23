@@ -99,7 +99,7 @@ import { getMiniGameSlotDebugLabel, getRoomAtPoint, getSelectedSlotIds, isMiniGa
 import { evaluateOfficeThreatOnReturn } from "@/game/minigame/officeThreat";
 import { PlayerVisionConfig, getPlayerVisibilityAtPoint } from "@/game/minigame/playerVision";
 import { audioManager } from "@/game/audio/audioManager";
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import { AUDIO_EVENTS } from "@/game/audio/audioEvents";
 import {
   NO_TEXT_SELECT_STYLE,
@@ -436,6 +436,7 @@ const MOVE_KEYS: Record<string, { dx: number; dy: number }> = {
 
 
 export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonsterHit }: EmergencyMiniGameProps) {
+  const COPY = useCopy();
   // Hráčem nastavitelná délka zamčení dveří (viz LeftWallView.tsx posuvník,
   // GameState.officeDoorLockMs) — `input.officeDoorLockMs` chybí jen u
   // starších/debug scénářů (game/minigame/debugScenarios.ts), které ho

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import Footer from "@/components/Footer";
 import SceneBackground from "@/components/SceneBackground";
 import AuthStatus from "@/components/auth/AuthStatus";
@@ -15,6 +15,7 @@ import { audioManager } from "@/game/audio/audioManager";
 import { AUDIO_EVENTS } from "@/game/audio/audioEvents";
 import { getMonsterDefeatReward } from "@/game/core/monsterDefeatReward";
 import { MainMenuBackgroundKind, resolveMainMenuBackground } from "@/game/visuals/mainMenuBackground";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 // Mapování čistého výsledku resolveMainMenuBackground na skutečnou scénu
 // (viz game/visuals/backgroundImages.ts) — samo o sobě žádná rozhodovací
@@ -31,6 +32,7 @@ interface MainMenuScreenProps {
 }
 
 export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
+  const COPY = useCopy();
   const [gameMode, setGameMode] = useState<GameMode>(DEFAULT_GAME_MODE);
   // Zobrazí se jen po kliknutí na HARDCORE bez Discord přihlášení (viz
   // handleSelectHardcore) — dokud hráč nezvolí "Zůstat v Normal" nebo se
@@ -268,6 +270,10 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
             </Link>
 
             <AuthStatus />
+
+            <div className="mt-3 flex justify-center">
+              <LanguageSwitcher />
+            </div>
           </div>
         </div>
       </div>

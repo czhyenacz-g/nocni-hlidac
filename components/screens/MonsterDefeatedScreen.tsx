@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import SceneBackground from "@/components/SceneBackground";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 import { audioManager } from "@/game/audio/audioManager";
@@ -57,6 +57,7 @@ export default function MonsterDefeatedScreen({
   onCinematicComplete,
   newlyUnlockedAchievements = [],
 }: MonsterDefeatedScreenProps) {
+  const COPY = useCopy();
   const [cinematicDone, setCinematicDone] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -132,7 +133,12 @@ export default function MonsterDefeatedScreen({
   }
 
   const activeCaptionIndex = resolveActiveCaptionIndex(MONSTER_DEFEATED_CINEMATIC_CAPTIONS, elapsedMs);
-  const activeCaption = activeCaptionIndex !== null ? MONSTER_DEFEATED_CINEMATIC_CAPTIONS[activeCaptionIndex].text : "";
+  const activeCaption =
+    activeCaptionIndex !== null
+      ? COPY.monsterDefeatedCinematicCaptions[
+          MONSTER_DEFEATED_CINEMATIC_CAPTIONS[activeCaptionIndex].id as keyof typeof COPY.monsterDefeatedCinematicCaptions
+        ]
+      : "";
 
   return (
     <main className="relative min-h-screen flex items-center justify-center p-4">

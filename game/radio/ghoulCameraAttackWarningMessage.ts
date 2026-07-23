@@ -9,9 +9,9 @@ import { AUDIO_EVENTS, AudioEventId } from "../audio/audioEvents";
  * GameState.cameraAttackStartedSeq, gameReducer.ts#attemptGhoulCameraAttack)
  * — tedy ještě PŘED pětisekundovým přechodem a samotným vyřazením obrazu
  * (viz GameState.cameraOfflineSeq, useCameraDisabledRadioMessage.ts), ne po
- * něm.
+ * něm. Zobrazený text žije v content/copy.ts#radio.ghoulCameraAttackWarningText
+ * (viz i18n) — useGhoulCameraAttackWarningMessage.ts si ho dotáhne přes useCopy().
  */
-export const GHOUL_CAMERA_ATTACK_WARNING_TEXT = "To ne! Sonické dělo přilákalo ghoula!";
 
 /**
  * Jak dlouho (ms) zůstane varování vidět — stejný řád velikosti jako

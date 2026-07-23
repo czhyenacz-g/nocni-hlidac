@@ -1,4 +1,4 @@
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import { DatabasePlayerPreview, DatabaseViewer } from "@/lib/database/databaseTypes";
 import { formatDatabasePlaceholderValue } from "@/lib/database/databaseViewer";
 import DatabaseTodoBlock from "./DatabaseTodoBlock";
@@ -17,6 +17,7 @@ interface DatabaseViewerStatusProps {
  * Nikdy nevytváří vymyšlená čísla jen proto, aby panel vypadal hotový.
  */
 export default function DatabaseViewerStatus({ viewer, playerPreview }: DatabaseViewerStatusProps) {
+  const COPY = useCopy();
   if (!viewer.isAuthenticated) {
     return (
       <div className="pixel-panel p-5 sm:p-6">
@@ -47,15 +48,15 @@ export default function DatabaseViewerStatus({ viewer, playerPreview }: Database
       <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-[11px]">
         <div className="flex justify-between sm:block">
           <dt className="text-gray-500">{COPY.database.highestNightLabel}</dt>
-          <dd className="sm:block font-bold text-gray-200">{formatDatabasePlaceholderValue(playerPreview.highestNightReached)}</dd>
+          <dd className="sm:block font-bold text-gray-200">{formatDatabasePlaceholderValue(playerPreview.highestNightReached, COPY.database.notConnectedValue)}</dd>
         </div>
         <div className="flex justify-between sm:block">
           <dt className="text-gray-500">{COPY.database.discoveredSubjectsLabel}</dt>
-          <dd className="sm:block font-bold text-gray-200">{formatDatabasePlaceholderValue(playerPreview.discoveredSubjectCount)}</dd>
+          <dd className="sm:block font-bold text-gray-200">{formatDatabasePlaceholderValue(playerPreview.discoveredSubjectCount, COPY.database.notConnectedValue)}</dd>
         </div>
         <div className="flex justify-between sm:block">
           <dt className="text-gray-500">{COPY.database.completedReportsLabel}</dt>
-          <dd className="sm:block font-bold text-gray-200">{formatDatabasePlaceholderValue(playerPreview.completedReportCount)}</dd>
+          <dd className="sm:block font-bold text-gray-200">{formatDatabasePlaceholderValue(playerPreview.completedReportCount, COPY.database.notConnectedValue)}</dd>
         </div>
         <div className="flex justify-between sm:block">
           <dt className="text-gray-500">{COPY.database.confirmedKillsLabel}</dt>

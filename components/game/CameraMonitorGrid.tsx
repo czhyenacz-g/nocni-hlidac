@@ -1,4 +1,4 @@
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import { CameraDefinition, CameraId, EnemyStage } from "@/game/core/types";
 import { isCameraDoorAlertActive } from "@/game/cameras/cameraDoorAlert";
 import CameraMonitorTile from "./CameraMonitorTile";
@@ -36,6 +36,7 @@ export default function CameraMonitorGrid({
   onSelectCamera,
   disabledCameraIds,
 }: CameraMonitorGridProps) {
+  const COPY = useCopy();
   // Pořadí podle order (kamery bez order jdou na konec) — stejné řazení jako
   // dřív u tlačítek, teď jen bez levo/pravo zarovnání podle position (mřížka
   // monitorů je jednotná 2×2, ne diagram fyzického rozložení chodeb).

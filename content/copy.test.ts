@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { COPY } from "./copy";
+import { COPY_CS as COPY } from "./copy";
 
 // Přesný text hlášky po návratu z minihry s aktivní officeThreatOnReturn
 // (viz zadání, app/play/page.tsx#handleEmergencyMiniGameComplete) — dvouřádkový

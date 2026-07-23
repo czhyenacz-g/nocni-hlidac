@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import { DatabaseTabId } from "@/lib/database/databaseTypes";
 
 interface DatabaseTabsProps {
@@ -10,13 +10,6 @@ interface DatabaseTabsProps {
 }
 
 const TAB_ORDER: DatabaseTabId[] = ["subjects", "equipment", "reports", "manuals"];
-
-const TAB_LABELS: Record<DatabaseTabId, string> = {
-  subjects: COPY.database.tabSubjectsLabel,
-  equipment: COPY.database.tabEquipmentLabel,
-  reports: COPY.database.tabReportsLabel,
-  manuals: COPY.database.tabManualsLabel,
-};
 
 /**
  * Čtyři přepínatelné záložky databáze (viz zadání "3. ČTYŘI ZÁLOŽKY") —
@@ -27,7 +20,15 @@ const TAB_LABELS: Record<DatabaseTabId, string> = {
  * `useState` v rodiči (DatabaseScreen.tsx), tahle komponenta je jen ovládání.
  */
 export default function DatabaseTabs({ activeTab, onChange }: DatabaseTabsProps) {
+  const COPY = useCopy();
   const tabRefs = useRef<Partial<Record<DatabaseTabId, HTMLButtonElement | null>>>({});
+
+  const TAB_LABELS: Record<DatabaseTabId, string> = {
+    subjects: COPY.database.tabSubjectsLabel,
+    equipment: COPY.database.tabEquipmentLabel,
+    reports: COPY.database.tabReportsLabel,
+    manuals: COPY.database.tabManualsLabel,
+  };
 
   function focusAndSelect(tab: DatabaseTabId) {
     onChange(tab);

@@ -7,15 +7,14 @@ export type AchievementId = "meet_hynek";
 
 export interface Achievement {
   id: AchievementId;
-  title: string;
-  description: string;
 }
 
+// title/description žijí v content/copy.ts#achievementDefinitions (klíč =
+// AchievementId, viz i18n) — tenhle soubor nese jen jazykově nezávislou
+// identitu achievementu.
 export const ACHIEVEMENTS: Record<AchievementId, Achievement> = {
   meet_hynek: {
     id: "meet_hynek",
-    title: "Setkání s Hynkem",
-    description: "Úmrtí hned první den.",
   },
 };
 

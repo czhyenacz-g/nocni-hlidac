@@ -16,7 +16,6 @@ export type LoadingHintCategory =
 export interface LoadingHint {
   id: string;
   category: LoadingHintCategory;
-  text: string;
   /** Hint se nabízí jen od téhle směny dál (číslováno od 1) — zatím nevyužito, jen připraveno. */
   minNight?: number;
   /** Hint se nabízí jen do téhle směny — zatím nevyužito, jen připraveno. */
@@ -32,43 +31,35 @@ export const LOADING_HINTS: LoadingHint[] = [
   {
     id: "energy_generator_battery",
     category: "energy",
-    text: "Starý generátor sotva drží objekt při životě — v noci jedeš z rezervy baterie.",
     weight: 2,
   },
   {
     id: "doors_magnetic_lock",
     category: "doors",
-    text: "Magnetický zámek drží dveře zavřené jen pod proudem. Nenechávej je zavřené zbytečně dlouho.",
   },
   {
     id: "cameras_power_drain",
     category: "cameras",
-    text: "Kamery spotřebovávají energii. Když je vypneš, baterie se pomalu dobíjí.",
   },
   {
     id: "generator_normal_beep",
     category: "generator",
-    text: "Generátor pípá každých pět sekund. Když ztichne, něco je špatně.",
   },
   {
     id: "blackout_lock_release",
     category: "blackout",
-    text: "Při blackoutu zámek povolí. Dveře už nejsou tvoje jistota.",
   },
   {
     id: "controls_look_at_door",
     category: "controls",
-    text: "Na dveře se musíš nejdřív otočit. Teprve potom je můžeš zavřít.",
   },
   {
     id: "enemy_route_variance",
     category: "enemy",
-    text: "To, co je na kameře, nemusí jít pořád stejnou cestou.",
   },
   {
     id: "lore_day_only_design",
     category: "lore",
-    text: "Objekt 13 byl navržen pro denní provoz. Noční režim nikdo nikdy pořádně netestoval.",
   },
 ];
 

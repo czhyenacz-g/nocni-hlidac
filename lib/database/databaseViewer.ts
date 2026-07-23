@@ -6,7 +6,6 @@
 // app/api/auth/me/route.ts) a dál posílá jen výsledek, nikdy původní objekt.
 
 import { AuthenticatedPlayer, DiscordPlayer } from "../auth/types";
-import { COPY } from "../../content/copy";
 import { DatabasePlayerPreview, DatabaseViewer } from "./databaseTypes";
 
 /**
@@ -48,8 +47,10 @@ export function buildDatabasePlayerPreview(run: Pick<AuthenticatedPlayer, "curre
  * DatabaseSubjectsTab.tsx, ať se placeholder text nikdy nerozejde. `0` je
  * platná skutečná hodnota (viz buildDatabasePlayerPreview výše), takže se
  * propíše jako "0", ne jako placeholder — jen `undefined` znamená
- * "nenapojeno".
+ * "nenapojeno". `placeholderText` dodává volající klientská komponenta
+ * (přes useCopy().database.notConnectedValue, viz i18n) — tahle čistá
+ * funkce sama žádný jazyk nezná.
  */
-export function formatDatabasePlaceholderValue(value: number | undefined): string {
-  return value === undefined ? COPY.database.notConnectedValue : String(value);
+export function formatDatabasePlaceholderValue(value: number | undefined, placeholderText: string): string {
+  return value === undefined ? placeholderText : String(value);
 }

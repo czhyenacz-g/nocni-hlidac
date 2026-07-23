@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { COPY } from "@/content/copy";
+import { COPY_CS as COPY } from "@/content/copy";
 import ProfileScreen from "@/components/screens/ProfileScreen";
 
 export const metadata: Metadata = {

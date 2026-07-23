@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import {
   BACKGROUND_SCENES,
   doorClosedFrameOffsetForStep,
@@ -116,6 +116,7 @@ export default function DoorView({
   onStartBulbReplacement,
   onCancelBulbReplacement,
 }: DoorViewProps) {
+  const COPY = useCopy();
   const doorScene = BACKGROUND_SCENES.door;
   // Pořadí snímků (viz BACKGROUND_SCENES.door): 0 = otevřené, 1-4 = zavřené
   // (idle animace, viz closedFrameOffset níže), poslední = monstrum ve

@@ -1,5 +1,5 @@
 import { useEffect, useState, type ChangeEvent, type CSSProperties, type PointerEvent } from "react";
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import {
   EMERGENCY_RUN_WINDUP_DURATION_MS,
   REQUEST_AMMO_NO_WEAPON_MESSAGE_MS,
@@ -143,6 +143,7 @@ export default function LeftWallView({
   onChangeOfficeDoorLockMs,
   onRequestAmmo,
 }: LeftWallViewProps) {
+  const COPY = useCopy();
   const [imageFailed, setImageFailed] = useState(false);
   // Klik na dávkovač BEZ brokovnice nikdy nic nedispatchuje (viz
   // app/play/page.tsx#handleRequestAmmo, canRequestAmmo) — tahle hláška je

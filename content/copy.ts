@@ -1,5 +1,22 @@
-// Texty hry oddělené od komponent, ať je lze snadno upravovat / později lokalizovat.
-export const COPY = {
+// Texty hry oddělené od komponent, ať je lze snadno upravovat / lokalizovat
+// (viz game/i18n/ — tenhle soubor je teď český překlad, anglický
+// ekvivalent stejného tvaru je content/copy.en.ts, oba svázané
+// game/i18n/translations.ts).
+export const COPY_CS = {
+  // Název celé hry/franšízy odděleně od "Objekt 13" (první kampaň, viz
+  // campaign.object13 níže) — do budoucna mohou přibýt další kampaně
+  // (Objekt 7, Severní stanice, Podzemní laboratoř…), aniž by se tenhle
+  // název měnil. Nikdy nepoužívat anglické pořadí "Object 13: Night
+  // Watchman" — správné pořadí je vždy "Night Watchman: Object 13".
+  franchise: {
+    title: "Noční hlídač",
+    fullTitleObject13: "Noční hlídač: Objekt 13",
+  },
+  campaign: {
+    object13: {
+      title: "Objekt 13",
+    },
+  },
   menu: {
     title: "Noční hlídač",
     subtitle: "Objekt 13: První směna",
@@ -694,4 +711,260 @@ export const COPY = {
 
     backToGameLabel: "← Zpět do hry",
   },
+  // Texty klikacích cinematic scén (viz content/cinematics.ts,
+  // components/screens/CinematicScreen.tsx) — timing/audio/struktura
+  // segmentů (a `id` každého segmentu) zůstává sdílená a jazykově nezávislá
+  // v cinematics.ts, tady žije jen samotný text (title/segment text/response
+  // label), adresovaný přes `sceneId`/`segment.id` (viz
+  // CinematicSegment.id a components/screens/CinematicScreen.tsx). Klíče
+  // (scéna/segment id) musí přesně odpovídat CINEMATIC_SCENES v cinematics.ts.
+  cinematics: {
+    intro: {
+      title: "PRACOVNÍ POHOVOR",
+      segments: {
+        greeting: { text: "Dobrý den. Děkujeme, že jste přišel.", responseLabel: "Pokračovat." },
+        profile_match: {
+          text: "Váš profil odpovídá tomu, co hledáme. Posledních dvacet let jste pracoval jako noční hlídač v místní chemičce, než závod uzavřeli.",
+          responseLabel: "Pokračovat.",
+        },
+        no_complaints: {
+          text: "Za celou dobu na vás nebyla jediná vážná stížnost. Jste spolehlivý, dochvilný a zvyklý pracovat v noci.",
+          responseLabel: "Pokračovat.",
+        },
+        no_dependents: {
+          text: "Také vidím, že nemáte děti ani blízké příbuzné, kteří by na vás byli závislí. Pro tuto pozici je to výhoda.",
+          responseLabel: "Pokračovat.",
+        },
+        hired: { text: "Ráda vám oznamuji, že jste přijat.", responseLabel: "Pokračovat." },
+        special_place: {
+          text: "Půjde o hlídání na velmi speciálním místě. A speciální místo samozřejmě znamená i speciální odměny.",
+          responseLabel: "Pokračovat.",
+        },
+        risk_and_pay: {
+          text: "Práce je nadstandardně placená a při dobrých výsledcích můžete získat mimořádné bonusy. Současně vás ale musím upozornit, že pozice je spojena s určitým rizikem.",
+          responseLabel: "Pokračovat.",
+        },
+        duties: {
+          text: "Vaším úkolem bude sledovat kamery, kontrolovat vybavení a řídit se služebními postupy.",
+          responseLabel: "Pokračovat.",
+        },
+        welcome: {
+          text: "Pokud budete dodržovat pokyny, neměl by nastat žádný problém. Vítejte v Objektu 13.",
+          responseLabel: "Rozumím.",
+        },
+        payday_note: { text: "P.S.: Výplata je standardně každých 30 dní.", responseLabel: "Rozumím." },
+      },
+    },
+    old_guard_first_death_warning: {
+      title: null as string | null,
+      segments: {
+        baf: { text: "Baf.", responseLabel: "..." },
+        another_one: { text: "No výborně. Další, co čumí do monitorů a nehlídá si záda.", responseLabel: "Polknu." },
+        im_the_tech: { text: "Jsem místní technik. Máš kliku, že jsem to já.", responseLabel: "Mlčím." },
+        last_day: { text: "Dneska jsem tu naposledy. Stěhuju se z města.", responseLabel: "Poslouchám." },
+        advice_intro: { text: "Tak ti na rozloučenou dám pár rad, nový ucho.", responseLabel: "..." },
+        creatures: { text: "Po okolí se tu potulujou divný potvory. Hodně divný.", responseLabel: "Polknu." },
+        cameras: { text: "Ty kamery tam máš k čemu, blbečku?", responseLabel: "Mlčím." },
+        door_power: { text: "Ty dveře jsou pod proudem. Proud žere energii. To snad chápeš.", responseLabel: "Chápu." },
+        dont_panic_close: {
+          text: "Nevidíš na kamerách nebezpečí? Tak nezavírej dveře jak vystrašenej králík.",
+          responseLabel: "Dochází mi to.",
+        },
+        watch_hallway: { text: "Vidíš něco v chodbě? Sleduj, kam to jde.", responseLabel: "Dobře." },
+        close_the_door: { text: "Je to u dveří? Tak je zavři. To by pochopilo i malý dítě.", responseLabel: "Rozumím." },
+        light_tip: {
+          text: "A občas ti pomůže rozsvítit za dveřmi. Děti se taky bojí tmy... hahaha.",
+          responseLabel: "Polknu.",
+        },
+        farewell: { text: "Tak přeju pěknou noc.", responseLabel: "Zpátky ke stolu." },
+      },
+    },
+    think_it_over_warning: {
+      title: null as string | null,
+      segments: {
+        dont: { text: "Nedělej to!", responseLabel: "..." },
+        not_a_coward: { text: "Myslel jsem, že nejsi slaboch, co se tak snadno vzdá.", responseLabel: "Nejsem." },
+        find_warrior: { text: "Najdi v sobě válečníka.", responseLabel: "Zkusím." },
+        not_invincible: { text: "Monstrum není nezranitelné — jen je tvrdší, než vypadá.", responseLabel: "Poslouchám." },
+        heals: { text: "Ale pamatuj: s ránem se znovu zahojí.", responseLabel: "Chápu." },
+        one_night: { text: "Jestli ho chceš položit, musíš to dokázat během jediné noci.", responseLabel: "Dobře." },
+        one_two_hits: { text: "Jedna rána ji jen rozzuří, dvě ji možná rozhodí…", responseLabel: "A dál?" },
+        ten_hits: {
+          text: "…ale DESETKRÁT se postavit strachu a znovu zmáčknout spoušť? To už může být dost na to, aby padla i tahle bestie.",
+          responseLabel: "Zpátky ke stolu a vrhnout se do boje.",
+        },
+      },
+    },
+    valhala_ending: {
+      title: "VALHALA",
+      segments: {
+        silence: { text: "Ticho.", responseLabel: "..." },
+        wood_creaked: { text: "Pak dřevo zavrzalo pod tvýma rukama. Seděl jsi u dlouhého stolu.", responseLabel: "Rozhlížím se." },
+        hynek_raises_mug: { text: "Naproti tobě Hynek zvedl půllitr.", responseLabel: "..." },
+        close_call: { text: "„Byl jsi blízko.“", responseLabel: "Mlčím." },
+        smiled: { text: "Chvíli se usmál.", responseLabel: "..." },
+        thirty_or_valhalla: {
+          text: "„Nakonec jsem měl pravdu. Buď se potkáme třicátou noc… nebo ve Valhale.“",
+          responseLabel: "Poslouchám.",
+        },
+        pushed_beer: { text: "Přisunul ti pivo.", responseLabel: "..." },
+        not_bad_guard: { text: "„A víš co? Na hlídače sis nevedl špatně.“", responseLabel: "Napiju se." },
+      },
+    },
+    warrior_ending: {
+      title: "POSLEDNÍ SMĚNA",
+      segments: {
+        thirtieth_day: { text: "Třicátý den.", responseLabel: "..." },
+        hynek_smiling: {
+          text: "Hynek stál uprostřed místnosti a usmíval se víc než obvykle.",
+          responseLabel: "Sleduju ho.",
+        },
+        not_just_good_watch: { text: "„Tak jo. Tohle už nebyla jen dobrá hlídka.“", responseLabel: "..." },
+        nodded: { text: "Podíval se na tebe a přikývl.", responseLabel: "..." },
+        you_became_warrior: { text: "„Stal se z tebe válečník.“", responseLabel: "Mlčím." },
+        men_in_suits: {
+          text: "Za jeho zády se ozýval kov, kroky a tlumené hlasy mužů v ochranných oblecích.",
+          responseLabel: "Poslouchám.",
+        },
+        thank_you_bait: {
+          text: "„A hlavně — děkuju ti. Pomohl jsi mi otestovat vábničku na monstra.“",
+          responseLabel: "Cože?",
+        },
+        points_at_generator: { text: "Ukázal ke generátoru.", responseLabel: "..." },
+        your_generator: { text: "„Jo. Přesně tuhle. Tvůj generátor.“", responseLabel: "..." },
+        let_it_sink_in: { text: "Chvíli tě nechal pochopit, co právě řekl.", responseLabel: "..." },
+        not_out_of_town: { text: "„Popravdě… nebyl jsem mimo město.“", responseLabel: "..." },
+        you_bought_time: { text: "„Ty jsi mi jen dal čas. Čas dokončit přípravy.“", responseLabel: "Chápu." },
+        lights_on: { text: "Za Hynkem se rozsvítily kontrolky.", responseLabel: "..." },
+        maximum_fireworks: {
+          text: "„Za chvíli to zapneme na maximum. A připravíme opravdu velký ohňostroj.“",
+          responseLabel: "...",
+        },
+        opened_briefcase: { text: "Podal ti otevřený kufřík s penězi.", responseLabel: "..." },
+        your_pay_plus_bonus: { text: "„Tohle je tvoje výplata. A něco navíc za mlčenlivost.“", responseLabel: "Beru." },
+        grew_serious: { text: "Pak zvážněl.", responseLabel: "..." },
+        thousand_monsters: {
+          text: "„Musíme pryč. Až to spustíme, přiláká to možná tisíc monster.“",
+          responseLabel: "Utíkám.",
+        },
+        step_to_door: { text: "Udělá krok ke dveřím.", responseLabel: "..." },
+        project_ends: { text: "„Celý projekt tímhle končí. Ty jsi svoji práci odvedl.“", responseLabel: "..." },
+        turned_back: { text: "Ještě se otočil.", responseLabel: "..." },
+        good_luck_warrior: {
+          text: "„Přeju ti všechno nejlepší v nové práci. A díky, válečníku.“",
+          responseLabel: "Sbohem.",
+        },
+      },
+    },
+    no_kill_ending: {
+      title: "PRVNÍ VÝPLATA",
+      segments: {
+        thirtieth_day: { text: "Třicátý den.", responseLabel: "..." },
+        hynek_before_dawn: { text: "Hynek se objevil ve dveřích dřív, než stačil vyjít úsvit.", responseLabel: "..." },
+        looked_you_over: { text: "Chvíli si tě jen prohlížel.", responseLabel: "Čekám." },
+        thirty_nights: {
+          text: "„Třicet nocí. Bez útěku. Bez hrdinství. Bez zbytečných otázek.“",
+          responseLabel: "...",
+        },
+        handed_envelope: { text: "Podal ti obálku.", responseLabel: "..." },
+        good_guard: { text: "„Byl jsi dobrý hlídač.“", responseLabel: "Díky." },
+        waited_for_truth: {
+          text: "Čekal jsi vysvětlení. Čekal jsi pravdu. Čekal jsi, že po třiceti nocích něco skončí.",
+          responseLabel: "...",
+        },
+        lit_cigarette: { text: "Hynek si jen zapálil cigaretu.", responseLabel: "..." },
+        see_you_in_a_month: { text: "„Tak se uvidíme zase za měsíc.“", responseLabel: "Zpátky ke stolu." },
+      },
+    },
+  },
+  // title/description jednotlivých achievementů (viz content/achievements.ts,
+  // klíč = AchievementId) — odděleno od "chrome" textů v COPY.achievements výše.
+  achievementDefinitions: {
+    meet_hynek: {
+      title: "Setkání s Hynkem",
+      description: "Úmrtí hned první den.",
+    },
+  },
+  // title/description profilového checklistu achievementů (viz
+  // game/core/playerAchievements.ts, klíč = PlayerAchievementId) —
+  // nezaměňovat s achievementDefinitions výše (jiný, nezávislý systém).
+  playerAchievements: {
+    first_shift: { title: "První směna", description: "Nastoupil jsi na první noční službu." },
+    first_death: { title: "První konec služby", description: "Objekt 13 ti ukázal, že tohle nebude obyčejná práce." },
+    hynek_encounter: { title: "Setkání s Hynkem", description: "Zemřel jsi hned první noc." },
+    first_expedition: { title: "Ven z kanceláře", description: "Poprvé jsi opustil bezpečí kanceláře." },
+    first_bulb_replaced: { title: "Náhradní žárovka", description: "Poprvé jsi vyměnil prasklou žárovku." },
+    first_generator_restart: { title: "Nahodit a modlit se", description: "Poprvé jsi restartoval generátor." },
+    first_monster_hit: { title: "První krev", description: "Poprvé jsi potvrdil zásah bestie." },
+    not_a_rookie_anymore: { title: "Už nejsi ucho", description: "Porazil jsi bestii poprvé." },
+    golden_guard: { title: "Hlídač s dvouhlavňovkou", description: "Odemkl jsi dvouhlavňovou brokovnici." },
+    hardcore_night_5: { title: "Tvrdá služba", description: "Dostal ses v Hardcore režimu alespoň k 5. noci." },
+    hardcore_night_10: { title: "Začni si zvykat", description: "Dostal ses v Hardcore režimu alespoň k 10. noci." },
+    hardcore_night_20: { title: "Běžná rutina", description: "Dostal ses v Hardcore režimu alespoň k 20. noci." },
+    hardcore_night_30: { title: "Tvoje první výplata", description: "Dostal ses v Hardcore režimu alespoň k 30. noci." },
+    monster_slayer: { title: "Lovec bestií", description: "Zabil jsi bestii podruhé." },
+  },
+  // Titulky pro monsterDefeated timed-caption cinematic (viz
+  // content/monsterDefeatedCinematic.ts, klíč = TimedCaption.id) — timing
+  // (atMs) zůstává sdílený/jazykově nezávislý v monsterDefeatedCinematic.ts.
+  monsterDefeatedCinematicCaptions: {
+    congrats_not_a_rookie: "Blahopřeji a uznávám, že už nejsi ucho!",
+    warrior_spirit: "Máš v sobě ducha bojovníka.",
+    not_first_not_last: "Věř mi ale, že ta bestie nebyla první, ani poslední.",
+    more_will_come: "Přijdou další.",
+    reward_for_you: "Za odměnu pro tebe něco mám.",
+    left_on_office_wall: "Dal jsem ti to na stěnu v kanceláři.",
+    want_to_know_truth: "Chceš vědět, o čem to reálně je?",
+    meet_on_day_30: "Potkáme se až nastane 30. den...",
+    or_in_valhalla: "...nebo ve Valhale.",
+  },
+  // Rádiové hlášky (viz game/radio/) — audio/timing/výběr varianty zůstává
+  // sdílené a jazykově nezávislé v game/radio/*.ts, tady jen zobrazený text.
+  // Klíče cameraDisabledMessages/titanEscapeMessages jsou přesné hodnoty
+  // AudioEventId (viz game/audio/audioEvents.ts), ne camelCase název konstanty.
+  radio: {
+    interceptedTransmissionLabel: "ZACHYCENÝ PŘENOS",
+    transmissionStatusLabel: "Přenos probíhá…",
+    ghoulCameraAttackWarningText: "To ne! Sonické dělo přilákalo ghoula!",
+    cameraDisabledMessages: {
+      radio_camera_destroyed_0: "No, tak do rána jsme po tmě.",
+      radio_camera_destroyed_1: "Kamera zničena!",
+      radio_camera_destroyed_2: "Zbývá už jenom mikrofon.",
+    },
+    titanEscapeMessages: {
+      titan_escape_01: "Sakra, Titan utekl! Dveře ani světla ho nezastaví. Vymyslete něco silnějšího!",
+      titan_escape_02: "Titan je venku! Běžná obrana nefunguje. Použijte všechno, co máte!",
+      titan_escape_03: "Nezastřelíte ho ani neudržíte za dveřmi. Něco vymyslete, rychle!",
+      titan_escape_04: "Titan míří k vám! Zbraně jsou k ničemu. Potřebujete větší sílu!",
+      titan_escape_05: "Bože… Titan unikl. Použijte něco, co dokáže vyřadit celý systém!",
+    },
+  },
+  // Drobné samostatné UI texty bez vlastní domovské sekce (viz
+  // components/game/MobileLandscapeHint.tsx, components/game/AdminBadge.tsx).
+  ui: {
+    mobileLandscapeHint: "Pro lepší hraní otoč telefon na šířku.",
+    adminBadgeLabel: "Jsi ADMIN!",
+  },
+  // Servisní hlášky LoadingScreen (viz content/loadingHints.ts, klíč = LoadingHint.id).
+  loadingHints: {
+    energy_generator_battery: "Starý generátor sotva drží objekt při životě — v noci jedeš z rezervy baterie.",
+    doors_magnetic_lock: "Magnetický zámek drží dveře zavřené jen pod proudem. Nenechávej je zavřené zbytečně dlouho.",
+    cameras_power_drain: "Kamery spotřebovávají energii. Když je vypneš, baterie se pomalu dobíjí.",
+    generator_normal_beep: "Generátor pípá každých pět sekund. Když ztichne, něco je špatně.",
+    blackout_lock_release: "Při blackoutu zámek povolí. Dveře už nejsou tvoje jistota.",
+    controls_look_at_door: "Na dveře se musíš nejdřív otočit. Teprve potom je můžeš zavřít.",
+    enemy_route_variance: "To, co je na kameře, nemusí jít pořád stejnou cestou.",
+    lore_day_only_design: "Objekt 13 byl navržen pro denní provoz. Noční režim nikdo nikdy pořádně netestoval.",
+  },
 } as const;
+
+/** Rekurzivně "rozšíří" literálové typy `COPY_CS` (kvůli `as const`) na `string`/`readonly T[]`, ať `content/copy.en.ts` může nést jiné řetězcové hodnoty se stejným tvarem — jediné místo, které tenhle typ počítá. */
+type Widen<T> = T extends string
+  ? string
+  : T extends readonly (infer U)[]
+    ? readonly Widen<U>[]
+    : T extends object
+      ? { [K in keyof T]: Widen<T[K]> }
+      : T;
+
+export type CopyShape = Widen<typeof COPY_CS>;

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { COPY } from "@/content/copy";
+import { COPY_CS as COPY } from "@/content/copy";
 import { getSession } from "@/lib/auth/session";
 import { ensureHubPlayer } from "@/lib/leaderboard/ensureHubPlayer";
 import { buildDatabasePlayerPreview, buildDatabaseViewer } from "@/lib/database/databaseViewer";

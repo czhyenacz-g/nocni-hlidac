@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import SceneBackground from "@/components/SceneBackground";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 import CinematicScreen from "@/components/screens/CinematicScreen";
@@ -15,6 +15,7 @@ import CinematicScreen from "@/components/screens/CinematicScreen";
 // beze změny route (`/terms` zůstává), žádný nový run ani zásah do herního
 // profilu.
 export default function TermsScreen() {
+  const COPY = useCopy();
   const [introActive, setIntroActive] = useState(false);
 
   if (introActive) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import { PlayerAchievement } from "@/game/core/playerAchievements";
 import { audioManager } from "@/game/audio/audioManager";
 import { AUDIO_EVENTS } from "@/game/audio/audioEvents";
@@ -18,6 +18,7 @@ export type AchievementResultPanelProps = {
 // Žádný vlastní timer — na rozdíl od AchievementToast.tsx tahle sekce
 // nemizí sama, zůstává, dokud hráč neodejde z výsledkové obrazovky.
 export default function AchievementResultPanel({ achievements }: AchievementResultPanelProps) {
+  const COPY = useCopy();
   // Zvuk hraje NEJVÝŠ jednou za mount, bez ohledu na to, kolik achievementů
   // se zobrazí najednou (viz zadání "nepřehrávej zvuk jednou za každý
   // achievement") — ref místo effect-dependency na `achievements.length`,

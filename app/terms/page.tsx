@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { COPY } from "@/content/copy";
+import { COPY_CS as COPY } from "@/content/copy";
 import TermsScreen from "@/components/screens/TermsScreen";
 
 export const metadata: Metadata = {

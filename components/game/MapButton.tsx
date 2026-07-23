@@ -1,4 +1,4 @@
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import ConsoleIcon from "./ConsoleIcon";
 
 interface MapButtonProps {
@@ -10,6 +10,7 @@ interface MapButtonProps {
 // (.console-icon-block), nahradilo dřívější velké ViewSwitchArrow tlačítko
 // "Podívat se na mapu" na DeskView.tsx. Handler (onLookAtMap) beze změny.
 export default function MapButton({ onClick }: MapButtonProps) {
+  const COPY = useCopy();
   return (
     <button
       className="pixel-button console-button console-icon-block tap-target"

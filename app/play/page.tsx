@@ -98,7 +98,7 @@ import {
 import { applyShotgunEmergencyReturn, canRequestAmmo, getRechargedShotgunAmmo } from "@/game/core/shotgunEquipment";
 import EmergencyMiniGame from "@/components/minigame/EmergencyMiniGame";
 import { EmergencyMiniGameInput, EmergencyMiniGameResult } from "@/game/minigame/types";
-import { COPY } from "@/content/copy";
+import { useTranslation } from "@/game/i18n/useTranslation";
 import type { AuthenticatedPlayer } from "@/lib/auth/types";
 import { isAdminUsername } from "@/lib/auth/adminUsers";
 import type { GuardRunState } from "@/lib/leaderboard/types";
@@ -134,6 +134,7 @@ export default function PlayPage() {
 }
 
 function PlayPageContent() {
+  const { copy: COPY, language } = useTranslation();
   const object13Profile = useObject13PlayerProfile();
 
   // Noc/reducer/nearestCamera musí být PŘED useReducer níže (potřebuje
@@ -494,6 +495,7 @@ function PlayPageContent() {
       nextStats,
       nextReward,
       alreadyShownAchievementIds: getShownResultAchievementIds(),
+      language,
     });
     achievementBaselineRef.current = { stats: nextStats, reward: nextReward };
     if (newlyUnlocked.length > 0) {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import ViewSwitchArrow from "./ViewSwitchArrow";
 
 interface ObjectMapViewProps {
@@ -15,6 +15,7 @@ const MAP_IMAGE_SRC = "/object_13/views/mapa.webp";
 // místo toho zobrazuje hotový obrázek mapy; datový model zůstává v projektu
 // pro budoucí gameplay (pozice hráče/monstra), jen se tady nevykresluje.
 export default function ObjectMapView({ onLookAtDesk }: ObjectMapViewProps) {
+  const COPY = useCopy();
   const [imageFailed, setImageFailed] = useState(false);
   // Lightbox: klik na náhled mapu zvětší přes celou obrazovku (zpět na klik
   // na zvětšený obrázek/pozadí/Escape) — čistě vizuální UI stav téhle

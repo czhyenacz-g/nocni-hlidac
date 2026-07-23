@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { CinematicSceneId, getCinematicScene } from "@/content/cinematics";
 import { audioManager } from "@/game/audio/audioManager";
+import { useCopy } from "@/game/i18n/useTranslation";
 
 interface CinematicScreenProps {
   sceneId: CinematicSceneId;
@@ -17,9 +18,15 @@ interface CinematicScreenProps {
 // filter na předkovi dělá z něj containing block pro `position: fixed`
 // potomky, takže by se fixed prvek nepřichytil k viewportu.
 export default function CinematicScreen({ sceneId, onComplete }: CinematicScreenProps) {
+  const COPY = useCopy();
   const scene = getCinematicScene(sceneId);
+  const sceneText = COPY.cinematics[sceneId] as {
+    title: string | null;
+    segments: Record<string, { text: string; responseLabel: string }>;
+  };
   const [segmentIndex, setSegmentIndex] = useState(0);
   const segment = scene?.segments[segmentIndex] ?? null;
+  const segmentText = segment ? sceneText.segments[segment.id] : null;
 
   // Bezpečný fallback — neexistující/prázdná scéna nesmí zaseknout hru,
   // rovnou pokračuj dál (viz app/play/page.tsx, DeathScreen flow).
@@ -56,7 +63,7 @@ export default function CinematicScreen({ sceneId, onComplete }: CinematicScreen
     };
   }, [segment?.audioSrc]);
 
-  if (!scene || !segment) return null;
+  if (!scene || !segment || !segmentText) return null;
 
   function handleResponseClick() {
     if (!scene) return;
@@ -74,13 +81,11 @@ export default function CinematicScreen({ sceneId, onComplete }: CinematicScreen
       </div>
 
       <div className="w-full max-w-2xl pixel-panel p-4">
-        {scene.title && <div className="text-sm font-bold mb-2 text-red-500">{scene.title}</div>}
-        <p className="text-sm text-gray-200 mb-4 min-h-[1.5rem]">{segment.text}</p>
-        {segment.responseLabel && (
-          <button className="pixel-button tap-target px-4 py-2 text-xs w-full" onClick={handleResponseClick}>
-            {segment.responseLabel}
-          </button>
-        )}
+        {sceneText.title && <div className="text-sm font-bold mb-2 text-red-500">{sceneText.title}</div>}
+        <p className="text-sm text-gray-200 mb-4 min-h-[1.5rem]">{segmentText.text}</p>
+        <button className="pixel-button tap-target px-4 py-2 text-xs w-full" onClick={handleResponseClick}>
+          {segmentText.responseLabel}
+        </button>
       </div>
     </main>
   );

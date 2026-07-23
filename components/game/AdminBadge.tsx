@@ -8,11 +8,14 @@
 // ke skutečnému rohu viewportu" důvod jako AchievementToast.tsx — vlastní
 // samostatný soubor (ne vnořené do žádné konkrétní screen komponenty), ať
 // zůstane nezávislý na tom, která obrazovka se zrovna renderuje.
+import { useCopy } from "@/game/i18n/useTranslation";
+
 export default function AdminBadge() {
+  const COPY = useCopy();
   return (
     <div className="fixed top-0 inset-x-0 z-[200] flex justify-center pointer-events-none">
       <div className="pixel-panel px-2 py-0.5 text-[9px] font-normal uppercase tracking-wider text-gray-500 opacity-80">
-        Jsi ADMIN!
+        {COPY.ui.adminBadgeLabel}
       </div>
     </div>
   );

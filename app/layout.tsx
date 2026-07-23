@@ -5,6 +5,8 @@ import "@/styles/atmosphere.css";
 import { Analytics } from "@vercel/analytics/next";
 import Script from "next/script";
 import { GOATCOUNTER_CODE } from "./config/analytics";
+import { LanguageProvider } from "@/game/i18n/LanguageProvider";
+import DocumentTitleSync from "@/components/DocumentTitleSync";
 
 export const metadata: Metadata = {
   title: "Noční hlídač — Objekt 13: První směna",
@@ -38,7 +40,10 @@ export default function RootLayout({
   return (
     <html lang="cs">
       <body className="bg-gray-900 text-white antialiased">
-        {children}
+        <LanguageProvider>
+          <DocumentTitleSync />
+          {children}
+        </LanguageProvider>
         <Analytics />
         {GOATCOUNTER_CODE && (
           <Script

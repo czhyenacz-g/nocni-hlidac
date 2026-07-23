@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { audioManager } from "../audio/audioManager";
 import { pickRandomCameraDisabledMessage, resolveCameraDisabledOverlayDurationMs } from "./cameraDisabledRadioMessage";
 import { RadioMessageState } from "./radioTypes";
+import { useCopy } from "@/game/i18n/useTranslation";
 
 /**
  * Třetí, NEZÁVISLÉ "assembly místo" rádiové zprávy (viz useRadioMessage.ts
@@ -22,6 +23,7 @@ import { RadioMessageState } from "./radioTypes";
  * cameraDisabledRadioMessage.ts).
  */
 export function useCameraDisabledRadioMessage(cameraOfflineSeq: number): RadioMessageState {
+  const copy = useCopy();
   const prevSeqRef = useRef(cameraOfflineSeq);
   const [state, setState] = useState<RadioMessageState>({ visible: false, text: null });
 
@@ -33,10 +35,12 @@ export function useCameraDisabledRadioMessage(cameraOfflineSeq: number): RadioMe
     if (!message) return;
 
     audioManager.play(message.id);
-    setState({ visible: true, text: message.text });
+    const text = copy.radio.cameraDisabledMessages[message.id as keyof typeof copy.radio.cameraDisabledMessages];
+    setState({ visible: true, text });
 
     const timeout = setTimeout(() => setState({ visible: false, text: null }), resolveCameraDisabledOverlayDurationMs(message.id));
     return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cameraOfflineSeq]);
 
   return state;

@@ -1,4 +1,4 @@
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import { DatabaseEquipmentPreview } from "@/lib/database/databaseTypes";
 import DatabaseTodoBlock from "./DatabaseTodoBlock";
 
@@ -15,6 +15,7 @@ interface DatabaseEquipmentCardProps {
  * (viz zadání "Každá karta má mít... TODO blok").
  */
 export default function DatabaseEquipmentCard({ equipment }: DatabaseEquipmentCardProps) {
+  const COPY = useCopy();
   return (
     <div className="pixel-panel p-4 sm:p-5 flex flex-col gap-3">
       <div>

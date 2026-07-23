@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import { selectLoadingHints } from "@/content/loadingHints";
 import { LOADING_SCREEN_DURATION_MS, LOADING_SCREEN_HINT_COUNT } from "@/game/balancing/constants";
 import { preloadBackgroundImages, BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
@@ -38,8 +38,10 @@ function splitSentences(text: string): string[] {
 // ať se pak zobrazí okamžitě i při zhoršeném připojení později ve směně.
 // Atmosférický servisní terminál Objektu 13 zatím nejde přeskočit (viz TODO.md).
 export default function LoadingScreen({ gameMode }: LoadingScreenProps) {
+  const COPY = useCopy();
   const [hint] = useState(() => selectLoadingHints(LOADING_SCREEN_HINT_COUNT)[0]);
-  const sentences = useMemo(() => (hint ? splitSentences(hint.text) : []), [hint]);
+  const hintText = hint ? COPY.loadingHints[hint.id as keyof typeof COPY.loadingHints] : undefined;
+  const sentences = useMemo(() => (hintText ? splitSentences(hintText) : []), [hintText]);
   const [visibleCount, setVisibleCount] = useState(0);
 
   useEffect(() => {

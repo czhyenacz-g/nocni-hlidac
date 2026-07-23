@@ -1,6 +1,10 @@
 // Obecný datový model pro krátké story/cinematic scény (viz
 // components/screens/CinematicScreen.tsx). Připraveno na to, aby později
 // přibyly další scény/segmenty/audio, beze změny CinematicScreen.tsx.
+//
+// Jazykově nezávislá struktura (id/audio/timing) — samotný text/title/
+// responseLabel žije v content/copy.ts#cinematics (stejný `id` jako klíč,
+// viz CinematicScreen.tsx, které si text dotáhne přes useCopy()).
 
 export type CinematicSceneId =
   | "intro"
@@ -12,19 +16,15 @@ export type CinematicSceneId =
 
 export interface CinematicSegment {
   id: string;
-  text: string;
   /** Volitelný doprovodný zvuk — chybějící soubor/zakázané přehrání nikdy nesmí zaseknout scénu, viz CinematicScreen.tsx. */
   audioSrc?: string;
   /** Zatím nevyužité (žádná automatická synchronizace) — připraveno pro budoucí auto-advance. */
   durationMs?: number;
-  /** Text tlačítka pro posun na další segment (nebo dokončení scény u posledního). Bez něj segment nejde odkliknout. */
-  responseLabel?: string;
 }
 
 export interface CinematicScene {
   id: CinematicSceneId;
   imageSrc: string;
-  title?: string;
   segments: CinematicSegment[];
 }
 
@@ -40,177 +40,58 @@ export const CINEMATIC_SCENES: Record<CinematicSceneId, CinematicScene> = {
   // Volitelné intro před Nocí 1 (viz zadání "Spustit intro" na briefingu i na
   // /terms, components/screens/BriefingScreen.tsx, app/terms/page.tsx) —
   // pracovní pohovor, který hráč nikdy nemusí spustit (Night 1 mechaniky na
-  // něm nezávisí). Text přesně podle zadání, jen sloučené technické zalomení
-  // řádků do souvislých vět (stejný vzor jako ostatní scény tady — jeden
-  // segment = jeden `<p>`, žádné `\n`).
+  // něm nezávisí).
   intro: {
     id: "intro",
     imageSrc: "/object_13/story/intro_bg.webp",
-    title: "PRACOVNÍ POHOVOR",
     segments: [
-      { id: "greeting", text: "Dobrý den. Děkujeme, že jste přišel.", responseLabel: "Pokračovat." },
-      {
-        id: "profile_match",
-        text: "Váš profil odpovídá tomu, co hledáme. Posledních dvacet let jste pracoval jako noční hlídač v místní chemičce, než závod uzavřeli.",
-        responseLabel: "Pokračovat.",
-      },
-      {
-        id: "no_complaints",
-        text: "Za celou dobu na vás nebyla jediná vážná stížnost. Jste spolehlivý, dochvilný a zvyklý pracovat v noci.",
-        responseLabel: "Pokračovat.",
-      },
-      {
-        id: "no_dependents",
-        text: "Také vidím, že nemáte děti ani blízké příbuzné, kteří by na vás byli závislí. Pro tuto pozici je to výhoda.",
-        responseLabel: "Pokračovat.",
-      },
-      { id: "hired", text: "Ráda vám oznamuji, že jste přijat.", responseLabel: "Pokračovat." },
-      {
-        id: "special_place",
-        text: "Půjde o hlídání na velmi speciálním místě. A speciální místo samozřejmě znamená i speciální odměny.",
-        responseLabel: "Pokračovat.",
-      },
-      {
-        id: "risk_and_pay",
-        text: "Práce je nadstandardně placená a při dobrých výsledcích můžete získat mimořádné bonusy. Současně vás ale musím upozornit, že pozice je spojena s určitým rizikem.",
-        responseLabel: "Pokračovat.",
-      },
-      {
-        id: "duties",
-        text: "Vaším úkolem bude sledovat kamery, kontrolovat vybavení a řídit se služebními postupy.",
-        responseLabel: "Pokračovat.",
-      },
-      {
-        id: "welcome",
-        text: "Pokud budete dodržovat pokyny, neměl by nastat žádný problém. Vítejte v Objektu 13.",
-        responseLabel: "Rozumím.",
-      },
-      {
-        id: "payday_note",
-        text: "P.S.: Výplata je standardně každých 30 dní.",
-        responseLabel: "Rozumím.",
-      },
+      { id: "greeting" },
+      { id: "profile_match" },
+      { id: "no_complaints" },
+      { id: "no_dependents" },
+      { id: "hired" },
+      { id: "special_place" },
+      { id: "risk_and_pay" },
+      { id: "duties" },
+      { id: "welcome" },
+      { id: "payday_note" },
     ],
   },
   old_guard_first_death_warning: {
     id: "old_guard_first_death_warning",
     imageSrc: "/object_13/story/story_1.webp",
     segments: [
-      { id: "baf", text: "Baf.", audioSrc: "/object_13/story/segments/story_1_baf.m4a", responseLabel: "..." },
-      {
-        id: "another_one",
-        text: "No výborně. Další, co čumí do monitorů a nehlídá si záda.",
-        audioSrc: "/object_13/story/segments/story_1_another_one.m4a",
-        responseLabel: "Polknu.",
-      },
-      {
-        id: "im_the_tech",
-        text: "Jsem místní technik. Máš kliku, že jsem to já.",
-        audioSrc: "/object_13/story/segments/story_1_im_the_tech.m4a",
-        responseLabel: "Mlčím.",
-      },
-      {
-        id: "last_day",
-        text: "Dneska jsem tu naposledy. Stěhuju se z města.",
-        audioSrc: "/object_13/story/segments/story_1_last_day.m4a",
-        responseLabel: "Poslouchám.",
-      },
-      {
-        id: "advice_intro",
-        text: "Tak ti na rozloučenou dám pár rad, nový ucho.",
-        audioSrc: "/object_13/story/segments/story_1_advice_intro.m4a",
-        responseLabel: "...",
-      },
-      {
-        id: "creatures",
-        text: "Po okolí se tu potulujou divný potvory. Hodně divný.",
-        audioSrc: "/object_13/story/segments/story_1_creatures.m4a",
-        responseLabel: "Polknu.",
-      },
-      {
-        id: "cameras",
-        text: "Ty kamery tam máš k čemu, blbečku?",
-        audioSrc: "/object_13/story/segments/story_1_cameras.m4a",
-        responseLabel: "Mlčím.",
-      },
-      {
-        id: "door_power",
-        text: "Ty dveře jsou pod proudem. Proud žere energii. To snad chápeš.",
-        audioSrc: "/object_13/story/segments/story_1_door_power.m4a",
-        responseLabel: "Chápu.",
-      },
-      {
-        id: "dont_panic_close",
-        text: "Nevidíš na kamerách nebezpečí? Tak nezavírej dveře jak vystrašenej králík.",
-        audioSrc: "/object_13/story/segments/story_1_dont_panic_close.m4a",
-        responseLabel: "Dochází mi to.",
-      },
-      {
-        id: "watch_hallway",
-        text: "Vidíš něco v chodbě? Sleduj, kam to jde.",
-        audioSrc: "/object_13/story/segments/story_1_watch_hallway.m4a",
-        responseLabel: "Dobře.",
-      },
-      {
-        id: "close_the_door",
-        text: "Je to u dveří? Tak je zavři. To by pochopilo i malý dítě.",
-        audioSrc: "/object_13/story/segments/story_1_close_the_door.m4a",
-        responseLabel: "Rozumím.",
-      },
-      {
-        id: "light_tip",
-        text: "A občas ti pomůže rozsvítit za dveřmi. Děti se taky bojí tmy... hahaha.",
-        audioSrc: "/object_13/story/segments/story_1_light_tip.m4a",
-        responseLabel: "Polknu.",
-      },
-      {
-        id: "farewell",
-        text: "Tak přeju pěknou noc.",
-        audioSrc: "/object_13/story/segments/story_1_farewell.m4a",
-        responseLabel: "Zpátky ke stolu.",
-      },
+      { id: "baf", audioSrc: "/object_13/story/segments/story_1_baf.m4a" },
+      { id: "another_one", audioSrc: "/object_13/story/segments/story_1_another_one.m4a" },
+      { id: "im_the_tech", audioSrc: "/object_13/story/segments/story_1_im_the_tech.m4a" },
+      { id: "last_day", audioSrc: "/object_13/story/segments/story_1_last_day.m4a" },
+      { id: "advice_intro", audioSrc: "/object_13/story/segments/story_1_advice_intro.m4a" },
+      { id: "creatures", audioSrc: "/object_13/story/segments/story_1_creatures.m4a" },
+      { id: "cameras", audioSrc: "/object_13/story/segments/story_1_cameras.m4a" },
+      { id: "door_power", audioSrc: "/object_13/story/segments/story_1_door_power.m4a" },
+      { id: "dont_panic_close", audioSrc: "/object_13/story/segments/story_1_dont_panic_close.m4a" },
+      { id: "watch_hallway", audioSrc: "/object_13/story/segments/story_1_watch_hallway.m4a" },
+      { id: "close_the_door", audioSrc: "/object_13/story/segments/story_1_close_the_door.m4a" },
+      { id: "light_tip", audioSrc: "/object_13/story/segments/story_1_light_tip.m4a" },
+      { id: "farewell", audioSrc: "/object_13/story/segments/story_1_farewell.m4a" },
     ],
   },
   // "Nechat si to projít hlavou" (viz zadání, LeftWallView.tsx#thinkItOver
   // tlačítko, app/play/page.tsx#thinkItOverReadySeq efekt) — dřív jen
   // jednořádkový toast (COPY.game.thinkItOverResultLabel), teď plnohodnotná
-  // klikací scéna jako old_guard_first_death_warning výše, jen bez audia
-  // (žádné namluvené klipy nejsou k dispozici, CinematicScreen.tsx to
-  // zvládá beze změny — segmentAudioSrc je volitelný). Text rozdělený na
-  // kratší klikací kousky, ne jeden dlouhý odstavec, ať to působí jako
-  // rozhovor se sebou samým/hlasem v hlavě, ne jako čtení nástěnky.
+  // klikací scéna jako old_guard_first_death_warning výše, jen bez audia.
   think_it_over_warning: {
     id: "think_it_over_warning",
     imageSrc: "/object_13/story/think_it_over_warning.webp",
     segments: [
-      { id: "dont", text: "Nedělej to!", responseLabel: "..." },
-      {
-        id: "not_a_coward",
-        text: "Myslel jsem, že nejsi slaboch, co se tak snadno vzdá.",
-        responseLabel: "Nejsem.",
-      },
-      { id: "find_warrior", text: "Najdi v sobě válečníka.", responseLabel: "Zkusím." },
-      {
-        id: "not_invincible",
-        text: "Monstrum není nezranitelné — jen je tvrdší, než vypadá.",
-        responseLabel: "Poslouchám.",
-      },
-      { id: "heals", text: "Ale pamatuj: s ránem se znovu zahojí.", responseLabel: "Chápu." },
-      {
-        id: "one_night",
-        text: "Jestli ho chceš položit, musíš to dokázat během jediné noci.",
-        responseLabel: "Dobře.",
-      },
-      {
-        id: "one_two_hits",
-        text: "Jedna rána ji jen rozzuří, dvě ji možná rozhodí…",
-        responseLabel: "A dál?",
-      },
-      {
-        id: "ten_hits",
-        text: "…ale DESETKRÁT se postavit strachu a znovu zmáčknout spoušť? To už může být dost na to, aby padla i tahle bestie.",
-        responseLabel: "Zpátky ke stolu a vrhnout se do boje.",
-      },
+      { id: "dont" },
+      { id: "not_a_coward" },
+      { id: "find_warrior" },
+      { id: "not_invincible" },
+      { id: "heals" },
+      { id: "one_night" },
+      { id: "one_two_hits" },
+      { id: "ten_hits" },
     ],
   },
   // Hardcore smrt "uprostřed" dlouhé šňůry (noc 20–30 včetně, viz zadání,
@@ -219,193 +100,69 @@ export const CINEMATIC_SCENES: Record<CinematicSceneId, CinematicScene> = {
   // content/monsterDefeatedCinematic.ts ("Potkáme se až nastane 30. den...
   // nebo ve Valhale."). imageSrc záměrně ukazuje na `wallhala_ending.png`
   // (ne `.webp`, ne přejmenované/opravené na "valhalla") — přesný existující
-  // asset dodaný v zadání, beze změny názvu. Namluvené jen Hynkovy repliky
-  // (ne popisné věty) — jeden souvislý diktafonový záznam (valhala.m4a)
-  // rozstřižený podle ticha (ffmpeg silencedetect) a ověřený přepisem
-  // (Whisper, stejný postup jako u story_1_*.m4a segmentů), jeden klip na
-  // segment, stejný vzor jako old_guard_first_death_warning.
+  // asset dodaný v zadání, beze změny názvu.
   valhala_ending: {
     id: "valhala_ending",
     imageSrc: "/object_13/story/wallhala_ending.png",
-    title: "VALHALA",
     segments: [
-      { id: "silence", text: "Ticho.", responseLabel: "..." },
-      {
-        id: "wood_creaked",
-        text: "Pak dřevo zavrzalo pod tvýma rukama. Seděl jsi u dlouhého stolu.",
-        responseLabel: "Rozhlížím se.",
-      },
-      { id: "hynek_raises_mug", text: "Naproti tobě Hynek zvedl půllitr.", responseLabel: "..." },
-      {
-        id: "close_call",
-        text: "„Byl jsi blízko.“",
-        audioSrc: "/object_13/story/segments/valhala_close_call.m4a",
-        responseLabel: "Mlčím.",
-      },
-      { id: "smiled", text: "Chvíli se usmál.", responseLabel: "..." },
-      {
-        id: "thirty_or_valhalla",
-        text: "„Nakonec jsem měl pravdu. Buď se potkáme třicátou noc… nebo ve Valhale.“",
-        audioSrc: "/object_13/story/segments/valhala_thirty_or_valhalla.m4a",
-        responseLabel: "Poslouchám.",
-      },
-      { id: "pushed_beer", text: "Přisunul ti pivo.", responseLabel: "..." },
-      {
-        id: "not_bad_guard",
-        text: "„A víš co? Na hlídače sis nevedl špatně.“",
-        audioSrc: "/object_13/story/segments/valhala_not_bad_guard.m4a",
-        responseLabel: "Napiju se.",
-      },
+      { id: "silence" },
+      { id: "wood_creaked" },
+      { id: "hynek_raises_mug" },
+      { id: "close_call", audioSrc: "/object_13/story/segments/valhala_close_call.m4a" },
+      { id: "smiled" },
+      { id: "thirty_or_valhalla", audioSrc: "/object_13/story/segments/valhala_thirty_or_valhalla.m4a" },
+      { id: "pushed_beer" },
+      { id: "not_bad_guard", audioSrc: "/object_13/story/segments/valhala_not_bad_guard.m4a" },
     ],
   },
   // Hardcore Noc 30 s aspoň jedním zabitím bestie v aktuálním runu (viz
   // zadání "Night 30 warrior ending", game/core/night30Ending.ts) — úvodní
-  // část "POSLEDNÍ SMĚNA", zobrazená stejně jako Valhala výše (klikací
-  // segmenty v rámovaném okně), na výslovnou žádost "podobně jako Valhala".
-  // components/screens/Night30EndingScreen.tsx po dokončení přepne na
-  // druhou fázi (ztemnělá obrazovka, epilog + úmrtní záznam), NE do menu
-  // (na rozdíl od handleValhalaCinematicComplete) — tahle scéna sama o sobě
-  // ending nekončí. imageSrc přesně `warior_ending.png` (překlep záměrný,
-  // beze změny názvu). Namluvené jen Hynkovy repliky — jeden souvislý
-  // diktafonový záznam (posledni_smena.m4a) rozstřižený a ověřený stejně
-  // jako valhala_ending výše.
+  // část "POSLEDNÍ SMĚNA", zobrazená stejně jako Valhala výše.
+  // imageSrc přesně `warior_ending.png` (překlep záměrný, beze změny názvu).
   warrior_ending: {
     id: "warrior_ending",
     imageSrc: "/object_13/story/warior_ending.png",
-    title: "POSLEDNÍ SMĚNA",
     segments: [
-      { id: "thirtieth_day", text: "Třicátý den.", responseLabel: "..." },
-      {
-        id: "hynek_smiling",
-        text: "Hynek stál uprostřed místnosti a usmíval se víc než obvykle.",
-        responseLabel: "Sleduju ho.",
-      },
-      {
-        id: "not_just_good_watch",
-        text: "„Tak jo. Tohle už nebyla jen dobrá hlídka.“",
-        audioSrc: "/object_13/story/segments/posledni_smena_not_just_good_watch.m4a",
-        responseLabel: "...",
-      },
-      { id: "nodded", text: "Podíval se na tebe a přikývl.", responseLabel: "..." },
-      {
-        id: "you_became_warrior",
-        text: "„Stal se z tebe válečník.“",
-        audioSrc: "/object_13/story/segments/posledni_smena_you_became_warrior.m4a",
-        responseLabel: "Mlčím.",
-      },
-      {
-        id: "men_in_suits",
-        text: "Za jeho zády se ozýval kov, kroky a tlumené hlasy mužů v ochranných oblecích.",
-        responseLabel: "Poslouchám.",
-      },
-      {
-        id: "thank_you_bait",
-        text: "„A hlavně — děkuju ti. Pomohl jsi mi otestovat vábničku na monstra.“",
-        audioSrc: "/object_13/story/segments/posledni_smena_thank_you_bait.m4a",
-        responseLabel: "Cože?",
-      },
-      { id: "points_at_generator", text: "Ukázal ke generátoru.", responseLabel: "..." },
-      {
-        id: "your_generator",
-        text: "„Jo. Přesně tuhle. Tvůj generátor.“",
-        audioSrc: "/object_13/story/segments/posledni_smena_your_generator.m4a",
-        responseLabel: "...",
-      },
-      { id: "let_it_sink_in", text: "Chvíli tě nechal pochopit, co právě řekl.", responseLabel: "..." },
-      {
-        id: "not_out_of_town",
-        text: "„Popravdě… nebyl jsem mimo město.“",
-        audioSrc: "/object_13/story/segments/posledni_smena_not_out_of_town.m4a",
-        responseLabel: "...",
-      },
-      {
-        id: "you_bought_time",
-        text: "„Ty jsi mi jen dal čas. Čas dokončit přípravy.“",
-        audioSrc: "/object_13/story/segments/posledni_smena_you_bought_time.m4a",
-        responseLabel: "Chápu.",
-      },
-      { id: "lights_on", text: "Za Hynkem se rozsvítily kontrolky.", responseLabel: "..." },
-      {
-        id: "maximum_fireworks",
-        text: "„Za chvíli to zapneme na maximum. A připravíme opravdu velký ohňostroj.“",
-        audioSrc: "/object_13/story/segments/posledni_smena_maximum_fireworks.m4a",
-        responseLabel: "...",
-      },
-      { id: "opened_briefcase", text: "Podal ti otevřený kufřík s penězi.", responseLabel: "..." },
-      {
-        id: "your_pay_plus_bonus",
-        text: "„Tohle je tvoje výplata. A něco navíc za mlčenlivost.“",
-        audioSrc: "/object_13/story/segments/posledni_smena_your_pay_plus_bonus.m4a",
-        responseLabel: "Beru.",
-      },
-      { id: "grew_serious", text: "Pak zvážněl.", responseLabel: "..." },
-      {
-        id: "thousand_monsters",
-        text: "„Musíme pryč. Až to spustíme, přiláká to možná tisíc monster.“",
-        audioSrc: "/object_13/story/segments/posledni_smena_thousand_monsters.m4a",
-        responseLabel: "Utíkám.",
-      },
-      { id: "step_to_door", text: "Udělá krok ke dveřím.", responseLabel: "..." },
-      {
-        id: "project_ends",
-        text: "„Celý projekt tímhle končí. Ty jsi svoji práci odvedl.“",
-        audioSrc: "/object_13/story/segments/posledni_smena_project_ends.m4a",
-        responseLabel: "...",
-      },
-      { id: "turned_back", text: "Ještě se otočil.", responseLabel: "..." },
-      {
-        id: "good_luck_warrior",
-        text: "„Přeju ti všechno nejlepší v nové práci. A díky, válečníku.“",
-        audioSrc: "/object_13/story/segments/posledni_smena_good_luck_warrior.m4a",
-        responseLabel: "Sbohem.",
-      },
+      { id: "thirtieth_day" },
+      { id: "hynek_smiling" },
+      { id: "not_just_good_watch", audioSrc: "/object_13/story/segments/posledni_smena_not_just_good_watch.m4a" },
+      { id: "nodded" },
+      { id: "you_became_warrior", audioSrc: "/object_13/story/segments/posledni_smena_you_became_warrior.m4a" },
+      { id: "men_in_suits" },
+      { id: "thank_you_bait", audioSrc: "/object_13/story/segments/posledni_smena_thank_you_bait.m4a" },
+      { id: "points_at_generator" },
+      { id: "your_generator", audioSrc: "/object_13/story/segments/posledni_smena_your_generator.m4a" },
+      { id: "let_it_sink_in" },
+      { id: "not_out_of_town", audioSrc: "/object_13/story/segments/posledni_smena_not_out_of_town.m4a" },
+      { id: "you_bought_time", audioSrc: "/object_13/story/segments/posledni_smena_you_bought_time.m4a" },
+      { id: "lights_on" },
+      { id: "maximum_fireworks", audioSrc: "/object_13/story/segments/posledni_smena_maximum_fireworks.m4a" },
+      { id: "opened_briefcase" },
+      { id: "your_pay_plus_bonus", audioSrc: "/object_13/story/segments/posledni_smena_your_pay_plus_bonus.m4a" },
+      { id: "grew_serious" },
+      { id: "thousand_monsters", audioSrc: "/object_13/story/segments/posledni_smena_thousand_monsters.m4a" },
+      { id: "step_to_door" },
+      { id: "project_ends", audioSrc: "/object_13/story/segments/posledni_smena_project_ends.m4a" },
+      { id: "turned_back" },
+      { id: "good_luck_warrior", audioSrc: "/object_13/story/segments/posledni_smena_good_luck_warrior.m4a" },
     ],
   },
   // Hardcore Noc 30 BEZ zabití bestie v aktuálním runu (viz zadání "Night 30
   // no-kill ending", game/core/night30Ending.ts) — úvodní část "PRVNÍ
-  // VÝPLATA", stejný klikací styl jako warrior_ending/valhala_ending výše
-  // (na výslovnou žádost "a to druhý závěrečný taky"). Po dokončení
-  // Night30EndingScreen.tsx přepne na druhou fázi (ztemnělá obrazovka,
-  // úmrtní záznam), NE do menu. Namluvené jen Hynkovy repliky jako JEDEN
-  // souvislý klip s mezerami mezi částmi (stejný vzor jako valhala_ending
-  // výše — audioSrc jen na prvním segmentu).
+  // VÝPLATA", stejný klikací styl jako warrior_ending/valhala_ending výše.
   no_kill_ending: {
     id: "no_kill_ending",
     imageSrc: "/object_13/story/no_kill_ending.png",
-    title: "PRVNÍ VÝPLATA",
     segments: [
-      { id: "thirtieth_day", text: "Třicátý den.", responseLabel: "..." },
-      {
-        id: "hynek_before_dawn",
-        text: "Hynek se objevil ve dveřích dřív, než stačil vyjít úsvit.",
-        responseLabel: "...",
-      },
-      { id: "looked_you_over", text: "Chvíli si tě jen prohlížel.", responseLabel: "Čekám." },
-      {
-        id: "thirty_nights",
-        text: "„Třicet nocí. Bez útěku. Bez hrdinství. Bez zbytečných otázek.“",
-        audioSrc: "/object_13/story/segments/prvni_vyplata_thirty_nights.m4a",
-        responseLabel: "...",
-      },
-      { id: "handed_envelope", text: "Podal ti obálku.", responseLabel: "..." },
-      {
-        id: "good_guard",
-        text: "„Byl jsi dobrý hlídač.“",
-        audioSrc: "/object_13/story/segments/prvni_vyplata_good_guard.m4a",
-        responseLabel: "Díky.",
-      },
-      {
-        id: "waited_for_truth",
-        text: "Čekal jsi vysvětlení. Čekal jsi pravdu. Čekal jsi, že po třiceti nocích něco skončí.",
-        responseLabel: "...",
-      },
-      { id: "lit_cigarette", text: "Hynek si jen zapálil cigaretu.", responseLabel: "..." },
-      {
-        id: "see_you_in_a_month",
-        text: "„Tak se uvidíme zase za měsíc.“",
-        audioSrc: "/object_13/story/segments/prvni_vyplata_see_you_in_a_month.m4a",
-        responseLabel: "Zpátky ke stolu.",
-      },
+      { id: "thirtieth_day" },
+      { id: "hynek_before_dawn" },
+      { id: "looked_you_over" },
+      { id: "thirty_nights", audioSrc: "/object_13/story/segments/prvni_vyplata_thirty_nights.m4a" },
+      { id: "handed_envelope" },
+      { id: "good_guard", audioSrc: "/object_13/story/segments/prvni_vyplata_good_guard.m4a" },
+      { id: "waited_for_truth" },
+      { id: "lit_cigarette" },
+      { id: "see_you_in_a_month", audioSrc: "/object_13/story/segments/prvni_vyplata_see_you_in_a_month.m4a" },
     ],
   },
 };

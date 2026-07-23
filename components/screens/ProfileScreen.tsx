@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { COPY } from "@/content/copy";
+import { useTranslation } from "@/game/i18n/useTranslation";
 import SceneBackground from "@/components/SceneBackground";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 import { useAuthStatus } from "@/components/auth/useAuthStatus";
@@ -44,6 +44,7 @@ export default function ProfileScreen() {
 }
 
 function ProfileScreenContent() {
+  const { copy: COPY, language } = useTranslation();
   const authStatus = useAuthStatus();
   // Zatím jen development-only diagnostika (viz zadání "9. Minimální
   // viditelné ověření") — `profileData` je v týhle fázi prázdné, žádná
@@ -124,7 +125,7 @@ function ProfileScreenContent() {
   const usingServerData = serverProfile !== null;
   const effectiveReward: MonsterDefeatReward = serverProfile ? serverHardcoreProfileToReward(serverProfile) : reward;
   const effectiveStats: PlayerProfileStats = serverProfile ? serverHardcoreProfileToPlayerProfileStats(serverProfile, stats) : stats;
-  const achievements = resolvePlayerAchievements(effectiveStats, effectiveReward);
+  const achievements = resolvePlayerAchievements(effectiveStats, effectiveReward, language);
   // Název/popis nezískaného achievementu je schválně skrytý pro běžné
   // hráče (viz zadání, content/copy.ts#achievementHiddenTitle) — jen admin
   // (lib/auth/adminUsers.ts, stejná vlastnost jako jinde ve hře) vidí, o co

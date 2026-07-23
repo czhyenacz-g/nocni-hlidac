@@ -1,6 +1,6 @@
 "use client";
 
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import ConsoleIcon from "@/components/game/ConsoleIcon";
 import { useAuthStatus } from "./useAuthStatus";
 
@@ -10,6 +10,7 @@ import { useAuthStatus } from "./useAuthStatus";
 // přes useAuthStatus), protože MainMenuScreen běží pod "use client" stromem
 // app/play/page.tsx — nemůže být async Server Component s přímým getSession().
 export default function AuthStatus() {
+  const COPY = useCopy();
   const state = useAuthStatus();
 
   // Dokud se /api/auth/me nevrátí, radši nic nezobrazit, než na zlomek

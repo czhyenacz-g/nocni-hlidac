@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { audioManager } from "../audio/audioManager";
 import {
   GHOUL_CAMERA_ATTACK_WARNING_DURATION_MS,
-  GHOUL_CAMERA_ATTACK_WARNING_TEXT,
   pickRandomGhoulCameraAttackWarningSound,
 } from "./ghoulCameraAttackWarningMessage";
 import { RadioMessageState } from "./radioTypes";
+import { useCopy } from "@/game/i18n/useTranslation";
 
 /**
  * Čtvrté, NEZÁVISLÉ "assembly místo" rádiové zprávy (viz useRadioMessage.ts/
@@ -22,6 +22,7 @@ import { RadioMessageState } from "./radioTypes";
  * místě audio side-effectu" vzor jako ostatní radio hooks.
  */
 export function useGhoulCameraAttackWarningMessage(cameraAttackStartedSeq: number): RadioMessageState {
+  const copy = useCopy();
   const prevSeqRef = useRef(cameraAttackStartedSeq);
   const [state, setState] = useState<RadioMessageState>({ visible: false, text: null });
 
@@ -32,7 +33,7 @@ export function useGhoulCameraAttackWarningMessage(cameraAttackStartedSeq: numbe
     const sound = pickRandomGhoulCameraAttackWarningSound();
     if (sound) audioManager.play(sound);
 
-    setState({ visible: true, text: GHOUL_CAMERA_ATTACK_WARNING_TEXT });
+    setState({ visible: true, text: copy.radio.ghoulCameraAttackWarningText });
 
     const timeout = setTimeout(() => setState({ visible: false, text: null }), GHOUL_CAMERA_ATTACK_WARNING_DURATION_MS);
     return () => clearTimeout(timeout);

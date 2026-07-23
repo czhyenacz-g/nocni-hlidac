@@ -1,4 +1,4 @@
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import ConsoleIcon from "./ConsoleIcon";
 
 interface AudioToggleProps {
@@ -10,6 +10,7 @@ interface AudioToggleProps {
 // textový popisek — samotné tlačítko JE konzolový ikonový blok
 // (.console-icon-block), aria-label nese informaci pro čtečky.
 export default function AudioToggle({ muted, onToggle }: AudioToggleProps) {
+  const COPY = useCopy();
   return (
     <button
       className="pixel-button console-button console-icon-block tap-target"

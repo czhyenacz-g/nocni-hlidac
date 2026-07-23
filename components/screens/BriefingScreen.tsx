@@ -1,4 +1,4 @@
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import { getNightConfig } from "@/game/difficulty/nightConfig";
 import SceneBackground from "@/components/SceneBackground";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
@@ -21,6 +21,7 @@ interface BriefingScreenProps {
 // Mezikrok po LoadingScreen (nový start) i po smrti/výhře (retry), nikdy se
 // nezobrazí uprostřed běžící směny (viz app/play/page.tsx, state.screen === "briefing").
 export default function BriefingScreen({ nightNumber, onStartShift, onStartIntro }: BriefingScreenProps) {
+  const COPY = useCopy();
   const { briefing } = getNightConfig(nightNumber);
 
   return (

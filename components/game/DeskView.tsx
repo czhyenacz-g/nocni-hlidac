@@ -1,4 +1,4 @@
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import { CameraId, GameState, NightDefinition } from "@/game/core/types";
 import { isCameraFocused } from "@/game/core/cameraFocus";
 import { isGeneratorArrowUrgent } from "@/game/core/generatorUrgency";
@@ -35,6 +35,7 @@ export default function DeskView({
   onLookAtGenerator,
   onLookAtLeftWall,
 }: DeskViewProps) {
+  const COPY = useCopy();
   return (
     <div className="flex flex-col gap-3">
       <div>

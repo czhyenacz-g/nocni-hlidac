@@ -15,29 +15,19 @@ import { AUDIO_EVENTS, AudioEventId } from "../audio/audioEvents";
  * Čtvrtý segment ve zdrojové nahrávce zůstal nesrozumitelný i po několika
  * nezávislých pokusech o přepis (různé ořezy, denoising, prompt) — na
  * žádost vynechán, pool má proto jen tři varianty, ne čtyři.
+ *
+ * Zobrazený text žije v content/copy.ts#radio.cameraDisabledMessages (klíč
+ * = `id`, viz i18n) — tenhle manifest nese jen audio/timing.
  */
 export interface CameraDisabledRadioMessage {
   id: AudioEventId;
-  text: string;
   audioSrc: string;
 }
 
 export const CAMERA_DISABLED_RADIO_MESSAGES: CameraDisabledRadioMessage[] = [
-  {
-    id: AUDIO_EVENTS.radioCameraDestroyed0,
-    text: "No, tak do rána jsme po tmě.",
-    audioSrc: AUDIO_CONFIG[AUDIO_EVENTS.radioCameraDestroyed0].src,
-  },
-  {
-    id: AUDIO_EVENTS.radioCameraDestroyed1,
-    text: "Kamera zničena!",
-    audioSrc: AUDIO_CONFIG[AUDIO_EVENTS.radioCameraDestroyed1].src,
-  },
-  {
-    id: AUDIO_EVENTS.radioCameraDestroyed2,
-    text: "Zbývá už jenom mikrofon.",
-    audioSrc: AUDIO_CONFIG[AUDIO_EVENTS.radioCameraDestroyed2].src,
-  },
+  { id: AUDIO_EVENTS.radioCameraDestroyed0, audioSrc: AUDIO_CONFIG[AUDIO_EVENTS.radioCameraDestroyed0].src },
+  { id: AUDIO_EVENTS.radioCameraDestroyed1, audioSrc: AUDIO_CONFIG[AUDIO_EVENTS.radioCameraDestroyed1].src },
+  { id: AUDIO_EVENTS.radioCameraDestroyed2, audioSrc: AUDIO_CONFIG[AUDIO_EVENTS.radioCameraDestroyed2].src },
 ];
 
 /** Přesná délka (ms) každého souboru + malá rezerva — stejný účel jako monsterRepelRadioMessages.ts#resolveMonsterRepelOverlayDurationMs. */

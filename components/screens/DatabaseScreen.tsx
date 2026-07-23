@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import { DatabasePlayerPreview, DatabaseTabId, DatabaseViewer } from "@/lib/database/databaseTypes";
 import DatabaseHeader from "@/components/database/DatabaseHeader";
 import DatabaseViewerStatus from "@/components/database/DatabaseViewerStatus";
@@ -33,6 +33,7 @@ const DEFAULT_TAB: DatabaseTabId = "subjects";
  * `.pixel-panel`/`.pixel-button` terminálové komponenty jako zbytek webu.
  */
 export default function DatabaseScreen({ viewer, playerPreview }: DatabaseScreenProps) {
+  const COPY = useCopy();
   const [activeTab, setActiveTab] = useState<DatabaseTabId>(DEFAULT_TAB);
 
   return (

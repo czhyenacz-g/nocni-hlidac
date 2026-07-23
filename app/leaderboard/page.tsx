@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { COPY } from "@/content/copy";
+import { COPY_CS as COPY } from "@/content/copy";
 import SceneBackground from "@/components/SceneBackground";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 import { getLeaderboardEntries } from "@/lib/leaderboard/getLeaderboardEntries";
-import { formatNights } from "@/lib/leaderboard/formatNights";
+import LeaderboardTableClient from "./LeaderboardTableClient";
 
+// Next.js Metadata se generuje server-side, před renderem — nemůže volat
+// useCopy() (React hook, potřebuje LanguageProvider kontext), proto zůstává
+// staticky česky (viz game/i18n/metadata.ts pro budoucí anglický build).
 export const metadata: Metadata = {
   title: COPY.leaderboard.seoTitle,
   description: COPY.leaderboard.seoDescription,
@@ -28,8 +30,8 @@ export const dynamic = "force-dynamic";
 // lib/leaderboard/remoteLeaderboard.ts) a spadne na mock data
 // (lib/leaderboard/mockLeaderboard.ts), pokud API není nakonfigurované nebo
 // selže — stránka o tom vůbec neví, jen dostane GuardLeaderboardEntry[].
-// Stejné pozadí jako menu/terms (BACKGROUND_SCENES.menu), širší panel než
-// about/terms kvůli tabulce, ale pořád ve stejném pixel/horror stylu.
+// Zobrazení (i18n texty, tabulka) žije v LeaderboardTableClient.tsx (hooky
+// potřebují klientský strom) — tahle stránka jen fetchuje data + nese metadata.
 export default async function LeaderboardPage() {
   const entries = await getLeaderboardEntries();
 
@@ -46,51 +48,7 @@ export default async function LeaderboardPage() {
         <span className="camera-monitor-screw" style={{ bottom: 5, left: 5 }} aria-hidden="true" />
         <span className="camera-monitor-screw" style={{ bottom: 5, right: 5 }} aria-hidden="true" />
 
-        <div className="menu-terminal-screen pixel-screen-static">
-          <div className="menu-terminal-header">
-            <span>Objekt 13 · Síň slávy</span>
-            <span className="menu-terminal-led" aria-hidden="true" />
-          </div>
-
-          <div className="p-6 sm:p-8">
-            <h1 className="text-xl font-bold mb-1 text-red-500 text-center">{COPY.leaderboard.heading}</h1>
-            <p className="text-sm text-gray-500 mb-4 text-center italic">{COPY.leaderboard.subheading}</p>
-            <p className="text-xs text-gray-600 mb-6 text-center">{COPY.leaderboard.explanation}</p>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs sm:text-sm text-left border-collapse">
-                <thead>
-                  <tr className="text-gray-500 border-b border-gray-700">
-                    <th className="py-2 pr-2 font-normal">{COPY.leaderboard.columnRank}</th>
-                    <th className="py-2 pr-2 font-normal">{COPY.leaderboard.columnGuard}</th>
-                    <th className="py-2 pr-2 font-normal whitespace-nowrap">{COPY.leaderboard.columnBestRun}</th>
-                    <th className="py-2 font-normal whitespace-nowrap">{COPY.leaderboard.columnCurrentRun}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {entries.map((entry, index) => (
-                    <tr key={entry.guardName} className="border-b border-gray-800 text-gray-300">
-                      <td className="py-2 pr-2 text-gray-500">{index + 1}.</td>
-                      <td className="py-2 pr-2 font-bold text-amber-300 whitespace-nowrap">{entry.guardName}</td>
-                      <td className="py-2 pr-2 whitespace-nowrap">{formatNights(entry.bestRun)}</td>
-                      <td className="py-2 whitespace-nowrap">
-                        {entry.currentRun === 0 ? (
-                          <span className="text-gray-600">{COPY.leaderboard.noActiveRunLabel}</span>
-                        ) : (
-                          formatNights(entry.currentRun)
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <Link href="/play" className="block mt-8 text-center text-xs text-gray-500 hover:text-gray-300">
-              {COPY.leaderboard.backToGameLabel}
-            </Link>
-          </div>
-        </div>
+        <LeaderboardTableClient entries={entries} />
       </div>
     </main>
   );

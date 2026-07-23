@@ -1,4 +1,5 @@
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
+import type { CopyShape } from "@/content/copy";
 import SceneBackground from "@/components/SceneBackground";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 import { PlayerAchievement } from "@/game/core/playerAchievements";
@@ -17,13 +18,14 @@ interface WinScreenProps {
 }
 
 // Skloňování noc/noci/nocí — 1 = "noc", 2-4 = "noci", jinak (0, 5+) = "nocí".
-function formatSurvivedNights(count: number): string {
+function formatSurvivedNights(count: number, COPY: CopyShape): string {
   const forms = COPY.win.survivedNightsLabel;
   const label = count === 1 ? forms.one : count >= 2 && count <= 4 ? forms.few : forms.many;
   return label.replace("{count}", String(count));
 }
 
 export default function WinScreen({ survivedNights, newlyUnlockedAchievements = [], onRetry, onGoToMenu }: WinScreenProps) {
+  const COPY = useCopy();
   // Bez bg-* na <main> — viz stejná poznámka v MainMenuScreen.tsx (main by
   // jinak vlastním pozadím zakryl SceneBackground potomka s -z-10).
   return (
@@ -42,7 +44,7 @@ export default function WinScreen({ survivedNights, newlyUnlockedAchievements = 
         <div className="menu-terminal-screen pixel-screen-static text-center p-8">
           <h1 className="text-2xl font-bold mb-2 text-gray-100">{COPY.win.title}</h1>
           <p className="text-sm text-gray-400 mb-2">{COPY.win.subtitle}</p>
-          <p className="text-xs text-gray-500 mb-8">{formatSurvivedNights(survivedNights)}</p>
+          <p className="text-xs text-gray-500 mb-8">{formatSurvivedNights(survivedNights, COPY)}</p>
 
           <AchievementResultPanel achievements={newlyUnlockedAchievements} />
 

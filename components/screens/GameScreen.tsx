@@ -2,7 +2,7 @@ import { useState } from "react";
 import { CameraId, GameState, GhoulCameraAttackAnimationId, NightDefinition } from "@/game/core/types";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 import { GENERATOR_OVERLOAD_DOOR_DURATION_MS, STRESS_DEV_HUD_ENABLED } from "@/game/balancing/constants";
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import { computeNearRoomBulbWearRatio } from "@/game/core/roomBulbs";
 import { canReplaceBulb, canStartGeneratorOverloadWindup } from "@/game/core/gameReducer";
 import { canStartBatteryEmergencyRun, canStartShotgunEmergencyRun } from "@/game/core/emergencyMiniGameIntegration";
@@ -135,6 +135,7 @@ export default function GameScreen({
   onDebugStartTitan,
   onDebugAdvanceTitanStage,
 }: GameScreenProps) {
+  const COPY = useCopy();
   // Pozadí pro desk/generator (BACKGROUND_SCENES.play) — jen mimo blackout,
   // kdy BlackoutView stejně celou obrazovku nahrazuje vlastní atmosférou.
   // DoorView i LeftWallView mají vlastní lokální řešení (sdílená

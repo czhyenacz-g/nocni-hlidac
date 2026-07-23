@@ -1,6 +1,7 @@
 import { MonsterDefeatReward } from "./monsterDefeatReward";
 import { PlayerAchievement, PlayerAchievementId, resolvePlayerAchievements } from "./playerAchievements";
 import { PlayerProfileStats } from "./playerProfileStats";
+import type { Language } from "../i18n/language";
 
 // Unlock engine pro výsledkové obrazovky (viz zadání "Napojit achievementy
 // na výsledkové obrazovky") — NENÍ druhý resolver. `resolvePlayerAchievements`
@@ -17,6 +18,7 @@ export type AchievementResultUnlockInput = {
   nextStats: PlayerProfileStats;
   nextReward: MonsterDefeatReward;
   alreadyShownAchievementIds: PlayerAchievementId[];
+  language?: Language;
 };
 
 export type AchievementResultUnlockResult = {
@@ -41,8 +43,8 @@ export type AchievementResultUnlockResult = {
  * do `markResultAchievementsAsShown`, jakmile achievementy skutečně zobrazí.
  */
 export function resolveAchievementResultUnlocks(input: AchievementResultUnlockInput): AchievementResultUnlockResult {
-  const previous = resolvePlayerAchievements(input.previousStats, input.previousReward);
-  const next = resolvePlayerAchievements(input.nextStats, input.nextReward);
+  const previous = resolvePlayerAchievements(input.previousStats, input.previousReward, input.language);
+  const next = resolvePlayerAchievements(input.nextStats, input.nextReward, input.language);
 
   const previousUnlockedIds = new Set(previous.filter((achievement) => achievement.unlocked).map((achievement) => achievement.id));
   const alreadyShownIds = new Set(input.alreadyShownAchievementIds);

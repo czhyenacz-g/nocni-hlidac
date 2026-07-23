@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { audioManager } from "../audio/audioManager";
 import { pickRandomTitanEscapeMessage, resolveTitanEscapeOverlayDurationMs } from "./titanEscapeMessages";
 import { RadioMessageState } from "./radioTypes";
+import { useCopy } from "@/game/i18n/useTranslation";
 
 /**
  * Titanovo zahájení útěku (viz zadání "nová nahrávka... pět hlášek...
@@ -26,6 +27,7 @@ import { RadioMessageState } from "./radioTypes";
  * zadání "při restartu celé noci se může vybrat nová náhodná varianta").
  */
 export function useTitanEscapeMessage(active: boolean): RadioMessageState {
+  const copy = useCopy();
   const startedRef = useRef(false);
   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [state, setState] = useState<RadioMessageState>({ visible: false, text: null });
@@ -41,7 +43,8 @@ export function useTitanEscapeMessage(active: boolean): RadioMessageState {
     if (!message) return;
 
     audioManager.play(message.id);
-    setState({ visible: true, text: message.text });
+    const text = copy.radio.titanEscapeMessages[message.id as keyof typeof copy.radio.titanEscapeMessages];
+    setState({ visible: true, text });
 
     hideTimeoutRef.current = setTimeout(() => {
       hideTimeoutRef.current = null;

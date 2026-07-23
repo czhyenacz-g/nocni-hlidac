@@ -6,6 +6,7 @@ import { audioManager } from "../audio/audioManager";
 import { advanceRadioTriggerTracker, createInitialRadioTriggerTracker, RadioTriggerTrackerState } from "./radioTrigger";
 import { pickRandomReleaseMonsterMessage, resolveReleaseMonsterOverlayDurationMs } from "./releaseMonsterMessages";
 import { RadioMessageState } from "./radioTypes";
+import { useCopy } from "@/game/i18n/useTranslation";
 
 /**
  * Krátký stavový text pod "ZACHYCENÝ PŘENOS" hlavičkou (viz
@@ -13,8 +14,8 @@ import { RadioMessageState } from "./radioTypes";
  * varianty (viz releaseMonsterMessages.ts) nemají spolehlivě ověřený
  * přesný text (viz zadání "nepřepisuj obsah hlášek podle domněnky"), takže
  * overlay ukazuje jen obecný status po dobu přehrávání, ne konkrétní větu.
+ * Text sám žije v content/copy.ts#radio.transmissionStatusLabel (viz i18n).
  */
-const TRANSMISSION_STATUS_LABEL = "Přenos probíhá…";
 
 /**
  * Jediné místo, kde se rádiová zpráva "vypuštění monstra" skládá dohromady —
@@ -69,6 +70,7 @@ const TRANSMISSION_STATUS_LABEL = "Přenos probíhá…";
  * přehrání/zobrazení.
  */
 export function useRadioMessage(monsterStage: EnemyStage, nightNumber: number, enabled: boolean = true): RadioMessageState {
+  const copy = useCopy();
   const trackerRef = useRef<RadioTriggerTrackerState>(createInitialRadioTriggerTracker(nightNumber));
   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [state, setState] = useState<RadioMessageState>({ visible: false, text: null });
@@ -86,7 +88,7 @@ export function useRadioMessage(monsterStage: EnemyStage, nightNumber: number, e
     if (!message) return;
 
     audioManager.play(message.id);
-    setState({ visible: true, text: TRANSMISSION_STATUS_LABEL });
+    setState({ visible: true, text: copy.radio.transmissionStatusLabel });
 
     // Zvuk samotný se nezastavuje (audioManager.play je fire-and-forget,
     // krátký jednorázový klip — na rozdíl od dřívějšího speechSynthesis

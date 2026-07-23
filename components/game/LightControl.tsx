@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import { LIGHT_TOGGLE_BLOCKED_MESSAGE_MS } from "@/game/balancing/constants";
 import ConsoleIcon from "./ConsoleIcon";
 
@@ -18,6 +18,7 @@ interface LightControlProps {
 }
 
 export default function LightControl({ lightOn, bulbBroken, blockedSeq, onToggle }: LightControlProps) {
+  const COPY = useCopy();
   const label = bulbBroken ? COPY.game.lightBrokenLabel : lightOn ? COPY.game.lightOnLabel : COPY.game.lightOffLabel;
 
   // Krátké bliknutí tlačítka + upozornění po zablokovaném pokusu rozsvítit

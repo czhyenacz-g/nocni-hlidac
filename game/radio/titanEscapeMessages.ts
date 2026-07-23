@@ -10,39 +10,21 @@ import { AUDIO_EVENTS, AudioEventId } from "../audio/audioEvents";
  * PŘESNÝ přepis (dodaný v zadání, ne odhad) — stejný "1:1 sedí s
  * přehrávaným zvukem" vzor jako cameraDisabledRadioMessage.ts, na rozdíl od
  * release_monster/monsterRepel hlášek (tam jde jen o obecný status label).
+ *
+ * Zobrazený text žije v content/copy.ts#radio.titanEscapeMessages (klíč =
+ * `id`, viz i18n) — tenhle manifest nese jen audio/timing.
  */
 export interface TitanEscapeMessage {
   id: AudioEventId;
-  text: string;
   audioSrc: string;
 }
 
 export const TITAN_ESCAPE_MESSAGES: TitanEscapeMessage[] = [
-  {
-    id: AUDIO_EVENTS.titanEscape01,
-    text: "Sakra, Titan utekl! Dveře ani světla ho nezastaví. Vymyslete něco silnějšího!",
-    audioSrc: AUDIO_CONFIG[AUDIO_EVENTS.titanEscape01].src,
-  },
-  {
-    id: AUDIO_EVENTS.titanEscape02,
-    text: "Titan je venku! Běžná obrana nefunguje. Použijte všechno, co máte!",
-    audioSrc: AUDIO_CONFIG[AUDIO_EVENTS.titanEscape02].src,
-  },
-  {
-    id: AUDIO_EVENTS.titanEscape03,
-    text: "Nezastřelíte ho ani neudržíte za dveřmi. Něco vymyslete, rychle!",
-    audioSrc: AUDIO_CONFIG[AUDIO_EVENTS.titanEscape03].src,
-  },
-  {
-    id: AUDIO_EVENTS.titanEscape04,
-    text: "Titan míří k vám! Zbraně jsou k ničemu. Potřebujete větší sílu!",
-    audioSrc: AUDIO_CONFIG[AUDIO_EVENTS.titanEscape04].src,
-  },
-  {
-    id: AUDIO_EVENTS.titanEscape05,
-    text: "Bože… Titan unikl. Použijte něco, co dokáže vyřadit celý systém!",
-    audioSrc: AUDIO_CONFIG[AUDIO_EVENTS.titanEscape05].src,
-  },
+  { id: AUDIO_EVENTS.titanEscape01, audioSrc: AUDIO_CONFIG[AUDIO_EVENTS.titanEscape01].src },
+  { id: AUDIO_EVENTS.titanEscape02, audioSrc: AUDIO_CONFIG[AUDIO_EVENTS.titanEscape02].src },
+  { id: AUDIO_EVENTS.titanEscape03, audioSrc: AUDIO_CONFIG[AUDIO_EVENTS.titanEscape03].src },
+  { id: AUDIO_EVENTS.titanEscape04, audioSrc: AUDIO_CONFIG[AUDIO_EVENTS.titanEscape04].src },
+  { id: AUDIO_EVENTS.titanEscape05, audioSrc: AUDIO_CONFIG[AUDIO_EVENTS.titanEscape05].src },
 ];
 
 /** Přesná délka (ms) každého rozřezaného souboru (viz ffprobe, report) + malá rezerva — stejný účel jako cameraDisabledRadioMessage.ts#resolveCameraDisabledOverlayDurationMs. */

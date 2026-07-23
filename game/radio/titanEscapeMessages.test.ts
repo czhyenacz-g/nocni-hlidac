@@ -7,6 +7,7 @@ import {
   TITAN_ESCAPE_MESSAGES,
   TitanEscapeMessage,
 } from "./titanEscapeMessages";
+import { COPY_CS } from "../../content/copy";
 
 const EXPECTED_TEXTS = [
   "Sakra, Titan utekl! Dveře ani světla ho nezastaví. Vymyslete něco silnějšího!",
@@ -31,8 +32,10 @@ describe("TITAN_ESCAPE_MESSAGES", () => {
     expect(new Set(srcs).size).toBe(srcs.length);
   });
 
-  it("text mapping matches the exact fixed spec, in order", () => {
-    expect(TITAN_ESCAPE_MESSAGES.map((m) => m.text)).toEqual(EXPECTED_TEXTS);
+  it("translated text mapping matches the exact fixed spec, in order", () => {
+    expect(
+      TITAN_ESCAPE_MESSAGES.map((m) => COPY_CS.radio.titanEscapeMessages[m.id as keyof typeof COPY_CS.radio.titanEscapeMessages]),
+    ).toEqual(EXPECTED_TEXTS);
   });
 
   it("every audioSrc points at a file that actually exists under public/", () => {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { COPY } from "@/content/copy";
+import { useCopy } from "@/game/i18n/useTranslation";
 import { CRITICAL_POWER_THRESHOLD, POWER_RECHARGE_ANIMATION_MS } from "@/game/balancing/constants";
 import ConsoleIcon from "./ConsoleIcon";
 
@@ -40,6 +40,7 @@ export default function PowerMeter({
   nearRoomBulbLabel,
   nearRoomBulbCountingDown,
 }: PowerMeterProps) {
+  const COPY = useCopy();
   // Lišta i ikonka baterie jsou vždy neutrálně šedé (viz zadání "nemá
   // přeskakovat mezi neonově zelenou, žlutou a červenou") — kritickou energii
   // signalizuje jen tlumeně červený text procent níže, ne barva pruhu.
