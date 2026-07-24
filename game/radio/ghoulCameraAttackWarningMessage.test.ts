@@ -30,8 +30,14 @@ describe("GHOUL_CAMERA_ATTACK_WARNING_DURATION_MS", () => {
 });
 
 describe("GHOUL_CAMERA_ATTACK_WARNING_SOUNDS", () => {
-  it("has exactly the two converted ghoul_appear variants", () => {
-    expect(GHOUL_CAMERA_ATTACK_WARNING_SOUNDS).toEqual([AUDIO_EVENTS.ghoulCameraAttackWarning0, AUDIO_EVENTS.ghoulCameraAttackWarning1]);
+  it("has exactly the five converted ghoul_appear variants (replaces the old two, viz zadání)", () => {
+    expect(GHOUL_CAMERA_ATTACK_WARNING_SOUNDS).toEqual([
+      AUDIO_EVENTS.ghoulCameraAttackWarning0,
+      AUDIO_EVENTS.ghoulCameraAttackWarning1,
+      AUDIO_EVENTS.ghoulCameraAttackWarning2,
+      AUDIO_EVENTS.ghoulCameraAttackWarning3,
+      AUDIO_EVENTS.ghoulCameraAttackWarning4,
+    ]);
   });
 });
 
@@ -41,9 +47,9 @@ describe("pickRandomGhoulCameraAttackWarningSound", () => {
     expect(pickRandomGhoulCameraAttackWarningSound()).toBe(AUDIO_EVENTS.ghoulCameraAttackWarning0);
   });
 
-  it("picks the second variant on a high roll", () => {
+  it("picks the last variant on a high roll", () => {
     vi.spyOn(Math, "random").mockReturnValue(0.99);
-    expect(pickRandomGhoulCameraAttackWarningSound()).toBe(AUDIO_EVENTS.ghoulCameraAttackWarning1);
+    expect(pickRandomGhoulCameraAttackWarningSound()).toBe(AUDIO_EVENTS.ghoulCameraAttackWarning4);
   });
 
   it("returns null for an empty pool, never throws", () => {

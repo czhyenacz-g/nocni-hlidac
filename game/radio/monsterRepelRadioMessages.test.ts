@@ -6,6 +6,7 @@ import {
   MonsterRepelRadioMessage,
   pickRandomMonsterRepelMessage,
   resolveMonsterRepelOverlayDurationMs,
+  TITAN_NO_EFFECT_DISPLAY_MS,
 } from "./monsterRepelRadioMessages";
 
 const CATEGORIES = ["success", "stay", "fail"] as const;
@@ -48,6 +49,25 @@ describe("MONSTER_REPEL_RADIO_MESSAGES", () => {
         expect(message.audioSrc).not.toMatch(/repel_(success|stay|failed)\.wav$/);
       }
     }
+  });
+});
+
+// Titan je na sonické dělo imunní (viz zadání "4. SONICKÉ DĚLO PROTI
+// TITANOVI") — vlastní kategorie BEZ jakékoliv nahrávky (žádný nový audio
+// asset nebyl součástí zadání), jen pevný text "Bez efektu" (viz
+// useMonsterRepelRadioMessage.ts#resolveResultLabel).
+describe("MONSTER_REPEL_RADIO_MESSAGES.no_effect — Titan's immunity, no audio asset", () => {
+  it("is registered as an empty list (no recorded variants)", () => {
+    expect(MONSTER_REPEL_RADIO_MESSAGES.no_effect).toEqual([]);
+  });
+
+  it("pickRandomMonsterRepelMessage returns null for it, never throws", () => {
+    expect(() => pickRandomMonsterRepelMessage("no_effect")).not.toThrow();
+    expect(pickRandomMonsterRepelMessage("no_effect")).toBeNull();
+  });
+
+  it("has a positive fallback display duration (used since there's no audio file length to derive it from)", () => {
+    expect(TITAN_NO_EFFECT_DISPLAY_MS).toBeGreaterThan(0);
   });
 });
 

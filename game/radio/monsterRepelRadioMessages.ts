@@ -35,7 +35,15 @@ export const MONSTER_REPEL_RADIO_MESSAGES: Record<MonsterRepelRadioResult, Monst
     { id: AUDIO_EVENTS.radioMonsterRepelFail1, audioSrc: AUDIO_CONFIG[AUDIO_EVENTS.radioMonsterRepelFail1].src },
     { id: AUDIO_EVENTS.radioMonsterRepelFail2, audioSrc: AUDIO_CONFIG[AUDIO_EVENTS.radioMonsterRepelFail2].src },
   ],
+  // Titan je na dělo imunní (viz zadání) — žádná nahraná varianta existuje
+  // ani nemá vzniknout jen kvůli tomuhle textu, viz
+  // useMonsterRepelRadioMessage.ts (fallback na TITAN_NO_EFFECT_DISPLAY_MS
+  // níže, žádné `audioManager.play`).
+  no_effect: [],
 };
+
+/** Doba zobrazení "Bez efektu" (viz zadání) — `no_effect` nemá žádnou nahrávku, jejíž délka by jinak určila trvání (viz resolveMonsterRepelOverlayDurationMs). Podobná délka jako ostatní krátké výsledky výše. */
+export const TITAN_NO_EFFECT_DISPLAY_MS = 1200;
 
 /** Přesná délka (ms) každého souboru (viz report — `ffprobe` po zpracování) — stejný účel jako releaseMonsterMessages.ts#resolveReleaseMonsterOverlayDurationMs. */
 const MESSAGE_DURATIONS_MS: Partial<Record<AudioEventId, number>> = {

@@ -327,8 +327,15 @@ export type DeathReason =
  * kanonickými kategoriemi rádiových hlášek (viz
  * game/radio/monsterRepelRadioMessages.ts) — z pohledu hráče je postup
  * monstra vpřed neúspěch použití děla, ne neutrální popis pohybu.
+ *
+ * "no_effect" (viz zadání "4. SONICKÉ DĚLO PROTI TITANOVI") je VLASTNÍ,
+ * čtvrtá kategorie — Titan je na dělo imunní, takže tenhle výsledek NEMÁ
+ * žádnou nahranou variantu v MONSTER_REPEL_RADIO_MESSAGES (prázdné pole,
+ * žádné audio), jen pevný text "Bez efektu" (viz
+ * useMonsterRepelRadioMessage.ts#resolveResultLabel). Zapisuje ho VÝHRADNĚ
+ * game/enemies/resolveTitanAdvance.ts, nikdy resolveImpAdvance.ts.
  */
-export type MonsterRepelRadioResult = "success" | "stay" | "fail";
+export type MonsterRepelRadioResult = "success" | "stay" | "fail" | "no_effect";
 
 /**
  * Identifikátor obrázkové sekvence útoku Ghoula na kameru (viz zadání,

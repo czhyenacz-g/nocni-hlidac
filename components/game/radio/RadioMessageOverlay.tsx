@@ -37,13 +37,14 @@ interface RadioMessageOverlayProps {
  * klikání na herní prvky pod/kolem sebe.
  *
  * Kombinuje PĚT nezávislých zdrojů zprávy — Titanova jednorázová "escape"
- * hláška (useTitanEscapeMessage, nejvyšší priorita — Titanova noc jinak
- * ostatní čtyři zdroje stejně nikdy nespustí, viz níže), "útok Ghoula na
+ * hláška (useTitanEscapeMessage, nejvyšší priorita), "útok Ghoula na
  * kameru" varování, "kamera vyřazena", "reakce na sonické dělo" a
- * "vypuštění monstra" (poslední čtyři beze změny). Titanova noc (žádné
- * abilities, žádný sonic-cannon branch v resolveTitanAdvance) tyhle čtyři
- * zbylé zdroje nikdy nespustí — Titanova vrstva má přesto formálně
- * nejvyšší prioritu pro případ budoucí změny.
+ * "vypuštění monstra" (poslední čtyři beze změny). Titanova noc nikdy
+ * nespustí "útok Ghoula na kameru"/"kamera vyřazena"/"vypuštění monstra"
+ * (Impovy mechaniky), ale "reakce na sonické dělo" TEĎ platí i pro ni —
+ * Titan je na dělo imunní, ale pořád dostane vlastní `"no_effect"`
+ * kategorii/text "Bez efektu" (viz resolveTitanAdvance.ts,
+ * useMonsterRepelRadioMessage.ts).
  */
 export default function RadioMessageOverlay({
   monsterStage,

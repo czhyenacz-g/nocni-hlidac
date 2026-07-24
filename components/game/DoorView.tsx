@@ -11,8 +11,8 @@ import {
 } from "@/game/visuals/backgroundImages";
 import { BULB_REPLACE_DURATION_MS, BULB_REPLACE_SUCCESS_MESSAGE_MS } from "@/game/balancing/constants";
 import { computeBulbReplacementProgressRatio } from "@/game/core/bulbReplacementProgress";
-import { TITAN_AT_DOOR_SRC, TITAN_ATTACK_SRC, TITAN_BREACH_SRC, TITAN_OVERLOAD_DEATH_SRC } from "@/game/visuals/titanDoorAssets";
 import { resolveDoorMonsterOverlay } from "@/game/visuals/doorMonsterOverlay";
+import { resolveTitanDoorOverrideSrc } from "@/game/visuals/titanDoorOverride";
 import DoorSceneFrame from "./DoorSceneFrame";
 import ViewSwitchArrow from "./ViewSwitchArrow";
 
@@ -71,8 +71,21 @@ interface DoorViewProps {
    * DOOR_GENERATOR_OVERLOAD_FRAME_INDEX beze změny, viz zadání).
    */
   titanOverloadFrameSrc: string | null;
-  /** viz GameState.titanOverloadDeathRevealUntilMs !== null — 3s "reveal" mrtvého Titana po úspěšném zabití přetížením. */
+  /**
+   * viz GameState.titanOverloadDeathRevealUntilMs !== null — jen krátké 3s
+   * okno pro "PŘETÍŽENÍ DOKONČENO" banner (viz zadání "2. Poslední obrázek
+   * mrtvého Titana" — oznámení smí zmizet). NEPOUŽÍVÁ SE pro výběr obrázku
+   * (ten řídí `isTitanGraveyard` níže — trvalé, nikdy nevyprší).
+   */
   isTitanOverloadDeathReveal: boolean;
+  /**
+   * TRVALÝ stav "Titan byl tuto noc zabit" (`enemyStage === "graveyard"`,
+   * viz GameScreen.tsx) — na rozdíl od `isTitanOverloadDeathReveal` výše
+   * nikdy sám nevyprší (do resetu příští noci), takže řídí VÝBĚR OBRÁZKU
+   * (`TITAN_OVERLOAD_DEATH_SRC` musí zůstat vidět celou noc, i po zmizení
+   * banneru — viz zadání).
+   */
+  isTitanGraveyard: boolean;
   onToggleDoor: () => void;
   onLookAtDesk: () => void;
   onStartBulbReplacement: () => void;
@@ -111,6 +124,7 @@ export default function DoorView({
   isTitanAttack,
   titanOverloadFrameSrc,
   isTitanOverloadDeathReveal,
+  isTitanGraveyard,
   onToggleDoor,
   onLookAtDesk,
   onStartBulbReplacement,
@@ -139,38 +153,31 @@ export default function DoorView({
     const timeout = setTimeout(() => setClosedFrameStep((step) => step + 1), DOOR_CLOSED_FRAME_HOLD_MS);
     return () => clearTimeout(timeout);
   }, [doorClosed, isDoorDeathReveal, closedFrameStep]);
-  // Priorita: doorDeathReveal (monstrum u dveří, smrt už rozhodnuta) >
-  // titanOverloadDeathReveal (Titan zabitý přetížením, viz zadání) >
-  // doorDestroyed (trvale, do konce noci) > probíhající přetížení > zavřeno/
-  // otevřeno. doorDestroyed a doorGeneratorOverloadActive se nikdy nesejdou
-  // současně (viz gameReducer.ts#updateDoorGeneratorOverload — pole se
-  // vzájemně vylučují), pořadí je tu jen pro čitelnost/budoucí jistotu.
-  //
-  // Monstrum-u-otevřených-dveří obrázek (viz zadání "at_door obrázky") —
-  // čistá funkce (game/visuals/doorMonsterOverlay.ts), konzultovaná jen
-  // když žádná vyšší priorita (deathReveal/overloadDeathReveal/destroyed/
-  // probíhající přetížení) neplatí. `doorMonsterOverlay` je `null` mimo
-  // at_door/breach nebo se zavřenými dveřmi (Imp/Titan at_door) — pak se
-  // použije obvyklá otevřená/zavřená animace beze změny.
+  // Priorita zobrazení (viz zadání "3. Priorita zobrazení") žije teď v
+  // game/visuals/titanDoorOverride.ts#resolveTitanDoorOverrideSrc, ať jde
+  // nezávisle otestovat — `isTitanGraveyard` (TRVALÝ stav, viz zadání "2.
+  // Poslední obrázek mrtvého Titana") tam má vyšší prioritu než probíhající
+  // přetížení i at_door/breach overlay. `doorMonsterOverlay` (viz
+  // game/visuals/doorMonsterOverlay.ts) je `null` mimo at_door/breach nebo
+  // se zavřenými dveřmi (Imp/Titan at_door) — pak se použije obvyklá
+  // otevřená/zavřená animace beze změny.
   const doorMonsterOverlay = resolveDoorMonsterOverlay({ doorClosed, isImpAtDoor, isTitanAtDoor, isTitanBreach });
   // `titanOverrideSrc` (jiný obrázek než generický `doorScene.frames`,
   // podle zadání "napoj Titanovu dveřní sekvenci") se, pokud existuje,
   // vykreslí jako JEDINÝ snímek (aktivní index 0) místo generického pole —
   // Titanovy assety nejsou součástí `BACKGROUND_SCENES.door` (viz
   // titanDoorAssets.ts hlavička), takže nejdou vyjádřit jako index do NĚJ.
-  const titanOverrideSrc = isDoorDeathReveal
-    ? isTitanAttack
-      ? TITAN_ATTACK_SRC
-      : null
-    : isTitanOverloadDeathReveal
-      ? TITAN_OVERLOAD_DEATH_SRC
-      : doorGeneratorOverloadActive
-        ? titanOverloadFrameSrc
-        : !doorDestroyed && doorMonsterOverlay === "titan_breach"
-          ? TITAN_BREACH_SRC
-          : !doorDestroyed && doorMonsterOverlay === "titan_at_door"
-            ? TITAN_AT_DOOR_SRC
-            : null;
+  // Priorita (viz zadání "3. Priorita zobrazení") vyňatá do samostatné čisté
+  // funkce, ať jde nezávisle otestovat — viz game/visuals/titanDoorOverride.ts.
+  const titanOverrideSrc = resolveTitanDoorOverrideSrc({
+    isDoorDeathReveal,
+    isTitanAttack,
+    isTitanGraveyard,
+    doorGeneratorOverloadActive,
+    titanOverloadFrameSrc,
+    doorDestroyed,
+    doorMonsterOverlay,
+  });
   const activeIndex = isDoorDeathReveal
     ? deathRevealIndex
     : doorDestroyed

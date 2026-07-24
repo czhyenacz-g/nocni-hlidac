@@ -157,14 +157,20 @@ export const AUDIO_EVENTS = {
   radioCameraDestroyed0: "radio_camera_destroyed_0",
   radioCameraDestroyed1: "radio_camera_destroyed_1",
   radioCameraDestroyed2: "radio_camera_destroyed_2",
-  // Krátký řev/zavytí Ghoula PŘESNĚ v okamžiku, kdy začne útočit na kameru
+  // Krátký řev/komentář Ghoula PŘESNĚ v okamžiku, kdy začne útočit na kameru
   // (viz GameState.cameraAttackStartedSeq, game/radio/ghoulCameraAttackWarningMessage.ts)
-  // — dvě varianty, náhodný výběr jedné při každém útoku (stejný "1 event =
-  // 1 předem načtený <audio> element" vzor jako radioCameraDestroyed*/
-  // radioMonsterRepel*), hraje SOUČASNĚ s cameraDamageStart (elektronický
-  // "začátek poškození" zvuk výše) — vrstva stvůry navrch vrstvy techniky.
+  // — pět variant (nahrazeny z původních dvou, rozřezáno z jednoho
+  // namluveného zdroje `camera_destroid/source/ghoul_appear_raw.wav`, viz
+  // hlavička ghoulCameraAttackWarningMessage.ts), náhodný výběr jedné při
+  // každém útoku (stejný "1 event = 1 předem načtený <audio> element" vzor
+  // jako radioCameraDestroyed*/radioMonsterRepel*), hraje SOUČASNĚ s
+  // cameraDamageStart (elektronický "začátek poškození" zvuk výše) —
+  // vrstva stvůry navrch vrstvy techniky.
   ghoulCameraAttackWarning0: "ghoul_camera_attack_warning_0",
   ghoulCameraAttackWarning1: "ghoul_camera_attack_warning_1",
+  ghoulCameraAttackWarning2: "ghoul_camera_attack_warning_2",
+  ghoulCameraAttackWarning3: "ghoul_camera_attack_warning_3",
+  ghoulCameraAttackWarning4: "ghoul_camera_attack_warning_4",
   // Titanův útěk (viz zadání "5 hlášek namluvených v tomto pořadí",
   // game/radio/titanEscapeMessages.ts) — pět skutečně namluvených variant,
   // NÁHODNĚ vybraná JEDNA se přehraje přesně jednou při ZAHÁJENÍ Titanova

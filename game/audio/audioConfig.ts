@@ -656,11 +656,13 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
     volume: 0.85,
     loop: false,
   },
-  // Řev Ghoula PŘESNĚ v okamžiku zahájení útoku na kameru (viz
-  // ghoulCameraAttackWarning0/1 v audioEvents.ts, game/radio/ghoulCameraAttackWarningMessage.ts)
-  // — dvě varianty (ghoul_appear_0/1.wav, dodané zdrojové soubory), zpracováno
-  // `ffmpeg -af "volume=6dB" -codec:a libmp3lame -b:a 128k` (zdroj byl mírně
-  // tichý, max_volume ~-7dB, teď ~-1.5dB, stejný postup jako monster_retreat_roar).
+  // Řev/komentář Ghoula PŘESNĚ v okamžiku zahájení útoku na kameru (viz
+  // ghoulCameraAttackWarning0-4 v audioEvents.ts,
+  // game/radio/ghoulCameraAttackWarningMessage.ts) — pět variant, rozřezáno
+  // ze zdroje `camera_destroid/source/ghoul_appear_raw.wav` (silencedetect
+  // hranice), každý segment zesílen na peak ~-2dB (`ffmpeg -af "afade=...,
+  // volume=XdB" -codec:a libmp3lame -b:a 128k`, gain per-segment podle
+  // původní hlasitosti — stejný cíl jako dřívější dvě varianty/monster_retreat_roar).
   [AUDIO_EVENTS.ghoulCameraAttackWarning0]: {
     src: "/object_13/sound/camera_destroid/ghoul_appear_0.mp3",
     volume: 0.8,
@@ -668,6 +670,21 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   },
   [AUDIO_EVENTS.ghoulCameraAttackWarning1]: {
     src: "/object_13/sound/camera_destroid/ghoul_appear_1.mp3",
+    volume: 0.8,
+    loop: false,
+  },
+  [AUDIO_EVENTS.ghoulCameraAttackWarning2]: {
+    src: "/object_13/sound/camera_destroid/ghoul_appear_2.mp3",
+    volume: 0.8,
+    loop: false,
+  },
+  [AUDIO_EVENTS.ghoulCameraAttackWarning3]: {
+    src: "/object_13/sound/camera_destroid/ghoul_appear_3.mp3",
+    volume: 0.8,
+    loop: false,
+  },
+  [AUDIO_EVENTS.ghoulCameraAttackWarning4]: {
+    src: "/object_13/sound/camera_destroid/ghoul_appear_4.mp3",
     volume: 0.8,
     loop: false,
   },

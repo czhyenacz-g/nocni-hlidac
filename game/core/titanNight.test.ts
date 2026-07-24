@@ -93,7 +93,13 @@ describe("Titan ignores all defensive/retreat mechanics", () => {
     expect(result.enemyLocationEnteredAtMs).toBe(0);
   });
 
-  it("sonic cannon has no effect — Titan's resolver never rolls/consults it, stage only changes via the 20s timer", () => {
+  // Zadání "4. SONICKÉ DĚLO PROTI TITANOVI" — Titan zůstává na dělo GAMEPLAY
+  // imunní (žádný roll, stage se mění VÝHRADNĚ 20s časovačem), ale hráč teď
+  // dostane informativní "Bez efektu" hlášení při každém platném použití
+  // (viz resolveTitanAdvance.test.ts pro podrobné pokrytí týhle nové
+  // kategorie) — `sonicCannonResultSeq` se tedy TEĎ zvyšuje, na rozdíl od
+  // dřívějšího chování testovaného tady.
+  it("sonic cannon never affects Titan's movement, but now reports 'no_effect' on every valid use", () => {
     const reducer = createGameReducer(NIGHT_15);
     const state = titanRunningState({
       enemyStage: "outer_yard",
@@ -105,7 +111,8 @@ describe("Titan ignores all defensive/retreat mechanics", () => {
     });
     const result = reducer(state, { type: "ENEMY_ADVANCE", currentNight: 15 });
     expect(result.enemyStage).toBe("outer_yard");
-    expect(result.sonicCannonResultSeq).toBe(state.sonicCannonResultSeq);
+    expect(result.sonicCannonResultSeq).toBe(state.sonicCannonResultSeq + 1);
+    expect(result.lastSonicCannonResult).toBe("no_effect");
   });
 
   it("forced-retreat fields are never set for Titan — they simply stay null/default", () => {

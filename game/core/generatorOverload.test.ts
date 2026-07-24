@@ -9,6 +9,8 @@ import {
   TITAN_OVERLOAD_DEATH_REVEAL_DURATION_MS,
 } from "../balancing/constants";
 import { GameState, NightDefinition } from "./types";
+import { resolveTitanDoorOverrideSrc } from "../visuals/titanDoorOverride";
+import { TITAN_OVERLOAD_DEATH_SRC } from "../visuals/titanDoorAssets";
 
 // Přetížení generátoru dnes VŽDY zničí dveře. Pokud je aktivní monstrum
 // Titan A je právě u dveří (isMonsterAtDoor — "at_door"/"breach", stejná
@@ -498,5 +500,83 @@ describe("titanOverloadDeathRevealUntilMs — cosmetic 3s reveal after a success
     const state = titanStateAtGenerator({ titanOverloadDeathRevealUntilMs: 12345 });
     const initial = createInitialGameState(TITAN_NIGHT, { nightFeatures: state.nightFeatures });
     expect(initial.titanOverloadDeathRevealUntilMs).toBeNull();
+  });
+});
+
+// End-to-end regrese pro zadání "2./3. Poslední obrázek mrtvého Titana /
+// Priorita zobrazení" — pohání skutečný reducer (windup -> overload ->
+// dokončení -> vypršení revealu) a teprve VÝSLEDNÝ state posílá do
+// game/visuals/titanDoorOverride.ts#resolveTitanDoorOverrideSrc, přesně
+// jak by to dělal GameScreen.tsx/DoorView.tsx. Ověřuje, že se dřívější
+// chyba (obrázek zmizel spolu s bannerem) NEVRACÍ.
+describe("Titan overload -> door image, end to end (reducer + resolveTitanDoorOverrideSrc)", () => {
+  it("the dead-Titan image survives past the 3s reveal banner window, unlike the transient banner flag", () => {
+    const reducer = createGameReducer(TITAN_NIGHT);
+    const started = reducer(titanStateAtGenerator({ elapsedMs: 0, enemyStage: "at_door" }), {
+      type: "START_GENERATOR_OVERLOAD",
+    });
+    const killed = reducer(started, { type: "TICK", deltaMs: GENERATOR_OVERLOAD_DOOR_DURATION_MS });
+    const afterRevealExpired = reducer(killed, { type: "TICK", deltaMs: TITAN_OVERLOAD_DEATH_REVEAL_DURATION_MS });
+
+    // The transient banner flag is gone (expected, per zadání "oznámení
+    // může po současné době zmizet")...
+    expect(afterRevealExpired.titanOverloadDeathRevealUntilMs).toBeNull();
+    // ...but the permanent signal driving the IMAGE is still true, and
+    // doorDestroyed being true must NOT make the picture fall back to the
+    // generic destroyed-door frame (the bug being fixed here).
+    expect(afterRevealExpired.enemyStage).toBe("graveyard");
+    expect(afterRevealExpired.doorDestroyed).toBe(true);
+
+    const isTitanGraveyard = afterRevealExpired.enemyStage === "graveyard";
+    const override = resolveTitanDoorOverrideSrc({
+      isDoorDeathReveal: afterRevealExpired.doorDeathRevealUntilMs !== null,
+      isTitanAttack: false,
+      isTitanGraveyard,
+      doorGeneratorOverloadActive: afterRevealExpired.doorGeneratorOverloadUntilMs !== null,
+      titanOverloadFrameSrc: null,
+      doorDestroyed: afterRevealExpired.doorDestroyed,
+      doorMonsterOverlay: null,
+    });
+    expect(override).toBe(TITAN_OVERLOAD_DEATH_SRC);
+  });
+
+  it("the dead-Titan image is still showing arbitrarily long after the kill (until the night ends)", () => {
+    const reducer = createGameReducer(TITAN_NIGHT);
+    const started = reducer(titanStateAtGenerator({ elapsedMs: 0, enemyStage: "at_door" }), {
+      type: "START_GENERATOR_OVERLOAD",
+    });
+    const killed = reducer(started, { type: "TICK", deltaMs: GENERATOR_OVERLOAD_DOOR_DURATION_MS });
+    // Way past the reveal window — simulates the player just continuing to
+    // play out the rest of the shift.
+    const muchLater = reducer(killed, { type: "TICK", deltaMs: 5 * 60 * 1000 });
+
+    expect(muchLater.enemyStage).toBe("graveyard");
+    const override = resolveTitanDoorOverrideSrc({
+      isDoorDeathReveal: false,
+      isTitanAttack: false,
+      isTitanGraveyard: true,
+      doorGeneratorOverloadActive: false,
+      titanOverloadFrameSrc: null,
+      doorDestroyed: muchLater.doorDestroyed,
+      doorMonsterOverlay: null,
+    });
+    expect(override).toBe(TITAN_OVERLOAD_DEATH_SRC);
+  });
+
+  it("a fresh night's initial state is not graveyarded — the permanent image resets along with enemyStage", () => {
+    const initial = createInitialGameState(TITAN_NIGHT);
+    expect(initial.enemyStage).not.toBe("graveyard");
+    const isTitanGraveyard = initial.enemyStage === "graveyard";
+    expect(
+      resolveTitanDoorOverrideSrc({
+        isDoorDeathReveal: false,
+        isTitanAttack: false,
+        isTitanGraveyard,
+        doorGeneratorOverloadActive: false,
+        titanOverloadFrameSrc: null,
+        doorDestroyed: false,
+        doorMonsterOverlay: null,
+      }),
+    ).toBeNull();
   });
 });

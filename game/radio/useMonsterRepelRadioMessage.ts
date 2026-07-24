@@ -3,13 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import { MonsterRepelRadioResult } from "../core/types";
 import { audioManager } from "../audio/audioManager";
-import { pickRandomMonsterRepelMessage, resolveMonsterRepelOverlayDurationMs } from "./monsterRepelRadioMessages";
+import { pickRandomMonsterRepelMessage, resolveMonsterRepelOverlayDurationMs, TITAN_NO_EFFECT_DISPLAY_MS } from "./monsterRepelRadioMessages";
 import { RadioMessageState } from "./radioTypes";
 
 /**
  * Text pod "ZACHYCENÝ PŘENOS" hlavičkou pro sonic-cannon reakci (viz zadání
  * "Text pro výsledek má být pouze: success `...!`, stay `...?`, fail
- * `...!!!`" — žádné "Úspěch"/"Selhání"/procenta).
+ * `...!!!`" — žádné "Úspěch"/"Selhání"/procenta). `no_effect` (Titan, viz
+ * resolveTitanAdvance.ts) je jediná výjimka — zadání vyžaduje doslovný text
+ * "Bez efektu", ne symbol.
  */
 function resolveResultLabel(result: MonsterRepelRadioResult): string {
   switch (result) {
@@ -19,6 +21,8 @@ function resolveResultLabel(result: MonsterRepelRadioResult): string {
       return "...?";
     case "fail":
       return "...!!!";
+    case "no_effect":
+      return "Bez efektu";
   }
 }
 
@@ -48,13 +52,19 @@ export function useMonsterRepelRadioMessage(
     prevSeqRef.current = resultSeq;
     if (lastResult === null) return;
 
+    // `no_effect` (Titan) nemá žádnou nahranou variantu (viz
+    // monsterRepelRadioMessages.ts#MONSTER_REPEL_RADIO_MESSAGES.no_effect —
+    // prázdné pole) — `message` je pak `null`, ale text se PŘESTO má
+    // zobrazit (jen bez audia), na rozdíl od dřívějšího chování, kde `null`
+    // znamenalo "žádná zpráva vůbec".
     const message = pickRandomMonsterRepelMessage(lastResult);
-    if (!message) return;
-
-    audioManager.play(message.id);
+    if (message) {
+      audioManager.play(message.id);
+    }
     setState({ visible: true, text: resolveResultLabel(lastResult) });
 
-    const timeout = setTimeout(() => setState({ visible: false, text: null }), resolveMonsterRepelOverlayDurationMs(message.id));
+    const durationMs = message ? resolveMonsterRepelOverlayDurationMs(message.id) : TITAN_NO_EFFECT_DISPLAY_MS;
+    const timeout = setTimeout(() => setState({ visible: false, text: null }), durationMs);
     return () => clearTimeout(timeout);
   }, [resultSeq, lastResult]);
 

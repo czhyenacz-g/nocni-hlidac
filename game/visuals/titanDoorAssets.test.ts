@@ -170,4 +170,39 @@ describe("resolveTitanOverloadFrameSrc — deterministic 5-bucket countdown", ()
     const b = resolveTitanOverloadFrameSrc(5000, total, total);
     expect(a).toBe(b);
   });
+
+  // Regresní test pro zadání "1. Přetížení generátoru při útoku Titana" —
+  // simuluje reálný TICK loop (GAME_TICK_MS = 100ms, viz balancing/constants.ts)
+  // od startu do konce přetížení a ověřuje, že snímky přijdou VŽDY v
+  // rostoucím pořadí (0,1,2,3,4), NIKDY nepřeskočí rovnou na poslední index
+  // dřív, než tam podle progresu skutečně patří.
+  it("stepping through the whole 10s window in realistic 100ms ticks yields frames 0..4 in strictly non-decreasing order, never jumping ahead of schedule", () => {
+    const overloadUntilMs = total;
+    const seenIndices: number[] = [];
+    for (let elapsedMs = 0; elapsedMs <= total; elapsedMs += 100) {
+      const src = resolveTitanOverloadFrameSrc(elapsedMs, overloadUntilMs, total);
+      const index = (TITAN_DOOR_ASSETS.overdrive as readonly string[]).indexOf(src);
+      seenIndices.push(index);
+    }
+    // Never negative (always a real overdrive frame), never past index 4
+    // (index 5 is the separate "dead" reveal, not part of the countdown).
+    expect(seenIndices.every((i) => i >= 0 && i <= 4)).toBe(true);
+    // Monotonic — a later tick's frame index is never smaller than an
+    // earlier tick's (no going "backwards", and crucially no jump straight
+    // to 4 while an earlier tick was still at 0).
+    for (let i = 1; i < seenIndices.length; i++) {
+      expect(seenIndices[i]).toBeGreaterThanOrEqual(seenIndices[i - 1]);
+    }
+    // The very first tick (elapsedMs=0, right when the overload starts)
+    // must show the FIRST frame, not the last — the exact symptom from the
+    // bug report ("místo očekávané sekvence se rovnou zobrazil poslední
+    // obrázek").
+    expect(seenIndices[0]).toBe(0);
+    // And it must actually reach the last countdown frame (4) by the end —
+    // confirms the sequence completes, not just that it starts correctly.
+    expect(seenIndices[seenIndices.length - 1]).toBe(4);
+    // All 5 frames are visited at some point — no frame is skipped over
+    // entirely by the 100ms step size.
+    expect(new Set(seenIndices)).toEqual(new Set([0, 1, 2, 3, 4]));
+  });
 });

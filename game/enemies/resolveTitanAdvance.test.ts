@@ -263,3 +263,109 @@ describe("resolveTitanAdvance — breaks the near-room bulb entering 'at_door' i
     expect(result.roomBulbs?.nearRoom.broken).toBe(true);
   });
 });
+
+// Sonické dělo proti Titanovi (viz zadání "4. SONICKÉ DĚLO PROTI TITANOVI")
+// — Titan je na dělo IMUNNÍ, ale hráč musí dostat "Bez efektu" hlášení při
+// KAŽDÉM platném použití. `sonicCannonAffecting` fixture odpovídá kameře
+// "outer_yard" (viz cameras.object13.ts#enemyVisibleAtStage), aktivnímu dělu
+// na desk pohledu s otevřenou kamerou — přesně `isSonicCannonAffectingEnemy`
+// podmínka (game/core/sonicCannon.ts).
+describe("resolveTitanAdvance — sonic cannon has zero gameplay effect on Titan, but always reports 'no_effect'", () => {
+  function sonicCannonAimedState(overrides: Partial<GameState> = {}): GameState {
+    return titanState({
+      enemyStage: "outer_yard",
+      elapsedMs: 0,
+      enemyLocationEnteredAtMs: 0,
+      playerView: "desk",
+      cameraOpen: true,
+      activeCameraId: "outer_yard",
+      sonicCannonActive: true,
+      ...overrides,
+    });
+  }
+
+  it("bumps sonicCannonResultSeq and sets lastSonicCannonResult to 'no_effect' on a valid use", () => {
+    const state = sonicCannonAimedState();
+    const result = resolveTitanAdvance({ state, night: NIGHT_15 });
+    expect(result.sonicCannonResultSeq).toBe(state.sonicCannonResultSeq + 1);
+    expect(result.lastSonicCannonResult).toBe("no_effect");
+  });
+
+  it("auto-turns the cannon off after reporting the result, same convention as the Imp flow", () => {
+    const state = sonicCannonAimedState();
+    const result = resolveTitanAdvance({ state, night: NIGHT_15 });
+    expect(result.sonicCannonActive).toBe(false);
+    expect(result.sonicCannonToggleSeq).toBe(state.sonicCannonToggleSeq + 1);
+    expect(result.lastSonicCannonToggleReason).toBe("result_auto_off");
+  });
+
+  it("reports 'no_effect' again on a second valid use (not just the first)", () => {
+    const state = sonicCannonAimedState({ sonicCannonResultSeq: 4 });
+    const result = resolveTitanAdvance({ state, night: NIGHT_15 });
+    expect(result.sonicCannonResultSeq).toBe(5);
+    expect(result.lastSonicCannonResult).toBe("no_effect");
+  });
+
+  it("does not change enemyStage/lastEnemyDecision — movement is computed exactly as if the cannon weren't running", () => {
+    const withCannon = sonicCannonAimedState();
+    const withoutCannon = { ...withCannon, sonicCannonActive: false };
+    const resultWithCannon = resolveTitanAdvance({ state: withCannon, night: NIGHT_15 });
+    const resultWithoutCannon = resolveTitanAdvance({ state: withoutCannon, night: NIGHT_15 });
+    expect(resultWithCannon.enemyStage).toBe(resultWithoutCannon.enemyStage);
+    expect(resultWithCannon.lastEnemyDecision).toBe(resultWithoutCannon.lastEnemyDecision);
+  });
+
+  it("does not interrupt Titan's advance to the next stage once its dwell time elapses, cannon or not", () => {
+    const state = sonicCannonAimedState({ elapsedMs: TITAN_STAGE_STAY_MS });
+    const result = resolveTitanAdvance({ state, night: NIGHT_15 });
+    // NIGHT_15's only route variant is outside -> outer_yard -> left_hallway
+    // -> ... (viz monsterDefinitions.ts#TITAN.gameplay.routeVariants).
+    expect(result.enemyStage).toBe("left_hallway");
+  });
+
+  it("still fires while an overload is running, for a stage that actually has a camera (door_hallway, not yet at_door/breach)", () => {
+    // at_door/breach have NO camera (`enemyVisibleAtStage`, viz
+    // cameras.object13.ts) — the player watches the door itself once Titan
+    // gets that close, so the cannon can never be "affecting" it there in
+    // practice. door_hallway (one stage earlier) does have a camera, and an
+    // overload could in principle already be running by then.
+    const state = sonicCannonAimedState({
+      enemyStage: "door_hallway",
+      activeCameraId: "door_hallway",
+      doorGeneratorOverloadUntilMs: 5000,
+    });
+    const result = resolveTitanAdvance({ state, night: NIGHT_15 });
+    expect(result.lastSonicCannonResult).toBe("no_effect");
+    // The freeze-guard only applies at_door/breach (isMonsterAtDoor) —
+    // door_hallway keeps advancing on its own normal timer, untouched by
+    // the cannon.
+    expect(result.enemyStage).toBeUndefined();
+    expect(result.lastEnemyDecision).toBe("stay");
+  });
+
+  it("does nothing once Titan is already dead (graveyard) — no seq bump, no result, matching the existing no-op guard", () => {
+    const state = sonicCannonAimedState({ enemyStage: "graveyard", activeCameraId: "door_hallway" });
+    const result = resolveTitanAdvance({ state, night: NIGHT_15 });
+    expect(result).toEqual({});
+  });
+
+  it("does nothing once Titan is already dead (attack) — no seq bump, no result", () => {
+    const state = sonicCannonAimedState({ enemyStage: "attack", activeCameraId: "door_hallway" });
+    const result = resolveTitanAdvance({ state, night: NIGHT_15 });
+    expect(result).toEqual({});
+  });
+
+  it("does not fire when the cannon is off (regression — no accidental always-on behavior)", () => {
+    const state = sonicCannonAimedState({ sonicCannonActive: false });
+    const result = resolveTitanAdvance({ state, night: NIGHT_15 });
+    expect(result.sonicCannonResultSeq).toBeUndefined();
+    expect(result.lastSonicCannonResult).toBeUndefined();
+  });
+
+  it("does not fire when the cannon is on but pointed at a camera without Titan (advanceChance/retreatChance untouched, no result)", () => {
+    const state = sonicCannonAimedState({ activeCameraId: "left_hallway" });
+    const result = resolveTitanAdvance({ state, night: NIGHT_15 });
+    expect(result.sonicCannonResultSeq).toBeUndefined();
+    expect(result.lastSonicCannonResult).toBeUndefined();
+  });
+});

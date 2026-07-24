@@ -180,6 +180,16 @@ export default function GameScreen({
   const isTitanAtDoor = isTitanNight && state.enemyStage === "at_door";
   const isTitanBreach = isTitanNight && state.enemyStage === "breach";
   const isTitanAttack = isTitanNight && state.enemyStage === "attack";
+  // TRVALÝ stav "Titan byl tuto noc zabit" (viz zadání "2. Poslední obrázek
+  // mrtvého Titana" — odděl dočasné oznámení od trvalého obrazu) —
+  // `enemyStage === "graveyard"` je JEDINÝ způsob, jak tam Titan skončí
+  // (updateDoorGeneratorOverload v gameReducer.ts), a jednou tam zůstává až
+  // do reset noci (ENEMY_ADVANCE ho odtamtud nikdy nevrátí, viz guard tam).
+  // Na rozdíl od `state.titanOverloadDeathRevealUntilMs !== null` (dole,
+  // `isTitanOverloadDeathReveal` — jen 3s okno pro "PŘETÍŽENÍ DOKONČENO"
+  // banner) tohle NIKDY nevyprší samo — DoorView.tsx ho proto používá pro
+  // výběr OBRÁZKU (musí zůstat celou noc), ne pro banner (ten smí zmizet).
+  const isTitanGraveyard = isTitanNight && state.enemyStage === "graveyard";
   // Non-Titan monstrum (dnes Imp) u dveří (viz zadání "at_door obrázky") —
   // mutuálně vyloučené s isTitanAtDoor, DoorView.tsx sám navíc podmiňuje
   // otevřenými dveřmi (viz komentář tam).
@@ -330,6 +340,7 @@ export default function GameScreen({
                 isTitanAttack={isTitanAttack}
                 titanOverloadFrameSrc={titanOverloadFrameSrc}
                 isTitanOverloadDeathReveal={state.titanOverloadDeathRevealUntilMs !== null}
+                isTitanGraveyard={isTitanGraveyard}
                 onToggleDoor={onToggleDoor}
                 onLookAtDesk={onLookAtDesk}
                 onStartBulbReplacement={onStartBulbReplacement}

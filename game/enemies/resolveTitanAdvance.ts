@@ -2,6 +2,7 @@ import { EnemyStage, GameState, NightDefinition } from "../core/types";
 import { resolveLivesRemainingAfterDeath } from "../core/gameMode";
 import { isMonsterAtDoor } from "../core/doorEncounter";
 import { isNearRoomLightActive } from "../core/roomBulbs";
+import { isSonicCannonAffectingEnemy } from "../core/sonicCannon";
 import { TITAN_AT_DOOR_STAGE_STAY_MS, TITAN_DOOR_BREACH_STAGE_STAY_MS, TITAN_STAGE_STAY_MS } from "../balancing/constants";
 
 /** Kolik ms má Titan zůstat v daném route stage, než postoupí dál — jediné místo, které tohle rozhoduje (viz zadání "nastav délky explicitně podle jednotlivých fází"). `at_door` a `breach` mají KAŽDÝ svou VLASTNÍ hodnotu (viz zadání "zvyš at_door na 3.5s" — breach zůstává beze změny), zbytek trasy sdílí `TITAN_STAGE_STAY_MS`. */
@@ -41,7 +42,41 @@ export interface ResolveTitanAdvanceInput {
 
 export type TitanAdvanceResult = Partial<GameState>;
 
+/**
+ * Titan je na sonické dělo IMUNNÍ (viz zadání "4. SONICKÉ DĚLO PROTI
+ * TITANOVI" — žádný efekt na pohyb/stage/zdraví, ale hráč MUSÍ dostat
+ * hlášení "Bez efektu" při KAŽDÉM platném použití, ne jen poprvé). Tenký
+ * obal nad `resolveTitanMovementDecision` (beze změny, žádný z jejích
+ * `return`ů se nemění) — spočítá pohybové rozhodnutí úplně stejně, jako by
+ * dělo vůbec neexistovalo, a teprve DO HOTOVÉHO výsledku přidá čistě
+ * informativní sonická pole, stejná jako Impovo `sonicResultUpdate`
+ * (resolveImpAdvance.ts) — `sonicCannonResultSeq`/`lastSonicCannonResult`/
+ * auto-off, ale s novou kategorií `"no_effect"` (viz
+ * game/radio/monsterRepelRadioMessages.ts, useMonsterRepelRadioMessage.ts).
+ * Žádná zpráva, dokud je Titan mrtvý (`"attack"`/`"graveyard"` — po
+ * dokončeném přetížení `gameReducer.ts#ENEMY_ADVANCE` navíc tenhle resolver
+ * už vůbec nezavolá, viz jeho `enemyStage === "graveyard"` guard, tahle
+ * podmínka je jen obranná/pro přímé testy).
+ */
 export function resolveTitanAdvance(input: ResolveTitanAdvanceInput): TitanAdvanceResult {
+  const { state, night } = input;
+  const decision = resolveTitanMovementDecision(input);
+
+  const titanIsDead = state.enemyStage === "attack" || state.enemyStage === "graveyard";
+  if (!titanIsDead && isSonicCannonAffectingEnemy(state, night)) {
+    return {
+      ...decision,
+      sonicCannonResultSeq: state.sonicCannonResultSeq + 1,
+      lastSonicCannonResult: "no_effect",
+      sonicCannonActive: false,
+      sonicCannonToggleSeq: state.sonicCannonToggleSeq + 1,
+      lastSonicCannonToggleReason: "result_auto_off",
+    };
+  }
+  return decision;
+}
+
+function resolveTitanMovementDecision(input: ResolveTitanAdvanceInput): TitanAdvanceResult {
   const { state, night } = input;
 
   // "attack" je finální stav (spustí/spustil už player-death flow) a

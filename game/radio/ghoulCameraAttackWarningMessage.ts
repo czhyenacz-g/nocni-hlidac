@@ -23,16 +23,25 @@ import { AUDIO_EVENTS, AudioEventId } from "../audio/audioEvents";
 export const GHOUL_CAMERA_ATTACK_WARNING_DURATION_MS = 2500;
 
 /**
- * Dvě varianty řevu Ghoula PŘESNĚ v okamžiku útoku (dodané zdrojové soubory
- * ghoul_appear_0/1.wav, zpracováno `ffmpeg -af "volume=6dB" -codec:a
- * libmp3lame -b:a 128k`, viz audioConfig.ts) — hraje SOUČASNĚ s
- * `AUDIO_EVENTS.cameraDamageStart` (elektronický "začátek poškození" zvuk,
- * viz app/play/page.tsx), ne místo něj. Stejný "náhodný výběr jedné
- * varianty" vzor jako cameraDisabledRadioMessage.ts/monsterRepelRadioMessages.ts.
+ * Pět variant řevu/komentáře Ghoula PŘESNĚ v okamžiku útoku — rozřezáno z
+ * jednoho namluveného zdroje (`public/object_13/sound/camera_destroid/source/
+ * ghoul_appear_raw.wav`, ponechán beze změny pro budoucí opětovné
+ * zpracování, stejná konvence jako titan_escape/source/titan_escape_raw.wav),
+ * zpracováno `ffmpeg -af "afade=t=in:d=0.01,afade=t=out:...,volume=XdB"
+ * -codec:a libmp3lame -b:a 128k` (gain per-segment, ať každý vyjde na peak
+ * ~-2dB, viz audioConfig.ts). Nahrazuje dřívější dvě kratší, samostatně
+ * namluvené varianty (ghoul_appear_0/1, staré zdrojové .wav smazány). Hraje
+ * SOUČASNĚ s `AUDIO_EVENTS.cameraDamageStart` (elektronický "začátek
+ * poškození" zvuk, viz app/play/page.tsx), ne místo něj. Stejný "náhodný
+ * výběr jedné varianty" vzor jako
+ * cameraDisabledRadioMessage.ts/monsterRepelRadioMessages.ts.
  */
 export const GHOUL_CAMERA_ATTACK_WARNING_SOUNDS: AudioEventId[] = [
   AUDIO_EVENTS.ghoulCameraAttackWarning0,
   AUDIO_EVENTS.ghoulCameraAttackWarning1,
+  AUDIO_EVENTS.ghoulCameraAttackWarning2,
+  AUDIO_EVENTS.ghoulCameraAttackWarning3,
+  AUDIO_EVENTS.ghoulCameraAttackWarning4,
 ];
 
 /**
