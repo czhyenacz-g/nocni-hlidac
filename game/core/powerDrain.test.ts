@@ -164,6 +164,51 @@ describe("computePowerDrainBreakdown — generator critical drain", () => {
   });
 });
 
+// Přetížení generátoru (viz zadání "dal bych přetížení o 30% méně
+// nákladnější na energii — protože výsledek je, že jsou zničené dveře") je
+// pořád `generatorState: "restarting"` energeticky, ale s 30% slevou na tu
+// pevnou "emergency" přirážku — VÝHRADNĚ po dobu `doorGeneratorOverloadUntilMs
+// !== null`. Skutečná oprava poruchy (stejný `generatorState`, ale BEZ
+// aktivního přetížení) zůstává na plné sazbě — regrese testovaná výše.
+describe("computePowerDrainBreakdown — generator overload gets a 30% discount on the emergency extra drain", () => {
+  it("is 30% cheaper than an equivalent plain restart/critical-fault fix", () => {
+    const restarting = computePowerDrainBreakdown(
+      stateAtDesk({ generatorState: "restarting", doorGeneratorOverloadUntilMs: null }),
+      NIGHT_01,
+      NO_SCALING,
+    );
+    const overloading = computePowerDrainBreakdown(
+      stateAtDesk({ generatorState: "restarting", doorGeneratorOverloadUntilMs: 5000, elapsedMs: 0 }),
+      NIGHT_01,
+      NO_SCALING,
+    );
+
+    expect(overloading.generatorExtraDrain).toBeCloseTo(restarting.generatorExtraDrain * 0.7, 10);
+  });
+
+  it("does not touch the actual door/light drain components, only the fixed emergency extra", () => {
+    const overloading = computePowerDrainBreakdown(
+      stateAtDesk({ generatorState: "restarting", doorGeneratorOverloadUntilMs: 5000, elapsedMs: 0, doorClosed: false, lightOn: true }),
+      NIGHT_01,
+      NO_SCALING,
+    );
+    // Door is forced open during an overload, so doorDrain is 0 regardless —
+    // only lightDrain (real, not the fixed extra) reflects the actual light state.
+    expect(overloading.doorDrain).toBe(0);
+    expect(overloading.lightDrain).toBeCloseTo(NIGHT_01.powerDrainPerSecond.lightOn, 10);
+  });
+
+  it("a real generator fault fix (no overload active) keeps the full, undiscounted rate", () => {
+    const breakdown = computePowerDrainBreakdown(
+      stateAtDesk({ generatorState: "criticalBeeping", doorGeneratorOverloadUntilMs: null }),
+      NIGHT_01,
+      NO_SCALING,
+    );
+    const expectedExtra = 2 * NIGHT_01.powerDrainPerSecond.doorClosed + NIGHT_01.powerDrainPerSecond.lightOn;
+    expect(breakdown.generatorExtraDrain).toBeCloseTo(expectedExtra, 10);
+  });
+});
+
 describe("computePowerDrainBreakdown — night scaling applies exactly once", () => {
   it("multiplies the summed drain by nightScalingMultiplier exactly once, never compounded", () => {
     const scaling = computeNightScaling(5); // multiplier > 1, not the (night 10+) cap

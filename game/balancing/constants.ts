@@ -288,6 +288,15 @@ export const THINK_IT_OVER_WINDUP_DURATION_MS = 10_000;
 export const GENERATOR_OVERLOAD_WINDUP_DURATION_MS = 1500;
 export const GENERATOR_OVERLOAD_DOOR_DURATION_MS = 10_000;
 
+// O 30 % levnější než běžné "restarting" (na žádost — výsledkem přetížení
+// jsou stejně zničené dveře, na rozdíl od skutečné opravy poruchy generátoru
+// tedy nejde o dočasný stav, který se má hráči "vyplatit" stejně draze).
+// Násobí VÝHRADNĚ `generatorExtraDrain` (viz game/core/powerDrain.ts) a
+// VÝHRADNĚ po dobu `GameState.doorGeneratorOverloadUntilMs !== null` —
+// skutečná oprava poruchy (criticalBeeping/restarting mimo přetížení)
+// zůstává na plné sazbě, beze změny.
+export const GENERATOR_OVERLOAD_EXTRA_DRAIN_MULTIPLIER = 0.7;
+
 // Titan zabitý přetížením u dveří (viz gameReducer.ts#updateDoorGeneratorOverload,
 // EnemyStage "graveyard") — čistě prezentační "reveal" mrtvého Titana
 // (titan_doors_overdrive_5.webp + potvrzující zpráva v DoorView.tsx), NEnÍ

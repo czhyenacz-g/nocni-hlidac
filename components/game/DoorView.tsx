@@ -295,11 +295,19 @@ export default function DoorView({
           // countdown patří sem, ne jen na (teď opuštěný) generátorový
           // pohled. pointer-events-none: čistě informativní, nesmí bránit
           // hotspotu pod ním (ten je stejně zamčený, viz doorControlsLocked).
+          // První řádek (viz zadání "stejný text jako u restartu generátoru")
+          // znovupoužívá STEJNÝ text jako GeneratorView pro `generatorState
+          // === "restarting"` (COPY.game.generatorStateLabels.restarting) —
+          // přetížení je energeticky tenhle samý stav (viz
+          // GENERATOR_OVERLOAD_EXTRA_DRAIN_MULTIPLIER, powerDrain.ts), jen s
+          // 30% slevou, takže hráč má vidět stejnou hlášku, i když je
+          // teleportovaný pryč z GeneratorView.
           <div
-            className="absolute pointer-events-none text-sm font-bold text-red-300 bg-black/70 border border-red-600 px-3 py-1 rounded whitespace-nowrap"
+            className="absolute pointer-events-none text-sm font-bold text-red-300 bg-black/70 border border-red-600 px-3 py-1 rounded whitespace-nowrap text-center"
             style={{ left: "50%", top: "6%", transform: "translateX(-50%)" }}
           >
-            {COPY.game.doorGeneratorOverloadCountdownLabel.replace("{seconds}", String(doorGeneratorOverloadSecondsRemaining))}
+            <div>{COPY.game.generatorStateLabels.restarting}</div>
+            <div>{COPY.game.doorGeneratorOverloadCountdownLabel.replace("{seconds}", String(doorGeneratorOverloadSecondsRemaining))}</div>
           </div>
         )}
 

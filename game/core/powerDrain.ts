@@ -1,6 +1,7 @@
 import { GameState, NightDefinition } from "./types";
 import { NightScaling } from "../difficulty/nightScaling";
 import { isSonicCannonRunning } from "./sonicCannon";
+import { GENERATOR_OVERLOAD_EXTRA_DRAIN_MULTIPLIER } from "../balancing/constants";
 
 /**
  * Rozpad spotřeby/dobíjení energie za sekundu — jediné místo pravdy, které
@@ -53,10 +54,19 @@ export function computePowerDrainBreakdown(
 ): PowerDrainBreakdown {
   const rates = night.powerDrainPerSecond;
   const sonicCannonActive = isSonicCannonRunning(state);
-  const generatorExtraDrain =
+  const restartingExtraDrainRate =
     state.generatorState === "criticalBeeping" || state.generatorState === "restarting"
       ? 2 * rates.doorClosed + rates.lightOn
       : 0;
+  // Přetížení generátoru (viz GameState.doorGeneratorOverloadUntilMs) sdílí
+  // stejné `generatorState: "restarting"` jako skutečná oprava poruchy, ale
+  // je o 30 % levnější (viz GENERATOR_OVERLOAD_EXTRA_DRAIN_MULTIPLIER — na
+  // žádost, výsledkem je stejně zničení dveří). Skutečná porucha
+  // (criticalBeeping/restarting MIMO přetížení) zůstává na plné sazbě.
+  const generatorExtraDrain =
+    state.doorGeneratorOverloadUntilMs !== null
+      ? restartingExtraDrainRate * GENERATOR_OVERLOAD_EXTRA_DRAIN_MULTIPLIER
+      : restartingExtraDrainRate;
   const multiplier = nightScaling.energyDrainMultiplier;
 
   if (sonicCannonActive) {
