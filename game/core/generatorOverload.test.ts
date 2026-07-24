@@ -332,6 +332,40 @@ describe("RESTART_GENERATOR — unaffected by the new overload mechanism", () =>
   });
 });
 
+// Zadání: "i po přetížení generátoru může dojít k jeho vypnutí... to je
+// špatně, když je zničený/přetížený" — jednou zničené dveře jsou nevratné a
+// navždy otevřené, takže žádná NOVÁ porucha generátoru už nemá smysl (viz
+// gameReducer.ts#updateGenerator, `!state.doorDestroyed` guard).
+describe("a destroyed door (via generator overload) permanently disables NEW generator faults", () => {
+  it("does not start a new fault even long after generatorFaultAtMs, once the door is destroyed", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const started = reducer(stateAtGenerator({ elapsedMs: 0, enemyStage: "at_door" }), { type: "START_GENERATOR_OVERLOAD" });
+    const doorDestroyedState = reducer(started, { type: "TICK", deltaMs: GENERATOR_OVERLOAD_DOOR_DURATION_MS });
+    expect(doorDestroyedState.doorDestroyed).toBe(true);
+    expect(doorDestroyedState.generatorState).toBe("normal");
+
+    // Way past generatorFaultAtMs (rolled once at night start, always well
+    // inside the shift) — a fault would normally have fired by now.
+    const muchLater = reducer(doorDestroyedState, { type: "TICK", deltaMs: 5 * 60 * 1000 });
+    expect(muchLater.generatorState).toBe("normal");
+  });
+
+  it("regression — a fault still fires normally on a night where the door is intact", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = stateAtGenerator({ elapsedMs: 0, generatorFaultAtMs: 1000, doorDestroyed: false });
+    const result = reducer(state, { type: "TICK", deltaMs: 1000 });
+    expect(result.generatorState).toBe("silentFault");
+  });
+
+  it("RESTART_GENERATOR (accidental restart on a healthy generator) still works normally after the door is destroyed", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const started = reducer(stateAtGenerator({ elapsedMs: 0, enemyStage: "at_door" }), { type: "START_GENERATOR_OVERLOAD" });
+    const doorDestroyedState = reducer(started, { type: "TICK", deltaMs: GENERATOR_OVERLOAD_DOOR_DURATION_MS });
+    const restarted = reducer(doorDestroyedState, { type: "RESTART_GENERATOR" });
+    expect(restarted.generatorState).toBe("restarting");
+  });
+});
+
 describe("Titan overload outcome — door always destroyed, Titan graveyarded only at the door", () => {
   it("a completed overload with NO Titan (Imp night) still destroys the door exactly as before — regression", () => {
     const reducer = createGameReducer(NIGHT_01);

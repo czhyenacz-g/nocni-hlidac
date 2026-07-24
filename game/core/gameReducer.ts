@@ -130,6 +130,14 @@ function updateGenerator(state: GameState, night: NightDefinition, elapsedMs: nu
 
   if (
     state.nightFeatures.generatorFaultsEnabled &&
+    // Zničené dveře (viz GameState.doorDestroyed — dnes výhradně následek
+    // úspěšného přetížení generátoru) jsou nevratné a navždy otevřené, takže
+    // žádná nová porucha už nemá smysl vynucovat (na žádost — "to je špatně,
+    // když je zničený/přetížený", stejný duch jako `generatorFaultsEnabled`
+    // vypínající poruchy úplně). Generátor tak po zničení dveří zůstává
+    // navždy "normal" — RESTART_GENERATOR zůstává nezávisle možný (omylem
+    // restartovaný funkční generátor), jen žádná NOVÁ porucha už nenaskočí.
+    !state.doorDestroyed &&
     generatorState === "normal" &&
     generatorFaultCount < cfg.faultMaxPerShift &&
     elapsedMs >= state.generatorFaultAtMs
