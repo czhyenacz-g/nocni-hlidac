@@ -162,6 +162,12 @@ export const COPY_CS = {
     // {name} nahrazuje AuthStatus.tsx (displayName, jinak username).
     verifiedLabel: "Identita hlídače ověřena: {name}",
     logoutLabel: "Odhlásit",
+    // Zobrazí se jen v itch.io embedu, když prohlížeč zablokuje popup okno
+    // pro Discord login (viz zadání "7. Popup blocked fallback") —
+    // DiscordLoginButton.tsx mezitím zkusí top-level fallback navigaci.
+    popupBlockedLabel: "Vyskakovací okno bylo zablokováno, zkouším přesměrování...",
+    // Zobrazí se, když popup pošle chybový signál (OAuth selhal/odmítnut).
+    popupErrorLabel: "Přihlášení se nezdařilo. Zkus to prosím znovu.",
   },
   game: {
     doorClosedLabel: "Dveře: ZAVŘENO",

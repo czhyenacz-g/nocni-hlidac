@@ -12,7 +12,17 @@ import { DiscordPlayer } from "./types";
 const SECRET = process.env.AUTH_SECRET ?? "";
 export const SESSION_COOKIE_NAME = "nocni-hlidac-session";
 export const OAUTH_STATE_COOKIE_NAME = "nocni-hlidac-oauth-state";
+/**
+ * Nese validovaný return target ("web"/"itch", viz lib/auth/returnTargets.ts)
+ * napříč OAuth roundtripem — samostatná cookie od OAUTH_STATE_COOKIE_NAME,
+ * ať se CSRF `state` porovnání nemusí měnit/oslabovat kvůli přidané hodnotě
+ * (viz zadání "5. Bezpečný návratový cíl" — "pokud se target ukládá do
+ * state, zachovej CSRF ochranu"). Krátká životnost (OAUTH_STATE_MAX_AGE),
+ * stejná jako state cookie — mimo aktivní OAuth roundtrip nemá smysl.
+ */
+export const OAUTH_TARGET_COOKIE_NAME = "nocni-hlidac-oauth-target";
 export const SESSION_MAX_AGE = 60 * 60 * 24 * 30; // 30 dní
+export const OAUTH_STATE_MAX_AGE = 300; // 5 minut, stejné jako dřívější inline hodnota v login/route.ts
 
 function sign(payload: string): Buffer {
   return createHmac("sha256", SECRET).update(payload).digest();

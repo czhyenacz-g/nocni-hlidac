@@ -43,7 +43,11 @@ function isLeaderboardEligible(gameMode: GameMode | undefined): boolean {
  * Volá se pokaždé, ne jen když by hráč chyběl — je to idempotentní upsert,
  * ne drahá kontrola existence.
  */
-export async function handleSurviveNightRequest(session: DiscordPlayer | null, gameMode?: GameMode): Promise<GuardRunResponse> {
+export async function handleSurviveNightRequest(
+  session: DiscordPlayer | null,
+  gameMode?: GameMode,
+  nightNumber?: number,
+): Promise<GuardRunResponse> {
   if (!session) {
     console.warn("[guardRunRequestHandlers] survive-night called without a valid session");
     return { status: 401, body: { ok: false, error: "not_authenticated" } };
@@ -56,7 +60,7 @@ export async function handleSurviveNightRequest(session: DiscordPlayer | null, g
 
   await ensureHubPlayer(session, "survive-night");
 
-  const state = await recordSurvivedNight(session.discordUserId);
+  const state = await recordSurvivedNight(session.discordUserId, nightNumber);
   if (!state) {
     console.warn(
       `[guardRunRequestHandlers] survive-night: hub returned no state (not configured or still failing after ensure), discordUserId: ${session.discordUserId}`,
@@ -66,7 +70,11 @@ export async function handleSurviveNightRequest(session: DiscordPlayer | null, g
   return { status: 200, body: { ok: true, stored: true, player: state } };
 }
 
-export async function handleDeathRequest(session: DiscordPlayer | null, gameMode?: GameMode): Promise<GuardRunResponse> {
+export async function handleDeathRequest(
+  session: DiscordPlayer | null,
+  gameMode?: GameMode,
+  nightNumber?: number,
+): Promise<GuardRunResponse> {
   if (!session) {
     console.warn("[guardRunRequestHandlers] death called without a valid session");
     return { status: 401, body: { ok: false, error: "not_authenticated" } };
@@ -79,7 +87,7 @@ export async function handleDeathRequest(session: DiscordPlayer | null, gameMode
 
   await ensureHubPlayer(session, "death");
 
-  const state = await recordDeath(session.discordUserId);
+  const state = await recordDeath(session.discordUserId, nightNumber);
   if (!state) {
     console.warn(
       `[guardRunRequestHandlers] death: hub returned no state (not configured or still failing after ensure), discordUserId: ${session.discordUserId}`,

@@ -1,7 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { encodeSession, OAUTH_STATE_COOKIE_NAME, SESSION_COOKIE_NAME, SESSION_MAX_AGE } from "@/lib/auth/session";
+import {
+  encodeSession,
+  OAUTH_STATE_COOKIE_NAME,
+  OAUTH_TARGET_COOKIE_NAME,
+  SESSION_COOKIE_NAME,
+  SESSION_MAX_AGE,
+} from "@/lib/auth/session";
+import { clearAuthCookie, getAuthCookieOptions } from "@/lib/auth/cookieConfig";
+import {
+  AuthReturnTargetName,
+  getAuthReturnOrigin,
+  getAuthReturnUrl,
+  resolveAuthReturnTarget,
+  withAuthErrorQuery,
+} from "@/lib/auth/returnTargets";
+import { buildPopupCloseResponse } from "@/lib/auth/popupCloseHtml";
 import { DiscordPlayer } from "@/lib/auth/types";
 import { ensureHubPlayer } from "@/lib/leaderboard/ensureHubPlayer";
+import { recordPlayerLogin } from "@/lib/activity/remotePlayerActivity";
 
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID ?? "";
 const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET ?? "";
@@ -15,6 +31,28 @@ interface DiscordProfile {
 }
 
 /**
+ * Buď obyčejný redirect na whitelistovaný web cíl ("web" target, beze
+ * změny oproti dřívějšímu chování — viz zadání "pro běžný web flow může
+ * zůstat normální redirect"), nebo malá popup close HTML stránka pro "itch"
+ * target (viz zadání "6. Popup OAuth flow"). Cíl je VŽDY ze server-side
+ * whitelistu (lib/auth/returnTargets.ts), nikdy z libovolné request URL —
+ * žádný open redirect.
+ */
+function buildReturnResponse(target: AuthReturnTargetName, success: boolean): NextResponse {
+  if (target === "itch") {
+    // `fallbackUrl` smí nést cestu (itch.io hry typicky žijí pod
+    // `/uzivatel/nazev-hry`), ale `postMessage` targetOrigin MUSÍ být čistý
+    // origin — proto dvě samostatné hodnoty, ne jedna URL použitá na obojí
+    // (viz zadání "3. Oprav práci s OAuth return URL a postMessage originem").
+    const fallbackUrl = getAuthReturnUrl("itch");
+    const targetOrigin = getAuthReturnOrigin("itch");
+    return buildPopupCloseResponse({ success, targetOrigin, fallbackUrl });
+  }
+  const webUrl = getAuthReturnUrl("web");
+  return NextResponse.redirect(success ? webUrl : withAuthErrorQuery(webUrl));
+}
+
+/**
  * Discord OAuth callback (adaptováno z osmaliga.cz
  * `app/api/auth/callback/route.ts`) — ověří `state` proti httpOnly cookie ze
  * login/route.ts, vymění `code` za access token, načte Discord profil a
@@ -25,8 +63,11 @@ interface DiscordProfile {
  * project-hub-api: selhání/nedostupnost VPS API nesmí přihlášení rozbít.
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  const storedTargetRaw = request.cookies.get(OAUTH_TARGET_COOKIE_NAME)?.value;
+  const target = resolveAuthReturnTarget(storedTargetRaw);
+
   if (!CLIENT_ID || !CLIENT_SECRET || !REDIRECT_URI) {
-    return NextResponse.redirect(new URL("/?auth=config_error", request.url));
+    return buildReturnResponse(target, false);
   }
 
   const { searchParams } = request.nextUrl;
@@ -35,7 +76,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const storedState = request.cookies.get(OAUTH_STATE_COOKIE_NAME)?.value;
 
   if (!code || !state || !storedState || state !== storedState) {
-    return NextResponse.redirect(new URL("/?auth=error", request.url));
+    return buildReturnResponse(target, false);
   }
 
   let accessToken: string;
@@ -55,7 +96,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const data = (await tokenRes.json()) as { access_token: string };
     accessToken = data.access_token;
   } catch {
-    return NextResponse.redirect(new URL("/?auth=error", request.url));
+    return buildReturnResponse(target, false);
   }
 
   let profile: DiscordProfile;
@@ -66,7 +107,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     if (!profileRes.ok) throw new Error(`Discord profile error: ${profileRes.status}`);
     profile = (await profileRes.json()) as DiscordProfile;
   } catch {
-    return NextResponse.redirect(new URL("/?auth=error", request.url));
+    return buildReturnResponse(target, false);
   }
 
   const player: DiscordPlayer = {
@@ -94,18 +135,20 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   if (!token) {
     // AUTH_SECRET chybí — bez něj by šla session snadno padělat (viz
     // lib/auth/session.ts#encodeSession), takže se raději vůbec nevytváří.
-    return NextResponse.redirect(new URL("/?auth=config_error", request.url));
+    return buildReturnResponse(target, false);
   }
 
-  const response = NextResponse.redirect(new URL("/", request.url));
-  response.cookies.delete(OAUTH_STATE_COOKIE_NAME);
-  response.cookies.set(SESSION_COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: SESSION_MAX_AGE,
-    path: "/",
-  });
+  // Skutečně DOKONČENÝ login (viz zadání "3. Poslední přihlášení" — "ne při
+  // každém GET /api/auth/me") — proto tady, PO úspěšném `encodeSession`, ne
+  // uvnitř `ensureHubPlayer`/ensureHubPlayer.ts (ten běží i z `/api/auth/me`
+  // při každé kontrole session). Best-effort, stejný "nikdy nevyhodí, jen
+  // zaloguje" vzor jako `ensureHubPlayer` výše.
+  await recordPlayerLogin(player.discordUserId);
+
+  const response = buildReturnResponse(target, true);
+  clearAuthCookie(response, OAUTH_STATE_COOKIE_NAME);
+  clearAuthCookie(response, OAUTH_TARGET_COOKIE_NAME);
+  response.cookies.set(SESSION_COOKIE_NAME, token, getAuthCookieOptions(SESSION_MAX_AGE));
 
   return response;
 }

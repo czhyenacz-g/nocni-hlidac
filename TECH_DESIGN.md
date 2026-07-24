@@ -1326,6 +1326,42 @@ last_login_at) a upsert v callbacku, leaderboard, ukládání výsledků směny,
 ochrana/gating jakékoli herní route podle přihlášení (žádná dnes neexistuje, hra je celá
 veřejná).
 
+### Cross-origin Discord OAuth pro itch.io
+
+Hra může běžet vnořená na itch.io (jiný origin než tahle appka) — relativní `fetch("/api/...")`
+a `SameSite=lax` cookie by tam nefungovaly. Přidané vrstvy (auth mechanismus/scope/session
+payload beze změny, viz sekce výše):
+
+- `lib/config/apiOrigin.ts#getApiOrigin()` — jediný zdroj pravdy pro absolutní API origin
+  (`NEXT_PUBLIC_API_ORIGIN`), nikdy hádaný z `window.location.origin`.
+- `lib/http/apiFetch.ts#apiFetch()` — sdílený browser fetch (absolutní URL + `credentials:
+  "include"`), používá ho `useAuthStatus.ts`, `AuthStatus.tsx`, `ProfileScreen.tsx`,
+  `object13PlayerProfileClient.ts`, `app/play/page.tsx`.
+- `lib/http/cors.ts` — přesná origin whitelist (`AUTH_ALLOWED_ORIGINS`), CORS hlavičky pro
+  všechny `/api/auth/me`, `/api/auth/logout`, `/api/player/**` endpointy (nikdy `*` s
+  credentials), `isTrustedWriteOrigin` jako lehká CSRF pojistka na zápisových endpointech.
+- `lib/auth/cookieConfig.ts` — centrální cookie atributy (`SameSite=None; Secure` v produkci,
+  `SameSite=Lax` lokálně), stejné pro login/callback/logout.
+- `lib/auth/returnTargets.ts` + `lib/auth/popupCloseHtml.ts` — whitelistovaný `?target=web|itch`
+  na loginu, po OAuth buď obyčejný redirect (`web`), nebo popup close HTML stránka
+  s `postMessage({type:"OBJECT13_AUTH_SUCCESS"})` na přesný `AUTH_RETURN_ITCH_URL` origin
+  (`itch`) — nikdy libovolné `return_to`, nikdy `postMessage("*")`.
+- `components/auth/useDiscordAuthPopup.ts` + `DiscordLoginButton.tsx` — popup + fallback na
+  top-level navigaci při zablokovaném popupu; mimo itch embed (`window.top === window.self`)
+  zůstává obyčejný `<a href>` redirect.
+- Logout přešel z `<form method="POST">` (cross-site by odnavigoval embed) na `fetch` +
+  `credentials: "include"` (viz `app/api/auth/logout/route.ts`, vrací JSON, ne redirect).
+
+Nové env proměnné (`.env.example`): `NEXT_PUBLIC_API_ORIGIN`, `AUTH_ALLOWED_ORIGINS`,
+`AUTH_RETURN_WEB_URL`, `AUTH_RETURN_ITCH_URL`. Bez nich appka funguje na vlastním originu
+beze změny (jen cross-origin itch.io volání by bez configu nefungovalo).
+
+**Známé riziko**: moderní prohlížeče mohou blokovat third-party cookies i se
+`SameSite=None; Secure` (typicky v iframe embedu). Tenhle krok to neřeší (vyžadovalo by to
+jiný first-party handshake/top-level redirect místo iframe cookie) — jen zajišťuje, že tam,
+kde third-party cookies povolené jsou, cross-origin login/session funguje, a že selhání je
+diagnostikovatelné (viz dev diagnostika v `DebugPanel.tsx`/`AuthDebugDiagnostics.tsx`).
+
 ## Žebříček hlídačů (`/leaderboard`) — jen frontend, mock data
 
 **Rozsah tohoto kroku**: statická stránka `/leaderboard` s Top 10 tabulkou a natvrdo napsanými
@@ -2829,3 +2865,123 @@ tříd.
   (žádný `transform`/`width`/`height`), takže flicker ani tension tranzice nezpůsobují
   layout shift. Flicker taky nikdy nepřidává overlay/pointer-events blokující interakci —
   je to čistě `filter` na wrapperu, klikatelnost pod ním se nemění.
+
+## Logování hráčské aktivity a `/admin`
+
+Malé, cílené rozšíření existujícího VPS API (project-hub-api, mimo tento repozitář, viz
+"VPS API specifikace" výše) — poslední přihlášení/hraní hráče + jednoduchý auditní log
+několika herních událostí + interní `/admin` stránka. **Žádný nový admin/permission
+systém** — `/admin` používá beze změny existující `lib/auth/adminUsers.ts#isAdminUsername`
+(dnes jen `czhyenacz`), stejný "natvrdo definovaný seznam" princip jako všude jinde v
+projektu.
+
+**Tenhle repozitář nemá přímé DB připojení** (stejně jako leaderboard/Hardcore
+profil/Object13PlayerProfile výše) — sekce níže je proto ZASE jen kontrakt/referenční
+specifikace pro project-hub-api, ne migrace spustitelná odsud. Dokud project-hub-api nové
+endpointy neimplementuje, veškerá volání níže tiše no-opnou (stejný `hubGet`/`hubPost` →
+`null` vzor jako zbytek `lib/hubClient.ts` volajících) a `/admin` zobrazí prázdné tabulky
+místo pádu.
+
+### DB změny (VPS strana, project-hub-api)
+
+Na existující tabulku hráče (`NocniHlidacPlayer`, viz "VPS API specifikace" výše) přidat
+sloupce (append-only migrace, žádný `DROP`/rename):
+
+```
+last_login_at      timestamp, nullable
+last_played_at      timestamp, nullable
+last_activity_at    timestamp, nullable
+last_client          text, nullable      -- "web" | "itch" | "local-export" | "unknown"
+last_build_version  text, nullable, max 64 znaků
+```
+
+Pokud `NocniHlidacPlayer` už má ekvivalentní pole (např. `lastSeenAt` z Hardcore/Object13
+profilu — POZOR, to je pole na JINÉ tabulce, `Object13HardcorePlayerProfile`/
+`Object13PlayerProfile`, ne na `NocniHlidacPlayer`), použít existující místo duplicitního
+sloupce — tahle specifikace předpokládá, že `NocniHlidacPlayer` (leaderboard tabulka) žádné
+z těchhle pěti polí zatím nemá.
+
+Nová tabulka `player_activity_events` (append-only log, žádné UPDATE/DELETE):
+
+```
+id            uuid/serial, PRIMARY KEY
+player_id      FK -> NocniHlidacPlayer, INDEX
+event_type    text  -- "login" | "game_started" | "night_survived" | "player_died"
+night_number  integer, nullable
+game_mode     text, nullable  -- "normal" | "hardcore"
+client        text, nullable
+build_version text, nullable
+created_at    timestamp, INDEX
+
+-- složený index (player_id, created_at) pro /admin dotazy
+```
+
+Žádná `metadata_json` ani další analytická pole (viz zadání "malý auditní log, ne
+telemetrie").
+
+### Nové VPS endpointy (kontrakt, implementace project-hub-api)
+
+- **`POST /nocni-hlidac/player/login`** — `{ discordUserId }`. Aktualizuje
+  `last_login_at`/`last_activity_at` časem serveru, zapíše `login` řádek do
+  `player_activity_events`. Volá se VÝHRADNĚ z Next.js OAuth callbacku
+  (`app/api/auth/callback/route.ts`), NIKDY z `/api/auth/me`/`ensureHubPlayer` (ten běží při
+  každé kontrole session — zápis `last_login_at` by se jinak dělal na každý GET, což zadání
+  výslovně zakazuje).
+- **`POST /nocni-hlidac/player/activity/game-start`** — `{ discordUserId, client,
+  buildVersion }`. Aktualizuje `last_played_at`/`last_activity_at`/`last_client`/
+  `last_build_version`, zapíše `game_started` řádek. Volá se z nového Next.js endpointu
+  `POST /api/player/activity/game-start`.
+- **`POST /nocni-hlidac/player/survive-night`** a **`POST /nocni-hlidac/player/death`** —
+  rozšířené o VOLITELNÉ `nightNumber` v těle (viz `lib/leaderboard/requestGameMode.ts`,
+  `lib/leaderboard/remotePlayer.ts`) — VPS strana při jeho přítomnosti navíc zapíše
+  `night_survived`/`player_died` řádek (`night_number`/`game_mode` z těla) a aktualizuje
+  `last_played_at`/`last_activity_at`. `bestRun`/`currentRun` přechody (`guardRunTransitions.ts`)
+  se tímhle NEMĚNÍ — čistě přidaný logging vedle existující logiky. Event se zapisuje jen
+  při úspěšném dokončení (VPS strana ho nezapíše, pokud samotný survive-night/death zápis
+  selže — stejná podmínka jako zadání "Nezapisuj událost, pokud příslušná herní operace
+  selhala").
+- **`GET /nocni-hlidac/admin/players?limit=100`** — vrací pole hráčů (viz
+  `lib/admin/adminOverview.ts#AdminPlayerSummary`) seřazené sestupně podle
+  `last_activity_at` (hráči bez aktivity až dole). `Authorization: Bearer` stejná jako
+  ostatní VPS volání — VPS strana nemusí sama ověřovat "je tenhle Bearer token admin" (o to
+  se stará výhradně Next.js strana přes `isAdminUsername`, VPS API zůstává jeden token pro
+  celou appku jako dnes).
+- **`GET /nocni-hlidac/admin/activity-events?limit=100`** — vrací posledních N řádků
+  `player_activity_events` (viz `AdminActivityEvent`), seřazené sestupně podle `created_at`,
+  s denormalizovaným `discordUserId`/`displayName`/`username` (join na `NocniHlidacPlayer` na
+  VPS straně) — Next.js strana nezná interní `player_id`, jen `discordUserId`.
+
+### Next.js strana (tento repozitář)
+
+- **`lib/activity/activityClient.ts`** — čisté, klient-bezpečné validace: `ActivityClient`
+  typ (`"web" | "itch" | "local-export" | "unknown"`), `resolveActivityClient`,
+  `sanitizeBuildVersion` (max 64 znaků).
+- **`lib/activity/remotePlayerActivity.ts`** (server-only) — `recordPlayerLogin`,
+  `recordGameStart` (hub volání).
+- **`lib/activity/activityRequestHandlers.ts`** (server-only) — `handleGameStartRequest`
+  (session-in/response-out, stejný vzor jako `guardRunRequestHandlers.ts`).
+- **`app/api/player/activity/game-start/route.ts`** — nový endpoint, CORS +
+  `isTrustedWriteOrigin` (stejný vzor jako ostatní zápisové `/api/player/*` endpointy).
+- **`app/api/auth/callback/route.ts`** — navíc `recordPlayerLogin(player.discordUserId)` po
+  úspěšném `encodeSession` (ne dřív, ne na chybové větve).
+- **`lib/leaderboard/requestGameMode.ts`** — `readGameModeFromRequest` nahrazeno
+  `readGuardRunRequestBody` (čte `gameMode` I `nightNumber` z JEDNOHO parsování těla).
+- **`app/play/page.tsx`** — `nightNumber: currentNight`/`nightThatEnded` přidáno do
+  survive-night/death fetch těl; nový jednorázový mount efekt volá
+  `POST /api/player/activity/game-start` s `NEXT_PUBLIC_GAME_CLIENT`/
+  `NEXT_PUBLIC_BUILD_VERSION` (`gameStartRecordedRef` — guard proti dvojímu volání ve Strict
+  Mode).
+- **`lib/admin/adminOverview.ts`** (server-only) — `fetchAdminPlayers`/
+  `fetchAdminActivityEvents`, volané přímo z `app/admin/page.tsx` (Server Component) — žádný
+  samostatný Next.js admin API route.
+- **`app/admin/page.tsx`** — `getSession()` → není-li přihlášený, zobrazí odkaz na login;
+  je-li přihlášený, ale `!isAdminUsername(session.username)`, zobrazí "jen pro
+  administrátory"; jinak vykreslí souhrn + tabulku hráčů + posledních 100 událostí. Žádné
+  stránkování, žádný detail hráče/samostatná URL (viz zadání "bez rozsáhlého designu").
+
+### Co zůstává na další krok (výslovně mimo rozsah)
+
+Skutečná implementace VPS endpointů/schématu (project-hub-api), stránkování `/admin` (až
+databáze naroste), `login_count`/`play_session_count`/`first_login_at`/IP/user-agent/
+geolokace (viz zadání "zatím nepřidávej"), detail hráče, mazání/archivace starých
+`player_activity_events` řádků.

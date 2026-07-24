@@ -38,11 +38,11 @@ describe("fetchObject13PlayerProfile", () => {
     expect(result).toEqual({ status: "ready", profile: VALID_DTO });
   });
 
-  it("only ever calls the same-origin Next.js proxy, never a VPS URL", async () => {
+  it("only ever calls the same-origin Next.js proxy, never a VPS URL, with credentials included", async () => {
     const fetchSpy = vi.fn(() => Promise.resolve(new Response(JSON.stringify(VALID_DTO), { status: 200 })));
     vi.stubGlobal("fetch", fetchSpy);
     await fetchObject13PlayerProfile();
-    expect(fetchSpy).toHaveBeenCalledWith("/api/player/profile");
+    expect(fetchSpy).toHaveBeenCalledWith("/api/player/profile", expect.objectContaining({ credentials: "include" }));
   });
 
   it("2. returns 'unauthorized' on 401", async () => {

@@ -7,6 +7,7 @@ import {
 } from "../../game/core/object13PlayerProfile";
 import { Object13PlayerProfileDataV2 } from "../../game/core/object13PlayerProfileContractV2";
 import { WeaponId } from "../../game/core/object13PlayerProfileEquipment";
+import { apiFetch } from "../http/apiFetch";
 
 /**
  * Browser-safe klient pro obecný profil Objektu 13 — volá VÝHRADNĚ vlastní
@@ -21,7 +22,7 @@ import { WeaponId } from "../../game/core/object13PlayerProfileEquipment";
  */
 export async function fetchObject13PlayerProfile(): Promise<FetchObject13PlayerProfileResult> {
   try {
-    const res = await fetch("/api/player/profile");
+    const res = await apiFetch("/api/player/profile");
     if (res.status === 401) return { status: "unauthorized" };
     if (!res.ok) return { status: "unavailable" };
 
@@ -42,7 +43,7 @@ export interface SaveObject13PlayerProfilePayload {
 
 export async function saveObject13PlayerProfile(payload: SaveObject13PlayerProfilePayload): Promise<SaveObject13PlayerProfileResult> {
   try {
-    const res = await fetch("/api/player/profile", {
+    const res = await apiFetch("/api/player/profile", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -77,7 +78,7 @@ async function callInventoryOperationEndpoint(
   payload: InventoryOperationPayload,
 ): Promise<Object13PlayerProfileInventoryOperationResult> {
   try {
-    const res = await fetch(path, {
+    const res = await apiFetch(path, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -121,7 +122,7 @@ export interface WeaponUnlockPayload {
 /** Volá jen vlastní Next.js proxy (`/api/player/profile/equipment/weapon/unlock`), nikdy VPS přímo. Po úspěchu (i idempotentním no-opu) vrací celý aktuální profil. */
 export async function unlockWeaponOnProfile(payload: WeaponUnlockPayload): Promise<Object13PlayerProfileWeaponUnlockResult> {
   try {
-    const res = await fetch("/api/player/profile/equipment/weapon/unlock", {
+    const res = await apiFetch("/api/player/profile/equipment/weapon/unlock", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

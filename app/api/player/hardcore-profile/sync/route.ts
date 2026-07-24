@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { handleSyncHardcoreProfileRequest } from "@/lib/hardcoreProfile/hardcoreProfileRequestHandlers";
+import { corsPreflightResponse, isTrustedWriteOrigin, withCors } from "@/lib/http/cors";
 
 /**
  * Voláno best-effort z app/play/page.tsx#handleMonsterDefeatedCinematicComplete
@@ -15,15 +16,27 @@ import { handleSyncHardcoreProfileRequest } from "@/lib/hardcoreProfile/hardcore
  *
  * Nepřihlášený hráč dostane 401. Chybějící/nedostupné VPS API vrátí 502 —
  * ProfileScreen.tsx na tom pozná, že sync selhal, a zůstane u lokálních dat.
+ *
+ * Zapisuje stav — CORS + origin check na zápis (viz
+ * lib/http/cors.ts#isTrustedWriteOrigin).
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const session = await getSession();
-  let rawBody: unknown = null;
-  try {
-    rawBody = await request.json();
-  } catch {
-    rawBody = null;
-  }
-  const { status, body } = await handleSyncHardcoreProfileRequest(session, rawBody);
-  return NextResponse.json(body, { status });
+  return withCors(request, async () => {
+    if (!isTrustedWriteOrigin(request)) {
+      return NextResponse.json({ ok: false, error: "untrusted_origin" }, { status: 403 });
+    }
+    const session = await getSession();
+    let rawBody: unknown = null;
+    try {
+      rawBody = await request.json();
+    } catch {
+      rawBody = null;
+    }
+    const { status, body } = await handleSyncHardcoreProfileRequest(session, rawBody);
+    return NextResponse.json(body, { status });
+  });
+}
+
+export function OPTIONS(request: NextRequest): NextResponse {
+  return corsPreflightResponse(request);
 }

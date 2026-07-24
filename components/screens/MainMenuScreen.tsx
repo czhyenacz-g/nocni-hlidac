@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import SceneBackground from "@/components/SceneBackground";
 import AuthStatus from "@/components/auth/AuthStatus";
 import { useAuthStatus } from "@/components/auth/useAuthStatus";
+import DiscordLoginButton from "@/components/auth/DiscordLoginButton";
 import { useObject13PlayerProfile } from "@/components/playerProfile/Object13PlayerProfileProvider";
 import { BACKGROUND_SCENES, SceneBackgroundConfig } from "@/game/visuals/backgroundImages";
 import { DEFAULT_GAME_MODE, GameMode } from "@/game/core/gameMode";
@@ -236,15 +237,18 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
             {showHardcoreLoginPrompt && (
               <div className="mt-3 border border-gray-600 bg-gray-900/80 p-3 text-left text-[11px] text-gray-300">
                 <p className="mb-2">{COPY.gameMode.hardcoreLoginPromptText}</p>
-                <a
-                  href="/api/auth/login"
+                <DiscordLoginButton
                   className="pixel-button console-button tap-target flex items-center justify-center gap-2 px-2 py-1.5 text-[10px]"
+                  onAuthenticated={() => {
+                    authStatus.refresh();
+                    setShowHardcoreLoginPrompt(false);
+                  }}
                 >
                   <span className="console-icon-block console-icon-block--sm" aria-hidden="true">
                     <ConsoleIcon id="discord" />
                   </span>
                   {COPY.auth.discordLoginLabel}
-                </a>
+                </DiscordLoginButton>
               </div>
             )}
 

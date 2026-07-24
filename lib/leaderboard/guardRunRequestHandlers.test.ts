@@ -178,3 +178,53 @@ describe("handleDeathRequest — gameMode eligibility guard", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
+
+// Viz zadání "Logování hráčské aktivity" — night_survived/player_died event
+// (a last_played_at/last_activity_at update) je VPS-side odpovědnost
+// podmíněná úspěšným survive-night/death zápisem (viz TECH_DESIGN.md
+// "Logování hráčské aktivity"). Tady se ověřuje jen kontrakt na téhle
+// straně: `nightNumber` doputuje do hub POST těla, když je přítomný.
+describe("handleSurviveNightRequest — nightNumber is forwarded to the hub for VPS-side event logging", () => {
+  it("includes nightNumber in the /nocni-hlidac/player/survive-night request body when provided", async () => {
+    vi.stubEnv("NOCNI_HLIDAC_API_URL", "https://hub.example.invalid");
+    vi.stubEnv("NOCNI_HLIDAC_API_TOKEN", "test-token");
+    const fetchSpy = vi.fn((_url: string, _init?: RequestInit) => Promise.resolve(new Response(JSON.stringify({ bestRun: 4, currentRun: 3 }), { status: 200 })));
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await handleSurviveNightRequest(LOGGED_IN_SESSION, "hardcore", 7);
+
+    const survivedCall = fetchSpy.mock.calls.find((call) => String(call[0]).endsWith("/player/survive-night"));
+    expect(survivedCall).toBeDefined();
+    const body = JSON.parse((survivedCall?.[1] as RequestInit).body as string);
+    expect(body).toEqual({ discordUserId: "123", nightNumber: 7 });
+  });
+
+  it("omits nightNumber entirely when not provided (does not send undefined/null)", async () => {
+    vi.stubEnv("NOCNI_HLIDAC_API_URL", "https://hub.example.invalid");
+    vi.stubEnv("NOCNI_HLIDAC_API_TOKEN", "test-token");
+    const fetchSpy = vi.fn((_url: string, _init?: RequestInit) => Promise.resolve(new Response(JSON.stringify({ bestRun: 4, currentRun: 3 }), { status: 200 })));
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await handleSurviveNightRequest(LOGGED_IN_SESSION, "hardcore");
+
+    const survivedCall = fetchSpy.mock.calls.find((call) => String(call[0]).endsWith("/player/survive-night"));
+    const body = JSON.parse((survivedCall?.[1] as RequestInit).body as string);
+    expect("nightNumber" in body).toBe(false);
+  });
+});
+
+describe("handleDeathRequest — nightNumber is forwarded to the hub for VPS-side event logging", () => {
+  it("includes nightNumber in the /nocni-hlidac/player/death request body when provided", async () => {
+    vi.stubEnv("NOCNI_HLIDAC_API_URL", "https://hub.example.invalid");
+    vi.stubEnv("NOCNI_HLIDAC_API_TOKEN", "test-token");
+    const fetchSpy = vi.fn((_url: string, _init?: RequestInit) => Promise.resolve(new Response(JSON.stringify({ bestRun: 2, currentRun: 0 }), { status: 200 })));
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await handleDeathRequest(LOGGED_IN_SESSION, "hardcore", 3);
+
+    const deathCall = fetchSpy.mock.calls.find((call) => String(call[0]).endsWith("/player/death"));
+    expect(deathCall).toBeDefined();
+    const body = JSON.parse((deathCall?.[1] as RequestInit).body as string);
+    expect(body).toEqual({ discordUserId: "123", nightNumber: 3 });
+  });
+});

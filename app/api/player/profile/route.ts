@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { handleGetPlayerProfileRequest, handlePutPlayerProfileRequest } from "@/lib/playerProfile/playerProfileRequestHandlers";
+import { corsPreflightResponse, isTrustedWriteOrigin, withCors } from "@/lib/http/cors";
 
 /**
  * Obecný, mode-agnostic profil Objektu 13 (krok 1B, navazuje na VPS krok
@@ -11,11 +12,18 @@ import { handleGetPlayerProfileRequest, handlePutPlayerProfileRequest } from "@/
  * Nepřihlášený hráč dostane 401 — žádný redirect, žádný pád, volající
  * (viz components/playerProfile/Object13PlayerProfileProvider.tsx) na tom
  * pozná "neregistruj se ani nezkoušej znovu, hráč prostě není přihlášený".
+ *
+ * GET je read-only (jen CORS). PUT mění stav (revision bump) — navíc
+ * kontrola `Origin` (viz lib/http/cors.ts#isTrustedWriteOrigin), ať
+ * `SameSite=None` cookie nejde zneužít k zápisu z libovolného cizího
+ * originu (viz zadání "10. CSRF a bezpečnost zápisových endpointů").
  */
-export async function GET(): Promise<NextResponse> {
-  const session = await getSession();
-  const { status, body } = await handleGetPlayerProfileRequest(session);
-  return NextResponse.json(body, { status });
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  return withCors(request, async () => {
+    const session = await getSession();
+    const { status, body } = await handleGetPlayerProfileRequest(session);
+    return NextResponse.json(body, { status });
+  });
 }
 
 /**
@@ -27,13 +35,22 @@ export async function GET(): Promise<NextResponse> {
  * voláním VPS.
  */
 export async function PUT(request: NextRequest): Promise<NextResponse> {
-  const session = await getSession();
-  let rawBody: unknown = null;
-  try {
-    rawBody = await request.json();
-  } catch {
-    rawBody = null;
-  }
-  const { status, body } = await handlePutPlayerProfileRequest(session, rawBody);
-  return NextResponse.json(body, { status });
+  return withCors(request, async () => {
+    if (!isTrustedWriteOrigin(request)) {
+      return NextResponse.json({ ok: false, error: "untrusted_origin" }, { status: 403 });
+    }
+    const session = await getSession();
+    let rawBody: unknown = null;
+    try {
+      rawBody = await request.json();
+    } catch {
+      rawBody = null;
+    }
+    const { status, body } = await handlePutPlayerProfileRequest(session, rawBody);
+    return NextResponse.json(body, { status });
+  });
+}
+
+export function OPTIONS(request: NextRequest): NextResponse {
+  return corsPreflightResponse(request);
 }

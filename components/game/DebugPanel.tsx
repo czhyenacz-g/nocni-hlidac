@@ -14,6 +14,7 @@ import { getGhoulCameraAttackAnimation } from "@/game/cameras/cameraAttackAnimat
 import { resolveGhoulCameraAttackFrameState } from "@/game/cameras/cameraAttackAnimation";
 import { useObject13PlayerProfile } from "@/components/playerProfile/Object13PlayerProfileProvider";
 import { BulbInventoryOperationState, deriveBulbInventoryConfirmOutcome } from "@/game/inventory/bulbInventoryController";
+import AuthDebugDiagnostics from "@/components/auth/AuthDebugDiagnostics";
 import DoorControl from "./DoorControl";
 
 const GHOUL_CAMERA_ATTACK_ANIMATION_IDS: GhoulCameraAttackAnimationId[] = [
@@ -421,6 +422,13 @@ export default function DebugPanel({
             existovat mimo development/debug režim"). "TEST PROFILE WRITE"
             profil jen znovu uloží beze změny (viz handleTestProfileWrite
             výše) — nikdy neposílá klíč mimo V1 kontrakt. */}
+        {process.env.NODE_ENV !== "production" && (
+          <div className="border-t border-gray-700 pt-2 mt-1">
+            <div className="text-gray-400 mb-1">Auth (dev only):</div>
+            <AuthDebugDiagnostics />
+          </div>
+        )}
+
         {process.env.NODE_ENV !== "production" && (
           <div className="border-t border-gray-700 pt-2 mt-1">
             <div className="text-gray-400 mb-1">Object13 profile (dev only):</div>

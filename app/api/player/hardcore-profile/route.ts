@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { handleGetHardcoreProfileRequest } from "@/lib/hardcoreProfile/hardcoreProfileRequestHandlers";
+import { corsPreflightResponse, withCors } from "@/lib/http/cors";
 
 /**
  * Voláno z /profile (ProfileScreen.tsx) pro přihlášeného hráče — vrací
@@ -11,12 +12,20 @@ import { handleGetHardcoreProfileRequest } from "@/lib/hardcoreProfile/hardcoreP
  * se o tenhle endpoint nepokusí (viz zadání "nepřihlášený hráč viděl
  * lokální profil jako dnes").
  *
+ * Read-only — jen CORS, žádný origin-check pro zápis.
+ *
  * Žádný Normal ekvivalent tohohle endpointu neexistuje (viz zadání
  * "Nevytvářej endpoint pro Normal profil") — Hardcore profil je jediný
  * serverově ukládaný profil v celé appce.
  */
-export async function GET(): Promise<NextResponse> {
-  const session = await getSession();
-  const { status, body } = await handleGetHardcoreProfileRequest(session);
-  return NextResponse.json(body, { status });
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  return withCors(request, async () => {
+    const session = await getSession();
+    const { status, body } = await handleGetHardcoreProfileRequest(session);
+    return NextResponse.json(body, { status });
+  });
+}
+
+export function OPTIONS(request: NextRequest): NextResponse {
+  return corsPreflightResponse(request);
 }

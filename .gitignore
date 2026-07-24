@@ -6,3 +6,5 @@ node_modules/
 .tokens
 .vercel
 .DS_Store
+.export-build-tmp/
+dist-game/

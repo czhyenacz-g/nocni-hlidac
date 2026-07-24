@@ -1,13 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { AuthenticatedPlayer } from "@/lib/auth/types";
 import { ensureHubPlayer } from "@/lib/leaderboard/ensureHubPlayer";
+import { corsPreflightResponse, withCors } from "@/lib/http/cors";
 
 /**
  * "Kdo je přihlášený" pro klientské komponenty (adaptováno z osmaliga.cz
  * `app/api/auth/me/route.ts`) — AuthStatus.tsx si tohle natáhne přes fetch
  * při mountu, ať menu ukazuje aktuální stav bez potřeby Server Component
  * boundary (MainMenuScreen běží pod "use client" app/play/page.tsx stromem).
+ * Read-only endpoint — CORS jen proto, aby cross-origin (itch.io) volání
+ * vůbec šlo přečíst, žádná potřeba origin-check pro zápis (viz lib/http/cors.ts).
  *
  * Když je session platná, zároveň best-effort self-healing
  * `ensureHubPlayer` — řeší staré session cookie z doby před VPS wiringem,
@@ -21,17 +24,23 @@ import { ensureHubPlayer } from "@/lib/leaderboard/ensureHubPlayer";
  * staví, jakou noc má hráč po přihlášení nastoupit dál (currentRun + 1),
  * místo aby slepě spoléhal na lokální localStorage counter.
  */
-export async function GET(): Promise<NextResponse> {
-  const session = await getSession();
-  if (!session) {
-    return NextResponse.json({ player: null });
-  }
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  return withCors(request, async () => {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ player: null });
+    }
 
-  const runState = await ensureHubPlayer(session, "auth/me");
-  const player: AuthenticatedPlayer = {
-    ...session,
-    bestRun: runState?.bestRun ?? null,
-    currentRun: runState?.currentRun ?? null,
-  };
-  return NextResponse.json({ player });
+    const runState = await ensureHubPlayer(session, "auth/me");
+    const player: AuthenticatedPlayer = {
+      ...session,
+      bestRun: runState?.bestRun ?? null,
+      currentRun: runState?.currentRun ?? null,
+    };
+    return NextResponse.json({ player });
+  });
+}
+
+export function OPTIONS(request: NextRequest): NextResponse {
+  return corsPreflightResponse(request);
 }

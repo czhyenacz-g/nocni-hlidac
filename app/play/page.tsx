@@ -102,6 +102,7 @@ import { EmergencyMiniGameInput, EmergencyMiniGameResult } from "@/game/minigame
 import { useTranslation } from "@/game/i18n/useTranslation";
 import type { AuthenticatedPlayer } from "@/lib/auth/types";
 import { isAdminUsername } from "@/lib/auth/adminUsers";
+import { apiFetch } from "@/lib/http/apiFetch";
 import type { GuardRunState } from "@/lib/leaderboard/types";
 import type { GuardRunResponse } from "@/lib/leaderboard/guardRunRequestHandlers";
 import { DEFAULT_GAME_MODE, GAME_MODE_CONFIG, GameMode, resolveGameMode } from "@/game/core/gameMode";
@@ -311,7 +312,7 @@ function PlayPageContent() {
   // ne z lokálního localStorage counteru.
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/auth/me")
+    apiFetch("/api/auth/me")
       .then((res) => res.json())
       .then((data: { player: AuthenticatedPlayer | null }) => {
         if (cancelled || !data.player) return;
@@ -328,6 +329,34 @@ function PlayPageContent() {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  // Zaznamenej "začátek hraní" PRÁVĚ JEDNOU při skutečném otevření herní
+  // stránky (viz zadání "Logování hráčské aktivity" — "5. Volání při
+  // spuštění hry") — `gameStartRecordedRef` je jednoduchý guard proti
+  // dvojímu zavolání v React Strict Mode (dev double-invoke effektů
+  // zachová stejnou instanci/refy, takže ref přežije i druhé spuštění).
+  // Nepřihlášeného hráče endpoint tiše odmítne 401 (viz
+  // app/api/player/activity/game-start/route.ts) — response se tu ani
+  // nekontroluje, je to čistě diagnostický, nikdy hru neovlivňující zápis
+  // (viz zadání "Tyto údaje jsou pouze diagnostické. Nemají dávat žádná
+  // oprávnění."). `NEXT_PUBLIC_GAME_CLIENT`/`NEXT_PUBLIC_BUILD_VERSION` jsou
+  // build-time hodnoty (viz .env.example) — výchozí klient "web", pro
+  // samostatný lokální export/itch.io build se nastaví jinak.
+  const gameStartRecordedRef = useRef(false);
+  useEffect(() => {
+    if (gameStartRecordedRef.current) return;
+    gameStartRecordedRef.current = true;
+    apiFetch("/api/player/activity/game-start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        client: process.env.NEXT_PUBLIC_GAME_CLIENT ?? "web",
+        buildVersion: process.env.NEXT_PUBLIC_BUILD_VERSION ?? "",
+      }),
+    }).catch((err) => {
+      console.warn("[nocni-hlidac] game-start activity request failed", err);
+    });
   }, []);
 
   // "Nejnovější hodnota" ref pro stress (viz stressTimeScale.ts přes TICK) —
@@ -682,10 +711,10 @@ function PlayPageContent() {
           // TODO (true ending odměna, viz TODO u survive-night níže v tomhle
           // souboru pro plné zdůvodnění): stejné "veteránský run neoddělený
           // od čistého Hardcore" omezení platí i tady.
-          fetch("/api/player/death", {
+          apiFetch("/api/player/death", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ gameMode: "hardcore" }),
+            body: JSON.stringify({ gameMode: "hardcore", nightNumber: nightThatEnded }),
           })
             .then((res) => res.json())
             .then((body: GuardRunResponse["body"]) => applyGuardRunResponse(body, "death"))
@@ -846,10 +875,10 @@ function PlayPageContent() {
       // GameState field), a na serveru/leaderboardu vést čistý Hardcore a
       // veteránský Hardcore jako oddělené žebříčky (nebo aspoň sloupec navíc).
       if (state.gameMode === "hardcore") {
-        fetch("/api/player/survive-night", {
+        apiFetch("/api/player/survive-night", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ gameMode: "hardcore" }),
+          body: JSON.stringify({ gameMode: "hardcore", nightNumber: currentNight }),
         })
           .then((res) => res.json())
           .then((body: GuardRunResponse["body"]) => applyGuardRunResponse(body, "survive-night"))
@@ -1583,10 +1612,10 @@ function PlayPageContent() {
     // žebříčku platí i tady) — bez tohohle currentRun pro tuhle noc nikdy
     // nenavýší a příští Hardcore run tak nesmyslně začíná zase na noci 1
     // (viz zadání "zase začínám ode dne 1").
-    fetch("/api/player/survive-night", {
+    apiFetch("/api/player/survive-night", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ gameMode: "hardcore" }),
+      body: JSON.stringify({ gameMode: "hardcore", nightNumber: currentNight }),
     })
       .then((res) => res.json())
       .then((body: GuardRunResponse["body"]) => applyGuardRunResponse(body, "survive-night"))
@@ -1606,7 +1635,7 @@ function PlayPageContent() {
     // (nepřihlášený hráč, VPS nedostupné) nesmí zablokovat/rozbít
     // MonsterDefeatedScreen, ProfileScreen.tsx na příštím načtení prostě
     // zůstane u lokálních dat.
-    fetch("/api/player/hardcore-profile/sync", {
+    apiFetch("/api/player/hardcore-profile/sync", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(snapshot),
@@ -1874,7 +1903,7 @@ function PlayPageContent() {
           if (state.gameMode === "hardcore") {
             const hardcoreProgress = recordLocalHardcoreMonsterDefeat();
             const snapshot = createHardcoreProfileSnapshotFromLocalState(getPlayerProfileStats(), hardcoreProgress);
-            fetch("/api/player/hardcore-profile/sync", {
+            apiFetch("/api/player/hardcore-profile/sync", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(snapshot),

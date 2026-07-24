@@ -91,6 +91,8 @@ export const COPY_EN: CopyShape = {
     discordLoginLabel: "Log in with Discord",
     verifiedLabel: "Watchman identity verified: {name}",
     logoutLabel: "Log out",
+    popupBlockedLabel: "Popup window was blocked, redirecting instead...",
+    popupErrorLabel: "Login failed. Please try again.",
   },
   game: {
     doorClosedLabel: "Door: CLOSED",

@@ -7,6 +7,7 @@ import SceneBackground from "@/components/SceneBackground";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 import { useAuthStatus } from "@/components/auth/useAuthStatus";
 import { isAdminUsername } from "@/lib/auth/adminUsers";
+import { apiFetch } from "@/lib/http/apiFetch";
 import { getMonsterDefeatReward, resetMonsterDefeatReward, MonsterDefeatReward } from "@/game/core/monsterDefeatReward";
 import { getPlayerProfileStats, resetPlayerProfileStats, PlayerProfileStats } from "@/game/core/playerProfileStats";
 import { resolvePlayerAchievements } from "@/game/core/playerAchievements";
@@ -68,7 +69,7 @@ function ProfileScreenContent() {
   useEffect(() => {
     if (authStatus.status !== "authenticated") return;
     let cancelled = false;
-    fetch("/api/player/hardcore-profile")
+    apiFetch("/api/player/hardcore-profile")
       .then((res) => res.json().then((body) => ({ res, body })))
       .then(({ res, body }) => {
         if (cancelled) return;
@@ -94,7 +95,7 @@ function ProfileScreenContent() {
   function handleSyncHardcoreProfile() {
     setIsSyncing(true);
     const snapshot = createHardcoreProfileSnapshotFromLocalState(stats, getLocalHardcoreMonsterProgress());
-    fetch("/api/player/hardcore-profile/sync", {
+    apiFetch("/api/player/hardcore-profile/sync", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(snapshot),
