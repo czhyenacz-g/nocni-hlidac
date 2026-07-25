@@ -93,10 +93,15 @@ export function createShotgunEmergencyInput(
  * Doplňkový loot vždy dostupný na mapě NAVÍC k hlavnímu objective (viz
  * zadání "sandbox výprava") — battery/bulb garantované na KAŽDÉ výpravě,
  * shotgun podmíněně podle `canStartShotgunEmergencyRun` (noc 10+, hráč ho
- * ještě nemá). `primaryItemId` (co je zrovna hlavní objective) se z výsledku
- * vynechá, ať se stejná položka nežádá dvakrát (viz
- * game/minigame/layoutPlacement.ts#resolveMiniGamePlacement — dvě položky by
- * si jinak konkurovaly o stejný tag/slot).
+ * ještě nemá), a DVĚ "prázdné krabice" (viz zadání, MiniGameItemId "empty")
+ * VŽDY — čistě atmosférický decoy bez efektu (worldEffectsForItem vrací pro
+ * "empty" `[]`), na mapě musí být dvě samostatné položky, ne jedna (viz
+ * SERVICE_FLOOR_EVAC_PLAN dvě sloty tagované "empty"). `primaryItemId` (co je
+ * zrovna hlavní objective) se z výsledku vynechá, ať se stejná položka
+ * nežádá dvakrát (viz game/minigame/layoutPlacement.ts#resolveMiniGamePlacement
+ * — dvě položky by si jinak konkurovaly o stejný tag/slot) — "empty" nikdy
+ * není `primaryItemId` (nikdy to není hlavní objective), takže se přidává
+ * bezpodmínečně.
  */
 export function resolveExtraLootItems(input: {
   primaryItemId: MiniGameItemId;
@@ -109,6 +114,7 @@ export function resolveExtraLootItems(input: {
   if (input.primaryItemId !== "shotgun" && canStartShotgunEmergencyRun(input.nightFeatures, input.hasShotgun)) {
     items.push("shotgun");
   }
+  items.push("empty", "empty");
   return items;
 }
 

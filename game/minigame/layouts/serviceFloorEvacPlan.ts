@@ -197,6 +197,19 @@ export const SERVICE_FLOOR_EVAC_PLAN: MiniGameLayout = {
 
     { id: "toolbox_maintenance_01", roomId: "maintenance_workshop", x: 1150, y: 900, tags: ["toolbox"], debugName: "Nářadí — dílna" },
 
+    // "Prázdná krabice" (viz zadání) — čistě atmosférický decoy bez efektu
+    // (worldEffectsForItem "empty" -> []), dvě samostatné položky (viz
+    // resolveExtraLootItems v game/core/emergencyMiniGameIntegration.ts).
+    { id: "empty_storage_a_01", roomId: "storage_a", x: 300, y: 300, tags: ["empty"], debugName: "Prázdná krabice — sklad A" },
+    {
+      id: "empty_lower_corridor_01",
+      roomId: "lower_corridor",
+      x: 750,
+      y: 760,
+      tags: ["empty"],
+      debugName: "Prázdná krabice — spodní chodba",
+    },
+
     { id: "generic_loot_storage_01", roomId: "storage_b", x: 150, y: 850, tags: ["generic_loot"], debugName: "Obecný loot — sklad B" },
     {
       id: "generic_loot_utility_01",

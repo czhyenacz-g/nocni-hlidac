@@ -22,11 +22,20 @@ describe("service_floor_evac_plan — validity", () => {
     expect(spawnSlots.length).toBeGreaterThanOrEqual(3);
   });
 
-  it("has battery/bulb/fuse/shotgun/ammo/toolbox slots", () => {
-    const requiredTags: MiniGameItemId[] = ["battery", "bulb", "fuse", "shotgun", "ammo", "toolbox"];
+  it("has battery/bulb/fuse/shotgun/ammo/toolbox/empty slots", () => {
+    const requiredTags: MiniGameItemId[] = ["battery", "bulb", "fuse", "shotgun", "ammo", "toolbox", "empty"];
     for (const tag of requiredTags) {
       expect(SERVICE_FLOOR_EVAC_PLAN.slots.some((slot) => slot.tags.includes(tag)), `missing a slot tagged "${tag}"`).toBe(true);
     }
+  });
+
+  // "empty" (prázdná krabice, viz zadání) se vždy přidává DVAKRÁT do
+  // extraLootItems (viz resolveExtraLootItems) — layout proto potřebuje
+  // aspoň DVĚ samostatné sloty tagované "empty", jinak by druhé losování
+  // (pickSlotByTag s excludeSlotIds) vyhodilo MiniGamePlacementError.
+  it("has at least two distinct slots tagged 'empty'", () => {
+    const emptySlots = SERVICE_FLOOR_EVAC_PLAN.slots.filter((slot) => slot.tags.includes("empty"));
+    expect(emptySlots.length).toBeGreaterThanOrEqual(2);
   });
 
   it("every slot has a valid roomId", () => {
@@ -94,5 +103,19 @@ describe("service_floor_evac_plan — mission slot selection", () => {
     expect(second.playerExitSlotId).toBe(first.playerExitSlotId);
     expect(second.monsterSpawnSlotId).toBe(first.monsterSpawnSlotId);
     expect(second.objectiveSlotId).toBe(first.objectiveSlotId);
+  });
+
+  // "empty" decoy (prázdná krabice, viz zadání) se přidává DVAKRÁT do
+  // extraLootItems (resolveExtraLootItems) — musí jít oba kusy skutečně
+  // rozmístit na DVA různé sloty tohohle layoutu, ne selhat na druhém losování.
+  it("resolves two distinct 'empty' extraLoot placements without throwing", () => {
+    const placement = resolveMiniGamePlacement(
+      SERVICE_FLOOR_EVAC_PLAN,
+      { objective: "collect_item", itemToCollect: "battery", extraLootItems: ["empty", "empty"] },
+      "evac-empty-1",
+    );
+    const emptyLoot = placement.extraLoot.filter((loot) => loot.itemId === "empty");
+    expect(emptyLoot).toHaveLength(2);
+    expect(emptyLoot[0].slotId).not.toBe(emptyLoot[1].slotId);
   });
 });

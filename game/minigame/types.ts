@@ -101,7 +101,14 @@ export type MiniGameStatus = "playing" | "won" | "gameOver";
 // rozhraní (vstup/výstup), žádná skutečná integrace.
 
 export type MiniGameObjective = "return_to_office" | "collect_item" | "survive";
-export type MiniGameItemId = "fuse" | "bulb" | "key" | "toolbox" | "battery" | "shotgun" | "ammo";
+/**
+ * `"empty"` (viz zadání "prázdná krabice") je záměrný "nic" decoy — sebere se
+ * úplně stejně jako ostatní loot, ale `worldEffectsForItem` pro něj vrací `[]`
+ * (game/minigame/logic.ts) a nikdy není `itemToCollect` (hlavní objective),
+ * jen `extraLootItems` (viz resolveExtraLootItems v
+ * game/core/emergencyMiniGameIntegration.ts).
+ */
+export type MiniGameItemId = "fuse" | "bulb" | "key" | "toolbox" | "battery" | "shotgun" | "ammo" | "empty";
 export type MiniGameDifficulty = "easy" | "medium" | "hard";
 export type MiniGameStartLocation = "office" | "hall" | "generator";
 

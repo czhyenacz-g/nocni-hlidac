@@ -115,15 +115,17 @@ describe("createShotgunEmergencyInput", () => {
 });
 
 // Sandbox výprava (viz zadání) — battery/bulb garantované na KAŽDÉ výpravě,
-// shotgun podmíněně. Primární položka se nikdy nevrací i v extraLootItems.
+// shotgun podmíněně, a dvě "prázdné krabice" (MiniGameItemId "empty", viz
+// zadání "přidej dva body/věci, které budou 'nic'") VŽDY, na konci pole.
+// Primární položka se nikdy nevrací i v extraLootItems.
 describe("resolveExtraLootItems", () => {
-  it("battery primary: guarantees bulb, no shotgun before night 10", () => {
+  it("battery primary: guarantees bulb + two empty decoys, no shotgun before night 10", () => {
     const items = resolveExtraLootItems({
       primaryItemId: "battery",
       nightFeatures: { emergencyRunsEnabled: true, shotgunLootEnabled: false },
       hasShotgun: false,
     });
-    expect(items).toEqual(["bulb"]);
+    expect(items).toEqual(["bulb", "empty", "empty"]);
   });
 
   it("battery primary: adds shotgun once night 10+ and the player doesn't have it yet", () => {
@@ -132,7 +134,7 @@ describe("resolveExtraLootItems", () => {
       nightFeatures: { emergencyRunsEnabled: true, shotgunLootEnabled: true },
       hasShotgun: false,
     });
-    expect(items).toEqual(["bulb", "shotgun"]);
+    expect(items).toEqual(["bulb", "shotgun", "empty", "empty"]);
   });
 
   it("battery primary: never adds shotgun once the player already has it", () => {
@@ -141,7 +143,7 @@ describe("resolveExtraLootItems", () => {
       nightFeatures: { emergencyRunsEnabled: true, shotgunLootEnabled: true },
       hasShotgun: true,
     });
-    expect(items).toEqual(["bulb"]);
+    expect(items).toEqual(["bulb", "empty", "empty"]);
   });
 
   it("shotgun primary: guarantees battery + bulb, never re-adds shotgun itself", () => {
@@ -150,7 +152,7 @@ describe("resolveExtraLootItems", () => {
       nightFeatures: { emergencyRunsEnabled: true, shotgunLootEnabled: true },
       hasShotgun: false,
     });
-    expect(items).toEqual(["battery", "bulb"]);
+    expect(items).toEqual(["battery", "bulb", "empty", "empty"]);
   });
 
   it("bulb primary: guarantees battery, never re-adds bulb itself", () => {
@@ -159,7 +161,7 @@ describe("resolveExtraLootItems", () => {
       nightFeatures: { emergencyRunsEnabled: true, shotgunLootEnabled: false },
       hasShotgun: false,
     });
-    expect(items).toEqual(["battery"]);
+    expect(items).toEqual(["battery", "empty", "empty"]);
   });
 
   // Zadání (true ending odměna): hráč s odemčenou dvouhlavňovkou má
@@ -174,7 +176,18 @@ describe("resolveExtraLootItems", () => {
       nightFeatures: { emergencyRunsEnabled: true, shotgunLootEnabled: true },
       hasShotgun: true,
     });
-    expect(items).toEqual(["bulb"]);
+    expect(items).toEqual(["bulb", "empty", "empty"]);
+  });
+
+  it("always adds exactly two 'empty' decoys, regardless of primary item or shotgun eligibility", () => {
+    for (const primaryItemId of ["battery", "bulb", "shotgun"] as const) {
+      const items = resolveExtraLootItems({
+        primaryItemId,
+        nightFeatures: { emergencyRunsEnabled: true, shotgunLootEnabled: true },
+        hasShotgun: false,
+      });
+      expect(items.filter((item) => item === "empty")).toEqual(["empty", "empty"]);
+    }
   });
 });
 

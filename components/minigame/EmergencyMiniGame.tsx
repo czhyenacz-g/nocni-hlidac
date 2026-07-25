@@ -316,9 +316,10 @@ const ITEM_LABELS_ACCUSATIVE: Record<MiniGameItemId, string> = {
   battery: "baterii",
   shotgun: "brokovnici",
   ammo: "náboj",
+  empty: "prázdnou krabici",
 };
 
-/** Nominativ pro item marker na mapě ("BATERIE (E)") a "Sebráno: ..." text — viz draw()/won overlay. */
+/** Nominativ pro "Sebráno: ..." text (viz zadání "odstraň popisek věci pod její značkou" — marker samotný teď žádný text nemá, tenhle nominativ se používá jen pro won/pickup zprávu). */
 const ITEM_LABELS_NOMINATIVE: Record<MiniGameItemId, string> = {
   fuse: "Pojistka",
   bulb: "Žárovka",
@@ -327,6 +328,7 @@ const ITEM_LABELS_NOMINATIVE: Record<MiniGameItemId, string> = {
   battery: "Baterie",
   shotgun: "Brokovnice",
   ammo: "Náboj",
+  empty: "Prázdná krabice",
 };
 
 /**
@@ -1750,6 +1752,10 @@ function draw(
   // Item marker — jen "collect_item", dokud věc není sebraná (viz mission.phase),
   // a jen ve viditelnosti hráče (fog, viz zadání "item samotný kresli až ve
   // viditelnosti") — dev overlay ho ukáže vždycky (itemVisible výše).
+  // Žádný textový popisek pod značkou (viz zadání "odstraň popisek věci") —
+  // jen samotný žlutý bod, co je zač se hráč dozví až po sebrání (COPY.game.
+  // itemCollectedLabel, viz níže) nebo z obecného mission-hint textu nahoře
+  // (getMissionHint), ne z nápisu přímo u markeru.
   if (input.objective === "collect_item" && game.mission.phase === "outbound" && game.itemPosition && itemVisible) {
     const itemPosition = game.itemPosition;
     ctx.save();
@@ -1759,19 +1765,14 @@ function draw(
     ctx.beginPath();
     ctx.arc(itemPosition.x, itemPosition.y, ITEM_RADIUS, 0, Math.PI * 2);
     ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = "rgba(250, 204, 21, 0.9)";
-    ctx.font = "10px monospace";
-    ctx.textAlign = "center";
-    ctx.fillText(`${ITEM_LABELS_NOMINATIVE[input.itemToCollect ?? "fuse"].toUpperCase()} (E)`, itemPosition.x, itemPosition.y - 16);
     ctx.restore();
   }
 
   // Doplňkový loot (viz zadání "sandbox výprava") — stejný vizuál jako hlavní
-  // item marker výše (žlutý bod + popisek), jen bez "(E)" (sbírá se čistě
-  // dotykem, viz tick()#shouldAutoCollectItem-analog smyčka), a jeden na
-  // KAŽDOU dosud nesebranou položku. Skryté mimo viditelnost hráče stejně
-  // jako hlavní item (dev overlay ho vidí vždy přes itemVisible).
+  // item marker výše (jen žlutý bod, žádný popisek), sbírá se čistě dotykem
+  // (viz tick()#shouldAutoCollectItem-analog smyčka), jeden na KAŽDOU dosud
+  // nesebranou položku. Skryté mimo viditelnost hráče stejně jako hlavní item
+  // (dev overlay ho vidí vždy přes itemVisible).
   for (const loot of game.extraLoot) {
     if (loot.collected) continue;
     const lootVisible =
@@ -1790,11 +1791,6 @@ function draw(
     ctx.beginPath();
     ctx.arc(loot.position.x, loot.position.y, ITEM_RADIUS, 0, Math.PI * 2);
     ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = "rgba(250, 204, 21, 0.9)";
-    ctx.font = "10px monospace";
-    ctx.textAlign = "center";
-    ctx.fillText(ITEM_LABELS_NOMINATIVE[loot.itemId].toUpperCase(), loot.position.x, loot.position.y - 16);
     ctx.restore();
   }
 

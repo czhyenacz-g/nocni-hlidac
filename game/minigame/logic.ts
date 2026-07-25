@@ -921,6 +921,7 @@ export function worldEffectsForItem(itemId: MiniGameItemId): EmergencyWorldEffec
       return [{ type: "ammo_acquired", amount: 1 }];
     case "key":
     case "toolbox":
+    case "empty":
       return [];
   }
 }

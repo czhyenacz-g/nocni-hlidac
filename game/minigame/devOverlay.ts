@@ -65,6 +65,7 @@ const SLOT_TAG_PRIORITY: MiniGameLayoutSlotTag[] = [
   "ammo",
   "key",
   "toolbox",
+  "empty",
   "generic_loot",
 ];
 
@@ -79,6 +80,7 @@ const SLOT_TAG_DEBUG_LABELS: Record<MiniGameLayoutSlotTag, string> = {
   ammo: "A",
   key: "K",
   toolbox: "T",
+  empty: "0",
   generic_loot: "?",
 };
 
