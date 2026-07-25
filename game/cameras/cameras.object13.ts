@@ -4,11 +4,12 @@ import { CameraDefinition } from "../core/types";
 // UI (CameraPanel/CameraView) je vždy jen vykresluje, nikdy je nemá natvrdo.
 // order řídí pořadí v panelu (nižší = blíž venku, tedy dál od hráče), position
 // řídí levo/pravo zarovnání odpovídající fyzickému rozložení chodeb.
+// Zobrazený label/description (viz CameraDefinition komentář) žije v
+// content/copy.ts#cameras, klíčovaný `id` — tenhle soubor jen jazykově
+// nezávislá identita/konfigurace.
 export const OBJECT13_CAMERAS: CameraDefinition[] = [
   {
     id: "outer_yard",
-    label: "KAM 01 — Venkovní vstup",
-    description: "Nejvzdálenější pohled, hlavní vstup na pozemek.",
     order: 1,
     position: "center",
     type: "outside",
@@ -16,8 +17,6 @@ export const OBJECT13_CAMERAS: CameraDefinition[] = [
   },
   {
     id: "right_hallway",
-    label: "KAM 02 — Pravá chodba",
-    description: "Boční chodba vedoucí ke dveřím zprava.",
     order: 2,
     position: "right",
     type: "hallway",
@@ -25,8 +24,6 @@ export const OBJECT13_CAMERAS: CameraDefinition[] = [
   },
   {
     id: "left_hallway",
-    label: "KAM 03 — Levá chodba",
-    description: "Boční chodba vedoucí ke dveřím zleva.",
     order: 2,
     position: "left",
     type: "hallway",
@@ -34,8 +31,6 @@ export const OBJECT13_CAMERAS: CameraDefinition[] = [
   },
   {
     id: "door_hallway",
-    label: "KAM 04 — Chodba před dveřmi",
-    description: "Poslední úsek těsně před dveřmi — nejdůležitější kamera.",
     order: 3,
     position: "center",
     type: "door",

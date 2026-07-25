@@ -115,9 +115,13 @@ export type CameraType = "outside" | "hallway" | "door" | "utility";
 
 export interface CameraDefinition {
   id: CameraId;
-  label: string;
-  /** Krátký popis pro UI (např. tooltip/podnadpis) — volitelný. */
-  description?: string;
+  /**
+   * ŽÁDNÝ `label`/`description` string tady (viz zadání "i18n" — dřív byly
+   * natvrdo česky, mimo i18n) — zobrazený text je vždy `COPY.cameras[id]`
+   * (content/copy.ts, stejný vzor jako AchievementId ->
+   * COPY.achievementDefinitions, viz content/achievements.ts hlavička).
+   * Tenhle soubor nese jen jazykově nezávislou identitu/konfiguraci kamery.
+   */
   /** Pořadí v panelu; nižší = blíž venku. Kamery bez order se řadí za ty s order, v pořadí v poli. */
   order?: number;
   /**

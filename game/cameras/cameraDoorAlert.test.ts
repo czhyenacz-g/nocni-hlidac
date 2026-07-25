@@ -4,14 +4,12 @@ import { CameraDefinition } from "../core/types";
 
 const doorHallwayCamera: CameraDefinition = {
   id: "door_hallway",
-  label: "KAM 04 — Chodba před dveřmi",
   type: "door",
   enemyVisibleAtStage: "door_hallway",
 };
 
 const outerYardCamera: CameraDefinition = {
   id: "outer_yard",
-  label: "KAM 01 — Venkovní vstup",
   type: "outside",
   enemyVisibleAtStage: "outer_yard",
 };

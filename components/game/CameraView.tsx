@@ -40,15 +40,17 @@ export default function CameraView({
   if (!camera) {
     return (
       <div className="pixel-panel pixel-screen-static h-48 flex items-center justify-center text-gray-500 text-sm">
-        Žádná kamera vybrána
+        {COPY.game.noCameraSelectedLabel}
       </div>
     );
   }
 
+  const cameraCopy = COPY.cameras[camera.id];
+
   if (!focused) {
     return (
       <div className="pixel-panel pixel-screen-static camera-static h-48 flex flex-col items-center justify-center relative overflow-hidden">
-        <span className="absolute top-1 left-2 text-[10px] text-gray-500">{camera.label}</span>
+        <span className="absolute top-1 left-2 text-[10px] text-gray-500">{cameraCopy.label}</span>
         <span className="text-gray-500 text-xs animate-pulse">{COPY.game.cameraFocusingLabel}</span>
       </div>
     );
@@ -107,12 +109,12 @@ export default function CameraView({
           null) je to jediná vrstva, vizuálně stejné jako dřív. */}
       <div className="absolute inset-0 pixel-screen-static" />
       <span className="absolute top-1 left-2 text-[10px] text-gray-500">
-        {camera.label}
+        {cameraCopy.label}
         {/* Popis kamery se schová, dokud hráč nenajede myší na obraz — ať
             neplete štítek, ale poradí, když o to zájem je. */}
-        {camera.description && (
+        {cameraCopy.description && (
           <span className="block text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-            {camera.description}
+            {cameraCopy.description}
           </span>
         )}
       </span>

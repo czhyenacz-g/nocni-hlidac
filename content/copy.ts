@@ -86,6 +86,19 @@ export const COPY_CS = {
     },
     fallback: { lines: ["Služby jsou čím dál horší.", "Tohle místo se rozpadá."] },
   },
+  // Kamerové štítky/popisy (viz game/cameras/cameras.object13.ts,
+  // CameraView.tsx/CameraMonitorTile.tsx/CameraMonitorRackTile.tsx) — byly
+  // natvrdo česky přímo v CameraDefinition, mimo i18n (viz zadání). Klíč =
+  // CameraId, stejný vzor jako AchievementId -> COPY.achievementDefinitions.
+  cameras: {
+    outer_yard: { label: "KAM 01 — Venkovní vstup", description: "Nejvzdálenější pohled, hlavní vstup na pozemek." },
+    right_hallway: { label: "KAM 02 — Pravá chodba", description: "Boční chodba vedoucí ke dveřím zprava." },
+    left_hallway: { label: "KAM 03 — Levá chodba", description: "Boční chodba vedoucí ke dveřím zleva." },
+    door_hallway: {
+      label: "KAM 04 — Chodba před dveřmi",
+      description: "Poslední úsek těsně před dveřmi — nejdůležitější kamera.",
+    },
+  },
   // Profil hlídače (viz zadání, app/profile/page.tsx) — první verze budoucího
   // účtu/profilu, čistě lokální localStorage data (game/core/playerProfileStats.ts,
   // game/core/monsterDefeatReward.ts). Texty přesně podle zadání.
@@ -227,6 +240,13 @@ export const COPY_CS = {
     nightLabel: "Noc {n}",
     camerasLabel: "Kamery",
     cameraOverviewHint: "Klikni na monitor pro detail.",
+    // CameraDetailView.tsx, dokud playerView === "desk" ale žádná kamera
+    // ještě není otevřená (viz zadání "i18n" — byl natvrdo v CameraView.tsx).
+    noCameraSelectedLabel: "Žádná kamera vybrána",
+    // Skládá se do aria-label monitoru v mřížce (viz CameraMonitorTile.tsx/
+    // CameraMonitorRackTile.tsx): `${cameras[id].label}${cameraExpandAriaSuffix}${offline ? cameraOfflineAriaSuffix : ""}`.
+    cameraExpandAriaSuffix: " — zvětšit",
+    cameraOfflineAriaSuffix: ", mimo provoz",
     // Šipka byla dřív součástí textu — teď ji kreslí ikonový blok
     // (viz ViewSwitchArrow.tsx#ViewSwitchIcon "arrow-left"), text zůstává čistý.
     backToOverviewLabel: "Zpět na přehled",
@@ -409,8 +429,8 @@ export const COPY_CS = {
     // Statický plánek objektu bez interaktivity (viz ObjectMapView.tsx,
     // gameReducer.ts LOOK_AT_MAP, game/map/objectMap.ts pro data uzlů/hran) —
     // vlastní texty, stejný vzor jako left_wall. Popisky místností samotné
-    // žijí v game/map/objectMap.ts (stejná konvence jako CameraDefinition.label
-    // v game/cameras/), ne tady.
+    // ZATÍM žijí natvrdo česky v game/map/objectMap.ts, mimo i18n (na rozdíl
+    // od CameraDefinition, viz COPY.cameras výše — nenahlášeno, neopraveno).
     lookAtMapLabel: "Podívat se na mapu",
     mapBackLabel: "Zpět ke stolu",
     generatorViewHint: "Klikni pro restart.",
@@ -679,8 +699,8 @@ export const COPY_CS = {
   },
   // Malý toast popup (viz components/game/AchievementToast.tsx) — jen tenhle
   // obecný "chrome" text; název/popis konkrétního achievementu žije v
-  // content/achievements.ts (stejná konvence jako CameraDefinition.label
-  // v game/cameras/ — obsahová data, ne UI text).
+  // COPY.achievementDefinitions níže (content/achievements.ts nese jen
+  // jazykově nezávislé id, stejná konvence jako COPY.cameras výše).
   achievements: {
     unlockedLabel: "Achievement odemčen",
     // Nadpis sekce nově odemčených achievementů na výsledkových obrazovkách

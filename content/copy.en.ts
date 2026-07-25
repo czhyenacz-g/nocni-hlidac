@@ -50,6 +50,15 @@ export const COPY_EN: CopyShape = {
     },
     fallback: { lines: ["Service keeps getting worse.", "This place is falling apart."] },
   },
+  cameras: {
+    outer_yard: { label: "CAM 01 — Outer Entrance", description: "Farthest view, main entrance to the property." },
+    right_hallway: { label: "CAM 02 — Right Hallway", description: "Side hallway leading to the door from the right." },
+    left_hallway: { label: "CAM 03 — Left Hallway", description: "Side hallway leading to the door from the left." },
+    door_hallway: {
+      label: "CAM 04 — Hallway Before the Door",
+      description: "Last stretch right before the door — the most important camera.",
+    },
+  },
   profile: {
     seoTitle: "Watchman Profile | Night Watchman",
     seoDescription: "Object 13 watchman profile — status, stats and achievements stored locally in your browser.",
@@ -131,6 +140,9 @@ export const COPY_EN: CopyShape = {
     nightLabel: "Night {n}",
     camerasLabel: "Cameras",
     cameraOverviewHint: "Click a monitor for detail.",
+    noCameraSelectedLabel: "No camera selected",
+    cameraExpandAriaSuffix: " — expand",
+    cameraOfflineAriaSuffix: ", offline",
     backToOverviewLabel: "Back to overview",
     cameraFocusingLabel: "TUNING SIGNAL...",
     sonicCannonOffLabel: "TURN ON SONIC CANNON",
