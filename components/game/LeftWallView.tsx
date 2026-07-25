@@ -260,99 +260,102 @@ export default function LeftWallView({
       </div>
 
       <div className="w-full max-w-md mx-auto flex flex-col items-end gap-2">
-        <div className="w-full flex items-center justify-between gap-3">
+        {/* "Zpět ke stolu" + "Otočit se ke dveřím" na jednom řádku (na
+            výslovnou žádost) — ViewSwitchArrow zůstává svojí přirozenou
+            šířkou, "Otočit se ke dveřím" vyplní zbytek řádku (`flex-1`
+            místo dřívějšího `w-full` přes celou šířku samostatně). */}
+        <div className="w-full flex items-center gap-3">
           <ViewSwitchArrow label={COPY.game.leftWallBackLabel} onClick={onLookAtDesk} align="left" />
-          {/* Vývojářsky dostupné tlačítko pro první napojení EmergencyMiniGame
-              (viz app/play/page.tsx#handleStartEmergencyRunWindup) — nenápadné,
-              bez finálního artu. Musí se držet EMERGENCY_RUN_WINDUP_DURATION_MS,
-              ne jen kliknout (stejný "drž a riskuj" vzor jako výměna žárovky) —
-              po tu dobu dál běží normální herní smyčka, hráč je reálně v
-              ohrožení. Se zavřenými dveřmi je jen vizuálně ztlumené (ne HTML
-              disabled) — pointerDown pořád projde, ať handler může ukázat hint
-              "nejdřív otevři dveře". Bez canStartEmergencyRun (night feature
-              flag) se tlačítko vůbec nevykreslí. */}
-          {canStartEmergencyRun && (
-            <button
-              type="button"
-              className={`pixel-button console-button tap-target flex items-center gap-2 px-3 py-2 text-xs touch-none select-none ${doorClosed ? "opacity-50" : ""}`}
-              // Žluté blikání po dobu držení (viz zadání) — stejná
-              // `pixel-blink` animace jako GeneratorView.tsx "restarting"
-              // indikátor (styles/pixel.css), jen aplikovaná přímo na
-              // tlačítko přes inline style, ať nemusí vznikat nová CSS
-              // třída jen pro tenhle jeden podmíněný případ. Siréna (viz
-              // app/play/page.tsx efekt na state.emergencyRunWindup.active)
-              // jede nezávisle na tomhle — vizuál a zvuk oba řídí stejný
-              // zdroj pravdy (emergencyRunWindupActive), ale samostatně.
-              style={
-                emergencyRunWindupActive
-                  ? { animation: "pixel-blink 0.35s steps(2) infinite", backgroundColor: "#facc15", color: "#1a1a1a" }
-                  : undefined
-              }
-              onPointerDown={handlePointerDown}
-              onPointerUp={handlePointerUp}
-              onPointerLeave={handlePointerUp}
-              onPointerCancel={handlePointerUp}
-            >
-              <span className="console-icon-block" aria-hidden="true">
-                <ConsoleIcon id="warn" />
-              </span>
-              <span className="whitespace-pre-line">
-                {emergencyRunWindupActive
-                  ? COPY.game.emergencyRunHoldingLabel.replace("{seconds}", windupSeconds)
-                  : hasWoundedMonsterToday
-                    ? COPY.game.startEmergencyRunHuntingLabel
-                    : COPY.game.startEmergencyRunLabel}
-              </span>
-            </button>
-          )}
+          <button
+            type="button"
+            className="pixel-button console-button console-button--primary tap-target flex items-center gap-2.5 px-3 py-2.5 text-xs touch-none select-none flex-1"
+            style={
+              officeBreachActive
+                ? { animation: "pixel-blink 0.6s steps(2) infinite", backgroundColor: "#ef4444", color: "#fff" }
+                : undefined
+            }
+            onClick={onLookAtDoor}
+          >
+            <span className="console-icon-block console-icon-block--primary" aria-hidden="true">
+              <ConsoleIcon id="door" />
+            </span>
+            <span className="flex-1 text-left">{officeBreachActive ? COPY.game.turnToDoorUrgentLabel : COPY.game.turnToDoorLabel}</span>
+          </button>
         </div>
+
+        {/* Emergency-run + CAMERA MAINTENANCE na jednom řádku (na výslovnou
+            žádost) — obě tlačítka `flex-1`, ať si řádek rozdělí rovnoměrně
+            bez ohledu na to, jestli je zobrazené jedno, nebo obě. */}
+        {(canStartEmergencyRun || canStartCameraMaintenanceRun) && (
+          <div className="w-full flex items-center gap-3">
+            {/* Vývojářsky dostupné tlačítko pro první napojení EmergencyMiniGame
+                (viz app/play/page.tsx#handleStartEmergencyRunWindup) — nenápadné,
+                bez finálního artu. Musí se držet EMERGENCY_RUN_WINDUP_DURATION_MS,
+                ne jen kliknout (stejný "drž a riskuj" vzor jako výměna žárovky) —
+                po tu dobu dál běží normální herní smyčka, hráč je reálně v
+                ohrožení. Se zavřenými dveřmi je jen vizuálně ztlumené (ne HTML
+                disabled) — pointerDown pořád projde, ať handler může ukázat hint
+                "nejdřív otevři dveře". Bez canStartEmergencyRun (night feature
+                flag) se tlačítko vůbec nevykreslí. */}
+            {canStartEmergencyRun && (
+              <button
+                type="button"
+                className={`pixel-button console-button tap-target flex items-center gap-2 px-3 py-2 text-xs touch-none select-none flex-1 ${doorClosed ? "opacity-50" : ""}`}
+                // Žluté blikání po dobu držení (viz zadání) — stejná
+                // `pixel-blink` animace jako GeneratorView.tsx "restarting"
+                // indikátor (styles/pixel.css), jen aplikovaná přímo na
+                // tlačítko přes inline style, ať nemusí vznikat nová CSS
+                // třída jen pro tenhle jeden podmíněný případ. Siréna (viz
+                // app/play/page.tsx efekt na state.emergencyRunWindup.active)
+                // jede nezávisle na tomhle — vizuál a zvuk oba řídí stejný
+                // zdroj pravdy (emergencyRunWindupActive), ale samostatně.
+                style={
+                  emergencyRunWindupActive
+                    ? { animation: "pixel-blink 0.35s steps(2) infinite", backgroundColor: "#facc15", color: "#1a1a1a" }
+                    : undefined
+                }
+                onPointerDown={handlePointerDown}
+                onPointerUp={handlePointerUp}
+                onPointerLeave={handlePointerUp}
+                onPointerCancel={handlePointerUp}
+              >
+                <span className="console-icon-block" aria-hidden="true">
+                  <ConsoleIcon id="warn" />
+                </span>
+                <span className="whitespace-pre-line">
+                  {emergencyRunWindupActive
+                    ? COPY.game.emergencyRunHoldingLabel.replace("{seconds}", windupSeconds)
+                    : hasWoundedMonsterToday
+                      ? COPY.game.startEmergencyRunHuntingLabel
+                      : COPY.game.startEmergencyRunLabel}
+                </span>
+              </button>
+            )}
+
+            {/* "CAMERA MAINTENANCE" (viz zadání "druhý výjezd — údržba kamer") —
+                vedle emergency-run tlačítka, stejný vizuál (pixel-button
+                console-button), ale obyčejný klik (ne drž a riskuj) — handler
+                (app/play/page.tsx#handleStartCameraMaintenanceRun) si sám hlídá
+                dvojklik/souběžné spuštění. */}
+            {canStartCameraMaintenanceRun && (
+              <button
+                type="button"
+                className="pixel-button console-button tap-target flex items-center gap-2 px-3 py-2 text-xs touch-none select-none flex-1"
+                onClick={onStartCameraMaintenanceRun}
+              >
+                <span className="console-icon-block" aria-hidden="true">
+                  <ConsoleIcon id="warn" />
+                </span>
+                <span className="whitespace-pre-line">{COPY.game.startCameraMaintenanceLabel}</span>
+              </button>
+            )}
+          </div>
+        )}
         {canStartEmergencyRun && emergencyRunWindupActive && (
           <div className="w-32 h-1 bg-gray-800 border border-gray-700 rounded overflow-hidden">
             <div className="h-full bg-red-500 transition-all duration-150" style={{ width: `${windupPercent}%` }} />
           </div>
         )}
-
-        {/* "CAMERA MAINTENANCE" (viz zadání "druhý výjezd — údržba kamer") —
-            vedle emergency-run tlačítka výše, stejný vizuál (pixel-button
-            console-button), ale obyčejný klik (ne drž a riskuj) — handler
-            (app/play/page.tsx#handleStartCameraMaintenanceRun) si sám hlídá
-            dvojklik/souběžné spuštění. */}
-        {canStartCameraMaintenanceRun && (
-          <div className="w-full flex items-center justify-end gap-3">
-            <button
-              type="button"
-              className="pixel-button console-button tap-target flex items-center gap-2 px-3 py-2 text-xs touch-none select-none"
-              onClick={onStartCameraMaintenanceRun}
-            >
-              <span className="console-icon-block" aria-hidden="true">
-                <ConsoleIcon id="warn" />
-              </span>
-              <span className="whitespace-pre-line">{COPY.game.startCameraMaintenanceLabel}</span>
-            </button>
-          </div>
-        )}
-
-        {/* "Otočit se ke dveřím" (viz zadání) — obyčejná navigační zkratka na
-            DoorView, funguje vždy (nezávislá na canStartEmergencyRun/dveřích),
-            ať hráč nemusí přes ViewSwitchArrow zpátky na DeskView a odtud
-            znovu na dveře. V krizi (officeBreachActive, viz
-            game/core/officeBreachAftermath.ts) dostane výraznější text a
-            stejné pulzující zvýraznění jako emergency-run tlačítko výše. */}
-        <button
-          type="button"
-          className="pixel-button console-button console-button--primary tap-target flex items-center gap-2.5 px-3 py-2.5 text-xs touch-none select-none w-full"
-          style={
-            officeBreachActive
-              ? { animation: "pixel-blink 0.6s steps(2) infinite", backgroundColor: "#ef4444", color: "#fff" }
-              : undefined
-          }
-          onClick={onLookAtDoor}
-        >
-          <span className="console-icon-block console-icon-block--primary" aria-hidden="true">
-            <ConsoleIcon id="door" />
-          </span>
-          <span className="flex-1 text-left">{officeBreachActive ? COPY.game.turnToDoorUrgentLabel : COPY.game.turnToDoorLabel}</span>
-        </button>
         {/* Nenápadná informace o munici (viz zadání) — jen když má hráč
             brokovnici vůbec (bez ní nedává tenhle text smysl a jen by
             prozrazoval mechaniku předem). */}

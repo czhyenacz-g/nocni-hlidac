@@ -127,6 +127,7 @@ export function createCameraMaintenanceEmergencyInput(
   monsterHitsRequiredForFinal?: number,
   officeDoorLockMs?: number,
   monsterAlreadyDefeatedTonight?: boolean,
+  disabledCameraIds?: MiniGameCameraId[],
 ): EmergencyMiniGameInput {
   return {
     objective: "replace_camera",
@@ -139,6 +140,7 @@ export function createCameraMaintenanceEmergencyInput(
     monsterHitsRequiredForFinal,
     officeDoorLockMs,
     monsterAlreadyDefeatedTonight,
+    disabledCameraIds,
   };
 }
 

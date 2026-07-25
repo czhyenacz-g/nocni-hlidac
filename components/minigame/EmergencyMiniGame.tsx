@@ -1873,14 +1873,22 @@ function draw(
   // opravovaná kamera zvýrazněná zeleně, ostatní jen tlumeně. Čte se přímo z
   // layout dat (viz game/minigame/layouts/monitoredHallsMap.ts) — žádná
   // vlastní resoluce navíc, cíl (game.itemPosition) je jedna z těchto slotů.
+  // Červená (viz zadání "poškozená kamera by měla být červená") = tahle
+  // kamera je PRÁVĚ TEĎ skutečně vyřazená v hlavní hře
+  // (`input.disabledCameraIds`, viz GameState.cameraDamage) — čistě
+  // informativní vrstva navíc, cíl výpravy (`targetCameraId`) se tím
+  // nemění a oprava dál nemá žádný skutečný gameplay dopad (v1).
   if (input.objective === "replace_camera") {
     for (const slot of game.layout.slots) {
-      if (!CAMERA_MARKER_TAGS.some((tag) => slot.tags.includes(tag))) continue;
+      const cameraTag = CAMERA_MARKER_TAGS.find((tag) => slot.tags.includes(tag));
+      if (!cameraTag) continue;
       const isTargetCamera = game.itemPosition && slot.x === game.itemPosition.x && slot.y === game.itemPosition.y;
+      const isDisabled = input.disabledCameraIds?.includes(cameraTag) ?? false;
+      const color = isDisabled ? "239, 68, 68" : "93, 255, 160";
       ctx.save();
-      ctx.shadowColor = isTargetCamera ? "rgba(93, 255, 160, 0.9)" : "rgba(93, 255, 160, 0.4)";
+      ctx.shadowColor = `rgba(${color}, ${isTargetCamera ? 0.9 : 0.4})`;
       ctx.shadowBlur = isTargetCamera ? 10 : 4;
-      ctx.strokeStyle = isTargetCamera ? "rgba(93, 255, 160, 0.95)" : "rgba(93, 255, 160, 0.4)";
+      ctx.strokeStyle = `rgba(${color}, ${isTargetCamera ? 0.95 : 0.4})`;
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(slot.x, slot.y, ITEM_RADIUS, 0, Math.PI * 2);

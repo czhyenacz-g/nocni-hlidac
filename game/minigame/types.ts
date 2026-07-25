@@ -170,6 +170,16 @@ export interface EmergencyMiniGameInput {
    */
   targetCameraId?: MiniGameCameraId;
   /**
+   * Jen relevantní pro objective "replace_camera" — které ze 4 kamer jsou
+   * PRÁVĚ TEĎ v hlavní hře skutečně vyřazené (viz
+   * GameState.cameraDamage.disabledCameraIds, game/core/cameraDamage.ts).
+   * Čistě vizuální info pro draw() (červená značka místo zelené) — v1
+   * nemění gameplay, cíl výpravy zůstává vždy `targetCameraId` bez ohledu
+   * na to, jestli je zrovna "vyřazená" nebo ne. Chybí-li/prázdné, všechny
+   * značky se kreslí jako doteď (zelené).
+   */
+  disabledCameraIds?: MiniGameCameraId[];
+  /**
    * Doplňkový loot navíc k `itemToCollect` (viz zadání "sandbox výprava",
    * game/minigame/layoutPlacement.ts#resolveMiniGamePlacement) — battery/bulb
    * garantované na každé výpravě, shotgun podmíněně (viz

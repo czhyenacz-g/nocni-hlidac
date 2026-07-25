@@ -100,7 +100,7 @@ import {
 } from "@/game/core/emergencyMiniGameIntegration";
 import { applyShotgunEmergencyReturn, canRequestAmmo, getRechargedShotgunAmmo } from "@/game/core/shotgunEquipment";
 import EmergencyMiniGame from "@/components/minigame/EmergencyMiniGame";
-import { EmergencyMiniGameInput, EmergencyMiniGameResult } from "@/game/minigame/types";
+import { EmergencyMiniGameInput, EmergencyMiniGameResult, MiniGameCameraId } from "@/game/minigame/types";
 import { useTranslation } from "@/game/i18n/useTranslation";
 import type { AuthenticatedPlayer } from "@/lib/auth/types";
 import { isAdminUsername } from "@/lib/auth/adminUsers";
@@ -1778,6 +1778,11 @@ function PlayPageContent() {
         state.nightFeatures.monsterTrueEndingRequiredHits,
         state.officeDoorLockMs,
         state.monsterDefeated,
+        // CameraId a MiniGameCameraId mají stejné 4 hodnoty (viz
+        // game/minigame/types.ts#MiniGameCameraId komentář "DUPLIKOVANÉ,
+        // game/minigame/* je záměrně nezávislé na game/core/*") — čistě
+        // vizuální info pro draw() (červená značka), žádný gameplay dopad.
+        state.cameraDamage.disabledCameraIds as MiniGameCameraId[],
       ),
     });
   }
