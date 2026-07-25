@@ -28,15 +28,34 @@ export const COPY_EN: CopyShape = {
     leaderboardLinkLabel: "Hall of Fame",
     profileLinkLabel: "Watchman Profile",
     authorEmail: "hynek@darbujan.com",
+    terminalHeaderLabel: "Object 13 · Shift Terminal",
   },
   intro: {
     startIntroLabel: "Play Intro",
+  },
+  nightBriefing: {
+    night1: { lines: ["First shift.", "Just gotta make it to dawn."] },
+    night2: {
+      lines: ["I saw it on camera.", "Barely got the door shut in time.", "That bulb's burning weak somehow..."],
+    },
+    night3: { lines: ["The generator went quiet yesterday.", "Worst sound of my life."] },
+    night4: { lines: ["Technicians were messing with the generator today.", "The way they ran off, though..."] },
+    night6: {
+      lines: [
+        "Found a note on the desk:",
+        '"It\'s a miracle you survived! You\'re a LEGEND!',
+        "I'll try to send warnings over the radio from now on.",
+        'Signed, T."',
+      ],
+    },
+    fallback: { lines: ["Service keeps getting worse.", "This place is falling apart."] },
   },
   profile: {
     seoTitle: "Watchman Profile | Night Watchman",
     seoDescription: "Object 13 watchman profile — status, stats and achievements stored locally in your browser.",
     heading: "Watchman Profile",
     backToMenuLabel: "← Back to menu",
+    terminalHeaderLabel: "Object 13 · Personal File",
     serviceCardHeading: "Service Card",
     statusLabel: "Status",
     statusGolden: "GOLDEN WATCHMAN",
@@ -341,6 +360,7 @@ export const COPY_EN: CopyShape = {
     seoTitle: "Hall of Fame | Night Watchman",
     seoDescription: "Object 13 watchmen's Hall of Fame — who holds the record, and who's on duty right now.",
     heading: "Hall of Fame",
+    terminalHeaderLabel: "Object 13 · Hall of Fame",
     subheading: "The position has been filled again and again. Some lasted longer than others.",
     explanation:
       "The record shows a player's best-ever shift. The current run shows a watchman who hasn't " +

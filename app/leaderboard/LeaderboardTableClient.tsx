@@ -17,7 +17,7 @@ export default function LeaderboardTableClient({ entries }: LeaderboardTableClie
   return (
     <div className="menu-terminal-screen pixel-screen-static">
       <div className="menu-terminal-header">
-        <span>Objekt 13 · Síň slávy</span>
+        <span>{COPY.leaderboard.terminalHeaderLabel}</span>
         <span className="menu-terminal-led" aria-hidden="true" />
       </div>
 

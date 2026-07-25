@@ -10,32 +10,27 @@ import {
 import { MONSTER_TRUE_ENDING_REQUIRED_HITS, MONSTER_TRUE_ENDING_REQUIRED_HITS_ADMIN } from "../core/monsterEnding";
 
 describe("getNightConfig", () => {
+  // Briefing text (title/lines) je teď lokalizovaný obsah (viz
+  // content/copy.ts#nightBriefing, content/nightBriefing.test.ts) — tenhle
+  // soubor testuje jen herní pravidla (features), ne text.
   it("night 1: no generator faults, no bulb lifetime, no retreat verification", () => {
     const config = getNightConfig(1);
     expect(config.features.generatorFaultsEnabled).toBe(false);
     expect(config.features.bulbLifetimeEnabled).toBe(false);
     expect(config.features.monsterRetreatVerificationEnabled).toBe(false);
     expect(config.features.bulbReplacementEnabled).toBe(true);
-    expect(config.briefing.title).toBe("Noc 1");
-    expect(config.briefing.lines).toEqual(["První směna.", "Stačí vydržet do rána."]);
   });
 
   it("night 2: still no generator faults, but bulb lifetime turns on", () => {
     const config = getNightConfig(2);
     expect(config.features.generatorFaultsEnabled).toBe(false);
     expect(config.features.bulbLifetimeEnabled).toBe(true);
-    expect(config.briefing.lines).toEqual([
-      "Viděl jsem to na kameře.",
-      "Jen tak tak jsem stihl zavřít dveře.",
-      "Žárovka u nich svítí nějak slabě...",
-    ]);
   });
 
   it("night 3: generator faults turn on", () => {
     const config = getNightConfig(3);
     expect(config.features.generatorFaultsEnabled).toBe(true);
     expect(config.features.monsterRetreatVerificationEnabled).toBe(false);
-    expect(config.briefing.lines).toEqual(["Generátor včera ztichl.", "Nejhorší zvuk v mém životě."]);
   });
 
   it("night 4: monster retreat verification turns on", () => {
@@ -43,55 +38,42 @@ describe("getNightConfig", () => {
     expect(config.features.monsterRetreatVerificationEnabled).toBe(true);
     expect(config.features.generatorFaultsEnabled).toBe(true);
     expect(config.features.bulbLifetimeEnabled).toBe(true);
-    expect(config.briefing.lines).toEqual(["Dnes tu technici dělali něco generátorem.", "Jak to ale šlo, tak utekli."]);
   });
 
   // shotgunLootEnabled je vždy dopočítané z canSpawnShotgun (viz níže), proto
   // se tu porovnává relativně k SHOTGUN_LOOT_MIN_NIGHT, ne natvrdo — hodnota
   // je DOČASNĚ 1 (ruční testování brokovnice, viz nightConfig.ts), časem se
   // vrátí na 10, tenhle test má projít v obou případech.
-  it.each([5, 7, 8, 9])("night %i: everything on (default) except shotgunLootEnabled by threshold, shared fallback-style briefing", (nightNumber) => {
+  it.each([5, 7, 8, 9])("night %i: everything on (default) except shotgunLootEnabled by threshold", (nightNumber) => {
     const config = getNightConfig(nightNumber);
     expect(config.features).toEqual({
       ...DEFAULT_NIGHT_FEATURES,
       shotgunLootEnabled: canSpawnShotgun(nightNumber),
       generatorOverloadEnabled: canOverloadGenerator(nightNumber),
     });
-    expect(config.briefing.title).toBe(`Noc ${nightNumber}`);
-    expect(config.briefing.lines).toEqual(["Služby jsou čím dál horší.", "Tohle místo se rozpadá."]);
   });
 
-  it("night 6: has its own briefing text (message from T.), features still default/threshold-based (shared fallback-style features)", () => {
+  it("night 6: features still default/threshold-based (shared fallback-style features, unlike its briefing text)", () => {
     const config = getNightConfig(6);
     expect(config.features).toEqual({
       ...DEFAULT_NIGHT_FEATURES,
       shotgunLootEnabled: canSpawnShotgun(6),
       generatorOverloadEnabled: canOverloadGenerator(6),
     });
-    expect(config.briefing.title).toBe("Noc 6");
-    expect(config.briefing.lines).toEqual([
-      "Na stole jsem našel vzkaz:",
-      '"Je zázrak, že jsi přežil! Jsi BOREC!',
-      "Od teď se ti budu snažit posílat varování do vysílačky.",
-      'Podpis T."',
-    ]);
   });
 
   it("night SHOTGUN_LOOT_MIN_NIGHT: shotgunLootEnabled turns on (other features may still have per-night overrides, see NIGHT_CONFIGS)", () => {
     const config = getNightConfig(SHOTGUN_LOOT_MIN_NIGHT);
     expect(config.features.shotgunLootEnabled).toBe(true);
-    expect(config.briefing.title).toBe(`Noc ${SHOTGUN_LOOT_MIN_NIGHT}`);
   });
 
-  it("undefined night (999) uses the same fallback briefing and all default features except shotgunLootEnabled", () => {
+  it("undefined night (999) uses all default features except shotgunLootEnabled", () => {
     const config = getNightConfig(999);
     expect(config.features).toEqual({
       ...DEFAULT_NIGHT_FEATURES,
       shotgunLootEnabled: canSpawnShotgun(999),
       generatorOverloadEnabled: canOverloadGenerator(999),
     });
-    expect(config.briefing.title).toBe("Noc 999");
-    expect(config.briefing.lines).toEqual(["Služby jsou čím dál horší.", "Tohle místo se rozpadá."]);
   });
 
   it("never returns undefined values in features, for any defined or undefined night", () => {

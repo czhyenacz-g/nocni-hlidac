@@ -182,7 +182,7 @@ function ProfileScreenContent() {
 
         <div className="menu-terminal-screen pixel-screen-static">
           <div className="menu-terminal-header">
-            <span>Objekt 13 · Osobní spis</span>
+            <span>{COPY.profile.terminalHeaderLabel}</span>
             <span className="menu-terminal-led" aria-hidden="true" />
           </div>
 

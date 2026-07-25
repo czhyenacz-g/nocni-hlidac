@@ -108,21 +108,14 @@ export function canOverloadGenerator(nightNumber: number, isAdmin: boolean = fal
   return nightNumber >= GENERATOR_OVERLOAD_MIN_NIGHT;
 }
 
-export interface NightBriefing {
-  title: string;
-  lines: string[];
-}
-
 export interface NightConfig {
   nightNumber: number;
-  briefing: NightBriefing;
   /** Jen částečné — chybějící klíče doplní DEFAULT_NIGHT_FEATURES, viz getNightConfig. */
   features?: Partial<NightFeatureFlags>;
 }
 
 export interface ResolvedNightConfig {
   nightNumber: number;
-  briefing: NightBriefing;
   features: NightFeatureFlags;
 }
 
@@ -139,16 +132,15 @@ export interface ResolvedNightConfig {
 // `features: { emergencyRunsEnabled: false, batteryRunEnabled: false }` do
 // NIGHT_CONFIGS záznamů pro noci 1–4 (stejný vzor jako generatorFaultsEnabled výše).
 
-// Briefingy jsou vnitřní monolog hlídače, ne firemní oznámení ani tutorial —
-// žádné "od této noci se zapíná generátor", jen to, co by si sám pro sebe
-// říkal před směnou (viz GAME_DESIGN.md).
+// Briefingy (VNITŘNÍ MONOLOG hlídače před směnou) žijí jako lokalizovaný
+// obsah v content/copy.ts#nightBriefing + content/nightBriefing.ts (viz
+// zadání "Noc 7... není přeložený do angličtiny" — text tady dřív byl
+// natvrdo česky, mimo i18n) — BriefingScreen.tsx si ho dotáhne sám přes
+// useCopy() + resolveNightBriefingKey(nightNumber), tahle konfigurace teď
+// řeší VÝHRADNĚ herní pravidla (které mechaniky jsou tuhle noc zapnuté).
 const NIGHT_CONFIGS: NightConfig[] = [
   {
     nightNumber: 1,
-    briefing: {
-      title: "Noc 1",
-      lines: ["První směna.", "Stačí vydržet do rána."],
-    },
     features: {
       generatorFaultsEnabled: false,
       bulbLifetimeEnabled: false,
@@ -157,10 +149,6 @@ const NIGHT_CONFIGS: NightConfig[] = [
   },
   {
     nightNumber: 2,
-    briefing: {
-      title: "Noc 2",
-      lines: ["Viděl jsem to na kameře.", "Jen tak tak jsem stihl zavřít dveře.", "Žárovka u nich svítí nějak slabě..."],
-    },
     features: {
       generatorFaultsEnabled: false,
       monsterRetreatVerificationEnabled: false,
@@ -168,53 +156,24 @@ const NIGHT_CONFIGS: NightConfig[] = [
   },
   {
     nightNumber: 3,
-    briefing: {
-      title: "Noc 3",
-      lines: ["Generátor včera ztichl.", "Nejhorší zvuk v mém životě."],
-    },
     features: {
       monsterRetreatVerificationEnabled: false,
     },
   },
   {
     nightNumber: 4,
-    briefing: {
-      title: "Noc 4",
-      lines: ["Dnes tu technici dělali něco generátorem.", "Jak to ale šlo, tak utekli."],
-    },
     // Beze změn features — od tuhle noci je všechno zapnuté jako dnes.
   },
-  // Noc 5 nemá vlastní briefing (spadá do fallbacku níže) — je to Titanovo
-  // PEVNÉ první setkání (viz TITAN_FIRST_ENCOUNTER_NIGHT v
-  // game/core/titanEncounterNights.ts), hráč se to dozví přímo v encounteru
-  // (Titanova vlastní "escape" rádiová hláška, viz useTitanEscapeMessage.ts),
-  // ne v předsměnovém briefingu.
-  {
-    nightNumber: 6,
-    briefing: {
-      title: "Noc 6",
-      lines: [
-        "Na stole jsem našel vzkaz:",
-        '"Je zázrak, že jsi přežil! Jsi BOREC!',
-        "Od teď se ti budu snažit posílat varování do vysílačky.",
-        'Podpis T."',
-      ],
-    },
-    // Beze změn features — beze změny oproti noci 4 (features se dál dědí z DEFAULT_NIGHT_FEATURES).
-  },
+  // Noc 6 nemá vlastní features záznam (beze změny oproti noci 4, dědí se z
+  // DEFAULT_NIGHT_FEATURES) — vlastní briefing text (vzkaz od T.) přesto má,
+  // viz content/copy.ts#nightBriefing.night6.
 ];
-
-// Noci bez vlastního záznamu v NIGHT_CONFIGS výše (5, 7-10, 11+) dostanou
-// tenhle fallback — noc 5 (Titanovo pevné první setkání) záměrně taky, viz
-// komentář u ní výše.
-const FALLBACK_BRIEFING_LINES: string[] = ["Služby jsou čím dál horší.", "Tohle místo se rozpadá."];
 
 /**
  * Vrací kompletní config pro danou noc — nikdy `undefined` hodnoty ve
  * features (chybějící klíče se vždy doplní z DEFAULT_NIGHT_FEATURES).
  * Neplatné/nesmyslné číslo (< 1, NaN, ...) se bezpečně bere jako noc 1,
- * stejná konvence jako computeNightScaling. Nedefinovaná noc (typicky 6+)
- * dostane fallback briefing + čistě DEFAULT_NIGHT_FEATURES. `isAdmin` (viz
+ * stejná konvence jako computeNightScaling. `isAdmin` (viz
  * lib/auth/adminUsers.ts) se předá dál jen do canSpawnShotgun — žádný jiný
  * night feature flag na něm zatím nezávisí.
  */
@@ -224,7 +183,6 @@ export function getNightConfig(nightNumber: number, isAdmin: boolean = false): R
 
   return {
     nightNumber: safeNightNumber,
-    briefing: entry?.briefing ?? { title: `Noc ${safeNightNumber}`, lines: FALLBACK_BRIEFING_LINES },
     // shotgunLootEnabled/monsterTrueEndingRequiredHits se VŽDY dopočítají z
     // canSpawnShotgun/resolveMonsterTrueEndingRequiredHits — na rozdíl od
     // ostatních flagů tohle není nastavitelné přes NIGHT_CONFIGS[].features (i

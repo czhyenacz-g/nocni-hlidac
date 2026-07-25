@@ -49,6 +49,10 @@ export const COPY_CS = {
     // nenápadný odkaz, žádný redesign menu.
     profileLinkLabel: "Profil hlídače",
     authorEmail: "hynek@darbujan.com",
+    // Hlavička "terminálového" rámu (viz MainMenuScreen.tsx/BriefingScreen.tsx
+    // #menu-terminal-header) — byla natvrdo v obou komponentách mimo i18n,
+    // teď sdílený jeden zdroj (viz zadání "ani 'Objekt 13 · Terminál směny'").
+    terminalHeaderLabel: "Objekt 13 · Terminál směny",
   },
   // Sdílené texty pro volitelné "intro" cinematic (viz zadání,
   // content/cinematics.ts#intro) — jedna definice, použitá jak na
@@ -56,6 +60,31 @@ export const COPY_CS = {
   // kopie stejného tlačítka.
   intro: {
     startIntroLabel: "Spustit intro",
+  },
+  // Vnitřní monolog hlídače před směnou (viz BriefingScreen.tsx,
+  // game/difficulty/nightConfig.ts, content/nightBriefing.ts#resolveNightBriefingKey)
+  // — byl natvrdo v game/difficulty/nightConfig.ts mimo i18n (na žádost
+  // "Noc 7... není přeložený do angličtiny"), teď žije tady jako obsah.
+  // Titulek se NEUKLÁDÁ (vždy jen COPY.game.nightLabel s dosazeným číslem) —
+  // nikdy nemá jiný text než "Noc {n}"/"Night {n}". `night5`/`night7`+ nemají
+  // vlastní klíč — spadají do `fallback` (Noc 5 je Titanovo pevné první
+  // setkání, dozví se to přímo v encounteru, viz resolveNightBriefingKey.ts).
+  nightBriefing: {
+    night1: { lines: ["První směna.", "Stačí vydržet do rána."] },
+    night2: {
+      lines: ["Viděl jsem to na kameře.", "Jen tak tak jsem stihl zavřít dveře.", "Žárovka u nich svítí nějak slabě..."],
+    },
+    night3: { lines: ["Generátor včera ztichl.", "Nejhorší zvuk v mém životě."] },
+    night4: { lines: ["Dnes tu technici dělali něco generátorem.", "Jak to ale šlo, tak utekli."] },
+    night6: {
+      lines: [
+        "Na stole jsem našel vzkaz:",
+        '"Je zázrak, že jsi přežil! Jsi BOREC!',
+        "Od teď se ti budu snažit posílat varování do vysílačky.",
+        'Podpis T."',
+      ],
+    },
+    fallback: { lines: ["Služby jsou čím dál horší.", "Tohle místo se rozpadá."] },
   },
   // Profil hlídače (viz zadání, app/profile/page.tsx) — první verze budoucího
   // účtu/profilu, čistě lokální localStorage data (game/core/playerProfileStats.ts,
@@ -65,6 +94,8 @@ export const COPY_CS = {
     seoDescription: "Profil hlídače Objektu 13 — status, statistiky a achievementy uložené lokálně v prohlížeči.",
     heading: "Profil hlídače",
     backToMenuLabel: "← Zpět do menu",
+    // Hlavička "terminálového" rámu (viz ProfileScreen.tsx #menu-terminal-header) — byla natvrdo, mimo i18n.
+    terminalHeaderLabel: "Objekt 13 · Osobní spis",
     // Sekce 1: Služební karta.
     serviceCardHeading: "Služební karta",
     statusLabel: "Status",
@@ -632,6 +663,8 @@ export const COPY_CS = {
     seoTitle: "Síň slávy hlídačů | Noční hlídač",
     seoDescription: "Síň slávy hlídačů Objektu 13 — kdo drží rekord a kdo právě slouží.",
     heading: "Síň slávy hlídačů",
+    // Hlavička "terminálového" rámu (viz LeaderboardTableClient.tsx #menu-terminal-header) — byla natvrdo, mimo i18n.
+    terminalHeaderLabel: "Objekt 13 · Síň slávy",
     subheading: "Pozice byla opakovaně obsazena. Někteří vydrželi déle.",
     explanation:
       "Rekord ukazuje nejlepší dosaženou směnu hráče. Aktuální směna ukazuje hlídače, " +

@@ -161,7 +161,7 @@ export default function MainMenuScreen({ onStart }: MainMenuScreenProps) {
 
         <div className="menu-terminal-screen pixel-screen-static">
           <div className="menu-terminal-header">
-            <span>Objekt 13 · Terminál směny</span>
+            <span>{COPY.menu.terminalHeaderLabel}</span>
             <span className="menu-terminal-led" aria-hidden="true" />
           </div>
 

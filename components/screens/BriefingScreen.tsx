@@ -1,5 +1,5 @@
 import { useCopy } from "@/game/i18n/useTranslation";
-import { getNightConfig } from "@/game/difficulty/nightConfig";
+import { resolveNightBriefingKey } from "@/content/nightBriefing";
 import SceneBackground from "@/components/SceneBackground";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 
@@ -16,13 +16,15 @@ interface BriefingScreenProps {
   onStartIntro: () => void;
 }
 
-// Krátký vnitřní monolog hlídače před směnou (viz game/difficulty/nightConfig.ts)
-// — ne firemní oznámení ani tutorial, jen pár vět, co si sám pro sebe říká.
-// Mezikrok po LoadingScreen (nový start) i po smrti/výhře (retry), nikdy se
-// nezobrazí uprostřed běžící směny (viz app/play/page.tsx, state.screen === "briefing").
+// Krátký vnitřní monolog hlídače před směnou (viz content/copy.ts#nightBriefing,
+// content/nightBriefing.ts) — ne firemní oznámení ani tutorial, jen pár vět,
+// co si sám pro sebe říká. Mezikrok po LoadingScreen (nový start) i po
+// smrti/výhře (retry), nikdy se nezobrazí uprostřed běžící směny (viz
+// app/play/page.tsx, state.screen === "briefing").
 export default function BriefingScreen({ nightNumber, onStartShift, onStartIntro }: BriefingScreenProps) {
   const COPY = useCopy();
-  const { briefing } = getNightConfig(nightNumber);
+  const briefingTitle = COPY.game.nightLabel.replace("{n}", String(nightNumber));
+  const briefingLines = COPY.nightBriefing[resolveNightBriefingKey(nightNumber)].lines;
 
   return (
     <main className="relative min-h-screen flex items-center justify-center p-4">
@@ -39,14 +41,14 @@ export default function BriefingScreen({ nightNumber, onStartShift, onStartIntro
 
         <div className="menu-terminal-screen pixel-screen-static">
           <div className="menu-terminal-header">
-            <span>Objekt 13 · Terminál směny</span>
+            <span>{COPY.menu.terminalHeaderLabel}</span>
             <span className="menu-terminal-led" aria-hidden="true" />
           </div>
 
           <div className="text-center p-8">
-            <h1 className="text-2xl font-bold mb-4 text-red-500">{briefing.title}</h1>
+            <h1 className="text-2xl font-bold mb-4 text-red-500">{briefingTitle}</h1>
             <div className="text-sm text-gray-300 mb-8 space-y-2">
-              {briefing.lines.map((line) => (
+              {briefingLines.map((line) => (
                 <p key={line}>{line}</p>
               ))}
             </div>
