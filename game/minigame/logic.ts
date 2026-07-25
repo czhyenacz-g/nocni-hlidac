@@ -832,9 +832,19 @@ export function canFireWeapon(input: { status: MiniGameStatus; hasShotgun: boole
   return input.status === "playing" && input.hasShotgun && input.ammo > 0;
 }
 
-/** HUD popisek stavu zbraně — musí jasně rozlišit "bez zbraně" od "zbraň, ale bez nábojů" (viz zadání). */
-export function createWeaponHudLabel(hasShotgun: boolean, ammo: number): string {
-  return hasShotgun ? `Zbraň: brokovnice · Náboje: ${ammo}` : "Zbraň: žádná";
+/**
+ * HUD popisek stavu zbraně — musí jasně rozlišit "bez zbraně" od "zbraň, ale
+ * bez nábojů" (viz zadání). Text je i18n (viz COPY.minigame.weaponLabelShotgunTemplate/
+ * weaponLabelNone, content/copy.ts) — tahle funkce zůstává jazykově
+ * nezávislá, jen doplní `{ammo}` do šablony, kterou jí volající (EmergencyMiniGame.tsx)
+ * pošle přes `useCopy()`.
+ */
+export function createWeaponHudLabel(
+  hasShotgun: boolean,
+  ammo: number,
+  copy: { shotgunTemplate: string; noneLabel: string },
+): string {
+  return hasShotgun ? copy.shotgunTemplate.replace("{ammo}", String(ammo)) : copy.noneLabel;
 }
 
 export interface ApplyShotInput {
@@ -1116,7 +1126,11 @@ export function shouldHighlightOfficeMarker(
  * stejně, mission.phase se dál řeší jen přes shouldHighlightOfficeMarker
  * pro "zvýraznění na dálku"). Nikdy sama nerozhoduje, jestli E skutečně
  * dokončí misi — o tom rozhoduje výhradně canReturnToOffice; tahle funkce
- * jen drží marker text v souladu s ním.
+ * jen drží marker text v souladu s ním. Text je i18n (viz
+ * COPY.minigame.officeMarkerLabel/officeMarkerLabelHighlighted,
+ * content/copy.ts) — tahle funkce zůstává jazykově nezávislá, jen vybírá
+ * mezi oběma variantami, které jí volající (EmergencyMiniGame.tsx) pošle
+ * přes `useCopy()`.
  */
 export function getOfficeMarkerLabel(
   mission: EmergencyMissionState,
@@ -1124,13 +1138,14 @@ export function getOfficeMarkerLabel(
   inExitZone: boolean,
   hasLeftStartZone: boolean,
   officeDoorUnlocked: boolean,
+  copy: { office: string; officeHighlighted: string },
 ): string {
-  if (shouldHighlightOfficeMarker(mission, objective, officeDoorUnlocked)) return "KANCELÁŘ — E pro návrat";
-  if (!officeDoorUnlocked) return "KANCELÁŘ";
+  if (shouldHighlightOfficeMarker(mission, objective, officeDoorUnlocked)) return copy.officeHighlighted;
+  if (!officeDoorUnlocked) return copy.office;
   if ((objective === "return_to_office" || objective === "collect_item") && hasLeftStartZone && inExitZone) {
-    return "KANCELÁŘ — E pro návrat";
+    return copy.officeHighlighted;
   }
-  return "KANCELÁŘ";
+  return copy.office;
 }
 
 // ── Finální (10.) zásah monstra — hidden true ending (viz

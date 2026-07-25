@@ -841,14 +841,21 @@ describe("canFireWeapon", () => {
   });
 });
 
+// Text je i18n (viz COPY.minigame.weaponLabelShotgunTemplate/weaponLabelNone,
+// content/copy.ts) — createWeaponHudLabel samo zůstává jazykově nezávislé,
+// jen doplní {ammo} do šablony, kterou dostane jako parametr. Testovací
+// fixture odpovídá skutečnému COPY_CS obsahu, ať testy ověří i logiku
+// nahrazování, ne jen holé volání.
+const WEAPON_HUD_COPY = { shotgunTemplate: "Zbraň: brokovnice · Náboje: {ammo}", noneLabel: "Zbraň: žádná" };
+
 describe("createWeaponHudLabel", () => {
   it('"Zbraň: žádná" without a shotgun', () => {
-    expect(createWeaponHudLabel(false, 0)).toBe("Zbraň: žádná");
+    expect(createWeaponHudLabel(false, 0, WEAPON_HUD_COPY)).toBe("Zbraň: žádná");
   });
 
   it("shows ammo count with a shotgun, including 0", () => {
-    expect(createWeaponHudLabel(true, 0)).toBe("Zbraň: brokovnice · Náboje: 0");
-    expect(createWeaponHudLabel(true, 1)).toBe("Zbraň: brokovnice · Náboje: 1");
+    expect(createWeaponHudLabel(true, 0, WEAPON_HUD_COPY)).toBe("Zbraň: brokovnice · Náboje: 0");
+    expect(createWeaponHudLabel(true, 1, WEAPON_HUD_COPY)).toBe("Zbraň: brokovnice · Náboje: 1");
   });
 });
 
@@ -1276,56 +1283,62 @@ describe("office door lock — isOfficeDoorLocked / msUntilOfficeDoorOpens / msS
 });
 
 // ── Kancelářský marker (viz EmergencyMiniGame.tsx#draw) — čistě orientační/
-// vizuální, nesmí ovlivnit canReturnToOffice/mission loop pravidla.
+// vizuální, nesmí ovlivnit canReturnToOffice/mission loop pravidla. Text je
+// i18n (viz COPY.minigame.officeMarkerLabel/officeMarkerLabelHighlighted,
+// content/copy.ts) — getOfficeMarkerLabel samo zůstává jazykově nezávislé,
+// jen vybírá mezi variantami dodanými parametrem. Fixture odpovídá
+// skutečnému COPY_CS obsahu.
+const OFFICE_MARKER_COPY = { office: "KANCELÁŘ", officeHighlighted: "KANCELÁŘ — E pro návrat" };
+
 describe("office marker — getOfficeMarkerLabel / shouldHighlightOfficeMarker", () => {
   it("outbound phase (collect_item): plain 'KANCELÁŘ' label, not highlighted, even with the door unlocked", () => {
     const mission = createInitialMissionState();
     expect(shouldHighlightOfficeMarker(mission, "collect_item", true)).toBe(false);
-    expect(getOfficeMarkerLabel(mission, "collect_item", false, true, true)).toBe("KANCELÁŘ");
+    expect(getOfficeMarkerLabel(mission, "collect_item", false, true, true, OFFICE_MARKER_COPY)).toBe("KANCELÁŘ");
   });
 
   it("returning phase (collect_item) with the door LOCKED: never highlighted/promises 'E pro návrat', door lock wins", () => {
     const returning = completeObjective(createInitialMissionState(), { type: "collected_item", itemId: "fuse" });
     expect(shouldHighlightOfficeMarker(returning, "collect_item", false)).toBe(false);
-    expect(getOfficeMarkerLabel(returning, "collect_item", false, true, false)).toBe("KANCELÁŘ");
-    expect(getOfficeMarkerLabel(returning, "collect_item", true, true, false)).toBe("KANCELÁŘ");
+    expect(getOfficeMarkerLabel(returning, "collect_item", false, true, false, OFFICE_MARKER_COPY)).toBe("KANCELÁŘ");
+    expect(getOfficeMarkerLabel(returning, "collect_item", true, true, false, OFFICE_MARKER_COPY)).toBe("KANCELÁŘ");
   });
 
   it("returning phase (collect_item) with the door UNLOCKED: highlighted 'KANCELÁŘ — E pro návrat', regardless of player position", () => {
     const returning = completeObjective(createInitialMissionState(), { type: "collected_item", itemId: "fuse" });
     expect(shouldHighlightOfficeMarker(returning, "collect_item", true)).toBe(true);
-    expect(getOfficeMarkerLabel(returning, "collect_item", false, true, true)).toBe("KANCELÁŘ — E pro návrat");
-    expect(getOfficeMarkerLabel(returning, "collect_item", true, true, true)).toBe("KANCELÁŘ — E pro návrat");
+    expect(getOfficeMarkerLabel(returning, "collect_item", false, true, true, OFFICE_MARKER_COPY)).toBe("KANCELÁŘ — E pro návrat");
+    expect(getOfficeMarkerLabel(returning, "collect_item", true, true, true, OFFICE_MARKER_COPY)).toBe("KANCELÁŘ — E pro návrat");
   });
 
   it("collect_item with the door unlocked and standing in the exit zone: highlighted label even without a completed objective", () => {
     const outbound = createInitialMissionState();
-    expect(getOfficeMarkerLabel(outbound, "collect_item", true, true, true)).toBe("KANCELÁŘ — E pro návrat");
+    expect(getOfficeMarkerLabel(outbound, "collect_item", true, true, true, OFFICE_MARKER_COPY)).toBe("KANCELÁŘ — E pro návrat");
   });
 
   it("collect_item with the door unlocked but NOT standing in the exit zone: still plain label", () => {
     const outbound = createInitialMissionState();
-    expect(getOfficeMarkerLabel(outbound, "collect_item", false, true, true)).toBe("KANCELÁŘ");
+    expect(getOfficeMarkerLabel(outbound, "collect_item", false, true, true, OFFICE_MARKER_COPY)).toBe("KANCELÁŘ");
   });
 
   it("return_to_office: plain label before leaving the start zone, even with the door unlocked", () => {
     const mission = createInitialMissionState();
-    expect(getOfficeMarkerLabel(mission, "return_to_office", false, false, true)).toBe("KANCELÁŘ");
+    expect(getOfficeMarkerLabel(mission, "return_to_office", false, false, true, OFFICE_MARKER_COPY)).toBe("KANCELÁŘ");
   });
 
   it("return_to_office: plain label after leaving start but before actually standing in the exit zone", () => {
     const mission = createInitialMissionState();
-    expect(getOfficeMarkerLabel(mission, "return_to_office", false, true, true)).toBe("KANCELÁŘ");
+    expect(getOfficeMarkerLabel(mission, "return_to_office", false, true, true, OFFICE_MARKER_COPY)).toBe("KANCELÁŘ");
   });
 
   it("return_to_office: highlighted label once the player has left start AND is standing in the exit zone AND the door is unlocked", () => {
     const mission = createInitialMissionState();
-    expect(getOfficeMarkerLabel(mission, "return_to_office", true, true, true)).toBe("KANCELÁŘ — E pro návrat");
+    expect(getOfficeMarkerLabel(mission, "return_to_office", true, true, true, OFFICE_MARKER_COPY)).toBe("KANCELÁŘ — E pro návrat");
   });
 
   it("return_to_office with the door still LOCKED: plain label even standing in the exit zone (door lock wins over position)", () => {
     const mission = createInitialMissionState();
-    expect(getOfficeMarkerLabel(mission, "return_to_office", true, true, false)).toBe("KANCELÁŘ");
+    expect(getOfficeMarkerLabel(mission, "return_to_office", true, true, false, OFFICE_MARKER_COPY)).toBe("KANCELÁŘ");
   });
 
   it("return_to_office never sets shouldHighlightOfficeMarker (handled separately via hasLeftStartZone/inExitZone)", () => {
@@ -1335,7 +1348,7 @@ describe("office marker — getOfficeMarkerLabel / shouldHighlightOfficeMarker",
   it("survive: always the plain label, never highlighted, even with the door unlocked", () => {
     const mission = createInitialMissionState();
     expect(shouldHighlightOfficeMarker(mission, "survive", true)).toBe(false);
-    expect(getOfficeMarkerLabel(mission, "survive", true, true, true)).toBe("KANCELÁŘ");
+    expect(getOfficeMarkerLabel(mission, "survive", true, true, true, OFFICE_MARKER_COPY)).toBe("KANCELÁŘ");
   });
 
   it("does not change canReturnToOffice's decision either way", () => {

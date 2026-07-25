@@ -476,6 +476,83 @@ export const COPY_CS = {
     // monster_check_or_return) — zatím nikde ve UI nenapojeno, jen připraveno.
     monsterReturnedUnverifiedHint: "Nevěděl jsi, kam zmizelo. Než jsi otevřel dveře, bylo zpátky.",
   },
+  // Nouzová minihra (viz components/minigame/EmergencyMiniGame.tsx,
+  // game/minigame/logic.ts) — byla natvrdo česky mimo i18n (na žádost "v
+  // minihře jsou pořád české prvky"). Popisky místností na mapě
+  // (game/minigame/layouts/*.ts) a dev-only overlay (Shift + pravý klik,
+  // viz game/minigame/devOverlay.ts) ZATÍM zůstávají natvrdo — mapa je
+  // herní/atmosférický obsah podobný objectMap.ts (viz komentář výše),
+  // dev overlay je čistě vývojářský nástroj, nenahlášeno/neopraveno.
+  minigame: {
+    // Akuzativ pro missionHintFindItem šablonu níže ("najdi a seber
+    // baterii"), nominativ pro HUD/pickup zprávy (COPY.game.itemCollectedLabel,
+    // výsledková obrazovka) — stejný pár jako dřívější
+    // ITEM_LABELS_ACCUSATIVE/NOMINATIVE konstanty v EmergencyMiniGame.tsx.
+    itemLabelsAccusative: {
+      fuse: "pojistku",
+      bulb: "žárovku",
+      key: "klíč",
+      toolbox: "nářadí",
+      battery: "baterii",
+      shotgun: "brokovnici",
+      ammo: "náboj",
+      empty: "prázdnou krabici",
+    },
+    itemLabelsNominative: {
+      fuse: "Pojistka",
+      bulb: "Žárovka",
+      key: "Klíč",
+      toolbox: "Nářadí",
+      battery: "Baterie",
+      shotgun: "Brokovnice",
+      ammo: "Náboj",
+      empty: "Prázdná krabice",
+    },
+    modeLabels: {
+      investigating: "Pátrání",
+      waiting: "Čeká",
+      chasing: "Lov",
+      wounded: "Zraněno",
+      office_bound: "Míří ke kanceláři",
+    },
+    missionHintSurvive: "Cíl: Přežij hlídku.",
+    missionHintCompleted: "Splněno.",
+    missionHintPressEToReturn: "Stiskni E pro návrat do kanceláře.",
+    missionHintDoorLocked: "Dveře kanceláře jsou zamčené.",
+    missionHintReturnToOffice: "Cíl: Vrať se do kanceláře.",
+    missionHintFindItem: "Cíl: Najdi a seber {item}. [E]",
+    missionHintItemCollected: "Věc získána. Vrať se do kanceláře.",
+    statusLabel: "STAV:",
+    statusPlayingLabel: "PROBÍHÁ OBCHŮZKA",
+    statusWonLabel: "SPLNĚNO",
+    statusLostLabel: "MONSTRUM TĚ DOSTALO",
+    modeLabel: "REŽIM:",
+    woundedLabel: "ZRANĚNÍ:",
+    systemStatusLabel: "SYSTÉM: AKTIVNÍ · MŘÍŽKA: 1.0m",
+    controlsHintLabel: "WASD / šipky / klik do mapy: pohyb · mezerník: výstřel · E: akce · R: restart",
+    weaponLabelShotgunTemplate: "Zbraň: brokovnice · Náboje: {ammo}",
+    weaponLabelNone: "Zbraň: žádná",
+    officeMarkerLabel: "KANCELÁŘ",
+    officeMarkerLabelHighlighted: "KANCELÁŘ — E pro návrat",
+    doorLockedLabel: "Dveře kanceláře zamčené.",
+    doorAutoOpenCountdownLabel: "Automatické otevření za: {seconds} s",
+    doorOpenLabel: "Dveře kanceláře jsou otevřené.",
+    sirenAttractedMonsterLabel: "Siréna přilákala monstrum ke kanceláři.",
+    monsterHeadingToOfficeLabel: "Monstrum míří ke kanceláři.",
+    stillCanStopItLabel: "Ještě ho můžeš zastavit.",
+    monsterVanishedTowardOfficeLabel: "Monstrum zmizelo směrem ke kanceláři.",
+    officeThreatenedLabel: "Kancelář je ohrožena.",
+    returnToOfficeButtonLabel: "Vrátit do kanceláře",
+    noAmmoLabel: "Bez nábojů",
+    fireLabel: "Střelit",
+    objectiveCompletedTitle: "OBJECTIVE SPLNĚNO.",
+    returnedToOfficeLabel: "Vrátil ses do kanceláře.",
+    collectedItemReturnedTemplate: "Sebráno: {item}. Vrátil ses do kanceláře.",
+    monsterCaughtYouTitle: "MONSTRUM TĚ DOSTALO.",
+    continueButtonLabel: "Pokračovat",
+    tryAgainButtonLabel: "Zkusit znovu",
+    restartKeyHintLabel: "Klávesa R funguje také.",
+  },
   death: {
     // 4s celoobrazovkový GAME OVER reveal PŘED zbytkem DeathScreen.tsx (viz
     // zadání "vrátit krátký GAME OVER reveal", game/death/gameOverReveal.ts).
@@ -548,11 +625,15 @@ export const COPY_CS = {
     subtitle: "Slunce vychází. Objekt 13 je zatím v klidu.",
     retryButton: "Pokračovat další nocí",
     backToMenuLabel: "Vrátit se do menu",
-    // {count} se nahradí ve WinScreen.tsx — skloňování noc/noci/nocí podle počtu.
+    // Rozdělené na prefix (řádek nad velkým červeným číslem) + skloňované
+    // slovo noc/noci/nocí (řádek pod ním) — samotné číslo (WinScreen.tsx
+    // {survivedNights}) se vykresluje MEZI nimi, odsazené jako velký údaj
+    // (viz zadání "číslo dej odsazeně jako velké číslo").
     survivedNightsLabel: {
-      one: "Aktuální hlídač vydržel: {count} noc",
-      few: "Aktuální hlídač vydržel: {count} noci",
-      many: "Aktuální hlídač vydržel: {count} nocí",
+      prefix: "Aktuální hlídač vydržel:",
+      one: "noc",
+      few: "noci",
+      many: "nocí",
     },
   },
   // Hardcore Noc 30 má dvě alternativní ending větve (viz zadání,

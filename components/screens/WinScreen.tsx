@@ -18,10 +18,9 @@ interface WinScreenProps {
 }
 
 // Skloňování noc/noci/nocí — 1 = "noc", 2-4 = "noci", jinak (0, 5+) = "nocí".
-function formatSurvivedNights(count: number, COPY: CopyShape): string {
+function resolveSurvivedNightsUnit(count: number, COPY: CopyShape): string {
   const forms = COPY.win.survivedNightsLabel;
-  const label = count === 1 ? forms.one : count >= 2 && count <= 4 ? forms.few : forms.many;
-  return label.replace("{count}", String(count));
+  return count === 1 ? forms.one : count >= 2 && count <= 4 ? forms.few : forms.many;
 }
 
 export default function WinScreen({ survivedNights, newlyUnlockedAchievements = [], onRetry, onGoToMenu }: WinScreenProps) {
@@ -44,7 +43,12 @@ export default function WinScreen({ survivedNights, newlyUnlockedAchievements = 
         <div className="menu-terminal-screen pixel-screen-static text-center p-8">
           <h1 className="text-2xl font-bold mb-2 text-gray-100">{COPY.win.title}</h1>
           <p className="text-sm text-gray-400 mb-2">{COPY.win.subtitle}</p>
-          <p className="text-xs text-gray-500 mb-8">{formatSurvivedNights(survivedNights, COPY)}</p>
+          {/* Číslo odsazené jako velký červený údaj mezi prefixem a
+              skloňovaným slovem noc/noci/nocí (viz zadání), místo jedné
+              věty na jednom řádku. */}
+          <p className="text-xs text-gray-500">{COPY.win.survivedNightsLabel.prefix}</p>
+          <p className="text-4xl font-bold text-red-500 leading-tight my-1">{survivedNights}</p>
+          <p className="text-xs text-gray-500 mb-8">{resolveSurvivedNightsUnit(survivedNights, COPY)}</p>
 
           <AchievementResultPanel achievements={newlyUnlockedAchievements} />
 

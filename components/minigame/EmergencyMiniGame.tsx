@@ -100,6 +100,7 @@ import { evaluateOfficeThreatOnReturn } from "@/game/minigame/officeThreat";
 import { PlayerVisionConfig, getPlayerVisibilityAtPoint } from "@/game/minigame/playerVision";
 import { audioManager } from "@/game/audio/audioManager";
 import { useCopy } from "@/game/i18n/useTranslation";
+import type { CopyShape } from "@/content/copy";
 import { AUDIO_EVENTS } from "@/game/audio/audioEvents";
 import {
   NO_TEXT_SELECT_STYLE,
@@ -308,29 +309,6 @@ function createInitialState(input: EmergencyMiniGameInput): MiniGameRefState {
   };
 }
 
-const ITEM_LABELS_ACCUSATIVE: Record<MiniGameItemId, string> = {
-  fuse: "pojistku",
-  bulb: "žárovku",
-  key: "klíč",
-  toolbox: "nářadí",
-  battery: "baterii",
-  shotgun: "brokovnici",
-  ammo: "náboj",
-  empty: "prázdnou krabici",
-};
-
-/** Nominativ pro "Sebráno: ..." text (viz zadání "odstraň popisek věci pod její značkou" — marker samotný teď žádný text nemá, tenhle nominativ se používá jen pro won/pickup zprávu). */
-const ITEM_LABELS_NOMINATIVE: Record<MiniGameItemId, string> = {
-  fuse: "Pojistka",
-  bulb: "Žárovka",
-  key: "Klíč",
-  toolbox: "Nářadí",
-  battery: "Baterie",
-  shotgun: "Brokovnice",
-  ammo: "Náboj",
-  empty: "Prázdná krabice",
-};
-
 /**
  * Zvuk při sebrání konkrétní věci (viz zadání "u brokovnice by měl být
  * výraznější zvuk, třeba stejný jako bulb replace success") — brokovnice je
@@ -359,26 +337,27 @@ function getMissionHint(
   missionPhase: EmergencyMissionPhase,
   inExitZone: boolean,
   officeDoorUnlocked: boolean,
+  copy: CopyShape["minigame"],
 ): string {
-  if (objective === "survive") return "Cíl: Přežij hlídku.";
+  if (objective === "survive") return copy.missionHintSurvive;
 
   if (objective === "return_to_office") {
-    if (missionPhase === "completed") return "Splněno.";
-    if (inExitZone) return officeDoorUnlocked ? "Stiskni E pro návrat do kanceláře." : "Dveře kanceláře jsou zamčené.";
-    return "Cíl: Vrať se do kanceláře.";
+    if (missionPhase === "completed") return copy.missionHintCompleted;
+    if (inExitZone) return officeDoorUnlocked ? copy.missionHintPressEToReturn : copy.missionHintDoorLocked;
+    return copy.missionHintReturnToOffice;
   }
 
   // objective === "collect_item"
-  const itemLabel = ITEM_LABELS_ACCUSATIVE[itemToCollect ?? "fuse"];
+  const itemLabel = copy.itemLabelsAccusative[itemToCollect ?? "fuse"];
   if (missionPhase === "outbound") {
-    if (inExitZone) return officeDoorUnlocked ? "Stiskni E pro návrat do kanceláře." : "Dveře kanceláře jsou zamčené.";
-    return `Cíl: Najdi a seber ${itemLabel}. [E]`;
+    if (inExitZone) return officeDoorUnlocked ? copy.missionHintPressEToReturn : copy.missionHintDoorLocked;
+    return copy.missionHintFindItem.replace("{item}", itemLabel);
   }
   if (missionPhase === "returning") {
-    if (inExitZone) return officeDoorUnlocked ? "Stiskni E pro návrat do kanceláře." : "Dveře kanceláře jsou zamčené.";
-    return "Věc získána. Vrať se do kanceláře.";
+    if (inExitZone) return officeDoorUnlocked ? copy.missionHintPressEToReturn : copy.missionHintDoorLocked;
+    return copy.missionHintItemCollected;
   }
-  return "Splněno.";
+  return copy.missionHintCompleted;
 }
 
 // Konfigurace AI (viz game/minigame/logic.ts#updateEnemyAi) — mapWidth/
@@ -415,14 +394,6 @@ const PLAYER_VISION_CONFIG: PlayerVisionConfig = {
   peripheralRangePx: MINIGAME_PLAYER_PERIPHERAL_VISION_RANGE_PX,
   directionalRangePx: MINIGAME_PLAYER_DIRECTIONAL_VISION_RANGE_PX,
   directionalAngleRad: MINIGAME_PLAYER_VISION_ANGLE_RAD,
-};
-
-const MODE_LABELS: Record<EnemyMode, string> = {
-  investigating: "Pátrání",
-  waiting: "Čeká",
-  chasing: "Lov",
-  wounded: "Zraněno",
-  office_bound: "Míří ke kanceláři",
 };
 
 const MOVE_KEYS: Record<string, { dx: number; dy: number }> = {
@@ -1039,7 +1010,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
             // objective (typicky baterie/brokovnice) po sebrání dřív neukázal
             // žádnou hlášku, viz zadání "u brokovnice se nezobrazila žádná
             // hláška, u žárovky ano".
-            setPickupMessage(COPY.game.itemCollectedLabel.replace("{item}", ITEM_LABELS_NOMINATIVE[collectedItemId]));
+            setPickupMessage(COPY.game.itemCollectedLabel.replace("{item}", COPY.minigame.itemLabelsNominative[collectedItemId]));
             audioManager.play(pickupSoundForItem(collectedItemId));
           }
 
@@ -1052,7 +1023,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
             if (loot.collected) continue;
             if (circlesTouch(game.player.x, game.player.y, game.player.radius, loot.position.x, loot.position.y, ITEM_RADIUS)) {
               loot.collected = true;
-              setPickupMessage(COPY.game.itemCollectedLabel.replace("{item}", ITEM_LABELS_NOMINATIVE[loot.itemId]));
+              setPickupMessage(COPY.game.itemCollectedLabel.replace("{item}", COPY.minigame.itemLabelsNominative[loot.itemId]));
               audioManager.play(pickupSoundForItem(loot.itemId));
             }
           }
@@ -1146,7 +1117,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
         }
       }
 
-      draw(ctx, game, gridCanvas, fogCanvas, input, isDevOverlayEnabledRef.current, isTouchDeviceRef.current);
+      draw(ctx, game, gridCanvas, fogCanvas, input, isDevOverlayEnabledRef.current, isTouchDeviceRef.current, COPY.minigame);
       animationFrameRef.current = requestAnimationFrame(tick);
     };
 
@@ -1194,28 +1165,37 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
           }}
         >
           <div style={{ textShadow: "0 0 4px rgba(111,227,160,0.8)" }}>
-            STAV:{" "}
-            {status === "playing" ? "PROBÍHÁ OBCHŮZKA" : status === "won" ? "SPLNĚNO" : "MONSTRUM TĚ DOSTALO"}
+            {COPY.minigame.statusLabel}{" "}
+            {status === "playing"
+              ? COPY.minigame.statusPlayingLabel
+              : status === "won"
+                ? COPY.minigame.statusWonLabel
+                : COPY.minigame.statusLostLabel}
           </div>
           <div style={{ textShadow: "0 0 4px rgba(111,227,160,0.8)" }}>
-            {createWeaponHudLabel(gameRef.current.player.hasShotgun, ammoLeft).toUpperCase()}
+            {createWeaponHudLabel(gameRef.current.player.hasShotgun, ammoLeft, {
+              shotgunTemplate: COPY.minigame.weaponLabelShotgunTemplate,
+              noneLabel: COPY.minigame.weaponLabelNone,
+            }).toUpperCase()}
           </div>
-          <div style={{ color: "#3f7a58" }}>REŽIM: {MODE_LABELS[enemyMode].toUpperCase()}</div>
+          <div style={{ color: "#3f7a58" }}>
+            {COPY.minigame.modeLabel} {COPY.minigame.modeLabels[enemyMode].toUpperCase()}
+          </div>
           {status === "playing" && (
             <div style={{ color: "#5dffa0", textShadow: "0 0 4px rgba(93,255,160,0.6)" }}>
-              {getMissionHint(input.objective, input.itemToCollect, missionPhase, inExitZone, officeDoorUnlocked)}
+              {getMissionHint(input.objective, input.itemToCollect, missionPhase, inExitZone, officeDoorUnlocked, COPY.minigame)}
             </div>
           )}
           {woundedMsLeft !== null && (
             <div style={{ color: "#ff5c5c", textShadow: "0 0 4px rgba(255,92,92,0.8)" }}>
-              ZRANĚNÍ: {(woundedMsLeft / 1000).toFixed(1)} s
+              {COPY.minigame.woundedLabel} {(woundedMsLeft / 1000).toFixed(1)} s
             </div>
           )}
           {pickupMessage && (
             <div style={{ color: "#facc15", textShadow: "0 0 4px rgba(250,204,21,0.7)" }}>{pickupMessage}</div>
           )}
-          <div style={{ color: "#3f7a58" }}>SYSTÉM: AKTIVNÍ · MŘÍŽKA: 1.0m</div>
-          <div style={{ color: "#3f7a58" }}>WASD / šipky / klik do mapy: pohyb · mezerník: výstřel · E: akce · R: restart</div>
+          <div style={{ color: "#3f7a58" }}>{COPY.minigame.systemStatusLabel}</div>
+          <div style={{ color: "#3f7a58" }}>{COPY.minigame.controlsHintLabel}</div>
         </div>
       )}
 
@@ -1290,22 +1270,22 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
         >
           {!officeDoorUnlocked && (
             <>
-              <div>Dveře kanceláře zamčené.</div>
-              <div>Automatické otevření za: {(doorCountdownMs / 1000).toFixed(1)} s</div>
+              <div>{COPY.minigame.doorLockedLabel}</div>
+              <div>{COPY.minigame.doorAutoOpenCountdownLabel.replace("{seconds}", (doorCountdownMs / 1000).toFixed(1))}</div>
             </>
           )}
-          {officeDoorUnlocked && !monsterOfficeThreatArmed && <div>Dveře kanceláře jsou otevřené.</div>}
+          {officeDoorUnlocked && !monsterOfficeThreatArmed && <div>{COPY.minigame.doorOpenLabel}</div>}
           {monsterOfficeThreatArmed && !officeThreatTriggered && (
             <>
-              <div>Siréna přilákala monstrum ke kanceláři.</div>
-              <div>Monstrum míří ke kanceláři.</div>
-              <div>Ještě ho můžeš zastavit.</div>
+              <div>{COPY.minigame.sirenAttractedMonsterLabel}</div>
+              <div>{COPY.minigame.monsterHeadingToOfficeLabel}</div>
+              <div>{COPY.minigame.stillCanStopItLabel}</div>
             </>
           )}
           {officeThreatTriggered && (
             <>
-              <div>Monstrum zmizelo směrem ke kanceláři.</div>
-              <div>Kancelář je ohrožena.</div>
+              <div>{COPY.minigame.monsterVanishedTowardOfficeLabel}</div>
+              <div>{COPY.minigame.officeThreatenedLabel}</div>
             </>
           )}
         </div>
@@ -1366,7 +1346,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
               }}
               onClick={handleObjectiveKey}
             >
-              Vrátit do kanceláře
+              {COPY.minigame.returnToOfficeButtonLabel}
             </button>
           )}
 
@@ -1387,7 +1367,7 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
               }}
               onClick={fireShot}
             >
-              {isMobileFireDisabled ? "Bez nábojů" : "Střelit"}
+              {isMobileFireDisabled ? COPY.minigame.noAmmoLabel : COPY.minigame.fireLabel}
             </button>
           )}
 
@@ -1426,18 +1406,21 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
                 {status === "won" ? (
                   <>
                     <div className="text-sm font-bold mb-1" style={{ color: "#5dffa0", textShadow: "0 0 8px rgba(93,255,160,0.7)" }}>
-                      OBJECTIVE SPLNĚNO.
+                      {COPY.minigame.objectiveCompletedTitle}
                     </div>
                     <div className="text-xs mb-3" style={{ color: "#6fe3a0" }}>
                       {result?.outcome === "returned" &&
                         (result.completedObjective?.type === "collected_item"
-                          ? `Sebráno: ${ITEM_LABELS_NOMINATIVE[result.completedObjective.itemId]}. Vrátil ses do kanceláře.`
-                          : "Vrátil ses do kanceláře.")}
+                          ? COPY.minigame.collectedItemReturnedTemplate.replace(
+                              "{item}",
+                              COPY.minigame.itemLabelsNominative[result.completedObjective.itemId],
+                            )
+                          : COPY.minigame.returnedToOfficeLabel)}
                     </div>
                   </>
                 ) : (
                   <div className="text-sm font-bold mb-3" style={{ color: "#ff5c5c", textShadow: "0 0 8px rgba(255,92,92,0.8)" }}>
-                    MONSTRUM TĚ DOSTALO.
+                    {COPY.minigame.monsterCaughtYouTitle}
                   </div>
                 )}
                 <button
@@ -1451,10 +1434,10 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
                   }}
                   onClick={restart}
                 >
-                  {status === "won" ? "Pokračovat" : "Zkusit znovu"}
+                  {status === "won" ? COPY.minigame.continueButtonLabel : COPY.minigame.tryAgainButtonLabel}
                 </button>
                 <div className="text-[10px] mt-2" style={{ color: "#3f7a58" }}>
-                  Klávesa R funguje také.
+                  {COPY.minigame.restartKeyHintLabel}
                 </div>
               </div>
             </div>
@@ -1535,6 +1518,7 @@ function draw(
   input: EmergencyMiniGameInput,
   devOverlayEnabled: boolean,
   isTouchDevice: boolean,
+  copy: CopyShape["minigame"],
 ) {
   const { player, enemy, status } = game;
   const facing = DIRECTION_ANGLES[player.direction];
@@ -1703,6 +1687,7 @@ function draw(
       inExitZoneNow,
       game.hasLeftStartZone,
       officeDoorUnlockedNow,
+      { office: copy.officeMarkerLabel, officeHighlighted: copy.officeMarkerLabelHighlighted },
     );
     // Lehké blikání (officePulse, viz nahoře) — jen když je marker zvýrazněný
     // (úkol splněný, vracíš se), ne v klidovém stavu (ten zůstává statický,
