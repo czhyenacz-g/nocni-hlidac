@@ -746,7 +746,7 @@ export const COPY_EN: CopyShape = {
     transmissionStatusLabel: "Transmission in progress…",
     ghoulCameraAttackWarningText: "Oh no! The sonic cannon attracted a ghoul!",
     cameraDisabledMessages: {
-      radio_camera_destroyed_0: "Well, looks like we're in the dark till morning.",
+      radio_camera_destroyed_0: "Well, looks like we're in the dark till morning (unless you swap it yourself).",
       radio_camera_destroyed_1: "Camera destroyed!",
       radio_camera_destroyed_2: "Only the microphone's left now.",
     },

@@ -1095,7 +1095,7 @@ export const COPY_CS = {
     transmissionStatusLabel: "Přenos probíhá…",
     ghoulCameraAttackWarningText: "To ne! Sonické dělo přilákalo ghoula!",
     cameraDisabledMessages: {
-      radio_camera_destroyed_0: "No, tak do rána jsme po tmě.",
+      radio_camera_destroyed_0: "No, tak do rána jsme po tmě (pokud ji tedy nevyměníš ty sám).",
       radio_camera_destroyed_1: "Kamera zničena!",
       radio_camera_destroyed_2: "Zbývá už jenom mikrofon.",
     },

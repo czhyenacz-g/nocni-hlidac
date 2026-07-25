@@ -32,11 +32,19 @@ describe("CAMERA_DISABLED_RADIO_MESSAGES", () => {
     }
   });
 
-  it("contains the exact transcribed lines", () => {
+  // radio_camera_destroyed_0's subtitle has a parenthetical addition ("pokud
+  // ji tedy nevyměníš ty sám") that is NOT in the voiced recording (viz
+  // zadání "doplň do závorky") — deliberate subtitle/audio divergence,
+  // confirmed acceptable, not a transcription error to "fix" back.
+  it("contains the (mostly) transcribed lines", () => {
     const texts = CAMERA_DISABLED_RADIO_MESSAGES.map(
       (m) => COPY_CS.radio.cameraDisabledMessages[m.id as keyof typeof COPY_CS.radio.cameraDisabledMessages],
     );
-    expect(texts).toEqual(["No, tak do rána jsme po tmě.", "Kamera zničena!", "Zbývá už jenom mikrofon."]);
+    expect(texts).toEqual([
+      "No, tak do rána jsme po tmě (pokud ji tedy nevyměníš ty sám).",
+      "Kamera zničena!",
+      "Zbývá už jenom mikrofon.",
+    ]);
   });
 
   it("ids map to the three dedicated audio events", () => {
