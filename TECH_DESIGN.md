@@ -440,6 +440,15 @@ neovlivňuje.
   noc 4 → 1.15, noc 5 → 1.25, noc 6 → 1.40, noc 7 → 1.55, noc 8 → 1.70, noc 9 → 1.85, noc 10 a
   dál → capnuté na 2.00. Noc 5 je záměrně první větší skok (ne jen +5 %) — od tamtud má začít
   dávat smysl nouzová obchůzka/baterie (viz "Night config" níže).
+- **`stressTimeSlowdownMultiplier`** (viz zadání "lze tam zohlednit počet nocí") — druhé pole
+  v `NightScaling`, vlastní tabulka (`NIGHT_STRESS_TIME_SLOWDOWN_MULTIPLIERS`, stejný tvar
+  jako energy drain): noc 1 → `1.0`, roste až na `1.5` od noci 10 (capped stejně jako
+  energyDrainMultiplier). Násobí `MAX_STRESS_TIME_SLOWDOWN` v
+  `game/core/stressTimeScale.ts#computeStressTimeScale(stressLevel, nightMultiplier = 1)` —
+  stejný stres tak v pozdějších nocích zpomalí "Čas do úsvitu" citelněji (Noc 1: stres 100 %
+  → `×0.5`; Noc 10: stres 100 % → `×0.25`). `gameReducer.ts` TICK case počítá
+  `nightScaling` PŘED `stressTimeScale` (dřív to bylo obráceně), ať může
+  `nightScaling.stressTimeSlowdownMultiplier` předat dál.
 - **Rozšiřitelnost**: `NightScaling` je připravené na další pole (`monsterActivityMultiplier`,
   `generatorFaultTimingMultiplier`, `cameraNoiseMultiplier`, ...), ale žádné z nich zatím
   neexistuje — přidají se, až budou mít skutečné využití, ne jako předem připravené nepoužité
@@ -463,8 +472,11 @@ neovlivňuje.
   dispatchující `TICK`) se chová jako noc 1, žádné ztěžování.
 
 Testy: `game/difficulty/nightScaling.test.ts` (čistá funkce, všechny prahové noci + capping +
-neplatný vstup), `game/core/tickNightScaling.test.ts` (reducer-level — `TICK` s různým
-`currentNight`, ověřuje že recharge zůstává nedotčené).
+neplatný vstup, pro OBĚ pole), `game/core/stressTimeScale.test.ts` (`nightMultiplier`
+parametr — default 1, vyšší multiplier víc zpomalí, pořád clampnuté na 0),
+`game/core/tickNightScaling.test.ts` (reducer-level — `TICK` s různým `currentNight`,
+ověřuje že recharge zůstává nedotčené a že stejný stres na pozdější noci zpomalí
+`remainingMs` víc, ale beze stresu je noc bez rozdílu).
 
 ## Game loop
 

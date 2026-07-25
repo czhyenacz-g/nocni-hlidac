@@ -1403,21 +1403,25 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         if (!state.isRunning) return state;
 
         const elapsedMs = state.elapsedMs + action.deltaMs;
+
+        // Night scaling (viz game/difficulty/nightScaling.ts) — nezávislé na
+        // Difficulty (easy/medium/hard), progresivně škáluje energy drain I
+        // stress time slowdown (viz níže) podle toho, kolikátou noc v řadě
+        // hlídač slouží (action.currentNight = survivedNights + 1 z
+        // app/play/page.tsx). Chybějící/neplatná hodnota se bere jako noc 1
+        // (žádné ztěžování). Počítá se PŘED stressTimeScale, protože ten
+        // teď potřebuje nightScaling.stressTimeSlowdownMultiplier.
+        const nightScaling = computeNightScaling(action.currentNight ?? 1);
+
         // Horor efekt: při vyšším stresu ubývá čas do úsvitu pomaleji (viz
         // game/core/stressTimeScale.ts) — remainingMs proto NENÍ odvozené z
         // elapsedMs (to dál běží reálnou rychlostí, řídí generátor/kamery/
         // nepřítele beze změny), ale nezávisle ubývá o `deltaMs * timeScale`.
         // Nikdy neskáče nahoru — jen pomalejší odpočet, nikdy zrychlení nad
-        // reálný čas ani přičtení navíc.
-        const stressTimeScale = computeStressTimeScale(action.stressLevel ?? 0);
+        // reálný čas ani přičtení navíc. `nightScaling.stressTimeSlowdownMultiplier`
+        // dělá stejný stres v pozdějších nocích citelnější (viz zadání).
+        const stressTimeScale = computeStressTimeScale(action.stressLevel ?? 0, nightScaling.stressTimeSlowdownMultiplier);
         const remainingMs = clamp(state.remainingMs - action.deltaMs * stressTimeScale, 0, night.durationMs);
-
-        // Night scaling (viz game/difficulty/nightScaling.ts) — nezávislé na
-        // Difficulty (easy/medium/hard), progresivně škáluje jen energy
-        // drain podle toho, kolikátou noc v řadě hlídač slouží (action.currentNight
-        // = survivedNights + 1 z app/play/page.tsx). Chybějící/neplatná
-        // hodnota se bere jako noc 1 (žádné ztěžování).
-        const nightScaling = computeNightScaling(action.currentNight ?? 1);
 
         // ── Krátký "reveal" moment před finalizací smrti u dveří (viz
         // ENEMY_ADVANCE) — hráč vidí monstrum ve dveřích (door_open_death_0,

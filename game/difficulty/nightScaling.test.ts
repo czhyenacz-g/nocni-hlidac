@@ -75,4 +75,27 @@ describe("computeNightScaling", () => {
     expect(baseDrain * computeNightScaling(1).energyDrainMultiplier).toBeCloseTo(10, 5);
     expect(baseDrain * computeNightScaling(5).energyDrainMultiplier).toBeCloseTo(13.6, 5);
   });
+
+  it("night 1 => stressTimeSlowdownMultiplier 1.00 (unchanged baseline)", () => {
+    expect(computeNightScaling(1).stressTimeSlowdownMultiplier).toBeCloseTo(1.0, 5);
+  });
+
+  it("night 5 => stressTimeSlowdownMultiplier 1.15", () => {
+    expect(computeNightScaling(5).stressTimeSlowdownMultiplier).toBeCloseTo(1.15, 5);
+  });
+
+  it("night 10 => stressTimeSlowdownMultiplier 1.50", () => {
+    expect(computeNightScaling(10).stressTimeSlowdownMultiplier).toBeCloseTo(1.5, 5);
+  });
+
+  it("night 11 and beyond => stressTimeSlowdownMultiplier still capped at 1.50", () => {
+    expect(computeNightScaling(11).stressTimeSlowdownMultiplier).toBeCloseTo(1.5, 5);
+    expect(computeNightScaling(50).stressTimeSlowdownMultiplier).toBeCloseTo(1.5, 5);
+  });
+
+  it("night 0/negative/NaN => stressTimeSlowdownMultiplier treated safely as night 1", () => {
+    expect(computeNightScaling(0).stressTimeSlowdownMultiplier).toBeCloseTo(1.0, 5);
+    expect(computeNightScaling(-3).stressTimeSlowdownMultiplier).toBeCloseTo(1.0, 5);
+    expect(computeNightScaling(NaN).stressTimeSlowdownMultiplier).toBeCloseTo(1.0, 5);
+  });
 });

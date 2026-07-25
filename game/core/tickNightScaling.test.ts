@@ -34,3 +34,26 @@ describe("TICK power drain with currentNight", () => {
     expect(night5.power).toBeCloseTo(night1.power, 5);
   });
 });
+
+describe("TICK stress time slowdown with currentNight (viz zadání 'lze tam zohlednit počet nocí')", () => {
+  it("same stress slows remainingMs down more on a later night (currentNight 10 vs 1)", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = { ...createInitialGameState(NIGHT_01), isRunning: true };
+
+    const night1 = reducer(state, { type: "TICK", deltaMs: 1000, currentNight: 1, stressLevel: 1 });
+    const night10 = reducer(state, { type: "TICK", deltaMs: 1000, currentNight: 10, stressLevel: 1 });
+
+    // Night 1: scale 0.5 -> remainingMs drops by 500. Night 10: scale 0.25 -> drops by 250.
+    expect(night10.remainingMs).toBeGreaterThan(night1.remainingMs);
+  });
+
+  it("with no stress, night number makes no difference to remainingMs", () => {
+    const reducer = createGameReducer(NIGHT_01);
+    const state = { ...createInitialGameState(NIGHT_01), isRunning: true };
+
+    const night1 = reducer(state, { type: "TICK", deltaMs: 1000, currentNight: 1, stressLevel: 0 });
+    const night10 = reducer(state, { type: "TICK", deltaMs: 1000, currentNight: 10, stressLevel: 0 });
+
+    expect(night10.remainingMs).toBeCloseTo(night1.remainingMs, 5);
+  });
+});

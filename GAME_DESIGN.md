@@ -428,6 +428,13 @@ trvá subjektivně déle, ne aby ho to nespravedlivě penalizovalo.
 Jde vypnout (`STRESS_TIME_SLOWDOWN_ENABLED = false`) nebo doladit
 (`MAX_STRESS_TIME_SLOWDOWN`) jedním přepnutím v `game/balancing/constants.ts`.
 
+Efekt navíc roste s počtem odsloužených nocí (`NightScaling.stressTimeSlowdownMultiplier`,
+viz `game/difficulty/nightScaling.ts`) — stejný stres 100 % zpomalí čas v Noci 1 na
+polovinu (`×0.5`), ale od Noci 10 už na čtvrtinu (`×0.25`, `MAX_STRESS_TIME_SLOWDOWN ×
+1.5`). Stejná učící/škálovací křivka jako `energyDrainMultiplier` (noci 1–4 skoro beze
+změny, znatelnější růst od Noci 5, strop od Noci 10) — v pozdějších, těžších nocích má
+stejná míra napětí subjektivně silnější dopad na plynutí času.
+
 ## Generátor
 
 První zvuková gameplay mechanika — normální stav není ticho, ale pravidelné

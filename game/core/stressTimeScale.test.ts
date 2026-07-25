@@ -19,6 +19,20 @@ describe("computeStressTimeScale", () => {
     expect(computeStressTimeScale(-1)).toBeCloseTo(1, 5);
   });
 
+  it("nightMultiplier defaults to 1 (no change vs. calling without it)", () => {
+    expect(computeStressTimeScale(0.5, 1)).toBeCloseTo(computeStressTimeScale(0.5), 5);
+  });
+
+  it("nightMultiplier > 1 makes the same stress slow time down more (later nights)", () => {
+    // Noc 10: stressTimeSlowdownMultiplier 1.5 (viz game/difficulty/nightScaling.ts)
+    expect(computeStressTimeScale(1, 1.5)).toBeCloseTo(0.25, 5); // 1 - 1 * 0.5 * 1.5
+    expect(computeStressTimeScale(0.5, 1.5)).toBeCloseTo(0.625, 5); // 1 - 0.5 * 0.5 * 1.5
+  });
+
+  it("still clamps to 0, even if stress * MAX_STRESS_TIME_SLOWDOWN * nightMultiplier would overshoot 1", () => {
+    expect(computeStressTimeScale(1, 3)).toBe(0);
+  });
+
   it("disabled slowdown => scale 1.0 regardless of stress", async () => {
     vi.resetModules();
     vi.doMock("../balancing/constants", () => ({
