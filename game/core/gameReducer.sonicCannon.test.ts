@@ -264,7 +264,12 @@ describe("ENEMY_ADVANCE — sonic cannon probabilities (32/60/8)", () => {
   it("sonic cannon aimed at the camera showing the monster uses 32/60/8: roll in [0, 0.08) -> advance (fail)", () => {
     const reducer = createGameReducer(NIGHT_01);
     const state = stateWithSonicAimedAt("right_hallway");
-    mockRoll(0.05);
+    // 0.07, not 0.05: the SAME mocked Math.random() value also feeds the
+    // independent ghoul-camera-attack roll (GHOUL_CAMERA_ATTACK_CHANCE_BY_NIGHT,
+    // 0.06 on night 1) — 0.05 would incidentally trigger that roll too. 0.07
+    // stays inside the intended [0, 0.08) sonic-advance bucket while landing
+    // above the night-1 camera-attack chance.
+    mockRoll(0.07);
     const result = reducer(state, { type: "ENEMY_ADVANCE" });
     expect(result.lastEnemyDecision).toBe("advance");
     expect(result.enemyStage).toBe("door_hallway");

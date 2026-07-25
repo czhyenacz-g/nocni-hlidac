@@ -406,11 +406,23 @@
       engine, nová mapa `monitored_halls` (4 haly + kancelář, `game/minigame/layouts/
       monitoredHallsMap.ts`), nový objective `"replace_camera"` (odstůj 5 s u kamery místo
       sebrání E, `updateCameraReplacementProgressMs` v `game/minigame/logic.ts`). Tlačítko
-      se drží 2 s (`GameState.cameraMaintenanceWindup`, stejný vzor jako "Jít ven") a
-      zobrazí se jen se skutečně vyřazenou kamerou (`GameState.cameraDamage.disabledCameraIds`).
-      Cíl je vždy PRVNÍ skutečně vyřazená kamera (`resolveCameraMaintenanceTargetCameraId`),
-      úspěšný návrat kameru doopravdy opraví (`REPAIR_CAMERA`, `cameraDamage.ts#repairCamera`)
-      — vyřazená kamera svítí v minihře červeně, ostatní zeleně.
+      se drží 2 s (`GameState.cameraMaintenanceWindup`, stejný vzor jako "Jít ven") a je
+      vidět VŽDY, bez vyřazené kamery jen ztlumené s hláškou "Všechny kamery jsou v
+      pořádku..." místo běžného textu (`cameraMaintenanceAllOkLabel`). Cíl je vždy PRVNÍ
+      skutečně vyřazená kamera (`resolveCameraMaintenanceTargetCameraId`), úspěšný návrat
+      kameru doopravdy opraví (`REPAIR_CAMERA`, `cameraDamage.ts#repairCamera`) — vyřazená
+      kamera svítí v minihře červeně, ostatní zeleně.
+- [x] Stresové zpomalení "Času do úsvitu" teď roste s počtem nocí
+      (`NightScaling.stressTimeSlowdownMultiplier` v `game/difficulty/nightScaling.ts`,
+      `1.0` noc 1 → `1.5` od noci 10, stejná křivka jako `energyDrainMultiplier`) —
+      `computeStressTimeScale(stressLevel, nightMultiplier)` v `game/core/stressTimeScale.ts`
+      ho násobí `MAX_STRESS_TIME_SLOWDOWN`. 100% stres tak zpomalí čas na polovinu v Noci 1,
+      ale na čtvrtinu od Noci 10.
+- [x] Šance na útok Ghoula na kameru teď roste s počtem nocí (`GHOUL_CAMERA_ATTACK_CHANCE_BY_NIGHT`
+      v `game/core/cameraDamageConfig.ts`, `getGhoulCameraAttackChanceForNight` v
+      `cameraDamage.ts`) — noc 1–9 → 6 %, 10–19 → 12 %, 20+ → 16 % (dřív pevných 5 % bez
+      ohledu na noc). Limit počtu současně vyřazených kamer podle noci
+      (`MAX_DISABLED_CAMERAS_BY_NIGHT`) zůstává beze změny.
 - Discord login krok 2 — DB tabulka `players` (id, discord_user_id, username, display_name,
   avatar_url, created_at, updated_at, last_login_at), upsert v `app/api/auth/callback/route.ts`
   (dnes jen podepsaná cookie, žádná perzistence hráče)

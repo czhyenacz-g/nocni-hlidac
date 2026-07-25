@@ -309,9 +309,13 @@ export default function LeftWallView({
 
         {/* Emergency-run + CAMERA MAINTENANCE na jednom řádku (na výslovnou
             žádost) — obě tlačítka `flex-1`, ať si řádek rozdělí rovnoměrně
-            bez ohledu na to, jestli je zobrazené jedno, nebo obě. */}
-        {(canStartEmergencyRun || canStartCameraMaintenanceRun) && (
-          <div className="w-full flex items-center gap-3">
+            bez ohledu na to, jestli je zobrazené jedno, nebo obě.
+            CAMERA MAINTENANCE se teď zobrazuje VŽDY (na rozdíl od
+            canStartEmergencyRun, což je pořád night-feature flag), jen
+            neaktivní/ztlumené bez skutečně vyřazené kamery (viz zadání
+            "zobrazuj ho vždy, ale ať není klikatelné... když jsou kamery v
+            pořádku") — řádek se tedy vždycky vykreslí. */}
+        <div className="w-full flex items-center gap-3">
             {/* Vývojářsky dostupné tlačítko pro první napojení EmergencyMiniGame
                 (viz app/play/page.tsx#handleStartEmergencyRunWindup) — nenápadné,
                 bez finálního artu. Musí se držet EMERGENCY_RUN_WINDUP_DURATION_MS,
@@ -359,33 +363,40 @@ export default function LeftWallView({
             {/* "CAMERA MAINTENANCE" (viz zadání "druhý výjezd — údržba kamer") —
                 vedle emergency-run tlačítka, stejný "drž 2s a riskuj" vzor
                 (pixel-blink, viz emergencyRunWindupActive výše), jen kratší
-                CAMERA_MAINTENANCE_WINDUP_DURATION_MS a bez sirény/varování. */}
-            {canStartCameraMaintenanceRun && (
-              <button
-                type="button"
-                className="pixel-button console-button tap-target flex items-center gap-2 px-3 py-2 text-xs touch-none select-none flex-1"
-                style={
-                  cameraMaintenanceWindupActive
-                    ? { animation: "pixel-blink 0.35s steps(2) infinite", backgroundColor: "#facc15", color: "#1a1a1a" }
-                    : undefined
-                }
-                onPointerDown={handleCameraMaintenancePointerDown}
-                onPointerUp={handleCameraMaintenancePointerUp}
-                onPointerLeave={handleCameraMaintenancePointerUp}
-                onPointerCancel={handleCameraMaintenancePointerUp}
-              >
-                <span className="console-icon-block" aria-hidden="true">
-                  <ConsoleIcon id="warn" />
-                </span>
-                <span className="whitespace-pre-line">
-                  {cameraMaintenanceWindupActive
-                    ? COPY.game.cameraMaintenanceHoldingLabel.replace("{seconds}", cameraMaintenanceSeconds)
-                    : COPY.game.startCameraMaintenanceLabel}
-                </span>
-              </button>
-            )}
+                CAMERA_MAINTENANCE_WINDUP_DURATION_MS a bez sirény/varování.
+                Zobrazuje se VŽDY (na rozdíl od dřívějšího chování, viz
+                zadání "zobrazuj ho vždy") — bez skutečně vyřazené kamery je
+                jen vizuálně ztlumené (stejný "opacity-50, ne HTML disabled"
+                vzor jako emergency-run se zavřenými dveřmi) a ukáže hlášku
+                "všechny kamery v pořádku" místo běžného textu. pointerDown
+                pořád projde do handleru — ten (přes canStartCameraMaintenanceWindup
+                v reduceru) bez vyřazené kamery bezpečně no-opne, žádné
+                riziko náhodného spuštění. */}
+            <button
+              type="button"
+              className={`pixel-button console-button tap-target flex items-center gap-2 px-3 py-2 text-xs touch-none select-none flex-1 ${canStartCameraMaintenanceRun ? "" : "opacity-50"}`}
+              style={
+                cameraMaintenanceWindupActive
+                  ? { animation: "pixel-blink 0.35s steps(2) infinite", backgroundColor: "#facc15", color: "#1a1a1a" }
+                  : undefined
+              }
+              onPointerDown={handleCameraMaintenancePointerDown}
+              onPointerUp={handleCameraMaintenancePointerUp}
+              onPointerLeave={handleCameraMaintenancePointerUp}
+              onPointerCancel={handleCameraMaintenancePointerUp}
+            >
+              <span className="console-icon-block" aria-hidden="true">
+                <ConsoleIcon id="warn" />
+              </span>
+              <span className="whitespace-pre-line">
+                {cameraMaintenanceWindupActive
+                  ? COPY.game.cameraMaintenanceHoldingLabel.replace("{seconds}", cameraMaintenanceSeconds)
+                  : canStartCameraMaintenanceRun
+                    ? COPY.game.startCameraMaintenanceLabel
+                    : COPY.game.cameraMaintenanceAllOkLabel}
+              </span>
+            </button>
           </div>
-        )}
         {canStartEmergencyRun && emergencyRunWindupActive && (
           <div className="w-32 h-1 bg-gray-800 border border-gray-700 rounded overflow-hidden">
             <div className="h-full bg-red-500 transition-all duration-150" style={{ width: `${windupPercent}%` }} />

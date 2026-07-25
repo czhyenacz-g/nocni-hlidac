@@ -321,6 +321,11 @@ export const COPY_CS = {
     // CAMERA_MAINTENANCE_WINDUP_DURATION_MS) — stejný vzor jako
     // emergencyRunHoldingLabel níže, jen kratší doba a bez siréna/varování.
     cameraMaintenanceHoldingLabel: "PŘIPRAVUJI ÚDRŽBU KAMERY… {seconds} s",
+    // Zobrazí se MÍSTO startCameraMaintenanceLabel, když není žádná kamera
+    // vyřazená (viz zadání "zobrazuj ho vždy... ať se zobrazí, že všechny
+    // kamery jsou v pořádku") — tlačítko je vidět pořád, jen vizuálně
+    // ztlumené a bez skutečné funkce (canStartCameraMaintenanceRun false).
+    cameraMaintenanceAllOkLabel: "Všechny kamery jsou v pořádku.\nNení třeba vyrážet na servisní cestu.",
     // Varování zobrazené hned při zahájení držení tlačítka (viz
     // handleStartEmergencyRunWindup, EMERGENCY_RUN_WINDUP_DURATION_MS) —
     // hráč musí tlačítko držet, ne jen kliknout, a tohle mu jasně řekne, že

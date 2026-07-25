@@ -2574,8 +2574,12 @@ engine, žádný paralelní systém — jen nová mapa a nový objective:
   seq (stejný `shouldLaunchEmergencyMiniGame` `>` diff jako emergencyRunReadySeq) TEPRVE
   TADY spočítá cíl (`resolveCameraMaintenanceTargetCameraId` z aktuálního
   `disabledCameraIds`, ne z hodnoty v okamžiku kliknutí) a spustí `EmergencyMiniGame`.
-  `canStartCameraMaintenanceRun(disabledCameraIds)` (viz GAME_DESIGN.md) řídí i viditelnost
-  tlačítka v `LeftWallView.tsx` — bez vyřazené kamery se nezobrazí vůbec.
+  `canStartCameraMaintenanceRun(disabledCameraIds)` (viz GAME_DESIGN.md) v `LeftWallView.tsx`
+  teď řídí jen VIZUÁLNÍ stav tlačítka (`opacity-50` + text `cameraMaintenanceAllOkLabel`
+  místo `startCameraMaintenanceLabel`), ne jeho přítomnost — tlačítko je v DOM vždy (na
+  žádost "zobrazuj ho vždy"), `onPointerDown` pořád zavolá handler, který přes
+  `canStartCameraMaintenanceWindup` v reduceru bez vyřazené kamery bezpečně no-opne (stejný
+  vzor jako `doorClosed` dimming u "Jít ven").
 - **Draw** — všechny 4 kamerové body se kreslí přímo z `game.layout.slots` (filtr na 4 známé
   camera-id tagy), cílová kamera zvýrazněná (jasnější odstín), SKUTEČNĚ vyřazená kamera
   (`input.disabledCameraIds`) červená místo zelené — žádná vlastní resoluce navíc pro
@@ -2717,8 +2721,16 @@ kroku "profilový kontrakt V2 a equipment" (viz sekce výše) odvozené z
 ## Útok Ghoula na kameru (`game/core/cameraDamage.ts`, `game/core/cameraDamageConfig.ts`)
 
 Hod proběhne PŘI KAŽDÉM použití sonického děla na Ghoula (`sonicEffective` v
-`gameReducer.ts#ENEMY_ADVANCE`), nezávisle na `sonicResult` — 5% šance
-(`GHOUL_CAMERA_ATTACK_CHANCE`). Zasáhne-li útok, PŘEVEZME kontrolu nad výsledným pohybem
+`gameReducer.ts#ENEMY_ADVANCE`), nezávisle na `sonicResult` — šance podle čísla noci (viz
+zadání "zohledni počet nocí"): `GHOUL_CAMERA_ATTACK_CHANCE_BY_NIGHT` v
+`cameraDamageConfig.ts` (noc 1–9 → 6 %, 10–19 → 12 %, 20+ → 16 %),
+`getGhoulCameraAttackChanceForNight(nightNumber)` v `cameraDamage.ts` najde první splněný
+práh (stejná "sestupné prahy" konvence jako `getMaxDisabledCamerasForNight` níže).
+`GHOUL_CAMERA_ATTACK_CHANCE` (0.06) zůstává jen jako fallback/výchozí parametr
+`rollGhoulCameraAttack`, produkční šanci vždy počítá `attemptGhoulCameraAttack` přes
+`chanceOverride ?? getGhoulCameraAttackChanceForNight(nightNumber)` — `chanceOverride` je
+`state.debugGhoulCameraAttackChanceOverride` (DebugPanel "nastavit šanci na 100 %"), tu
+samotnou noc-škálovanou tabulku nikdy nemění. Zasáhne-li útok, PŘEVEZME kontrolu nad výsledným pohybem
 tohohle hodu (Ghoul ustoupí přesně o jeden krok přes existující `stepBackOneStage`, nikdy
 dvojitý retreat), nastaví "forced retreat" okno se `chance: 0` na
 `GHOUL_CAMERA_ATTACK_RETREAT_PAUSE_MS` (7 s) — znovupoužitý mechanismus z light/UV repelu,

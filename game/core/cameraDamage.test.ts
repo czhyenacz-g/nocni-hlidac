@@ -6,6 +6,7 @@ import {
   debugSkipActiveAttackToOffline,
   debugSkipToLastFrame,
   debugTriggerGhoulCameraAttack,
+  getGhoulCameraAttackChanceForNight,
   getMaxDisabledCamerasForNight,
   INACTIVE_CAMERA_DAMAGE,
   isCameraFullyOffline,
@@ -99,6 +100,23 @@ describe("getMaxDisabledCamerasForNight", () => {
   });
 });
 
+describe("getGhoulCameraAttackChanceForNight", () => {
+  it("nights 1-9: 0.06", () => {
+    expect(getGhoulCameraAttackChanceForNight(1)).toBeCloseTo(0.06, 5);
+    expect(getGhoulCameraAttackChanceForNight(9)).toBeCloseTo(0.06, 5);
+  });
+
+  it("nights 10-19: 0.12", () => {
+    expect(getGhoulCameraAttackChanceForNight(10)).toBeCloseTo(0.12, 5);
+    expect(getGhoulCameraAttackChanceForNight(19)).toBeCloseTo(0.12, 5);
+  });
+
+  it("nights 20+: 0.16", () => {
+    expect(getGhoulCameraAttackChanceForNight(20)).toBeCloseTo(0.16, 5);
+    expect(getGhoulCameraAttackChanceForNight(99)).toBeCloseTo(0.16, 5);
+  });
+});
+
 describe("canRollGhoulCameraAttack", () => {
   it("true regardless of sonic repel outcome (this function doesn't even see sonicResult)", () => {
     expect(canRollGhoulCameraAttack(stateWith({}), NIGHT_01, 1)).toBe(true);
@@ -164,8 +182,8 @@ describe("canRollGhoulCameraAttack", () => {
 });
 
 describe("rollGhoulCameraAttack", () => {
-  it("defaults to GHOUL_CAMERA_ATTACK_CHANCE (0.05)", () => {
-    expect(GHOUL_CAMERA_ATTACK_CHANCE).toBe(0.05);
+  it("defaults to GHOUL_CAMERA_ATTACK_CHANCE (0.06)", () => {
+    expect(GHOUL_CAMERA_ATTACK_CHANCE).toBe(0.06);
   });
 
   it("uses Math.random against the given chance", () => {
@@ -262,7 +280,14 @@ describe("attemptGhoulCameraAttack", () => {
     vi.spyOn(Math, "random").mockReturnValue(0.5);
     const state = stateWith({});
     expect(attemptGhoulCameraAttack(state, NIGHT_01, 1, false, 1)).not.toBe(state.cameraDamage);
-    expect(GHOUL_CAMERA_ATTACK_CHANCE).toBe(0.05);
+    expect(GHOUL_CAMERA_ATTACK_CHANCE).toBe(0.06);
+  });
+
+  it("without an override, uses the night-scaled chance (same roll fails on night 1, succeeds on night 20)", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.1);
+    const state = stateWith({});
+    expect(attemptGhoulCameraAttack(state, NIGHT_01, 1, false)).toBe(state.cameraDamage); // 0.1 >= 0.06
+    expect(attemptGhoulCameraAttack(state, NIGHT_01, 20, false)).not.toBe(state.cameraDamage); // 0.1 < 0.16
   });
 });
 

@@ -3,6 +3,7 @@ import {
   CAMERA_ATTACK_COOLDOWN_MS,
   CAMERA_FAILURE_TRANSITION_MS,
   GHOUL_CAMERA_ATTACK_CHANCE,
+  GHOUL_CAMERA_ATTACK_CHANCE_BY_NIGHT,
   GHOUL_CAMERA_ATTACK_FRAMES_DURATION_MS,
   GHOUL_CAMERA_ATTACK_LAST_FRAME_HOLD_MS,
   MAX_DISABLED_CAMERAS_BY_NIGHT,
@@ -61,6 +62,17 @@ export function getMaxDisabledCamerasForNight(nightNumber: number): number {
 }
 
 /**
+ * Šance na útok kamery podle čísla noci (viz zadání "zohledni počet nocí",
+ * GHOUL_CAMERA_ATTACK_CHANCE_BY_NIGHT v cameraDamageConfig.ts) — stejná
+ * "sestupné prahy" konvence jako getMaxDisabledCamerasForNight výše.
+ * `nightNumber < 1` (obranně) spadá na stejnou šanci jako noc 1.
+ */
+export function getGhoulCameraAttackChanceForNight(nightNumber: number): number {
+  const tier = GHOUL_CAMERA_ATTACK_CHANCE_BY_NIGHT.find((entry) => nightNumber >= entry.minNight);
+  return tier?.chance ?? GHOUL_CAMERA_ATTACK_CHANCE;
+}
+
+/**
  * Všechny podmínky ZE ZADÁNÍ, které musí platit, než se vůbec smí hodit
  * kostkou na útok kamery — VOLÁ SE PŘI KAŽDÉM použití sonického děla na
  * Ghoula (viz gameReducer.ts#ENEMY_ADVANCE), bez ohledu na `sonicResult`
@@ -102,8 +114,9 @@ export function rollGhoulCameraAttack(chance: number = GHOUL_CAMERA_ATTACK_CHANC
  * KAŽDÉM použití sonického děla na Ghoula (`sonicEffective === true` v
  * ENEMY_ADVANCE), bez ohledu na `sonicResult`. `chanceOverride` je
  * `state.debugGhoulCameraAttackChanceOverride` (viz DebugPanel.tsx
- * "nastavit šanci na 100 %") — `undefined`/`null` znamená produkční
- * `GHOUL_CAMERA_ATTACK_CHANCE`, samotná konstanta se tímhle nikdy nemění.
+ * "nastavit šanci na 100 %") — `undefined`/`null` znamená produkční šanci
+ * PODLE NOCI (`getGhoulCameraAttackChanceForNight(nightNumber)`, viz zadání
+ * "zohledni počet nocí"), ne pevnou `GHOUL_CAMERA_ATTACK_CHANCE`.
  * `isDoorHallwayLightActive` se použije JEN pro `door_hallway` (viz
  * game/cameras/cameraAttackAnimation.object13.ts#resolveGhoulCameraAttackAnimationId)
  * a zamrzne se do `activeAttack.animationId` — pozdější změna světla už
@@ -117,7 +130,7 @@ export function attemptGhoulCameraAttack(
   chanceOverride?: number | null,
 ): CameraDamageState {
   if (!canRollGhoulCameraAttack(state, night, nightNumber)) return state.cameraDamage;
-  if (!rollGhoulCameraAttack(chanceOverride ?? undefined)) return state.cameraDamage;
+  if (!rollGhoulCameraAttack(chanceOverride ?? getGhoulCameraAttackChanceForNight(nightNumber))) return state.cameraDamage;
   const cameraId = state.activeCameraId as CameraId;
   return {
     ...state.cameraDamage,

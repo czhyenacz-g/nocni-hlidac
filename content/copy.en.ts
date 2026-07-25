@@ -171,6 +171,7 @@ export const COPY_EN: CopyShape = {
     startEmergencyRunHuntingLabel: "Go hunting",
     startCameraMaintenanceLabel: "CAMERA MAINTENANCE",
     cameraMaintenanceHoldingLabel: "PREPARING CAMERA MAINTENANCE… {seconds}s",
+    cameraMaintenanceAllOkLabel: "All cameras are fine.\nNo need to go on a service trip.",
     emergencyRunDangerWarningLabel:
       "You want to leave the office you're supposed to protect? THAT'S A BAD IDEA. Don't do it unless you have absolutely no other choice.",
     emergencyRunHoldingLabel: "PREPARING EMERGENCY DEPARTURE… {seconds}s",

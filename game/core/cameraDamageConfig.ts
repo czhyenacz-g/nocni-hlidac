@@ -13,8 +13,28 @@ import { CameraId } from "./types";
 // Ghoul zatím není samostatné hlavní monstrum — tahle schopnost je v první
 // verzi přiřazená Impovi (jedinému existujícímu monstru).
 
-/** Šance na útok kamery při KAŽDÉM použití sonického děla na Ghoula (bez ohledu na to, jestli dělo Ghoula odrazilo). */
-export const GHOUL_CAMERA_ATTACK_CHANCE = 0.05;
+/**
+ * Šance na útok kamery při KAŽDÉM použití sonického děla na Ghoula (bez
+ * ohledu na to, jestli dělo Ghoula odrazilo) — výchozí/fallback hodnota,
+ * skutečná produkční šance je teď podle noci (viz
+ * GHOUL_CAMERA_ATTACK_CHANCE_BY_NIGHT/getGhoulCameraAttackChanceForNight
+ * v game/core/cameraDamage.ts, zadání "zohledni počet nocí"). Zůstává tu
+ * jen jako parametr-default `rollGhoulCameraAttack` (dev/test volání bez
+ * explicitní šance) a jako noc-1..9 hodnota v tabulce níže.
+ */
+export const GHOUL_CAMERA_ATTACK_CHANCE = 0.06;
+
+/**
+ * Šance na útok kamery podle čísla noci (viz zadání "zohledni počet nocí") —
+ * pole seřazené SESTUPNĚ podle `minNight`, stejná konvence jako
+ * `MAX_DISABLED_CAMERAS_BY_NIGHT` níže (`getGhoulCameraAttackChanceForNight`
+ * v game/core/cameraDamage.ts najde první práh, který noc splňuje).
+ */
+export const GHOUL_CAMERA_ATTACK_CHANCE_BY_NIGHT: readonly { minNight: number; chance: number }[] = [
+  { minNight: 20, chance: 0.16 },
+  { minNight: 10, chance: 0.12 },
+  { minNight: 1, chance: 0.06 },
+];
 
 /** Délka postupného ztmavování/zrnění, než kamera přejde do "offline" (viz zadání "cca 5 sekund"). */
 export const CAMERA_FAILURE_TRANSITION_MS = 5000;

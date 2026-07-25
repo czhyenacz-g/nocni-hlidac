@@ -607,8 +607,11 @@ jen na jiné mapě (`monitored_halls`, čtyři propojené haly odpovídající r
 mapě: `outer_yard`, `right_hallway`, `left_hallway`, `door_hallway`) a s jiným cílem
 (`objective: "replace_camera"`). Stejný "drž a riskuj" vzor jako "Jít ven" — tlačítko se
 musí držet 2 sekundy (kratší doba než u "Jít ven", na výslovnou žádost), po tu dobu dál
-běží normální herní smyčka. Tlačítko se zobrazí, jen když je aspoň jedna kamera SKUTEČNĚ
-vyřazená (viz "Útok Ghoula na kameru" níže) — bez poruchy není co opravovat.
+běží normální herní smyčka. Tlačítko je vidět VŽDY, i bez jakékoliv vyřazené kamery — bez
+poruchy je jen vizuálně ztlumené (ne skryté, stejný "klik dá zpětnou vazbu, ne ticho" vzor
+jako "Jít ven" se zavřenými dveřmi) a místo běžného textu ukáže "Všechny kamery jsou v
+pořádku. Není třeba vyrážet na servisní cestu." Podržení tlačítka bez vyřazené kamery
+bezpečně nic nespustí.
 
 Cíl je vždy PRVNÍ skutečně vyřazená kamera (viz `resolveCameraMaintenanceTargetCameraId`)
 — hráč k ní musí dojít a zůstat nehybně stát 5 sekund (odchod z dosahu nebo jakýkoliv
