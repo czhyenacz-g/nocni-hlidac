@@ -1426,6 +1426,16 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           };
         }
 
+        // Součet doby zavřených dveří za tuhle noc (viz zadání "jednoduché
+        // hodnocení podle doby zavřených dveří", GameState.totalDoorClosedMs,
+        // game/core/shiftRating.ts) — čte PŘED-tikové `state.doorClosed`,
+        // stejná konvence jako roomBulbs/applyPowerDelta drain o pár řádků
+        // níže (co platilo celý tenhle tik, ne co platí až po něm). Počítá
+        // se jen tady, v běžné (ne blackout/doorDeathReveal) větvi TICKu —
+        // obě ty větve mají dveře vynuceně otevřené, takže by přičetly 0
+        // stejně, jen o řádek navíc pro nic.
+        const totalDoorClosedMs = state.totalDoorClosedMs + (state.doorClosed ? action.deltaMs : 0);
+
         const generatorUpdate = updateGenerator(state, night, elapsedMs);
         const doorLightRepelUpdate = updateDoorLightRepel(state, night, action.deltaMs);
         // Nezávislé na doorLightRepelUpdate výše — jiná stage (door_hallway,
@@ -1529,6 +1539,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             elapsedMs,
             remainingMs: 0,
             power,
+            totalDoorClosedMs,
             isRunning: false,
             screen: "win",
           };
@@ -1565,6 +1576,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           elapsedMs,
           remainingMs,
           power,
+          totalDoorClosedMs,
           officeBreachAftermathActive,
         };
       }

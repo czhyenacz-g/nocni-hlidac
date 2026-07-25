@@ -40,6 +40,7 @@ import {
   STUCK_CHECK_INTERVAL_MS,
   STUCK_MOVE_THRESHOLD_PX,
   STUCK_TIMEOUT_MS,
+  CAMERA_REPLACEMENT_DURATION_MS,
   computeMiniGameWorldScale,
   createInitialEnemy,
   createInitialPlayer,
@@ -53,6 +54,7 @@ import {
   EmergencyMissionState,
   Enemy,
   EnemyMode,
+  MiniGameCameraId,
   MiniGameItemId,
   MiniGameStatus,
   Player,
@@ -87,6 +89,7 @@ import {
   resolveMiniGameHeartbeatVolume,
   shouldHighlightOfficeMarker,
   shouldShowOfficeBoundCrisisMarker,
+  updateCameraReplacementProgressMs,
   updateEnemyAi,
   updateMissionPhase,
 } from "@/game/minigame/logic";
@@ -257,6 +260,14 @@ interface MiniGameRefState {
   finalHitAtMs: number | null;
   /** Pozice monstra v okamžiku finálního zásahu — "dead marker" (křížek) se kreslí tady, i když enemy.alive je teď false (viz draw()). `null` mimo finalHitTriggered. */
   finalHitMarkerPosition: Vec2 | null;
+  /**
+   * "Vyměň kameru" postup (viz zadání "druhý výjezd — údržba kamer",
+   * game/minigame/logic.ts#updateCameraReplacementProgressMs,
+   * config.ts#CAMERA_REPLACEMENT_DURATION_MS) — jen relevantní pro
+   * objective "replace_camera". Resetuje se na 0 mimo dosah cíle nebo při
+   * pohybu, viz tick(). `0` mimo tenhle objective (nikdy nepoužité).
+   */
+  cameraReplacementProgressMs: number;
 }
 
 function createInitialState(input: EmergencyMiniGameInput): MiniGameRefState {
@@ -306,6 +317,7 @@ function createInitialState(input: EmergencyMiniGameInput): MiniGameRefState {
     finalHitTriggered: false,
     finalHitAtMs: null,
     finalHitMarkerPosition: null,
+    cameraReplacementProgressMs: 0,
   };
 }
 
@@ -345,6 +357,18 @@ function getMissionHint(
     if (missionPhase === "completed") return copy.missionHintCompleted;
     if (inExitZone) return officeDoorUnlocked ? copy.missionHintPressEToReturn : copy.missionHintDoorLocked;
     return copy.missionHintReturnToOffice;
+  }
+
+  if (objective === "replace_camera") {
+    if (missionPhase === "outbound") {
+      if (inExitZone) return officeDoorUnlocked ? copy.missionHintPressEToReturn : copy.missionHintDoorLocked;
+      return copy.missionHintReplaceCamera;
+    }
+    if (missionPhase === "returning") {
+      if (inExitZone) return officeDoorUnlocked ? copy.missionHintPressEToReturn : copy.missionHintDoorLocked;
+      return copy.missionHintCameraReplaced;
+    }
+    return copy.missionHintCompleted;
   }
 
   // objective === "collect_item"
@@ -396,6 +420,11 @@ const PLAYER_VISION_CONFIG: PlayerVisionConfig = {
   directionalAngleRad: MINIGAME_PLAYER_VISION_ANGLE_RAD,
 };
 
+// Všechny reálné kamerové body ("údržba kamer", viz zadání) — stejné 4
+// hodnoty jako game/minigame/types.ts#MiniGameCameraId, použité k filtrování
+// layout slotů v draw() (viz níže) beze změny gameplay logiky.
+const CAMERA_MARKER_TAGS: MiniGameCameraId[] = ["outer_yard", "right_hallway", "left_hallway", "door_hallway"];
+
 const MOVE_KEYS: Record<string, { dx: number; dy: number }> = {
   w: { dx: 0, dy: -1 },
   arrowup: { dx: 0, dy: -1 },
@@ -437,6 +466,10 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
   // se každý tik, ale React re-render přeskočí, dokud se zaokrouhlená hodnota
   // skutečně nezmění (setState se stejnou hodnotou = bailout).
   const [woundedMsLeft, setWoundedMsLeft] = useState<number | null>(null);
+  // "Vyměňuji kameru... X.X/5 s" (viz zadání "druhý výjezd — údržba kamer") —
+  // stejný "aktualizuje se každý tik, re-render jen na skutečnou změnu"
+  // bailout vzor jako woundedMsLeft výše. 0 = neběží (mimo dosah/pohyb).
+  const [cameraReplacementProgressMs, setCameraReplacementProgressMs] = useState(0);
   // Nenápadný HUD status ("Režim: Pátrání/Čeká/Lov/Zraněno") — stejný bailout
   // vzor jako woundedMsLeft, mění se jen při skutečném přechodu módu.
   const [enemyMode, setEnemyMode] = useState<EnemyMode>("investigating");
@@ -884,6 +917,13 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
             game.shotFlashRemainingMs = Math.max(0, game.shotFlashRemainingMs - deltaMs);
           }
 
+          // "Stojí hráč na místě" pro camera-replacement channel níže (viz
+          // zadání "druhý výjezd — údržba kamer") — porovnání skutečné
+          // pozice PŘED a PO pohybovém bloku, nezávislé na tom, jakým
+          // vstupem (klávesnice/tap-to-move) k pohybu případně došlo.
+          const playerXBeforeMove = game.player.x;
+          const playerYBeforeMove = game.player.y;
+
           let dx = 0;
           let dy = 0;
           for (const key of heldKeysRef.current) {
@@ -1012,6 +1052,42 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
             // hláška, u žárovky ano".
             setPickupMessage(COPY.game.itemCollectedLabel.replace("{item}", COPY.minigame.itemLabelsNominative[collectedItemId]));
             audioManager.play(pickupSoundForItem(collectedItemId));
+          }
+
+          // "Výměna kamery" channel (viz zadání "druhý výjezd — údržba
+          // kamer") — hráč musí 5s souvisle stát v dosahu cíle
+          // (game.itemPosition, pro replace_camera = pozice cílové kamery z
+          // resolveMiniGamePlacement). Jakýkoliv pohyb NEBO opuštění dosahu
+          // progres resetuje na 0 (viz updateCameraReplacementProgressMs).
+          if (input.objective === "replace_camera" && game.mission.phase === "outbound" && game.itemPosition) {
+            const playerMoved = game.player.x !== playerXBeforeMove || game.player.y !== playerYBeforeMove;
+            const inCameraRange = circlesTouch(
+              game.player.x,
+              game.player.y,
+              game.player.radius,
+              game.itemPosition.x,
+              game.itemPosition.y,
+              ITEM_RADIUS,
+            );
+            game.cameraReplacementProgressMs = updateCameraReplacementProgressMs(
+              inCameraRange,
+              !playerMoved,
+              game.cameraReplacementProgressMs,
+              deltaMs,
+            );
+            // Zaokrouhleno na desetiny sekundy — stejný vzor jako woundedMsLeft,
+            // ať progress panel nezpůsobuje re-render 60×/s.
+            setCameraReplacementProgressMs(Math.floor(game.cameraReplacementProgressMs / 100) * 100);
+
+            if (game.cameraReplacementProgressMs >= CAMERA_REPLACEMENT_DURATION_MS) {
+              game.mission = completeObjective(game.mission, {
+                type: "reached_location",
+                locationId: input.targetCameraId ?? "",
+              });
+              setMissionPhase(game.mission.phase);
+              setPickupMessage(COPY.minigame.cameraReplacedLabel);
+              audioManager.play(AUDIO_EVENTS.bulbReplaceSuccess);
+            }
           }
 
           // Doplňkový loot (viz zadání "sandbox výprava") — sbírá se dotykem
@@ -1189,6 +1265,12 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
           {woundedMsLeft !== null && (
             <div style={{ color: "#ff5c5c", textShadow: "0 0 4px rgba(255,92,92,0.8)" }}>
               {COPY.minigame.woundedLabel} {(woundedMsLeft / 1000).toFixed(1)} s
+            </div>
+          )}
+          {input.objective === "replace_camera" && cameraReplacementProgressMs > 0 && (
+            <div style={{ color: "#5dffa0", textShadow: "0 0 4px rgba(93,255,160,0.6)" }}>
+              {COPY.minigame.cameraReplacingLabel} {(cameraReplacementProgressMs / 1000).toFixed(1)}/
+              {(CAMERA_REPLACEMENT_DURATION_MS / 1000).toFixed(0)} s
             </div>
           )}
           {pickupMessage && (
@@ -1415,7 +1497,13 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
                               "{item}",
                               COPY.minigame.itemLabelsNominative[result.completedObjective.itemId],
                             )
-                          : COPY.minigame.returnedToOfficeLabel)}
+                          : result.completedObjective?.type === "reached_location"
+                            ? COPY.minigame.cameraReplacedReturnedTemplate.replace(
+                                "{camera}",
+                                COPY.cameras[result.completedObjective.locationId as keyof typeof COPY.cameras]?.label ??
+                                  result.completedObjective.locationId,
+                              )
+                            : COPY.minigame.returnedToOfficeLabel)}
                     </div>
                   </>
                 ) : (
@@ -1777,6 +1865,34 @@ function draw(
     ctx.arc(loot.position.x, loot.position.y, ITEM_RADIUS, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
+  }
+
+  // Kamerové body v halách ("údržba kamer", viz zadání) — všechny 4 body
+  // jsou vidět po celou dobu (na rozdíl od hlavního item markeru se
+  // neschovávají mimo fog, ať hráč hned vidí, kam v mapě má jít), aktuálně
+  // opravovaná kamera zvýrazněná zeleně, ostatní jen tlumeně. Čte se přímo z
+  // layout dat (viz game/minigame/layouts/monitoredHallsMap.ts) — žádná
+  // vlastní resoluce navíc, cíl (game.itemPosition) je jedna z těchto slotů.
+  if (input.objective === "replace_camera") {
+    for (const slot of game.layout.slots) {
+      if (!CAMERA_MARKER_TAGS.some((tag) => slot.tags.includes(tag))) continue;
+      const isTargetCamera = game.itemPosition && slot.x === game.itemPosition.x && slot.y === game.itemPosition.y;
+      ctx.save();
+      ctx.shadowColor = isTargetCamera ? "rgba(93, 255, 160, 0.9)" : "rgba(93, 255, 160, 0.4)";
+      ctx.shadowBlur = isTargetCamera ? 10 : 4;
+      ctx.strokeStyle = isTargetCamera ? "rgba(93, 255, 160, 0.95)" : "rgba(93, 255, 160, 0.4)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(slot.x, slot.y, ITEM_RADIUS, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(slot.x - 4, slot.y - 4);
+      ctx.lineTo(slot.x + 4, slot.y + 4);
+      ctx.moveTo(slot.x + 4, slot.y - 4);
+      ctx.lineTo(slot.x - 4, slot.y + 4);
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   // Výseč vidění nepřítele — samostatná od hráčovy, červená/oranžová,

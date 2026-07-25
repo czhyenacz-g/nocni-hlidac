@@ -169,6 +169,7 @@ export const COPY_EN: CopyShape = {
     leftWallBackLabel: "Back to the desk",
     startEmergencyRunLabel: "EMERGENCY EXPEDITION\nTO THE STORAGE WING",
     startEmergencyRunHuntingLabel: "Go hunting",
+    startCameraMaintenanceLabel: "CAMERA MAINTENANCE",
     emergencyRunDangerWarningLabel:
       "You want to leave the office you're supposed to protect? THAT'S A BAD IDEA. Don't do it unless you have absolutely no other choice.",
     emergencyRunHoldingLabel: "PREPARING EMERGENCY DEPARTURE… {seconds}s",
@@ -254,6 +255,10 @@ export const COPY_EN: CopyShape = {
     missionHintReturnToOffice: "Objective: Return to the office.",
     missionHintFindItem: "Objective: Find and grab {item}. [E]",
     missionHintItemCollected: "Item acquired. Return to the office.",
+    missionHintReplaceCamera: "Objective: Find the camera and stand by it for 5 s until it's replaced.",
+    missionHintCameraReplaced: "Camera replaced. Return to the office.",
+    cameraReplacingLabel: "Replacing camera...",
+    cameraReplacedLabel: "Camera replaced.",
     statusLabel: "STATUS:",
     statusPlayingLabel: "PATROL IN PROGRESS",
     statusWonLabel: "COMPLETE",
@@ -280,6 +285,7 @@ export const COPY_EN: CopyShape = {
     objectiveCompletedTitle: "OBJECTIVE COMPLETE.",
     returnedToOfficeLabel: "You returned to the office.",
     collectedItemReturnedTemplate: "Collected: {item}. You returned to the office.",
+    cameraReplacedReturnedTemplate: "{camera}: camera replaced. You returned to the office.",
     monsterCaughtYouTitle: "THE MONSTER GOT YOU.",
     continueButtonLabel: "Continue",
     tryAgainButtonLabel: "Try again",
@@ -336,6 +342,8 @@ export const COPY_EN: CopyShape = {
       few: "nights",
       many: "nights",
     },
+    shiftRatingLabel: "SHIFT RATING",
+    doorClosedTimeLabel: "Door closed time: {seconds} s",
   },
   night30Ending: {
     noKill: {

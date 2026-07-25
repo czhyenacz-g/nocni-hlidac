@@ -544,6 +544,16 @@ beze změny, smrt přijde stejně instantně jako dřív.
 Když `remainingMs` klesne na 0 a hráč je stále naživu (i uprostřed blackoutu — viz
 výše), zobrazí se `WinScreen`.
 
+### Shift rating
+
+`WinScreen` navíc ukáže jednopísmennou "školní" známku (S–E), odvozenou čistě z toho, kolik
+celkového času byly dveře zavřené během aktivní noci (`GameState.totalDoorClosedMs`, počítá
+se v `TICK` jen v normální větvi — ne v blackoutu ani během `doorDeathRevealUntilMs`, viz
+`game/core/gameReducer.ts`). Hranice počítá čistá funkce `resolveShiftRating` v
+`game/core/shiftRating.ts`: S přesně 0 s, A 0–10 s, B 10–20 s, C 20–30 s, D 30–40 s, E nad
+40 s (vše zaokrouhleno na celé sekundy pro zobrazení, počítáno interně v ms). Nic z tohohle
+se neukládá — čistě prezentační vyhodnocení jedné dohrané noci.
+
 ## Brokovnice a munice
 
 Trvalé vlastnictví brokovnice pro aktuální run (`GameState.hasShotgun`/`hasDoubleBarrelShotgun`,
@@ -581,6 +591,21 @@ vysloužená dvouhlavňovka — je dlouhodobá věc profilu hlídače, stejně j
   jen v paměti běžící směny, takže nová směna začínala vždycky od nuly.
 - Nalezení běžné brokovnice zůstává vlastní, i po vysloužení dvouhlavňovky — hráč tak
   nikdy nepřijde o historii svého postupu, i když ve výbavě používá jen tu lepší zbraň.
+
+### Druhý výjezd — údržba kamer
+
+Vedle nouzové výpravy do skladovací části (baterie/brokovnice) má levá stěna kanceláře
+druhé tlačítko, **"CAMERA MAINTENANCE"** — spustí stejnou minihru (`EmergencyMiniGame`),
+jen na jiné mapě (`monitored_halls`, čtyři propojené haly odpovídající reálné kamerové
+mapě: `outer_yard`, `right_hallway`, `left_hallway`, `door_hallway`) a s jiným cílem
+(`objective: "replace_camera"`). Na rozdíl od "Jít ven" se nedrží, spouští se obyčejným
+kliknutím. Cíl v první verzi je vždy jedna konkrétní kamera (`door_hallway`) — hráč k ní
+musí dojít a zůstat nehybně stát 5 sekund (odchod z dosahu nebo jakýkoliv pohyb postup
+vynuluje), pak se kamera "vymění" a hráč se vrací do kanceláře stejně jako z ostatních
+výprav. Monstrum, pohyb, kolize i smrt jsou beze změny — stejný engine, jen jiná mapa a
+jiný způsob splnění cíle (odstátí místo sebrání E). Tahle první verze zatím nemá žádný
+skutečný gameplay dopad (žádné tmavnutí/poruchy kamer, žádné podmiňování dostupnosti
+tlačítka) — jen ověřuje celý průchod kancelář → minihra → návrat/smrt.
 
 ## Žárovky (základ)
 

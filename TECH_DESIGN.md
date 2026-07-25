@@ -2501,6 +2501,72 @@ pevná start/enemy pozice). Teď je mapa **datově definovaná** (`MiniGameLayou
   viz testy), ale žádný test negarantuje, že cesta MEZI nimi vždy existuje. Přidat jako
   budoucí krok, pokud se ukáže potřeba (např. flood-fill přes hrubou mřížku volných buněk).
 
+## Druhý výjezd — CAMERA MAINTENANCE (objective `"replace_camera"`)
+
+Druhé tlačítko na levé stěně (vedle "Jít ven") spouští STEJNÝ `EmergencyMiniGame`
+engine, žádný paralelní systém — jen nová mapa a nový objective:
+
+- **Mapa `monitored_halls`** (`game/minigame/layouts/monitoredHallsMap.ts`) — 5 místností
+  (`outer_yard`, `right_hallway`, `left_hallway`, `door_hallway`, `office`), stejná datová
+  `MiniGameLayout` struktura jako ostatní mapy. Každá ze 4 hal má přesně jeden slot tagovaný
+  SVÝM reálným `CameraId` stringem (`"outer_yard" | "right_hallway" | "left_hallway" |
+  "door_hallway"`, viz `MiniGameCameraId` v `game/minigame/types.ts` — DUPLIKOVANÉ jako
+  vlastní union, `game/minigame/*` je záměrně nezávislé na `game/core/*`). Tenhle vzor
+  (jeden slot na tag = jeden bod v mapě) je STEJNÝ jako u item slotů (battery/bulb/...) —
+  `resolveMiniGamePlacement`/`pickSlotByTag` fungují beze změny.
+- **`EmergencyMiniGameInput.targetCameraId?: MiniGameCameraId`** — pro `objective:
+  "replace_camera"` určuje, který ze 4 kamerových slotů je cíl (`objectiveTagForInput` v
+  `layoutPlacement.ts`). V1 vždy `"door_hallway"`
+  (`DEFAULT_CAMERA_MAINTENANCE_TARGET_CAMERA_ID`,
+  `game/core/emergencyMiniGameIntegration.ts#createCameraMaintenanceEmergencyInput`).
+- **5s odstátí místo sebrání E** — `updateCameraReplacementProgressMs(inRange,
+  isStationary, currentProgressMs, deltaMs)` (`game/minigame/logic.ts`, čistá funkce) čte se
+  KAŽDÝ tik: `inRange` = `circlesTouch` proti `game.itemPosition` (cíl kamery, stejné pole
+  jako u item objectives), `isStationary` = hráčova pozice PŘED/PO pohybovém bloku beze
+  změny. Cokoliv z obojího selže → progres na 0 (žádná paměť "rozjeté" výměny). Po dosažení
+  `CAMERA_REPLACEMENT_DURATION_MS` (5 000 ms, `game/minigame/config.ts`) se zavolá
+  `completeObjective(mission, {type: "reached_location", locationId: targetCameraId})` —
+  STEJNÁ `EmergencyCompletedObjective` union varianta, co byla v `types.ts` připravená, ale
+  nepoužitá, ne nový typ výsledku.
+- **`canReturnToOffice`** (`logic.ts`) rozšířeno o `"replace_camera"` vedle
+  `"return_to_office"`/`"collect_item"` — jediná nutná generalizace mimo novou mapu/objective
+  samotný, jinak by se `replace_camera` běh nikdy nemohl E-kem vrátit do kanceláře.
+  Pohyb/kolize/AI monstra/smrt/damage beze změny.
+- **Návrat do hlavní hry** — `app/play/page.tsx#handleEmergencyMiniGameComplete` čte
+  `result.completedObjective?.type === "reached_location"` (stejné pole jako
+  `"collected_item"` u battery/shotgun run) a zaloguje zprávu přes existující
+  `COPY.minigame.cameraReplacedReturnedTemplate`, jméno kamery bere z existujícího
+  `COPY.cameras[id].label` (žádná nová mapa camera id → jméno). `outcome: "dead"` jde
+  BEZE ZMĚNY přes stejný `EMERGENCY_MINIGAME_DIED` dispatch jako u ostatních výprav.
+- **Spuštění** — na rozdíl od "Jít ven" (`GameState.emergencyRunWindup`, drž a riskuj) je
+  CAMERA MAINTENANCE obyčejný `onClick`
+  (`app/play/page.tsx#handleStartCameraMaintenanceRun`), guardovaný vlastním
+  `cameraMaintenanceLaunchGuardRef` (resetuje se v `handleEmergencyMiniGameComplete`) proti
+  dvojkliku/souběžnému spuštění — `activeMiniGame !== null` guard navíc pokrývá souběžnost s
+  JINOU výpravou. `canStartCameraMaintenanceRun()` je v1 vždy `true` (žádné night-feature
+  podmiňování, viz GAME_DESIGN.md).
+- **Draw** — všechny 4 kamerové body se kreslí přímo z `game.layout.slots` (filtr na 4 známé
+  camera-id tagy), cílová kamera zvýrazněná — žádná vlastní resoluce navíc pro dekorativní
+  markery, čte se ze stejných dat jako `resolveMiniGamePlacement`.
+
+## Oprava: Hardcore `currentRun` se po přežití noci neaktualizoval hned (bug "Night 7")
+
+Stejná třída bugu jako dřívější oprava u Hardcore smrti (`applyDeath`, viz komentář u
+`setServerRunState` v `handleEmergencyMiniGameComplete`-sousedním kódu), tentokrát na
+survive-night větvi: `currentNight` (řádek ~284 v `app/play/page.tsx`) čte
+`serverRunState.currentRun` OKAMŽITĚ při dalším renderu (briefing na další noc), ale
+`POST /api/player/survive-night` je fire-and-forget bez retry. Pokud fetch nestihl doběhnout
+dřív, než hráč klikl "Pokračovat" (nebo tiše selhal, `202 stored:false` při nedostupném VPS
+API), `serverRunState` zůstal na hodnotě PŘED přežitím noci a `currentNight` tak ukazoval
+starou noc (typicky "pořád noc 7"), i po úspěšném přežití. Oprava: `applySurviveNight`
+(`lib/leaderboard/guardRunTransitions.ts`, čistá funkce, existovala už dřív jen jako
+referenční specifikace VPS logiky) se teď volá i LOKÁLNĚ, optimisticky, PŘED oběma
+`apiFetch("/api/player/survive-night", ...)` voláními (běžná výhra i monster-defeat true
+ending flow) — `setServerRunState((prev) => (prev ? applySurviveNight(prev) : prev))`.
+Odpověď serveru (`applyGuardRunResponse`) tenhle stejný výsledek jen potvrdí/přepíše
+autoritativní hodnotou, jakmile dorazí — žádný konflikt, žádné dvojí navýšení (server vždy
+vrací kompletní `player` objekt, ne delta).
+
 ## Nouzová minihra — hrozba přenesená zpět do kanceláře ("threat on return")
 
 Úspěšný návrat z EmergencyMiniGame (`outcome: "returned"`) může nést informaci, že

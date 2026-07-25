@@ -100,6 +100,17 @@ interface LeftWallViewProps {
    * app/play/page.tsx#handleRequestAmmo PŘED dispatchem.
    */
   onRequestAmmo: () => void;
+  /**
+   * Vedlejší tlačítko "CAMERA MAINTENANCE" (viz zadání "druhý výjezd —
+   * údržba kamer") — na rozdíl od onStartEmergencyRunWindup se NEDRŽÍ, spustí
+   * se prostým kliknutím (app/play/page.tsx#handleStartCameraMaintenanceRun),
+   * které si samo hlídá dvojklik. `canStartCameraMaintenanceRun` je pro v1
+   * podle zadání vždy `true` (viz game/core/emergencyMiniGameIntegration.ts
+   * #canStartCameraMaintenanceRun) — prop existuje jen pro budoucí podmínku
+   * (např. porucha kamery), ne proto, že by se dnes někdy skrývalo.
+   */
+  onStartCameraMaintenanceRun: () => void;
+  canStartCameraMaintenanceRun: boolean;
 }
 
 /** Prázdný stojan na zbraň — beze změny oproti dřívějšku, dokud hráč brokovnici nemá (viz hasShotgun). */
@@ -142,6 +153,8 @@ export default function LeftWallView({
   officeDoorLockMs,
   onChangeOfficeDoorLockMs,
   onRequestAmmo,
+  onStartCameraMaintenanceRun,
+  canStartCameraMaintenanceRun,
 }: LeftWallViewProps) {
   const COPY = useCopy();
   const [imageFailed, setImageFailed] = useState(false);
@@ -296,6 +309,26 @@ export default function LeftWallView({
         {canStartEmergencyRun && emergencyRunWindupActive && (
           <div className="w-32 h-1 bg-gray-800 border border-gray-700 rounded overflow-hidden">
             <div className="h-full bg-red-500 transition-all duration-150" style={{ width: `${windupPercent}%` }} />
+          </div>
+        )}
+
+        {/* "CAMERA MAINTENANCE" (viz zadání "druhý výjezd — údržba kamer") —
+            vedle emergency-run tlačítka výše, stejný vizuál (pixel-button
+            console-button), ale obyčejný klik (ne drž a riskuj) — handler
+            (app/play/page.tsx#handleStartCameraMaintenanceRun) si sám hlídá
+            dvojklik/souběžné spuštění. */}
+        {canStartCameraMaintenanceRun && (
+          <div className="w-full flex items-center justify-end gap-3">
+            <button
+              type="button"
+              className="pixel-button console-button tap-target flex items-center gap-2 px-3 py-2 text-xs touch-none select-none"
+              onClick={onStartCameraMaintenanceRun}
+            >
+              <span className="console-icon-block" aria-hidden="true">
+                <ConsoleIcon id="warn" />
+              </span>
+              <span className="whitespace-pre-line">{COPY.game.startCameraMaintenanceLabel}</span>
+            </button>
           </div>
         )}
 

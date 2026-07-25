@@ -57,10 +57,18 @@ function pickSlotByTag(
   return pickWeighted(candidates, rng);
 }
 
-/** "collect_item" bez explicitního itemToCollect se (stejně jako dřív v resolveEquipmentFromInput-adjacent logice) chová jako "fuse" — viz EmergencyMiniGame.tsx#getMissionHint. */
+/**
+ * "collect_item" bez explicitního itemToCollect se (stejně jako dřív v
+ * resolveEquipmentFromInput-adjacent logice) chová jako "fuse" — viz
+ * EmergencyMiniGame.tsx#getMissionHint. "replace_camera" (viz zadání
+ * "druhý výjezd — údržba kamer") nemá fallback — chybějící `targetCameraId`
+ * vrací `null` (žádný objectiveSlot/objectivePosition), stejný "žádný cíl,
+ * žádný pád" princip jako ostatní objective bez příslušného tagu.
+ */
 function objectiveTagForInput(input: EmergencyMiniGameInput): MiniGameLayoutSlotTag | null {
-  if (input.objective !== "collect_item") return null;
-  return input.itemToCollect ?? "fuse";
+  if (input.objective === "collect_item") return input.itemToCollect ?? "fuse";
+  if (input.objective === "replace_camera") return input.targetCameraId ?? null;
+  return null;
 }
 
 /** Jeden vyřešený slot doplňkového lootu (viz EmergencyMiniGameInput.extraLootItems, zadání "sandbox výprava"). */

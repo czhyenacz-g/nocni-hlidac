@@ -4,9 +4,16 @@ import SceneBackground from "@/components/SceneBackground";
 import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 import { PlayerAchievement } from "@/game/core/playerAchievements";
 import AchievementResultPanel from "@/components/achievements/AchievementResultPanel";
+import { resolveShiftRating } from "@/game/core/shiftRating";
 
 interface WinScreenProps {
   survivedNights: number;
+  /**
+   * Součet doby zavřených dveří za PRÁVĚ dokončenou noc (viz zadání
+   * "jednoduché hodnocení podle doby zavřených dveří", GameState.totalDoorClosedMs) —
+   * čistě prezentační, nikam se neukládá, resetuje se na 0 každou novou noc.
+   */
+  totalDoorClosedMs: number;
   /**
    * Achievementy nově odemčené touhle přežitou nocí (viz zadání "Napojit
    * achievementy na výsledkové obrazovky", game/core/achievementResultUnlocks.ts).
@@ -23,8 +30,19 @@ function resolveSurvivedNightsUnit(count: number, COPY: CopyShape): string {
   return count === 1 ? forms.one : count >= 2 && count <= 4 ? forms.few : forms.many;
 }
 
-export default function WinScreen({ survivedNights, newlyUnlockedAchievements = [], onRetry, onGoToMenu }: WinScreenProps) {
+export default function WinScreen({
+  survivedNights,
+  totalDoorClosedMs,
+  newlyUnlockedAchievements = [],
+  onRetry,
+  onGoToMenu,
+}: WinScreenProps) {
   const COPY = useCopy();
+  // Zobrazené celé sekundy vs. přesné hodnocení (viz zadání "zaokrouhlení
+  // nesmí ovlivnit hranice") — resolveShiftRating dostává SUROVÉ ms, ne
+  // zaokrouhlenou hodnotu níže.
+  const shiftRating = resolveShiftRating(totalDoorClosedMs);
+  const doorClosedSeconds = Math.round(totalDoorClosedMs / 1000);
   // Bez bg-* na <main> — viz stejná poznámka v MainMenuScreen.tsx (main by
   // jinak vlastním pozadím zakryl SceneBackground potomka s -z-10).
   return (
@@ -49,6 +67,28 @@ export default function WinScreen({ survivedNights, newlyUnlockedAchievements = 
           <p className="text-xs text-gray-500">{COPY.win.survivedNightsLabel.prefix}</p>
           <p className="text-4xl font-bold text-red-500 leading-tight my-1">{survivedNights}</p>
           <p className="text-xs text-gray-500 mb-8">{resolveSurvivedNightsUnit(survivedNights, COPY)}</p>
+
+          {/* Hodnocení směny podle doby zavřených dveří (viz zadání) —
+              "razítkový" blok: mírně natočený rám, tlumené barvy (žádný
+              veselý arkádový design), stejná pixel-panel/monospace estetika
+              jako zbytek Objektu 13. Vlastní blok v normálním layoutu (ne
+              position: absolute), ať nikdy nepřekryje tlačítko níže a
+              funguje stejně na mobilu i desktopu. */}
+          <div
+            className="pixel-panel mb-6 inline-block px-6 py-3 text-center"
+            style={{ transform: "rotate(-2deg)", borderColor: "#7a2f2f" }}
+          >
+            <div className="text-[10px] tracking-[0.2em] text-gray-400">{COPY.win.shiftRatingLabel}</div>
+            <div
+              className="text-6xl font-bold leading-none my-1"
+              style={{ color: "#c65b5b", textShadow: "0 0 10px rgba(198,91,91,0.35)" }}
+            >
+              {shiftRating}
+            </div>
+            <div className="text-[11px] text-gray-400 whitespace-nowrap">
+              {COPY.win.doorClosedTimeLabel.replace("{seconds}", String(doorClosedSeconds))}
+            </div>
+          </div>
 
           <AchievementResultPanel achievements={newlyUnlockedAchievements} />
 

@@ -88,8 +88,10 @@ import { getNightConfig } from "@/game/difficulty/nightConfig";
 import {
   applyEmergencyWorldEffects,
   canStartBatteryEmergencyRun,
+  canStartCameraMaintenanceRun,
   canStartShotgunEmergencyRun,
   createBatteryEmergencyInput,
+  createCameraMaintenanceEmergencyInput,
   createShotgunEmergencyInput,
   resolveBulbsGainedFromWorldEffects,
   resolveExtraLootItems,
@@ -105,7 +107,7 @@ import { isAdminUsername } from "@/lib/auth/adminUsers";
 import { apiFetch } from "@/lib/http/apiFetch";
 import type { GuardRunState } from "@/lib/leaderboard/types";
 import type { GuardRunResponse } from "@/lib/leaderboard/guardRunRequestHandlers";
-import { applyDeath } from "@/lib/leaderboard/guardRunTransitions";
+import { applyDeath, applySurviveNight } from "@/lib/leaderboard/guardRunTransitions";
 import { DEFAULT_GAME_MODE, GAME_MODE_CONFIG, GameMode, resolveGameMode } from "@/game/core/gameMode";
 import { Object13PlayerProfileProvider, useObject13PlayerProfile } from "@/components/playerProfile/Object13PlayerProfileProvider";
 import { resolveStartingBulbsRemaining } from "@/game/core/bulbInventory";
@@ -285,13 +287,23 @@ function PlayPageContent() {
   // GameState, ne jeho pole (stejný vzor jako cinematicPending níže): dokud je
   // nastavená, GameScreen se vůbec nerenderuje (viz JSX), místo něj
   // EmergencyMiniGame, a hlavní herní smyčka (useGameLoop níže) se zastaví.
-  // `id` je zatím vždy "battery_run" (jediný scénář), ale pole je tu
-  // připravené pro budoucí další emergency scénáře. Deklarováno tady (ne
-  // blíž ostatním sourozeneckým useState) jen proto, aby ho useGameLoop níže
-  // mohl použít v `isRunning`.
-  const [activeMiniGame, setActiveMiniGame] = useState<{ id: "battery_run" | "shotgun_run"; input: EmergencyMiniGameInput } | null>(
-    null,
-  );
+  // `id` "camera_maintenance_run" (viz zadání "druhý výjezd — údržba kamer")
+  // přibylo vedle battery_run/shotgun_run — spouští se obyčejným kliknutím
+  // (handleStartCameraMaintenanceRun níže), ne přes emergencyRunReadySeq
+  // windup efekt jako ostatní dvě. Deklarováno tady (ne blíž ostatním
+  // sourozeneckým useState) jen proto, aby ho useGameLoop níže mohl použít v
+  // `isRunning`.
+  const [activeMiniGame, setActiveMiniGame] = useState<{
+    id: "battery_run" | "shotgun_run" | "camera_maintenance_run";
+    input: EmergencyMiniGameInput;
+  } | null>(null);
+  // Guard proti dvojkliku/souběžnému spuštění (viz zadání "zabraň dvojkliku")
+  // — na rozdíl od battery/shotgun run (které mají svůj vlastní "drž tlačítko"
+  // windup guard v reduceru) je tohle prosté onClick, takže potřebuje vlastní
+  // ref guard. Resetuje se v handleEmergencyMiniGameComplete, jakmile minihra
+  // skutečně skončí (viz níže) — ne dřív, ať rychlý druhý klik během běžící
+  // minihry nikdy nespustí druhou instanci.
+  const cameraMaintenanceLaunchGuardRef = useRef(false);
   // "Nechat si to projít hlavou" cinematic (viz content/cinematics.ts
   // think_it_over_warning, LeftWallView.tsx) — stejný "hlavní smyčka stojí,
   // dokud tohle běží" vzor jako activeMiniGame výše (viz useGameLoop
@@ -893,6 +905,19 @@ function PlayPageContent() {
       // GameState field), a na serveru/leaderboardu vést čistý Hardcore a
       // veteránský Hardcore jako oddělené žebříčky (nebo aspoň sloupec navíc).
       if (state.gameMode === "hardcore") {
+        // Optimistický lokální +1 na currentRun (viz zadání — bug "Start Shift
+        // pořád ukazuje starou noc, i po přežití"), stejný vzor jako
+        // optimistický reset u Hardcore smrti výše (applyDeath). PŘED voláním
+        // serveru: `currentNight` (řádek ~284) čte `serverRunState.currentRun`
+        // OKAMŽITĚ při dalším renderu (briefing na další noc), ale
+        // `/api/player/survive-night` níže je fire-and-forget bez retry — když
+        // nestihne doběhnout dřív, než hráč klikne "Pokračovat" (nebo tiše
+        // selže, `202 stored:false` při nedostupném VPS API), `serverRunState`
+        // by beze změny zůstal na hodnotě PŘED přežitím a další směna by
+        // omylem naskočila zpátky na starou noc. `applyGuardRunResponse` níže
+        // tenhle stejný výsledek jen potvrdí/přepíše autoritativní hodnotou,
+        // jakmile server odpoví — žádný konflikt.
+        setServerRunState((prev) => (prev ? applySurviveNight(prev) : prev));
         apiFetch("/api/player/survive-night", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1629,7 +1654,10 @@ function PlayPageContent() {
     // "win"` výše, stejný TODO ohledně dvouhlavňovky v currentRun/bestRun
     // žebříčku platí i tady) — bez tohohle currentRun pro tuhle noc nikdy
     // nenavýší a příští Hardcore run tak nesmyslně začíná zase na noci 1
-    // (viz zadání "zase začínám ode dne 1").
+    // (viz zadání "zase začínám ode dne 1"). Stejný optimistický lokální +1
+    // PŘED fetchem jako u `state.screen === "win"` výše (viz komentář tam
+    // pro plné zdůvodnění bugu "Night 7 pořád zobrazeno").
+    setServerRunState((prev) => (prev ? applySurviveNight(prev) : prev));
     apiFetch("/api/player/survive-night", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1729,6 +1757,31 @@ function PlayPageContent() {
     dispatch({ type: "CANCEL_EMERGENCY_RUN_WINDUP" });
   }
 
+  // "CAMERA MAINTENANCE" (viz zadání "druhý výjezd — údržba kamer") —
+  // obyčejný klik (ne drž a riskuj), proto vlastní ref guard místo reducer
+  // windup mašinky jako battery/shotgun run výše. `activeMiniGame` guard
+  // pokrývá souběžnost s JINOU výpravou, ref guard pokrývá rychlý dvojklik
+  // téhož tlačítka dřív, než React stihne re-render s aktualizovaným
+  // activeMiniGame.
+  function handleStartCameraMaintenanceRun() {
+    if (!canStartCameraMaintenanceRun()) return;
+    if (activeMiniGame || cameraMaintenanceLaunchGuardRef.current) return;
+    cameraMaintenanceLaunchGuardRef.current = true;
+    audioManager.play(AUDIO_EVENTS.uiClick);
+    recordExpeditionStarted();
+    const equipment = { hasShotgun: state.hasShotgun, ammo: state.shotgunAmmo };
+    setActiveMiniGame({
+      id: "camera_maintenance_run",
+      input: createCameraMaintenanceEmergencyInput(
+        equipment,
+        state.monsterHitsToday,
+        state.nightFeatures.monsterTrueEndingRequiredHits,
+        state.officeDoorLockMs,
+        state.monsterDefeated,
+      ),
+    });
+  }
+
   // "Nechat si to projít hlavou" (viz zadání) — stejný vzor jako
   // handleStartEmergencyRunWindup výše, ale bez "potřebuje otevřené dveře"
   // větve (canStartThinkItOverWindup nevyžaduje doorClosed). Guard je i tady
@@ -1771,6 +1824,10 @@ function PlayPageContent() {
   // death flow (dead), nebo jen tiše vrátí hráče zpět bez efektu (failed).
   function handleEmergencyMiniGameComplete(result: EmergencyMiniGameResult) {
     setActiveMiniGame(null);
+    // Reset dvojklikového guardu (viz handleStartCameraMaintenanceRun) —
+    // TADY, ne dřív, ať rychlý druhý klik během běžící minihry nikdy
+    // nespustí druhou instanci (platí pro "dead" i "returned"/"failed").
+    cameraMaintenanceLaunchGuardRef.current = false;
 
     if (result.outcome === "dead") {
       dispatch({ type: "EMERGENCY_MINIGAME_DIED" });
@@ -1933,6 +1990,18 @@ function PlayPageContent() {
         } else {
           messages.push(COPY.game.monsterHitConfirmedLabel);
         }
+      }
+
+      // "Údržba kamer" (viz zadání "druhý výjezd — druhý výjezd — údržba
+      // kamer") — completedObjective "reached_location" existuje jen pro
+      // camera_maintenance_run, battery/shotgun run ho nikdy nenastaví (viz
+      // EmergencyMiniGame.tsx tick()). Jméno kamery bere existující
+      // COPY.cameras[id].label (stejný štítek jako CameraPanel), žádná nová
+      // mapa camera id -> jméno.
+      if (result.completedObjective?.type === "reached_location") {
+        const cameraId = result.completedObjective.locationId as keyof typeof COPY.cameras;
+        const cameraLabel = COPY.cameras[cameraId]?.label ?? result.completedObjective.locationId;
+        messages.push(COPY.minigame.cameraReplacedReturnedTemplate.replace("{camera}", cameraLabel));
       }
 
       if (messages.length > 0) setEmergencyRunMessage(messages.join("\n"));
@@ -2260,6 +2329,7 @@ function PlayPageContent() {
           onRequestAmmo={handleRequestAmmo}
           onStartEmergencyRunWindup={handleStartEmergencyRunWindup}
           onCancelEmergencyRunWindup={handleCancelEmergencyRunWindup}
+          onStartCameraMaintenanceRun={handleStartCameraMaintenanceRun}
           onStartThinkItOverWindup={handleStartThinkItOverWindup}
           onCancelThinkItOverWindup={handleCancelThinkItOverWindup}
           onChangeOfficeDoorLockMs={handleChangeOfficeDoorLockMs}
@@ -2336,6 +2406,7 @@ function PlayPageContent() {
       {state.screen === "win" && night30Ending === "none" && (
         <WinScreen
           survivedNights={survivedNights}
+          totalDoorClosedMs={state.totalDoorClosedMs}
           newlyUnlockedAchievements={winNewlyUnlockedAchievements}
           onRetry={handleRestart}
           onGoToMenu={handleGoToMenu}

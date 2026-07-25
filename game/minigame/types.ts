@@ -100,7 +100,27 @@ export type MiniGameStatus = "playing" | "won" | "gameOver";
 // hra (/play) zatím minihru vůbec nespouští, tohle je jen připravené
 // rozhraní (vstup/výstup), žádná skutečná integrace.
 
-export type MiniGameObjective = "return_to_office" | "collect_item" | "survive";
+/**
+ * `"replace_camera"` (viz zadání "druhý výjezd — údržba kamer") — hráč musí
+ * dojít k jednomu konkrétnímu bodu kamery (`EmergencyMiniGameInput.targetCameraId`)
+ * a zůstat u něj nehybně stát `CAMERA_REPLACEMENT_DURATION_MS` (viz
+ * game/minigame/config.ts, game/minigame/logic.ts#updateCameraReplacementProgressMs).
+ * Stejná mise-fáze mašinka jako "collect_item" (outbound -> returning ->
+ * completed, viz completeObjective/canReturnToOffice) — jen dílčí úkol se
+ * nesplní stiskem E na dotyku, ale automaticky po odstátí, přes existující
+ * `EmergencyCompletedObjective` variantu `"reached_location"` (`locationId`
+ * = vyměněná kamera).
+ */
+export type MiniGameObjective = "return_to_office" | "collect_item" | "survive" | "replace_camera";
+/**
+ * Reálná ID bezpečnostních kamer Objektu 13 (viz game/core/types.ts#CameraId,
+ * game/cameras/cameras.object13.ts) — DUPLIKOVANÉ jako vlastní string union
+ * tady (ne import), protože `game/minigame/*` je záměrně nezávislé na
+ * `game/core/*` (viz hlavička souboru). Používá se jako tag pro kamerové
+ * body na mapě (viz layoutTypes.ts#MiniGameLayoutSlotTag) i jako
+ * `EmergencyMiniGameInput.targetCameraId`.
+ */
+export type MiniGameCameraId = "outer_yard" | "right_hallway" | "left_hallway" | "door_hallway";
 /**
  * `"empty"` (viz zadání "prázdná krabice") je záměrný "nic" decoy — sebere se
  * úplně stejně jako ostatní loot, ale `worldEffectsForItem` pro něj vrací `[]`
@@ -142,6 +162,13 @@ export interface EmergencyMiniGameInput {
   objective: MiniGameObjective;
   /** Jen relevantní pro objective "collect_item" — chybí-li, view/logika použije obecné "item". */
   itemToCollect?: MiniGameItemId;
+  /**
+   * Jen relevantní pro objective "replace_camera" (viz zadání) — která
+   * kamera je cíl tyhle výpravy. Layout musí mít přesně jeden slot tagovaný
+   * touhle hodnotou (viz game/minigame/layoutPlacement.ts#objectiveTagForInput),
+   * jinak `resolveMiniGamePlacement` vyhodí `MiniGamePlacementError`.
+   */
+  targetCameraId?: MiniGameCameraId;
   /**
    * Doplňkový loot navíc k `itemToCollect` (viz zadání "sandbox výprava",
    * game/minigame/layoutPlacement.ts#resolveMiniGamePlacement) — battery/bulb

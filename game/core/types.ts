@@ -522,6 +522,17 @@ export interface GameState {
   playerView: PlayerView;
 
   doorClosed: boolean;
+  /**
+   * Součet času (ms), po který byly dveře zavřené BĚHEM AKTUÁLNÍ noci (viz
+   * zadání "jednoduché hodnocení podle doby zavřených dveří",
+   * game/core/shiftRating.ts#resolveShiftRating, WinScreen.tsx) — čistě
+   * prezentační statistika pro obrazovku "Přežil jsi směnu", nikam se
+   * neukládá (ani DB, ani localStorage). Přičítá se jen v běžné (ne
+   * blackout/doorDeathReveal) větvi TICKu podle PŘED-tikového `doorClosed`
+   * (gameReducer.ts) a resetuje se na 0 při každé nové noci
+   * (createInitialGameState, žádná persistence mezi nocemi/restarty).
+   */
+  totalDoorClosedMs: number;
   lightOn: boolean;
   /**
    * Trvale zničené dveře (základ pro budoucí přetížení generátoru — viz

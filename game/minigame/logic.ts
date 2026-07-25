@@ -1025,6 +1025,29 @@ export function completeObjective(mission: EmergencyMissionState, completedObjec
   return updateMissionPhase({ ...mission, completedObjective }, "returning");
 }
 
+// ── "Vyměň kameru" (viz zadání "druhý výjezd — údržba kamer") — na rozdíl od
+// collect_item (okamžité sebrání dotykem/E) se tenhle dílčí úkol plní
+// postáním na místě `CAMERA_REPLACEMENT_DURATION_MS` (config.ts) v kuse.
+// Sama nerozhoduje o dosahu ani o "stojí hráč na místě" — obojí zjišťuje
+// volající (EmergencyMiniGame.tsx#tick, circlesTouch + porovnání pozice
+// s minulým tikem), tahle funkce jen sčítá/resetuje ms.
+
+/**
+ * Postup výměny kamery za tenhle tik — nuluje se na 0, jakmile hráč NENÍ v
+ * dosahu cíle NEBO se od minulého tiku pohnul (i o kousek). Nekumuluje nad
+ * `CAMERA_REPLACEMENT_DURATION_MS` sama — o dokončení (a co s ním) rozhoduje
+ * volající porovnáním výsledku s tou konstantou.
+ */
+export function updateCameraReplacementProgressMs(
+  inRange: boolean,
+  isPlayerStationary: boolean,
+  currentProgressMs: number,
+  deltaMs: number,
+): number {
+  if (!inRange || !isPlayerStationary) return 0;
+  return currentProgressMs + deltaMs;
+}
+
 // ── Zamčené dveře kanceláře (viz zadání "diegetická herní mechanika",
 // EMERGENCY_OFFICE_DOOR_LOCK_MS/EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS v
 // config.ts) — čisté funkce jen z `elapsedMs`, žádný vlastní stav. Dveře
@@ -1091,7 +1114,11 @@ export function canReturnToOffice(
 ): boolean {
   if (!hasLeftStartZone) return false;
   if (!officeDoorUnlocked) return false;
-  return objective === "return_to_office" || objective === "collect_item";
+  // "replace_camera" (viz zadání "druhý výjezd — údržba kamer") sdílí
+  // přesně stejnou "outbound -> returning -> completed" mašinku jako
+  // "collect_item" (completeObjective se pro ni volá jinak — automaticky po
+  // odstátí, ne stiskem E na dotyku — ale výsledná mise.phase je stejná).
+  return objective === "return_to_office" || objective === "collect_item" || objective === "replace_camera";
 }
 
 // ── Kancelářský marker (viz EmergencyMiniGame.tsx#draw) — čistě orientační/

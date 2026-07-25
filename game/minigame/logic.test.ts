@@ -28,6 +28,7 @@ import {
   isOfficeDoorLocked,
   isPointInCone,
   isTargetInCone,
+  updateCameraReplacementProgressMs,
   lineIntersectsRect,
   moveWithWallSliding,
   MINIGAME_HEARTBEAT_VOLUME_BASE,
@@ -1232,6 +1233,44 @@ describe("mission — completeObjective / canReturnToOffice / updateMissionPhase
   it("canReturnToOffice: survive never completes via the exit zone in the MVP, even with the door unlocked", () => {
     expect(canReturnToOffice("survive", true, false)).toBe(false);
     expect(canReturnToOffice("survive", true, true)).toBe(false);
+  });
+
+  // "replace_camera" (viz zadání "druhý výjezd — údržba kamer") sdílí
+  // přesně stejná pravidla návratu jako collect_item.
+  it("canReturnToOffice: replace_camera requires hasLeftStartZone AND officeDoorUnlocked, same as collect_item", () => {
+    expect(canReturnToOffice("replace_camera", true, false)).toBe(false);
+    expect(canReturnToOffice("replace_camera", false, true)).toBe(false);
+    expect(canReturnToOffice("replace_camera", true, true)).toBe(true);
+  });
+});
+
+// "Vyměň kameru" postup (viz zadání "druhý výjezd — údržba kamer",
+// game/minigame/config.ts#CAMERA_REPLACEMENT_DURATION_MS) — čistá funkce,
+// volající (EmergencyMiniGame.tsx#tick) sama zjišťuje dosah/stání na místě.
+describe("updateCameraReplacementProgressMs", () => {
+  it("accumulates deltaMs while in range and stationary", () => {
+    expect(updateCameraReplacementProgressMs(true, true, 0, 1000)).toBe(1000);
+    expect(updateCameraReplacementProgressMs(true, true, 1000, 500)).toBe(1500);
+  });
+
+  it("resets to 0 when out of range, regardless of stationarity or prior progress", () => {
+    expect(updateCameraReplacementProgressMs(false, true, 3000, 500)).toBe(0);
+  });
+
+  it("resets to 0 when the player moved (not stationary), even while in range", () => {
+    expect(updateCameraReplacementProgressMs(true, false, 3000, 500)).toBe(0);
+  });
+
+  it("resets to 0 when both out of range and moving", () => {
+    expect(updateCameraReplacementProgressMs(false, false, 3000, 500)).toBe(0);
+  });
+
+  it("reaches (and can exceed) CAMERA_REPLACEMENT_DURATION_MS given enough continuous in-range stationary ticks — completion itself is the caller's responsibility", () => {
+    let progress = 0;
+    for (let i = 0; i < 5; i++) {
+      progress = updateCameraReplacementProgressMs(true, true, progress, 1000);
+    }
+    expect(progress).toBe(5000);
   });
 });
 

@@ -2,11 +2,17 @@ import { MiniGameLayout, MiniGameLayoutId } from "../layoutTypes";
 import { SERVICE_FLOOR_ALPHA } from "./serviceFloorAlpha";
 import { SERVICE_FLOOR_STORAGE } from "./serviceFloorStorage";
 import { SERVICE_FLOOR_EVAC_PLAN } from "./serviceFloorEvacPlan";
+import { MONITORED_HALLS_MAP } from "./monitoredHallsMap";
 
 // Registr všech dostupných map (viz layoutTypes.ts) — nový layout = nový
 // soubor v týhle složce + přidání sem, žádná mapa nikdy natvrdo jinde
 // (config.ts/EmergencyMiniGame.tsx čtou jen odsud přes getMiniGameLayout).
-export const MINIGAME_LAYOUTS: MiniGameLayout[] = [SERVICE_FLOOR_ALPHA, SERVICE_FLOOR_STORAGE, SERVICE_FLOOR_EVAC_PLAN];
+export const MINIGAME_LAYOUTS: MiniGameLayout[] = [
+  SERVICE_FLOOR_ALPHA,
+  SERVICE_FLOOR_STORAGE,
+  SERVICE_FLOOR_EVAC_PLAN,
+  MONITORED_HALLS_MAP,
+];
 
 export const DEFAULT_MINIGAME_LAYOUT_ID: MiniGameLayoutId = SERVICE_FLOOR_ALPHA.id;
 

@@ -1,7 +1,14 @@
 import { MAX_POWER } from "../balancing/constants";
 import { NightFeatureFlags } from "../difficulty/nightConfig";
-import { EmergencyMiniGameEquipment, EmergencyMiniGameInput, EmergencyWorldEffect, MiniGameItemId } from "../minigame/types";
+import {
+  EmergencyMiniGameEquipment,
+  EmergencyMiniGameInput,
+  EmergencyWorldEffect,
+  MiniGameCameraId,
+  MiniGameItemId,
+} from "../minigame/types";
 import { SERVICE_FLOOR_EVAC_PLAN } from "../minigame/layouts/serviceFloorEvacPlan";
+import { MONITORED_HALLS_MAP } from "../minigame/layouts/monitoredHallsMap";
 
 // První tenké napojení EmergencyMiniGame (game/minigame/*) do hlavní hry
 // (/play) — viz app/play/page.tsx#handleStartEmergencyRun/
@@ -90,6 +97,52 @@ export function createShotgunEmergencyInput(
 }
 
 /**
+ * Mapa pro "údržbu kamer" (viz zadání "druhý výjezd — údržba kamer") —
+ * VLASTNÍ mapa (game/minigame/layouts/monitoredHallsMap.ts), ne
+ * DEFAULT_BATTERY_RUN_LAYOUT_ID — battery/shotgun runy odpovídají skladu,
+ * tenhle výjezd čtyřem halám odpovídajícím reálné kamerové síti.
+ */
+export const DEFAULT_CAMERA_MAINTENANCE_LAYOUT_ID = MONITORED_HALLS_MAP.id;
+
+/**
+ * Pevný cíl první verze (viz zadání "1 pevný cíl, netřeba náhodný výběr") —
+ * jediné místo, které tohle rozhoduje. Až přibude náhodný výběr/víc
+ * porouchaných kamer, je tohle jediné místo k úpravě.
+ */
+export const DEFAULT_CAMERA_MAINTENANCE_TARGET_CAMERA_ID: MiniGameCameraId = "door_hallway";
+
+/**
+ * Vstup pro "údržbu kamer" — druhý výjezd z kanceláře (viz zadání), stejný
+ * engine/pravidla pohybu/AI jako battery/shotgun run výše, jen jiná
+ * mapa+objective ("replace_camera" místo "collect_item"). `equipment`/
+ * `monsterHitsToday`/`monsterHitsRequiredForFinal`/`monsterAlreadyDefeatedTonight`
+ * stejné pole jako u ostatních výjezdů — SAMÉ monstrum/hidden-true-ending
+ * počítadlo napříč všemi výjezdy tuhle noc, ne vlastní nezávislé počítání
+ * (viz zadání "7. Monstrum — neměň spawn pravidla"). Žádný `extraLootItems`
+ * (viz zadání "nepřidávej inventář/loot") — jen jeden pevný cíl.
+ */
+export function createCameraMaintenanceEmergencyInput(
+  equipment: EmergencyMiniGameEquipment,
+  monsterHitsToday?: number,
+  monsterHitsRequiredForFinal?: number,
+  officeDoorLockMs?: number,
+  monsterAlreadyDefeatedTonight?: boolean,
+): EmergencyMiniGameInput {
+  return {
+    objective: "replace_camera",
+    targetCameraId: DEFAULT_CAMERA_MAINTENANCE_TARGET_CAMERA_ID,
+    equipment,
+    difficulty: "medium",
+    startLocation: "office",
+    layoutId: DEFAULT_CAMERA_MAINTENANCE_LAYOUT_ID,
+    monsterHitsToday,
+    monsterHitsRequiredForFinal,
+    officeDoorLockMs,
+    monsterAlreadyDefeatedTonight,
+  };
+}
+
+/**
  * Doplňkový loot vždy dostupný na mapě NAVÍC k hlavnímu objective (viz
  * zadání "sandbox výprava") — battery/bulb garantované na KAŽDÉ výpravě,
  * shotgun podmíněně podle `canStartShotgunEmergencyRun` (noc 10+, hráč ho
@@ -167,6 +220,18 @@ export function canStartShotgunEmergencyRun(
   hasShotgun: boolean,
 ): boolean {
   return nightFeatures.emergencyRunsEnabled && nightFeatures.shotgunLootEnabled && !hasShotgun;
+}
+
+/**
+ * Jestli je "ÚDRŽBA KAMER" tuhle noc vůbec dostupná — jediné místo, které
+ * tohle rozhoduje (stejný vzor jako canStartBatteryEmergencyRun výše),
+ * LeftWallView i app/play/page.tsx na něj musí spoléhat. Zatím VŽDY `true`
+ * (viz zadání "první testovací verze — tlačítko dostupné vždy, zatím ho
+ * nepodmiňuj poruchou kamery") — jediné místo k úpravě, až přibude reálná
+ * podmínka (např. porucha konkrétní kamery).
+ */
+export function canStartCameraMaintenanceRun(): boolean {
+  return true;
 }
 
 /**

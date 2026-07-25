@@ -77,6 +77,7 @@ export function createInitialGameState(night: NightDefinition, options: CreateIn
     playerView: "desk",
 
     doorClosed: false,
+    totalDoorClosedMs: 0,
     doorDestroyed: false,
     doorGeneratorOverloadUntilMs: null,
     titanOverloadDeathRevealUntilMs: null,

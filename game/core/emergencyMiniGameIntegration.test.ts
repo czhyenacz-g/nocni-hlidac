@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_BATTERY_RUN_LAYOUT_ID,
+  DEFAULT_CAMERA_MAINTENANCE_LAYOUT_ID,
+  DEFAULT_CAMERA_MAINTENANCE_TARGET_CAMERA_ID,
   applyEmergencyWorldEffects,
   canStartBatteryEmergencyRun,
+  canStartCameraMaintenanceRun,
   canStartShotgunEmergencyRun,
   createBatteryEmergencyInput,
+  createCameraMaintenanceEmergencyInput,
   createShotgunEmergencyInput,
   resolveBulbsGainedFromWorldEffects,
   resolveExtraLootItems,
@@ -13,6 +17,7 @@ import {
 } from "./emergencyMiniGameIntegration";
 import { MAX_POWER } from "../balancing/constants";
 import { SERVICE_FLOOR_EVAC_PLAN } from "../minigame/layouts/serviceFloorEvacPlan";
+import { MONITORED_HALLS_MAP } from "../minigame/layouts/monitoredHallsMap";
 
 describe("createBatteryEmergencyInput", () => {
   it("has objective collect_item and itemToCollect battery", () => {
@@ -111,6 +116,47 @@ describe("createShotgunEmergencyInput", () => {
   it("passes monsterAlreadyDefeatedTonight through unchanged when provided (GameState.monsterDefeated)", () => {
     const input = createShotgunEmergencyInput({ hasShotgun: true, ammo: 1 }, [], 10, 10, undefined, true);
     expect(input.monsterAlreadyDefeatedTonight).toBe(true);
+  });
+});
+
+describe("createCameraMaintenanceEmergencyInput", () => {
+  it("has objective replace_camera and targetCameraId door_hallway", () => {
+    const input = createCameraMaintenanceEmergencyInput({ hasShotgun: false, ammo: 0 });
+    expect(input.objective).toBe("replace_camera");
+    expect(input.targetCameraId).toBe("door_hallway");
+    expect(input.targetCameraId).toBe(DEFAULT_CAMERA_MAINTENANCE_TARGET_CAMERA_ID);
+  });
+
+  it("uses the monitored_halls layout", () => {
+    const input = createCameraMaintenanceEmergencyInput({ hasShotgun: false, ammo: 0 });
+    expect(input.layoutId).toBe("monitored_halls");
+    expect(input.layoutId).toBe(MONITORED_HALLS_MAP.id);
+    expect(input.layoutId).toBe(DEFAULT_CAMERA_MAINTENANCE_LAYOUT_ID);
+  });
+
+  it("passes the equipment argument through unchanged", () => {
+    expect(createCameraMaintenanceEmergencyInput({ hasShotgun: true, ammo: 2 }).equipment).toEqual({
+      hasShotgun: true,
+      ammo: 2,
+    });
+  });
+
+  it("starts in the office, same as the other emergency runs", () => {
+    expect(createCameraMaintenanceEmergencyInput({ hasShotgun: false, ammo: 0 }).startLocation).toBe("office");
+  });
+
+  it("passes monsterHitsToday/monsterHitsRequiredForFinal/officeDoorLockMs/monsterAlreadyDefeatedTonight through unchanged", () => {
+    const input = createCameraMaintenanceEmergencyInput({ hasShotgun: false, ammo: 0 }, 3, 10, 20_000, true);
+    expect(input.monsterHitsToday).toBe(3);
+    expect(input.monsterHitsRequiredForFinal).toBe(10);
+    expect(input.officeDoorLockMs).toBe(20_000);
+    expect(input.monsterAlreadyDefeatedTonight).toBe(true);
+  });
+});
+
+describe("canStartCameraMaintenanceRun", () => {
+  it("is always available for v1 (no night-feature gating yet, per spec)", () => {
+    expect(canStartCameraMaintenanceRun()).toBe(true);
   });
 });
 

@@ -255,6 +255,15 @@ const ALPHA_ITEM_SLOT = SERVICE_FLOOR_ALPHA.slots.find((slot) => slot.id === "it
 export const ITEM_SPAWN_POSITION: Vec2 = { x: ALPHA_ITEM_SLOT.x, y: ALPHA_ITEM_SLOT.y };
 export const ITEM_RADIUS = 10;
 
+/**
+ * "Vyměň kameru" (viz zadání "druhý výjezd — údržba kamer") — jak dlouho
+ * musí hráč nehybně stát v dosahu cílové kamery, než se automaticky
+ * vymění (game/minigame/logic.ts#updateCameraReplacementProgressMs). Dosah
+ * sdílí ITEM_RADIUS výše — stejná "velikost interakčního bodu" jako
+ * item/loot markery, žádná nová konstanta jen pro tohle.
+ */
+export const CAMERA_REPLACEMENT_DURATION_MS = 5_000;
+
 // Nepřítel startuje nahoře a hned v "investigating" (NE "chasing") — s
 // prvním podezřelým bodem poblíž hráčovy startovní pozice, s náhodnou
 // odchylkou (viz createInvestigationTarget). Bere `player` jako parametr,

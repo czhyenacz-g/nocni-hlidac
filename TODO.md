@@ -397,9 +397,24 @@
       hratelnosti), nový komplexnější `service_floor_storage` (8 místností kolem centrální
       chodby, dveřní mezery místo plných zdí, regály/stroje jako překážky, víc tras).
       NENÍ procedurální generování (viz "Explicitně odložené věci" níže) — pořád ruční data.
+- [x] Shift rating — `WinScreen` po přežité noci ukáže jednopísmennou známku S–E podle
+      celkové doby zavřených dveří (`GameState.totalDoorClosedMs`, `resolveShiftRating` v
+      `game/core/shiftRating.ts`, viz GAME_DESIGN.md "Shift rating"). Čistě prezentační,
+      nic se neukládá.
+- [x] Druhý výjezd — "CAMERA MAINTENANCE" (viz GAME_DESIGN.md "Druhý výjezd — údržba
+      kamer") — druhé tlačítko na levé stěně vedle "Jít ven", stejný `EmergencyMiniGame`
+      engine, nová mapa `monitored_halls` (4 haly + kancelář, `game/minigame/layouts/
+      monitoredHallsMap.ts`), nový objective `"replace_camera"` (odstůj 5 s u kamery místo
+      sebrání E, `updateCameraReplacementProgressMs` v `game/minigame/logic.ts`). Cíl
+      první verze je jen ověřit celý průchod (kancelář → minihra → návrat/smrt), zatím bez
+      tmavnutí/poruch/skutečného gameplay dopadu opravené kamery.
 
 ## Další kroky po MVP
 
+- Kamerová údržba — skutečný gameplay dopad: náhodně vybraná porouchaná/ztmavlá kamera
+  místo pevného `door_hallway`, podmíněná dostupnost tlačítka (jen když je kamera opravdu
+  porouchaná), a skutečné zlepšení stavu kamery po výměně (viz "Druhý výjezd — CAMERA
+  MAINTENANCE" výše — první verze zatím jen ověřuje průchod, žádný z těchto efektů)
 - Discord login krok 2 — DB tabulka `players` (id, discord_user_id, username, display_name,
   avatar_url, created_at, updated_at, last_login_at), upsert v `app/api/auth/callback/route.ts`
   (dnes jen podepsaná cookie, žádná perzistence hráče)

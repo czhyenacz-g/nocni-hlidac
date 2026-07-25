@@ -311,6 +311,12 @@ export const COPY_CS = {
     // ví, že jde cíleně "na lov", ne jen nouzově pryč. Stejné tlačítko/
     // mechanika, jen jiný text (viz LeftWallView.tsx).
     startEmergencyRunHuntingLabel: "Vyrazit na lov",
+    // Druhé tlačítko na levé stěně vedle startEmergencyRunLabel — spustí
+    // stejnou minihru (EmergencyMiniGame), objective "replace_camera", mapu
+    // monitored_halls (viz LeftWallView.tsx, app/play/page.tsx
+    // handleStartCameraMaintenanceRun). Pracovní text přesně podle zadání
+    // ("druhý výjezd — údržba kamer"), zatím beze změny/lokalizace na CS.
+    startCameraMaintenanceLabel: "CAMERA MAINTENANCE",
     // Varování zobrazené hned při zahájení držení tlačítka (viz
     // handleStartEmergencyRunWindup, EMERGENCY_RUN_WINDUP_DURATION_MS) —
     // hráč musí tlačítko držet, ne jen kliknout, a tohle mu jasně řekne, že
@@ -522,6 +528,13 @@ export const COPY_CS = {
     missionHintReturnToOffice: "Cíl: Vrať se do kanceláře.",
     missionHintFindItem: "Cíl: Najdi a seber {item}. [E]",
     missionHintItemCollected: "Věc získána. Vrať se do kanceláře.",
+    // "Druhý výjezd — údržba kamer" (viz zadání) — stejný pár frází jako
+    // missionHintFindItem/missionHintItemCollected výše, jen pro objective
+    // "replace_camera" (vyměnit kameru stáním na místě, ne sebráním E).
+    missionHintReplaceCamera: "Cíl: Najdi kameru a stůj u ní 5 s, dokud se nevymění.",
+    missionHintCameraReplaced: "Kamera vyměněna. Vrať se do kanceláře.",
+    cameraReplacingLabel: "Vyměňuji kameru...",
+    cameraReplacedLabel: "Kamera vyměněna.",
     statusLabel: "STAV:",
     statusPlayingLabel: "PROBÍHÁ OBCHŮZKA",
     statusWonLabel: "SPLNĚNO",
@@ -548,6 +561,10 @@ export const COPY_CS = {
     objectiveCompletedTitle: "OBJECTIVE SPLNĚNO.",
     returnedToOfficeLabel: "Vrátil ses do kanceláře.",
     collectedItemReturnedTemplate: "Sebráno: {item}. Vrátil ses do kanceláře.",
+    // {camera} se nahrazuje existujícím COPY.cameras[id].label (viz "druhý
+    // výjezd — údržba kamer" v zadání) — žádná duplicitní mapa camera id ->
+    // jméno, jen jinačí věta se stejným štítkem, co používá i CameraPanel.
+    cameraReplacedReturnedTemplate: "{camera}: kamera vyměněna. Vrátil ses do kanceláře.",
     monsterCaughtYouTitle: "MONSTRUM TĚ DOSTALO.",
     continueButtonLabel: "Pokračovat",
     tryAgainButtonLabel: "Zkusit znovu",
@@ -635,6 +652,13 @@ export const COPY_CS = {
       few: "noci",
       many: "nocí",
     },
+    // Jednoduché "školní" hodnocení dokončené noci podle doby zavřených
+    // dveří (viz zadání, GameState.totalDoorClosedMs, game/core/shiftRating.ts) —
+    // čistě prezentační, nic se neukládá. {seconds} nahrazuje WinScreen.tsx
+    // zaokrouhleným celým počtem sekund (Math.round, samotné písmenné
+    // hodnocení se počítá z přesných milisekund, viz shiftRating.ts).
+    shiftRatingLabel: "HODNOCENÍ SMĚNY",
+    doorClosedTimeLabel: "Doba zavřených dveří: {seconds} s",
   },
   // Hardcore Noc 30 má dvě alternativní ending větve (viz zadání,
   // game/core/night30Ending.ts#resolveNight30Ending,

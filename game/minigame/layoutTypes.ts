@@ -1,4 +1,4 @@
-import { MiniGameItemId } from "./types";
+import { MiniGameCameraId, MiniGameItemId } from "./types";
 
 // Datový model mapy nouzové minihry (viz game/minigame/layouts/*, layoutPlacement.ts,
 // layoutValidation.ts) — NEZÁVISLÉ na game/core/types.ts, stejně jako zbytek
@@ -47,8 +47,17 @@ export interface MiniGameLayoutWall {
 
 // Tagy odpovídají existujícím MiniGameItemId hodnotám (battery/bulb/fuse/
 // shotgun/ammo/key/toolbox z types.ts) + tři speciální (player_start/
-// player_exit/monster_spawn) + generic_loot pro budoucí nepojmenovaný loot.
-export type MiniGameLayoutSlotTag = "player_start" | "player_exit" | "monster_spawn" | "generic_loot" | MiniGameItemId;
+// player_exit/monster_spawn) + generic_loot pro budoucí nepojmenovaný loot +
+// MiniGameCameraId (viz zadání "druhý výjezd — údržba kamer") pro kamerové
+// body na mapě — přesně jeden slot na kameru (na rozdíl od item tagů, které
+// mohou mít víc kandidátních slotů pro náhodný výběr).
+export type MiniGameLayoutSlotTag =
+  | "player_start"
+  | "player_exit"
+  | "monster_spawn"
+  | "generic_loot"
+  | MiniGameItemId
+  | MiniGameCameraId;
 
 export interface MiniGameLayoutSlot {
   id: string;

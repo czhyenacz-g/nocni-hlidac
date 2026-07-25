@@ -66,6 +66,10 @@ const SLOT_TAG_PRIORITY: MiniGameLayoutSlotTag[] = [
   "key",
   "toolbox",
   "empty",
+  "outer_yard",
+  "right_hallway",
+  "left_hallway",
+  "door_hallway",
   "generic_loot",
 ];
 
@@ -81,6 +85,10 @@ const SLOT_TAG_DEBUG_LABELS: Record<MiniGameLayoutSlotTag, string> = {
   key: "K",
   toolbox: "T",
   empty: "0",
+  outer_yard: "C",
+  right_hallway: "C",
+  left_hallway: "C",
+  door_hallway: "C",
   generic_loot: "?",
 };
 
