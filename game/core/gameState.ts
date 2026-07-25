@@ -160,6 +160,9 @@ export function createInitialGameState(night: NightDefinition, options: CreateIn
     generatorOverloadWindup: { active: false, startedAtMs: null, progressMs: 0 },
     generatorOverloadReadySeq: 0,
 
+    cameraMaintenanceWindup: { active: false, startedAtMs: null, progressMs: 0 },
+    cameraMaintenanceReadySeq: 0,
+
     nightFeatures: nightFeaturesOverride ?? DEFAULT_NIGHT_FEATURES,
 
     gameMode,

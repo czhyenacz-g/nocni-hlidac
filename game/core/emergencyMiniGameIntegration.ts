@@ -105,24 +105,35 @@ export function createShotgunEmergencyInput(
 export const DEFAULT_CAMERA_MAINTENANCE_LAYOUT_ID = MONITORED_HALLS_MAP.id;
 
 /**
- * Pevný cíl první verze (viz zadání "1 pevný cíl, netřeba náhodný výběr") —
- * jediné místo, které tohle rozhoduje. Až přibude náhodný výběr/víc
- * porouchaných kamer, je tohle jediné místo k úpravě.
+ * Který ze SKUTEČNĚ vyřazených kamer (viz GameState.cameraDamage.disabledCameraIds)
+ * je cíl výpravy — první v poli, stejná konvence jako
+ * `DEBUG_MOVE_ENEMY_TO_DISABLED_CAMERA` v gameReducer.ts
+ * (`const [firstDisabledCameraId] = state.cameraDamage.disabledCameraIds`).
+ * `null`, když není vyřazená žádná kamera — pak výprava nemá co opravit
+ * (viz canStartCameraMaintenanceRun níže). Víc než jedna vyřazená kamera
+ * najednou je v v1 vzácný okrajový případ (viz MAX_DISABLED_CAMERAS_BY_NIGHT);
+ * až přibude výběr cíle hráčem, je tohle jediné místo k úpravě.
  */
-export const DEFAULT_CAMERA_MAINTENANCE_TARGET_CAMERA_ID: MiniGameCameraId = "door_hallway";
+export function resolveCameraMaintenanceTargetCameraId(disabledCameraIds: MiniGameCameraId[]): MiniGameCameraId | null {
+  return disabledCameraIds[0] ?? null;
+}
 
 /**
  * Vstup pro "údržbu kamer" — druhý výjezd z kanceláře (viz zadání), stejný
  * engine/pravidla pohybu/AI jako battery/shotgun run výše, jen jiná
- * mapa+objective ("replace_camera" místo "collect_item"). `equipment`/
- * `monsterHitsToday`/`monsterHitsRequiredForFinal`/`monsterAlreadyDefeatedTonight`
- * stejné pole jako u ostatních výjezdů — SAMÉ monstrum/hidden-true-ending
- * počítadlo napříč všemi výjezdy tuhle noc, ne vlastní nezávislé počítání
- * (viz zadání "7. Monstrum — neměň spawn pravidla"). Žádný `extraLootItems`
- * (viz zadání "nepřidávej inventář/loot") — jen jeden pevný cíl.
+ * mapa+objective ("replace_camera" místo "collect_item"). `targetCameraId`
+ * volající MUSÍ spočítat přes `resolveCameraMaintenanceTargetCameraId`
+ * (a nejdřív ověřit `canStartCameraMaintenanceRun`) — tahle funkce si cíl
+ * sama nevybírá, jen ho zapíše do vstupu. `equipment`/`monsterHitsToday`/
+ * `monsterHitsRequiredForFinal`/`monsterAlreadyDefeatedTonight` stejné pole
+ * jako u ostatních výjezdů — SAMÉ monstrum/hidden-true-ending počítadlo
+ * napříč všemi výjezdy tuhle noc, ne vlastní nezávislé počítání (viz zadání
+ * "7. Monstrum — neměň spawn pravidla"). Žádný `extraLootItems` (viz zadání
+ * "nepřidávej inventář/loot") — jen jeden cíl.
  */
 export function createCameraMaintenanceEmergencyInput(
   equipment: EmergencyMiniGameEquipment,
+  targetCameraId: MiniGameCameraId,
   monsterHitsToday?: number,
   monsterHitsRequiredForFinal?: number,
   officeDoorLockMs?: number,
@@ -131,7 +142,7 @@ export function createCameraMaintenanceEmergencyInput(
 ): EmergencyMiniGameInput {
   return {
     objective: "replace_camera",
-    targetCameraId: DEFAULT_CAMERA_MAINTENANCE_TARGET_CAMERA_ID,
+    targetCameraId,
     equipment,
     difficulty: "medium",
     startLocation: "office",
@@ -225,15 +236,15 @@ export function canStartShotgunEmergencyRun(
 }
 
 /**
- * Jestli je "ÚDRŽBA KAMER" tuhle noc vůbec dostupná — jediné místo, které
+ * Jestli je "CAMERA MAINTENANCE" TEĎ vůbec k něčemu — jediné místo, které
  * tohle rozhoduje (stejný vzor jako canStartBatteryEmergencyRun výše),
- * LeftWallView i app/play/page.tsx na něj musí spoléhat. Zatím VŽDY `true`
- * (viz zadání "první testovací verze — tlačítko dostupné vždy, zatím ho
- * nepodmiňuj poruchou kamery") — jediné místo k úpravě, až přibude reálná
- * podmínka (např. porucha konkrétní kamery).
+ * LeftWallView i app/play/page.tsx na něj musí spoléhat. Vyžaduje SKUTEČNĚ
+ * vyřazenou kameru (viz resolveCameraMaintenanceTargetCameraId) — bez
+ * poruchy není co opravovat, tlačítko se vůbec nezobrazí (viz zadání "chci,
+ * aby to fungovalo doopravdy", ne jen vizuální stav).
  */
-export function canStartCameraMaintenanceRun(): boolean {
-  return true;
+export function canStartCameraMaintenanceRun(disabledCameraIds: MiniGameCameraId[]): boolean {
+  return resolveCameraMaintenanceTargetCameraId(disabledCameraIds) !== null;
 }
 
 /**

@@ -94,6 +94,7 @@ import {
   createCameraMaintenanceEmergencyInput,
   createShotgunEmergencyInput,
   resolveBulbsGainedFromWorldEffects,
+  resolveCameraMaintenanceTargetCameraId,
   resolveExtraLootItems,
   resolveOfficeThreatTriggeredFromWorldEffects,
   shouldLaunchEmergencyMiniGame,
@@ -288,22 +289,15 @@ function PlayPageContent() {
   // nastavená, GameScreen se vůbec nerenderuje (viz JSX), místo něj
   // EmergencyMiniGame, a hlavní herní smyčka (useGameLoop níže) se zastaví.
   // `id` "camera_maintenance_run" (viz zadání "druhý výjezd — údržba kamer")
-  // přibylo vedle battery_run/shotgun_run — spouští se obyčejným kliknutím
-  // (handleStartCameraMaintenanceRun níže), ne přes emergencyRunReadySeq
-  // windup efekt jako ostatní dvě. Deklarováno tady (ne blíž ostatním
-  // sourozeneckým useState) jen proto, aby ho useGameLoop níže mohl použít v
-  // `isRunning`.
+  // přibylo vedle battery_run/shotgun_run — spouští se stejným "drž 2s"
+  // windup vzorem jako battery/shotgun run (GameState.cameraMaintenanceWindup/
+  // cameraMaintenanceReadySeq), viz efekt na state.cameraMaintenanceReadySeq
+  // níže. Deklarováno tady (ne blíž ostatním sourozeneckým useState) jen
+  // proto, aby ho useGameLoop níže mohl použít v `isRunning`.
   const [activeMiniGame, setActiveMiniGame] = useState<{
     id: "battery_run" | "shotgun_run" | "camera_maintenance_run";
     input: EmergencyMiniGameInput;
   } | null>(null);
-  // Guard proti dvojkliku/souběžnému spuštění (viz zadání "zabraň dvojkliku")
-  // — na rozdíl od battery/shotgun run (které mají svůj vlastní "drž tlačítko"
-  // windup guard v reduceru) je tohle prosté onClick, takže potřebuje vlastní
-  // ref guard. Resetuje se v handleEmergencyMiniGameComplete, jakmile minihra
-  // skutečně skončí (viz níže) — ne dřív, ať rychlý druhý klik během běžící
-  // minihry nikdy nespustí druhou instanci.
-  const cameraMaintenanceLaunchGuardRef = useRef(false);
   // "Nechat si to projít hlavou" cinematic (viz content/cinematics.ts
   // think_it_over_warning, LeftWallView.tsx) — stejný "hlavní smyčka stojí,
   // dokud tohle běží" vzor jako activeMiniGame výše (viz useGameLoop
@@ -422,6 +416,7 @@ function PlayPageContent() {
   const prevBulbReplaceSuccessSeqRef = useRef(state.bulbReplaceSuccessSeq);
   const prevEmergencyRunReadySeqRef = useRef(state.emergencyRunReadySeq);
   const prevThinkItOverReadySeqRef = useRef(state.thinkItOverReadySeq);
+  const prevCameraMaintenanceReadySeqRef = useRef(state.cameraMaintenanceReadySeq);
   const prevGeneratorOverloadReadySeqRef = useRef(state.generatorOverloadReadySeq);
   // Zvuk překvapení na nejbližší kameře smí zaznít jen jednou za "návštěvu" —
   // dokud tam nepřítel je, další kliknutí na kameru (ani na jinou a zpátky) ho
@@ -1348,6 +1343,45 @@ function PlayPageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.emergencyRunReadySeq]);
 
+  // Držení "CAMERA MAINTENANCE" doběhlo celé (viz gameReducer.ts
+  // START_CAMERA_MAINTENANCE_WINDUP/TICK, GameState.cameraMaintenanceReadySeq)
+  // — stejný `shouldLaunchEmergencyMiniGame` (>) diff jako emergencyRunReadySeq
+  // výše, ze stejného důvodu (nová směna resetuje seq zpět na 0). Cíl výpravy
+  // se počítá TADY, z aktuálního `state.cameraDamage.disabledCameraIds` — je
+  // možné, že se mezitím (během windupu) porucha nezmění, ale kdyby přece jen
+  // ano (např. Ghoul rozbil DALŠÍ kameru), použije se čerstvý stav, ne ten z
+  // okamžiku kliknutí. `resolveCameraMaintenanceTargetCameraId` vrátí `null`,
+  // pokud mezitím není žádná kamera vyřazená vůbec (typicky by tomu měl
+  // zabránit canStartCameraMaintenanceWindup guard v reduceru, ale efekt
+  // se na to nespoléhá) — pak se minihra prostě nespustí.
+  useEffect(() => {
+    if (shouldLaunchEmergencyMiniGame(prevCameraMaintenanceReadySeqRef.current, state.cameraMaintenanceReadySeq)) {
+      const targetCameraId = resolveCameraMaintenanceTargetCameraId(state.cameraDamage.disabledCameraIds as MiniGameCameraId[]);
+      if (targetCameraId !== null) {
+        recordExpeditionStarted();
+        const equipment = { hasShotgun: state.hasShotgun, ammo: state.shotgunAmmo };
+        setActiveMiniGame({
+          id: "camera_maintenance_run",
+          input: createCameraMaintenanceEmergencyInput(
+            equipment,
+            targetCameraId,
+            state.monsterHitsToday,
+            state.nightFeatures.monsterTrueEndingRequiredHits,
+            state.officeDoorLockMs,
+            state.monsterDefeated,
+            // Čistě vizuální info pro draw() v minihře (červená značka pro
+            // skutečně vyřazenou kameru, viz EmergencyMiniGame.tsx) — CameraId
+            // a MiniGameCameraId mají stejné 4 hodnoty (viz
+            // game/minigame/types.ts#MiniGameCameraId "DUPLIKOVANÉ").
+            state.cameraDamage.disabledCameraIds as MiniGameCameraId[],
+          ),
+        });
+      }
+    }
+    prevCameraMaintenanceReadySeqRef.current = state.cameraMaintenanceReadySeq;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.cameraMaintenanceReadySeq]);
+
   // Držení "Nechat si to projít hlavou" doběhlo celé (viz gameReducer.ts
   // START_THINK_IT_OVER_WINDUP/TICK) — spustí celou cinematic scénu (viz
   // content/cinematics.ts think_it_over_warning), ne jen krátkou hlášku
@@ -1757,34 +1791,20 @@ function PlayPageContent() {
     dispatch({ type: "CANCEL_EMERGENCY_RUN_WINDUP" });
   }
 
-  // "CAMERA MAINTENANCE" (viz zadání "druhý výjezd — údržba kamer") —
-  // obyčejný klik (ne drž a riskuj), proto vlastní ref guard místo reducer
-  // windup mašinky jako battery/shotgun run výše. `activeMiniGame` guard
-  // pokrývá souběžnost s JINOU výpravou, ref guard pokrývá rychlý dvojklik
-  // téhož tlačítka dřív, než React stihne re-render s aktualizovaným
-  // activeMiniGame.
-  function handleStartCameraMaintenanceRun() {
-    if (!canStartCameraMaintenanceRun()) return;
-    if (activeMiniGame || cameraMaintenanceLaunchGuardRef.current) return;
-    cameraMaintenanceLaunchGuardRef.current = true;
+  // "CAMERA MAINTENANCE" (viz zadání "druhý výjezd — údržba kamer") — teď
+  // stejné "drž 2s a riskuj" chování jako "Jít ven" výše
+  // (CAMERA_MAINTENANCE_WINDUP_DURATION_MS, GameState.cameraMaintenanceWindup),
+  // ne obyčejný klik. Skutečné spuštění EmergencyMiniGame se řeší až v
+  // efektu na `state.cameraMaintenanceReadySeq` níže, stejně jako
+  // emergencyRunReadySeq -> EmergencyMiniGame.
+  function handleStartCameraMaintenanceRunWindup() {
+    if (!canStartCameraMaintenanceRun(state.cameraDamage.disabledCameraIds as MiniGameCameraId[])) return;
     audioManager.play(AUDIO_EVENTS.uiClick);
-    recordExpeditionStarted();
-    const equipment = { hasShotgun: state.hasShotgun, ammo: state.shotgunAmmo };
-    setActiveMiniGame({
-      id: "camera_maintenance_run",
-      input: createCameraMaintenanceEmergencyInput(
-        equipment,
-        state.monsterHitsToday,
-        state.nightFeatures.monsterTrueEndingRequiredHits,
-        state.officeDoorLockMs,
-        state.monsterDefeated,
-        // CameraId a MiniGameCameraId mají stejné 4 hodnoty (viz
-        // game/minigame/types.ts#MiniGameCameraId komentář "DUPLIKOVANÉ,
-        // game/minigame/* je záměrně nezávislé na game/core/*") — čistě
-        // vizuální info pro draw() (červená značka), žádný gameplay dopad.
-        state.cameraDamage.disabledCameraIds as MiniGameCameraId[],
-      ),
-    });
+    dispatch({ type: "START_CAMERA_MAINTENANCE_WINDUP" });
+  }
+
+  function handleCancelCameraMaintenanceRunWindup() {
+    dispatch({ type: "CANCEL_CAMERA_MAINTENANCE_WINDUP" });
   }
 
   // "Nechat si to projít hlavou" (viz zadání) — stejný vzor jako
@@ -1829,10 +1849,6 @@ function PlayPageContent() {
   // death flow (dead), nebo jen tiše vrátí hráče zpět bez efektu (failed).
   function handleEmergencyMiniGameComplete(result: EmergencyMiniGameResult) {
     setActiveMiniGame(null);
-    // Reset dvojklikového guardu (viz handleStartCameraMaintenanceRun) —
-    // TADY, ne dřív, ať rychlý druhý klik během běžící minihry nikdy
-    // nespustí druhou instanci (platí pro "dead" i "returned"/"failed").
-    cameraMaintenanceLaunchGuardRef.current = false;
 
     if (result.outcome === "dead") {
       dispatch({ type: "EMERGENCY_MINIGAME_DIED" });
@@ -2004,9 +2020,14 @@ function PlayPageContent() {
       // COPY.cameras[id].label (stejný štítek jako CameraPanel), žádná nová
       // mapa camera id -> jméno.
       if (result.completedObjective?.type === "reached_location") {
-        const cameraId = result.completedObjective.locationId as keyof typeof COPY.cameras;
+        const cameraId = result.completedObjective.locationId as CameraId;
         const cameraLabel = COPY.cameras[cameraId]?.label ?? result.completedObjective.locationId;
         messages.push(COPY.minigame.cameraReplacedReturnedTemplate.replace("{camera}", cameraLabel));
+        // Skutečná oprava (viz zadání "chci, aby to fungovalo doopravdy") —
+        // odstraní kameru z GameState.cameraDamage.disabledCameraIds (viz
+        // gameReducer.ts REPAIR_CAMERA, game/core/cameraDamage.ts#repairCamera).
+        // Jen tady, při bezpečném návratu — smrt cestou opravu nikdy nedokončí.
+        dispatch({ type: "REPAIR_CAMERA", cameraId });
       }
 
       if (messages.length > 0) setEmergencyRunMessage(messages.join("\n"));
@@ -2334,7 +2355,8 @@ function PlayPageContent() {
           onRequestAmmo={handleRequestAmmo}
           onStartEmergencyRunWindup={handleStartEmergencyRunWindup}
           onCancelEmergencyRunWindup={handleCancelEmergencyRunWindup}
-          onStartCameraMaintenanceRun={handleStartCameraMaintenanceRun}
+          onStartCameraMaintenanceRunWindup={handleStartCameraMaintenanceRunWindup}
+          onCancelCameraMaintenanceRunWindup={handleCancelCameraMaintenanceRunWindup}
           onStartThinkItOverWindup={handleStartThinkItOverWindup}
           onCancelThinkItOverWindup={handleCancelThinkItOverWindup}
           onChangeOfficeDoorLockMs={handleChangeOfficeDoorLockMs}

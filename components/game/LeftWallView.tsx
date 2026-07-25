@@ -1,12 +1,14 @@
 import { useEffect, useState, type ChangeEvent, type CSSProperties, type PointerEvent } from "react";
 import { useCopy } from "@/game/i18n/useTranslation";
 import {
+  CAMERA_MAINTENANCE_WINDUP_DURATION_MS,
   EMERGENCY_RUN_WINDUP_DURATION_MS,
   REQUEST_AMMO_NO_WEAPON_MESSAGE_MS,
   THINK_IT_OVER_WINDUP_DURATION_MS,
 } from "@/game/balancing/constants";
 import { computeEmergencyRunWindupProgressRatio } from "@/game/core/emergencyRunWindupProgress";
 import { computeThinkItOverWindupProgressRatio } from "@/game/core/thinkItOverWindupProgress";
+import { computeCameraMaintenanceWindupProgressRatio } from "@/game/core/cameraMaintenanceWindupProgress";
 import { getShotgunMaxAmmo } from "@/game/core/shotgunEquipment";
 import { OFFICE_DOOR_LOCK_MAX_MS, OFFICE_DOOR_LOCK_MIN_MS } from "@/game/minigame/config";
 import ViewSwitchArrow from "./ViewSwitchArrow";
@@ -102,15 +104,18 @@ interface LeftWallViewProps {
   onRequestAmmo: () => void;
   /**
    * Vedlejší tlačítko "CAMERA MAINTENANCE" (viz zadání "druhý výjezd —
-   * údržba kamer") — na rozdíl od onStartEmergencyRunWindup se NEDRŽÍ, spustí
-   * se prostým kliknutím (app/play/page.tsx#handleStartCameraMaintenanceRun),
-   * které si samo hlídá dvojklik. `canStartCameraMaintenanceRun` je pro v1
-   * podle zadání vždy `true` (viz game/core/emergencyMiniGameIntegration.ts
-   * #canStartCameraMaintenanceRun) — prop existuje jen pro budoucí podmínku
-   * (např. porucha kamery), ne proto, že by se dnes někdy skrývalo.
+   * údržba kamer") — stejný "drž 2s a riskuj" vzor jako
+   * onStartEmergencyRunWindup výše (GameState.cameraMaintenanceWindup,
+   * CAMERA_MAINTENANCE_WINDUP_DURATION_MS), ne obyčejný klik.
+   * `canStartCameraMaintenanceRun` je `true`, jen když je SKUTEČNĚ nějaká
+   * kamera vyřazená (viz game/core/emergencyMiniGameIntegration.ts
+   * #canStartCameraMaintenanceRun) — bez poruchy se tlačítko vůbec nezobrazí.
    */
-  onStartCameraMaintenanceRun: () => void;
+  onStartCameraMaintenanceRunWindup: () => void;
+  onCancelCameraMaintenanceRunWindup: () => void;
   canStartCameraMaintenanceRun: boolean;
+  cameraMaintenanceWindupActive: boolean;
+  cameraMaintenanceWindupProgressMs: number;
 }
 
 /** Prázdný stojan na zbraň — beze změny oproti dřívějšku, dokud hráč brokovnici nemá (viz hasShotgun). */
@@ -153,8 +158,11 @@ export default function LeftWallView({
   officeDoorLockMs,
   onChangeOfficeDoorLockMs,
   onRequestAmmo,
-  onStartCameraMaintenanceRun,
+  onStartCameraMaintenanceRunWindup,
+  onCancelCameraMaintenanceRunWindup,
   canStartCameraMaintenanceRun,
+  cameraMaintenanceWindupActive,
+  cameraMaintenanceWindupProgressMs,
 }: LeftWallViewProps) {
   const COPY = useCopy();
   const [imageFailed, setImageFailed] = useState(false);
@@ -216,6 +224,15 @@ export default function LeftWallView({
     onCancelThinkItOverWindup();
   }
 
+  function handleCameraMaintenancePointerDown(event: PointerEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    onStartCameraMaintenanceRunWindup();
+  }
+
+  function handleCameraMaintenancePointerUp() {
+    onCancelCameraMaintenanceRunWindup();
+  }
+
   function handleOfficeDoorLockMsChange(event: ChangeEvent<HTMLInputElement>) {
     onChangeOfficeDoorLockMs(Number(event.target.value));
   }
@@ -224,6 +241,11 @@ export default function LeftWallView({
   const windupPercent = computeEmergencyRunWindupProgressRatio(emergencyRunWindupProgressMs) * 100;
   const thinkItOverSeconds = Math.max(0, (THINK_IT_OVER_WINDUP_DURATION_MS - thinkItOverWindupProgressMs) / 1000).toFixed(1);
   const thinkItOverPercent = computeThinkItOverWindupProgressRatio(thinkItOverWindupProgressMs) * 100;
+  const cameraMaintenanceSeconds = Math.max(
+    0,
+    (CAMERA_MAINTENANCE_WINDUP_DURATION_MS - cameraMaintenanceWindupProgressMs) / 1000,
+  ).toFixed(1);
+  const cameraMaintenancePercent = computeCameraMaintenanceWindupProgressRatio(cameraMaintenanceWindupProgressMs) * 100;
 
   return (
     <div className="flex flex-col gap-3">
@@ -260,12 +282,14 @@ export default function LeftWallView({
       </div>
 
       <div className="w-full max-w-md mx-auto flex flex-col items-end gap-2">
-        {/* "Zpět ke stolu" + "Otočit se ke dveřím" na jednom řádku (na
-            výslovnou žádost) — ViewSwitchArrow zůstává svojí přirozenou
-            šířkou, "Otočit se ke dveřím" vyplní zbytek řádku (`flex-1`
-            místo dřívějšího `w-full` přes celou šířku samostatně). */}
+        {/* "Zpět ke stolu" + "Otočit se ke dveřím" na jednom řádku, STEJNĚ
+            ŠIROKÉ (na výslovnou žádost) — ViewSwitchArrow už samo má
+            `w-full`, obalení do `flex-1` divu ho zúží na polovinu řádku
+            stejně jako sousední tlačítko. */}
         <div className="w-full flex items-center gap-3">
-          <ViewSwitchArrow label={COPY.game.leftWallBackLabel} onClick={onLookAtDesk} align="left" />
+          <div className="flex-1">
+            <ViewSwitchArrow label={COPY.game.leftWallBackLabel} onClick={onLookAtDesk} align="left" />
+          </div>
           <button
             type="button"
             className="pixel-button console-button console-button--primary tap-target flex items-center gap-2.5 px-3 py-2.5 text-xs touch-none select-none flex-1"
@@ -333,20 +357,31 @@ export default function LeftWallView({
             )}
 
             {/* "CAMERA MAINTENANCE" (viz zadání "druhý výjezd — údržba kamer") —
-                vedle emergency-run tlačítka, stejný vizuál (pixel-button
-                console-button), ale obyčejný klik (ne drž a riskuj) — handler
-                (app/play/page.tsx#handleStartCameraMaintenanceRun) si sám hlídá
-                dvojklik/souběžné spuštění. */}
+                vedle emergency-run tlačítka, stejný "drž 2s a riskuj" vzor
+                (pixel-blink, viz emergencyRunWindupActive výše), jen kratší
+                CAMERA_MAINTENANCE_WINDUP_DURATION_MS a bez sirény/varování. */}
             {canStartCameraMaintenanceRun && (
               <button
                 type="button"
                 className="pixel-button console-button tap-target flex items-center gap-2 px-3 py-2 text-xs touch-none select-none flex-1"
-                onClick={onStartCameraMaintenanceRun}
+                style={
+                  cameraMaintenanceWindupActive
+                    ? { animation: "pixel-blink 0.35s steps(2) infinite", backgroundColor: "#facc15", color: "#1a1a1a" }
+                    : undefined
+                }
+                onPointerDown={handleCameraMaintenancePointerDown}
+                onPointerUp={handleCameraMaintenancePointerUp}
+                onPointerLeave={handleCameraMaintenancePointerUp}
+                onPointerCancel={handleCameraMaintenancePointerUp}
               >
                 <span className="console-icon-block" aria-hidden="true">
                   <ConsoleIcon id="warn" />
                 </span>
-                <span className="whitespace-pre-line">{COPY.game.startCameraMaintenanceLabel}</span>
+                <span className="whitespace-pre-line">
+                  {cameraMaintenanceWindupActive
+                    ? COPY.game.cameraMaintenanceHoldingLabel.replace("{seconds}", cameraMaintenanceSeconds)
+                    : COPY.game.startCameraMaintenanceLabel}
+                </span>
               </button>
             )}
           </div>
@@ -354,6 +389,11 @@ export default function LeftWallView({
         {canStartEmergencyRun && emergencyRunWindupActive && (
           <div className="w-32 h-1 bg-gray-800 border border-gray-700 rounded overflow-hidden">
             <div className="h-full bg-red-500 transition-all duration-150" style={{ width: `${windupPercent}%` }} />
+          </div>
+        )}
+        {canStartCameraMaintenanceRun && cameraMaintenanceWindupActive && (
+          <div className="w-32 h-1 bg-gray-800 border border-gray-700 rounded overflow-hidden">
+            <div className="h-full bg-red-500 transition-all duration-150" style={{ width: `${cameraMaintenancePercent}%` }} />
           </div>
         )}
         {/* Nenápadná informace o munici (viz zadání) — jen když má hráč

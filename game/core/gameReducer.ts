@@ -3,6 +3,7 @@ import { createInitialGameState } from "./gameState";
 import { EnemyStage, GameState, NightDefinition } from "./types";
 import {
   BULB_REPLACE_DURATION_MS,
+  CAMERA_MAINTENANCE_WINDUP_DURATION_MS,
   EMERGENCY_RUN_WINDUP_DURATION_MS,
   GENERATOR_OVERLOAD_DOOR_DURATION_MS,
   GENERATOR_OVERLOAD_WINDUP_DURATION_MS,
@@ -22,7 +23,7 @@ import { computeStressTimeScale } from "./stressTimeScale";
 import { isNearRoomLightActive } from "./roomBulbs";
 import { isOfficeBreachResolved } from "./officeBreachAftermath";
 import { computePowerDrainBreakdown } from "./powerDrain";
-import { canStartBatteryEmergencyRun } from "./emergencyMiniGameIntegration";
+import { canStartBatteryEmergencyRun, canStartCameraMaintenanceRun } from "./emergencyMiniGameIntegration";
 import { resolveLivesRemainingAfterDeath } from "./gameMode";
 import { confirmMonsterHit } from "./monsterEnding";
 import { canRequestAmmo, requestSingleAmmo } from "./shotgunEquipment";
@@ -34,6 +35,7 @@ import {
   findDisabledCameraIdForEnemyStage,
   INACTIVE_CAMERA_DAMAGE,
   isEnemyOnDisabledCameraStage,
+  repairCamera,
   updateCameraDamagePhase,
 } from "./cameraDamage";
 import { DISABLED_CAMERA_FOOTSTEPS_COOLDOWN_MS, GHOUL_CAMERA_ATTACK_RETREAT_PAUSE_MS } from "./cameraDamageConfig";
@@ -522,6 +524,40 @@ function updateThinkItOverWindup(
 
 const INACTIVE_THINK_IT_OVER_WINDUP: GameState["thinkItOverWindup"] = { active: false, startedAtMs: null, progressMs: 0 };
 
+// Progres držení "CAMERA MAINTENANCE" — stejná mechanika jako
+// updateEmergencyRunWindup výše, jen jiná konstanta a jiné "seq" pole. Po
+// dosažení CAMERA_MAINTENANCE_WINDUP_DURATION_MS se `cameraMaintenanceReadySeq`
+// jednou zvýší — app/play/page.tsx podle toho skutečně spustí
+// EmergencyMiniGame s objective "replace_camera" (stejný vzor jako
+// emergencyRunReadySeq, ne jako thinkItOverReadySeq).
+function updateCameraMaintenanceWindup(
+  state: GameState,
+  deltaMs: number,
+): Pick<GameState, "cameraMaintenanceWindup" | "cameraMaintenanceReadySeq"> {
+  if (!state.cameraMaintenanceWindup.active) {
+    return { cameraMaintenanceWindup: state.cameraMaintenanceWindup, cameraMaintenanceReadySeq: state.cameraMaintenanceReadySeq };
+  }
+
+  const progressMs = state.cameraMaintenanceWindup.progressMs + deltaMs;
+  if (progressMs >= CAMERA_MAINTENANCE_WINDUP_DURATION_MS) {
+    return {
+      cameraMaintenanceWindup: { active: false, startedAtMs: null, progressMs: 0 },
+      cameraMaintenanceReadySeq: state.cameraMaintenanceReadySeq + 1,
+    };
+  }
+
+  return {
+    cameraMaintenanceWindup: { ...state.cameraMaintenanceWindup, progressMs },
+    cameraMaintenanceReadySeq: state.cameraMaintenanceReadySeq,
+  };
+}
+
+const INACTIVE_CAMERA_MAINTENANCE_WINDUP: GameState["cameraMaintenanceWindup"] = {
+  active: false,
+  startedAtMs: null,
+  progressMs: 0,
+};
+
 /**
  * Sdílená podmínka "PŘETÍŽIT GENERÁTOR" NENÍ teď použitelné — bez ohledu na
  * to, jestli hráč zrovna drží tlačítko, nebo se to teprve chystá udělat.
@@ -718,6 +754,23 @@ export function canStartEmergencyRunWindup(state: GameState): boolean {
   if (!state.isRunning || state.gameStatus === "blackout" || state.doorDeathRevealUntilMs !== null) return false;
   if (state.playerView !== "left_wall" || state.doorClosed) return false;
   if (state.emergencyRunWindup.active) return false;
+  return true;
+}
+
+/**
+ * Jestli hráč MŮŽE teď začít držet "CAMERA MAINTENANCE" na left_wall —
+ * sdílená podmínka mezi `START_CAMERA_MAINTENANCE_WINDUP` (reducer) a UI
+ * (`LeftWallView.tsx` přes `app/play/page.tsx`/`GameScreen.tsx`), stejný
+ * vzor jako `canStartEmergencyRunWindup`. Na rozdíl od "Jít ven" nevyžaduje
+ * otevřené dveře (viz zadání) — vyžaduje SKUTEČNĚ vyřazenou kameru
+ * (`canStartCameraMaintenanceRun`, viz emergencyMiniGameIntegration.ts) —
+ * bez poruchy není co opravovat.
+ */
+export function canStartCameraMaintenanceWindup(state: GameState): boolean {
+  if (!canStartCameraMaintenanceRun(state.cameraDamage.disabledCameraIds)) return false;
+  if (!state.isRunning || state.gameStatus === "blackout" || state.doorDeathRevealUntilMs !== null) return false;
+  if (state.playerView !== "left_wall") return false;
+  if (state.cameraMaintenanceWindup.active) return false;
   return true;
 }
 
@@ -923,6 +976,30 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
       case "CANCEL_EMERGENCY_RUN_WINDUP":
         if (!state.emergencyRunWindup.active) return state;
         return { ...state, emergencyRunWindup: INACTIVE_EMERGENCY_RUN_WINDUP };
+
+      case "START_CAMERA_MAINTENANCE_WINDUP": {
+        // Stejný Titan-ambush guard jako START_EMERGENCY_RUN_WINDUP výše —
+        // pokus o výpravu (jakoukoliv) během aktivního Titana je okamžitý
+        // Game Over, KONTROLOVANÉ PŘED canStartCameraMaintenanceWindup.
+        if (isTitanEncounterActive(state, night)) {
+          return {
+            ...state,
+            isRunning: false,
+            screen: "death",
+            deathReason: "titan_ambush_emergency_run",
+            livesRemaining: resolveLivesRemainingAfterDeath(state.gameMode, state.livesRemaining),
+          };
+        }
+        if (!canStartCameraMaintenanceWindup(state)) return state;
+        return {
+          ...state,
+          cameraMaintenanceWindup: { active: true, startedAtMs: state.elapsedMs, progressMs: 0 },
+        };
+      }
+
+      case "CANCEL_CAMERA_MAINTENANCE_WINDUP":
+        if (!state.cameraMaintenanceWindup.active) return state;
+        return { ...state, cameraMaintenanceWindup: INACTIVE_CAMERA_MAINTENANCE_WINDUP };
 
       case "START_THINK_IT_OVER_WINDUP": {
         if (!canStartThinkItOverWindup(state)) return state;
@@ -1131,6 +1208,11 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           // Stejný důvod jako emergencyRunWindup výše, jen pro "Nechat si to
           // projít hlavou" (viz zadání).
           thinkItOverWindup: state.thinkItOverWindup.active ? INACTIVE_THINK_IT_OVER_WINDUP : state.thinkItOverWindup,
+          // Stejný důvod jako emergencyRunWindup výše, jen pro "CAMERA
+          // MAINTENANCE" (viz zadání).
+          cameraMaintenanceWindup: state.cameraMaintenanceWindup.active
+            ? INACTIVE_CAMERA_MAINTENANCE_WINDUP
+            : state.cameraMaintenanceWindup,
           generatorOverloadWindup: state.generatorOverloadWindup.active
             ? INACTIVE_GENERATOR_OVERLOAD_WINDUP
             : state.generatorOverloadWindup,
@@ -1149,6 +1231,9 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           bulbReplacement: isBulbReplacementCancelableByViewChange(state) ? INACTIVE_BULB_REPLACEMENT : state.bulbReplacement,
           emergencyRunWindup: state.emergencyRunWindup.active ? INACTIVE_EMERGENCY_RUN_WINDUP : state.emergencyRunWindup,
           thinkItOverWindup: state.thinkItOverWindup.active ? INACTIVE_THINK_IT_OVER_WINDUP : state.thinkItOverWindup,
+          cameraMaintenanceWindup: state.cameraMaintenanceWindup.active
+            ? INACTIVE_CAMERA_MAINTENANCE_WINDUP
+            : state.cameraMaintenanceWindup,
         };
 
       case "LOOK_AT_LEFT_WALL":
@@ -1186,6 +1271,9 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           bulbReplacement: isBulbReplacementCancelableByViewChange(state) ? INACTIVE_BULB_REPLACEMENT : state.bulbReplacement,
           emergencyRunWindup: state.emergencyRunWindup.active ? INACTIVE_EMERGENCY_RUN_WINDUP : state.emergencyRunWindup,
           thinkItOverWindup: state.thinkItOverWindup.active ? INACTIVE_THINK_IT_OVER_WINDUP : state.thinkItOverWindup,
+          cameraMaintenanceWindup: state.cameraMaintenanceWindup.active
+            ? INACTIVE_CAMERA_MAINTENANCE_WINDUP
+            : state.cameraMaintenanceWindup,
           generatorOverloadWindup: state.generatorOverloadWindup.active
             ? INACTIVE_GENERATOR_OVERLOAD_WINDUP
             : state.generatorOverloadWindup,
@@ -1465,6 +1553,10 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
         // "Nechat si to projít hlavou"), stejný "nanejvýš jedna active"
         // vzor (LOOK_AT_* mezi nimi zruší tu druhou).
         const thinkItOverWindupUpdate = updateThinkItOverWindup(state, action.deltaMs);
+        // Nezávislé na všech výše — jiná riskantní ruční akce, stejný
+        // left_wall pohled jako emergencyRunWindup, ale nezávislý "active"
+        // stav (LOOK_AT_* mezi nimi vždy zruší tu druhou).
+        const cameraMaintenanceWindupUpdate = updateCameraMaintenanceWindup(state, action.deltaMs);
         // Nezávislé na obou windupech výše — jiná riskantní ruční akce, jiný
         // pohled (generator, ne left_wall), stejný "nanejvýš jedna active"
         // vzor (LOOK_AT_* mezi nimi zruší tu druhou).
@@ -1511,6 +1603,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             bulbReplacement: INACTIVE_BULB_REPLACEMENT,
             emergencyRunWindup: INACTIVE_EMERGENCY_RUN_WINDUP,
             thinkItOverWindup: INACTIVE_THINK_IT_OVER_WINDUP,
+            cameraMaintenanceWindup: INACTIVE_CAMERA_MAINTENANCE_WINDUP,
             // Stejný důvod jako blackout přes durationMs výše — probíhající
             // přetížení se zruší, dveře se tímhle NEZNIČÍ (jen zůstávají
             // otevřené jako všechno ostatní systém během blackoutu).
@@ -1532,6 +1625,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
             ...bulbReplacementUpdate,
             ...emergencyRunWindupUpdate,
             ...thinkItOverWindupUpdate,
+            ...cameraMaintenanceWindupUpdate,
             ...generatorOverloadWindupUpdate,
             ...doorGeneratorOverloadUpdate,
             ...cameraDamageUpdate,
@@ -1569,6 +1663,7 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
           ...bulbReplacementUpdate,
           ...emergencyRunWindupUpdate,
           ...thinkItOverWindupUpdate,
+          ...cameraMaintenanceWindupUpdate,
           ...generatorOverloadWindupUpdate,
           ...doorGeneratorOverloadUpdate,
           ...cameraDamageUpdate,
@@ -1787,6 +1882,14 @@ export function createGameReducer(night: NightDefinition, difficulty: Difficulty
       case "REQUEST_AMMO":
         if (!state.isRunning || !canRequestAmmo(state)) return state;
         return { ...state, shotgunAmmo: requestSingleAmmo(state) };
+
+      // Bezpečný návrat z CAMERA MAINTENANCE výpravy s dokončeným objective
+      // (viz gameActions.ts, app/play/page.tsx#handleEmergencyMiniGameComplete) —
+      // odstraní kameru z disabledCameraIds (viz cameraDamage.ts#repairCamera).
+      // No-op mimo běžící směnu, stejný guard jako ostatní akce.
+      case "REPAIR_CAMERA":
+        if (!state.isRunning) return state;
+        return { ...state, cameraDamage: repairCamera(state.cameraDamage, action.cameraId) };
 
       // Hráč venku PRÁVĚ TEĎ trefil monstrum brokovnicí (viz
       // EmergencyMiniGame.tsx#fireShot, app/play/page.tsx#onMonsterHit) —

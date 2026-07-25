@@ -157,6 +157,15 @@ export type GameAction =
   // Žádná podmínka na monstru/stage tady záměrně není (viz TODO.md) —
   // přetížení dnes VŽDY zničí dveře.
   | { type: "START_GENERATOR_OVERLOAD" }
+  // Držení "CAMERA MAINTENANCE" (viz CameraMaintenanceWindupState,
+  // LeftWallView.tsx) — stejný start/cancel pár jako
+  // START_EMERGENCY_RUN_WINDUP/CANCEL_EMERGENCY_RUN_WINDUP výše. Po
+  // doběhnutí (cameraMaintenanceReadySeq) app/play/page.tsx skutečně spustí
+  // EmergencyMiniGame s objective "replace_camera" (stejný vzor jako
+  // emergencyRunReadySeq -> EmergencyMiniGame, ne jako
+  // thinkItOverReadySeq -> jen hláška).
+  | { type: "START_CAMERA_MAINTENANCE_WINDUP" }
+  | { type: "CANCEL_CAMERA_MAINTENANCE_WINDUP" }
   // Hráč se vrátil z nouzové minihry (outcome "returned"), ale monstrum ho
   // pronásledovalo/bylo blízko kanceláře (viz
   // game/minigame/officeThreat.ts#evaluateOfficeThreatOnReturn,
@@ -191,6 +200,15 @@ export type GameAction =
   // app/play/page.tsx#handleRequestAmmo PŘED dispatchem (zná stav ještě
   // před akcí, stejný vzor jako ostatní přímo klikací handlery).
   | { type: "REQUEST_AMMO" }
+  // Bezpečný návrat z CAMERA MAINTENANCE výpravy (viz
+  // game/core/emergencyMiniGameIntegration.ts#createCameraMaintenanceEmergencyInput,
+  // app/play/page.tsx#handleEmergencyMiniGameComplete) s dokončeným
+  // objective "replace_camera" — odstraní `cameraId` z
+  // GameState.cameraDamage.disabledCameraIds (viz game/core/cameraDamage.ts
+  // #repairCamera). No-op, pokud kamera zrovna vyřazená není (hráč mohl
+  // vyrazit na kameru, kterou mezitím MEZI výjezdem opravil útok/reset —
+  // v produkci se to nestává, ale reducer se na to nesmí spolehnout).
+  | { type: "REPAIR_CAMERA"; cameraId: CameraId }
   // Skrytý true ending (viz zadání, game/core/monsterEnding.ts) — dva kroky,
   // stejné rozdělení jako "sebrání věci" vs. "dokončení mise" v minihře:
   // MARK_PENDING_MONSTER_HIT se dispatchne HNED, jak hráč venku trefí

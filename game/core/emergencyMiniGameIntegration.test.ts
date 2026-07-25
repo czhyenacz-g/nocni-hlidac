@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_BATTERY_RUN_LAYOUT_ID,
   DEFAULT_CAMERA_MAINTENANCE_LAYOUT_ID,
-  DEFAULT_CAMERA_MAINTENANCE_TARGET_CAMERA_ID,
   applyEmergencyWorldEffects,
   canStartBatteryEmergencyRun,
   canStartCameraMaintenanceRun,
@@ -11,6 +10,7 @@ import {
   createCameraMaintenanceEmergencyInput,
   createShotgunEmergencyInput,
   resolveBulbsGainedFromWorldEffects,
+  resolveCameraMaintenanceTargetCameraId,
   resolveExtraLootItems,
   resolveOfficeThreatTriggeredFromWorldEffects,
   shouldLaunchEmergencyMiniGame,
@@ -120,43 +120,69 @@ describe("createShotgunEmergencyInput", () => {
 });
 
 describe("createCameraMaintenanceEmergencyInput", () => {
-  it("has objective replace_camera and targetCameraId door_hallway", () => {
-    const input = createCameraMaintenanceEmergencyInput({ hasShotgun: false, ammo: 0 });
+  it("has objective replace_camera and the given targetCameraId", () => {
+    const input = createCameraMaintenanceEmergencyInput({ hasShotgun: false, ammo: 0 }, "left_hallway");
     expect(input.objective).toBe("replace_camera");
-    expect(input.targetCameraId).toBe("door_hallway");
-    expect(input.targetCameraId).toBe(DEFAULT_CAMERA_MAINTENANCE_TARGET_CAMERA_ID);
+    expect(input.targetCameraId).toBe("left_hallway");
   });
 
   it("uses the monitored_halls layout", () => {
-    const input = createCameraMaintenanceEmergencyInput({ hasShotgun: false, ammo: 0 });
+    const input = createCameraMaintenanceEmergencyInput({ hasShotgun: false, ammo: 0 }, "door_hallway");
     expect(input.layoutId).toBe("monitored_halls");
     expect(input.layoutId).toBe(MONITORED_HALLS_MAP.id);
     expect(input.layoutId).toBe(DEFAULT_CAMERA_MAINTENANCE_LAYOUT_ID);
   });
 
   it("passes the equipment argument through unchanged", () => {
-    expect(createCameraMaintenanceEmergencyInput({ hasShotgun: true, ammo: 2 }).equipment).toEqual({
+    expect(createCameraMaintenanceEmergencyInput({ hasShotgun: true, ammo: 2 }, "door_hallway").equipment).toEqual({
       hasShotgun: true,
       ammo: 2,
     });
   });
 
   it("starts in the office, same as the other emergency runs", () => {
-    expect(createCameraMaintenanceEmergencyInput({ hasShotgun: false, ammo: 0 }).startLocation).toBe("office");
+    expect(createCameraMaintenanceEmergencyInput({ hasShotgun: false, ammo: 0 }, "door_hallway").startLocation).toBe("office");
   });
 
   it("passes monsterHitsToday/monsterHitsRequiredForFinal/officeDoorLockMs/monsterAlreadyDefeatedTonight through unchanged", () => {
-    const input = createCameraMaintenanceEmergencyInput({ hasShotgun: false, ammo: 0 }, 3, 10, 20_000, true);
+    const input = createCameraMaintenanceEmergencyInput({ hasShotgun: false, ammo: 0 }, "door_hallway", 3, 10, 20_000, true);
     expect(input.monsterHitsToday).toBe(3);
     expect(input.monsterHitsRequiredForFinal).toBe(10);
     expect(input.officeDoorLockMs).toBe(20_000);
     expect(input.monsterAlreadyDefeatedTonight).toBe(true);
   });
+
+  it("passes disabledCameraIds through unchanged when provided", () => {
+    const input = createCameraMaintenanceEmergencyInput(
+      { hasShotgun: false, ammo: 0 },
+      "door_hallway",
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      ["door_hallway", "left_hallway"],
+    );
+    expect(input.disabledCameraIds).toEqual(["door_hallway", "left_hallway"]);
+  });
+});
+
+describe("resolveCameraMaintenanceTargetCameraId", () => {
+  it("returns null when no camera is disabled", () => {
+    expect(resolveCameraMaintenanceTargetCameraId([])).toBeNull();
+  });
+
+  it("returns the first disabled camera id", () => {
+    expect(resolveCameraMaintenanceTargetCameraId(["left_hallway", "door_hallway"])).toBe("left_hallway");
+  });
 });
 
 describe("canStartCameraMaintenanceRun", () => {
-  it("is always available for v1 (no night-feature gating yet, per spec)", () => {
-    expect(canStartCameraMaintenanceRun()).toBe(true);
+  it("is false when no camera is disabled", () => {
+    expect(canStartCameraMaintenanceRun([])).toBe(false);
+  });
+
+  it("is true when at least one camera is disabled", () => {
+    expect(canStartCameraMaintenanceRun(["door_hallway"])).toBe(true);
   });
 });
 

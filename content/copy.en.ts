@@ -170,6 +170,7 @@ export const COPY_EN: CopyShape = {
     startEmergencyRunLabel: "EMERGENCY EXPEDITION\nTO THE STORAGE WING",
     startEmergencyRunHuntingLabel: "Go hunting",
     startCameraMaintenanceLabel: "CAMERA MAINTENANCE",
+    cameraMaintenanceHoldingLabel: "PREPARING CAMERA MAINTENANCE… {seconds}s",
     emergencyRunDangerWarningLabel:
       "You want to leave the office you're supposed to protect? THAT'S A BAD IDEA. Don't do it unless you have absolutely no other choice.",
     emergencyRunHoldingLabel: "PREPARING EMERGENCY DEPARTURE… {seconds}s",

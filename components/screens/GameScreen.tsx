@@ -59,8 +59,9 @@ interface GameScreenProps {
   /** Zahájí/zruší držení "Nouzově opustit místnost" (viz app/play/page.tsx#handleStartEmergencyRunWindup/handleCancelEmergencyRunWindup, GameState.emergencyRunWindup) — jen na left_wall pohledu, viz LeftWallView.tsx. */
   onStartEmergencyRunWindup: () => void;
   onCancelEmergencyRunWindup: () => void;
-  /** "CAMERA MAINTENANCE" (viz zadání "druhý výjezd — údržba kamer", app/play/page.tsx#handleStartCameraMaintenanceRun) — obyčejný klik, jen na left_wall pohledu, viz LeftWallView.tsx. */
-  onStartCameraMaintenanceRun: () => void;
+  /** Zahájí/zruší držení "CAMERA MAINTENANCE" (viz zadání "druhý výjezd — údržba kamer", app/play/page.tsx#handleStartCameraMaintenanceRunWindup/handleCancelCameraMaintenanceRunWindup, GameState.cameraMaintenanceWindup) — jen na left_wall pohledu, viz LeftWallView.tsx. */
+  onStartCameraMaintenanceRunWindup: () => void;
+  onCancelCameraMaintenanceRunWindup: () => void;
   /** Zahájí/zruší držení "Nechat si to projít hlavou" (viz app/play/page.tsx#handleStartThinkItOverWindup/handleCancelThinkItOverWindup, GameState.thinkItOverWindup) — jen na left_wall pohledu, jen s brokovnicí. */
   onStartThinkItOverWindup: () => void;
   onCancelThinkItOverWindup: () => void;
@@ -119,7 +120,8 @@ export default function GameScreen({
   onLookAtMap,
   onStartEmergencyRunWindup,
   onCancelEmergencyRunWindup,
-  onStartCameraMaintenanceRun,
+  onStartCameraMaintenanceRunWindup,
+  onCancelCameraMaintenanceRunWindup,
   onStartThinkItOverWindup,
   onCancelThinkItOverWindup,
   onChangeOfficeDoorLockMs,
@@ -165,7 +167,7 @@ export default function GameScreen({
   // KTEROU z nich app/play/page.tsx skutečně spustí, se rozhoduje samostatně
   // (stejná priorita) až při skutečném doběhnutí držení, ne tady.
   const canStartEmergencyRun = canStartBatteryRun || canStartShotgunEmergencyRun(state.nightFeatures, state.hasShotgun);
-  const canStartCameraMaintenance = canStartCameraMaintenanceRun();
+  const canStartCameraMaintenance = canStartCameraMaintenanceRun(state.cameraDamage.disabledCameraIds);
   // "monster_reached_office" krize (viz zadání, game/core/officeBreachAftermath.ts)
   // — `null` mimo krizi/po jejím vyřešení, jinak která ze tří fází (dveře ->
   // generátor -> žárovka) je zrovna aktuální. Jediné místo, které tohle
@@ -392,8 +394,11 @@ export default function GameScreen({
                 officeDoorLockMs={state.officeDoorLockMs}
                 onChangeOfficeDoorLockMs={onChangeOfficeDoorLockMs}
                 onRequestAmmo={onRequestAmmo}
-                onStartCameraMaintenanceRun={onStartCameraMaintenanceRun}
+                onStartCameraMaintenanceRunWindup={onStartCameraMaintenanceRunWindup}
+                onCancelCameraMaintenanceRunWindup={onCancelCameraMaintenanceRunWindup}
                 canStartCameraMaintenanceRun={canStartCameraMaintenance}
+                cameraMaintenanceWindupActive={state.cameraMaintenanceWindup.active}
+                cameraMaintenanceWindupProgressMs={state.cameraMaintenanceWindup.progressMs}
               />
             )}
             {state.playerView === "object_map" && <ObjectMapView onLookAtDesk={onLookAtDesk} />}

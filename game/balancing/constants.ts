@@ -288,6 +288,12 @@ export const THINK_IT_OVER_WINDUP_DURATION_MS = 10_000;
 export const GENERATOR_OVERLOAD_WINDUP_DURATION_MS = 1500;
 export const GENERATOR_OVERLOAD_DOOR_DURATION_MS = 10_000;
 
+// "CAMERA MAINTENANCE" (viz zadání "druhý výjezd — údržba kamer") — stejný
+// "drž tlačítko" vzor jako EMERGENCY_RUN_WINDUP_DURATION_MS výše, jen vlastní
+// (kratší) doba držení na výslovnou žádost, ne odvozená konstanta (viz
+// GENERATOR_OVERLOAD_WINDUP_DURATION_MS komentář výše pro stejný důvod).
+export const CAMERA_MAINTENANCE_WINDUP_DURATION_MS = 2000;
+
 // O 30 % levnější než běžné "restarting" (na žádost — výsledkem přetížení
 // jsou stejně zničené dveře, na rozdíl od skutečné opravy poruchy generátoru
 // tedy nejde o dočasný stav, který se má hráči "vyplatit" stejně draze).

@@ -187,6 +187,18 @@ export function isCameraFullyOffline(cameraDamage: CameraDamageState, cameraId: 
 }
 
 /**
+ * Skutečná oprava kamery po úspěšné CAMERA MAINTENANCE výpravě (viz
+ * gameReducer.ts REPAIR_CAMERA, app/play/page.tsx#handleEmergencyMiniGameComplete) —
+ * jen odebere `cameraId` z `disabledCameraIds`, zbytek `CameraDamageState`
+ * (aktivní útok/cooldowny) nechává beze změny. No-op (stejná reference,
+ * bailout) pokud kamera zrovna vyřazená není.
+ */
+export function repairCamera(cameraDamage: CameraDamageState, cameraId: CameraId): CameraDamageState {
+  if (!cameraDamage.disabledCameraIds.includes(cameraId)) return cameraDamage;
+  return { ...cameraDamage, disabledCameraIds: cameraDamage.disabledCameraIds.filter((id) => id !== cameraId) };
+}
+
+/**
  * ID offline kamery, jejíž lokaci Ghoul PRÁVĚ TEĎ fyzicky obývá — `null`,
  * pokud Ghoul stojí mimo dosah libovolné kamery, nebo kamera dané lokace
  * není vyřazená. Sdílený základ pro `isEnemyOnDisabledCameraStage`

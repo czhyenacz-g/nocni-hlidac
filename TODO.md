@@ -405,16 +405,12 @@
       kamer") — druhé tlačítko na levé stěně vedle "Jít ven", stejný `EmergencyMiniGame`
       engine, nová mapa `monitored_halls` (4 haly + kancelář, `game/minigame/layouts/
       monitoredHallsMap.ts`), nový objective `"replace_camera"` (odstůj 5 s u kamery místo
-      sebrání E, `updateCameraReplacementProgressMs` v `game/minigame/logic.ts`). Cíl
-      první verze je jen ověřit celý průchod (kancelář → minihra → návrat/smrt), zatím bez
-      tmavnutí/poruch/skutečného gameplay dopadu opravené kamery.
-
-## Další kroky po MVP
-
-- Kamerová údržba — skutečný gameplay dopad: náhodně vybraná porouchaná/ztmavlá kamera
-  místo pevného `door_hallway`, podmíněná dostupnost tlačítka (jen když je kamera opravdu
-  porouchaná), a skutečné zlepšení stavu kamery po výměně (viz "Druhý výjezd — CAMERA
-  MAINTENANCE" výše — první verze zatím jen ověřuje průchod, žádný z těchto efektů)
+      sebrání E, `updateCameraReplacementProgressMs` v `game/minigame/logic.ts`). Tlačítko
+      se drží 2 s (`GameState.cameraMaintenanceWindup`, stejný vzor jako "Jít ven") a
+      zobrazí se jen se skutečně vyřazenou kamerou (`GameState.cameraDamage.disabledCameraIds`).
+      Cíl je vždy PRVNÍ skutečně vyřazená kamera (`resolveCameraMaintenanceTargetCameraId`),
+      úspěšný návrat kameru doopravdy opraví (`REPAIR_CAMERA`, `cameraDamage.ts#repairCamera`)
+      — vyřazená kamera svítí v minihře červeně, ostatní zeleně.
 - Discord login krok 2 — DB tabulka `players` (id, discord_user_id, username, display_name,
   avatar_url, created_at, updated_at, last_login_at), upsert v `app/api/auth/callback/route.ts`
   (dnes jen podepsaná cookie, žádná perzistence hráče)

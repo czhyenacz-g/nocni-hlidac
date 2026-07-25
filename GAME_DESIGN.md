@@ -598,14 +598,20 @@ Vedle nouzové výpravy do skladovací části (baterie/brokovnice) má levá st
 druhé tlačítko, **"CAMERA MAINTENANCE"** — spustí stejnou minihru (`EmergencyMiniGame`),
 jen na jiné mapě (`monitored_halls`, čtyři propojené haly odpovídající reálné kamerové
 mapě: `outer_yard`, `right_hallway`, `left_hallway`, `door_hallway`) a s jiným cílem
-(`objective: "replace_camera"`). Na rozdíl od "Jít ven" se nedrží, spouští se obyčejným
-kliknutím. Cíl v první verzi je vždy jedna konkrétní kamera (`door_hallway`) — hráč k ní
-musí dojít a zůstat nehybně stát 5 sekund (odchod z dosahu nebo jakýkoliv pohyb postup
-vynuluje), pak se kamera "vymění" a hráč se vrací do kanceláře stejně jako z ostatních
-výprav. Monstrum, pohyb, kolize i smrt jsou beze změny — stejný engine, jen jiná mapa a
-jiný způsob splnění cíle (odstátí místo sebrání E). Tahle první verze zatím nemá žádný
-skutečný gameplay dopad (žádné tmavnutí/poruchy kamer, žádné podmiňování dostupnosti
-tlačítka) — jen ověřuje celý průchod kancelář → minihra → návrat/smrt.
+(`objective: "replace_camera"`). Stejný "drž a riskuj" vzor jako "Jít ven" — tlačítko se
+musí držet 2 sekundy (kratší doba než u "Jít ven", na výslovnou žádost), po tu dobu dál
+běží normální herní smyčka. Tlačítko se zobrazí, jen když je aspoň jedna kamera SKUTEČNĚ
+vyřazená (viz "Útok Ghoula na kameru" níže) — bez poruchy není co opravovat.
+
+Cíl je vždy PRVNÍ skutečně vyřazená kamera (viz `resolveCameraMaintenanceTargetCameraId`)
+— hráč k ní musí dojít a zůstat nehybně stát 5 sekund (odchod z dosahu nebo jakýkoliv
+pohyb postup vynuluje), pak se kamera "vymění". Na rozdíl od úplně první verze má oprava
+teď SKUTEČNÝ dopad: bezpečný návrat kameru reálně opraví (zmizí ze seznamu vyřazených
+kamer, přestane svítit červeně na monitoru i v minihře). Monstrum, pohyb, kolize i smrt
+jsou beze změny — stejný engine, jen jiná mapa a jiný způsob splnění cíle (odstátí místo
+sebrání E). Všechny 4 kamerové body jsou v minihře vidět po celou dobu, skutečně vyřazená
+kamera svítí červeně, ostatní jen tlumeně zeleně — čistě informativní vrstva navíc, cíl
+výpravy se tím nemění.
 
 ## Žárovky (základ)
 

@@ -2516,9 +2516,16 @@ engine, žádný paralelní systém — jen nová mapa a nový objective:
   `resolveMiniGamePlacement`/`pickSlotByTag` fungují beze změny.
 - **`EmergencyMiniGameInput.targetCameraId?: MiniGameCameraId`** — pro `objective:
   "replace_camera"` určuje, který ze 4 kamerových slotů je cíl (`objectiveTagForInput` v
-  `layoutPlacement.ts`). V1 vždy `"door_hallway"`
-  (`DEFAULT_CAMERA_MAINTENANCE_TARGET_CAMERA_ID`,
-  `game/core/emergencyMiniGameIntegration.ts#createCameraMaintenanceEmergencyInput`).
+  `layoutPlacement.ts`). Cíl je PRVNÍ skutečně vyřazená kamera
+  (`resolveCameraMaintenanceTargetCameraId(disabledCameraIds)`,
+  `game/core/emergencyMiniGameIntegration.ts` — stejná konvence jako
+  `DEBUG_MOVE_ENEMY_TO_DISABLED_CAMERA` v gameReducer.ts), `null` bez žádné poruchy.
+  `createCameraMaintenanceEmergencyInput` teď bere `targetCameraId` jako POVINNÝ parametr
+  (volající ho musí spočítat přes `resolveCameraMaintenanceTargetCameraId` a ověřit
+  `canStartCameraMaintenanceRun` PŘED voláním) — funkce sama cíl nevybírá.
+- **`EmergencyMiniGameInput.disabledCameraIds?: MiniGameCameraId[]`** — čistě vizuální info
+  pro `draw()` (viz "Draw" níže), posílá se z `GameState.cameraDamage.disabledCameraIds`
+  (`CameraId`/`MiniGameCameraId` mají stejné 4 hodnoty, žádný cast/mapování navíc potřeba).
 - **5s odstátí místo sebrání E** — `updateCameraReplacementProgressMs(inRange,
   isStationary, currentProgressMs, deltaMs)` (`game/minigame/logic.ts`, čistá funkce) čte se
   KAŽDÝ tik: `inRange` = `circlesTouch` proti `game.itemPosition` (cíl kamery, stejné pole
@@ -2538,16 +2545,29 @@ engine, žádný paralelní systém — jen nová mapa a nový objective:
   `COPY.minigame.cameraReplacedReturnedTemplate`, jméno kamery bere z existujícího
   `COPY.cameras[id].label` (žádná nová mapa camera id → jméno). `outcome: "dead"` jde
   BEZE ZMĚNY přes stejný `EMERGENCY_MINIGAME_DIED` dispatch jako u ostatních výprav.
-- **Spuštění** — na rozdíl od "Jít ven" (`GameState.emergencyRunWindup`, drž a riskuj) je
-  CAMERA MAINTENANCE obyčejný `onClick`
-  (`app/play/page.tsx#handleStartCameraMaintenanceRun`), guardovaný vlastním
-  `cameraMaintenanceLaunchGuardRef` (resetuje se v `handleEmergencyMiniGameComplete`) proti
-  dvojkliku/souběžnému spuštění — `activeMiniGame !== null` guard navíc pokrývá souběžnost s
-  JINOU výpravou. `canStartCameraMaintenanceRun()` je v1 vždy `true` (žádné night-feature
-  podmiňování, viz GAME_DESIGN.md).
+- **Skutečná oprava** — stejné místo (`reached_location` větev v
+  `handleEmergencyMiniGameComplete`) navíc dispatchne `{type: "REPAIR_CAMERA", cameraId}`
+  (`gameReducer.ts`, čistá funkce `game/core/cameraDamage.ts#repairCamera` jen odebere
+  `cameraId` z `disabledCameraIds`, no-op mimo běžící směnu nebo když kamera zrovna
+  vyřazená není). Jen při bezpečném návratu — smrt cestou opravu nikdy nedokončí.
+- **Spuštění** — stejný "drž a riskuj" `GameState.cameraMaintenanceWindup`/
+  `cameraMaintenanceReadySeq` vzor jako "Jít ven" (`emergencyRunWindup`/
+  `emergencyRunReadySeq`), jen vlastní kratší `CAMERA_MAINTENANCE_WINDUP_DURATION_MS`
+  (2 000 ms, `game/balancing/constants.ts`) a bez "otevřené dveře"/sirény podmínky
+  (`canStartCameraMaintenanceWindup` v `gameReducer.ts` — na rozdíl od
+  `canStartEmergencyRunWindup` nekontroluje `doorClosed`). `START_CAMERA_MAINTENANCE_WINDUP`
+  má stejný Titan-ambush guard jako `START_EMERGENCY_RUN_WINDUP` (pokus o výpravu během
+  aktivního Titana = okamžitý Game Over, `deathReason: "titan_ambush_emergency_run"`).
+  Doběhnutí windupu zvýší `cameraMaintenanceReadySeq` — `app/play/page.tsx` efekt na tenhle
+  seq (stejný `shouldLaunchEmergencyMiniGame` `>` diff jako emergencyRunReadySeq) TEPRVE
+  TADY spočítá cíl (`resolveCameraMaintenanceTargetCameraId` z aktuálního
+  `disabledCameraIds`, ne z hodnoty v okamžiku kliknutí) a spustí `EmergencyMiniGame`.
+  `canStartCameraMaintenanceRun(disabledCameraIds)` (viz GAME_DESIGN.md) řídí i viditelnost
+  tlačítka v `LeftWallView.tsx` — bez vyřazené kamery se nezobrazí vůbec.
 - **Draw** — všechny 4 kamerové body se kreslí přímo z `game.layout.slots` (filtr na 4 známé
-  camera-id tagy), cílová kamera zvýrazněná — žádná vlastní resoluce navíc pro dekorativní
-  markery, čte se ze stejných dat jako `resolveMiniGamePlacement`.
+  camera-id tagy), cílová kamera zvýrazněná (jasnější odstín), SKUTEČNĚ vyřazená kamera
+  (`input.disabledCameraIds`) červená místo zelené — žádná vlastní resoluce navíc pro
+  dekorativní markery, čte se ze stejných dat jako `resolveMiniGamePlacement`.
 
 ## Oprava: Hardcore `currentRun` se po přežití noci neaktualizoval hned (bug "Night 7")
 

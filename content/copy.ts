@@ -317,6 +317,10 @@ export const COPY_CS = {
     // handleStartCameraMaintenanceRun). Pracovní text přesně podle zadání
     // ("druhý výjezd — údržba kamer"), zatím beze změny/lokalizace na CS.
     startCameraMaintenanceLabel: "CAMERA MAINTENANCE",
+    // Text tlačítka během držení (viz GameState.cameraMaintenanceWindup,
+    // CAMERA_MAINTENANCE_WINDUP_DURATION_MS) — stejný vzor jako
+    // emergencyRunHoldingLabel níže, jen kratší doba a bez siréna/varování.
+    cameraMaintenanceHoldingLabel: "PŘIPRAVUJI ÚDRŽBU KAMERY… {seconds} s",
     // Varování zobrazené hned při zahájení držení tlačítka (viz
     // handleStartEmergencyRunWindup, EMERGENCY_RUN_WINDUP_DURATION_MS) —
     // hráč musí tlačítko držet, ne jen kliknout, a tohle mu jasně řekne, že

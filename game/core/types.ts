@@ -465,6 +465,22 @@ export interface ThinkItOverWindupState {
  * app/play/page.tsx, ať dispatchne `START_GENERATOR_OVERLOAD` (skutečné
  * spuštění desetisekundového přetížení, viz gameReducer.ts).
  */
+/**
+ * Držení tlačítka "CAMERA MAINTENANCE" (viz zadání "druhý výjezd — údržba
+ * kamer", gameReducer.ts START_CAMERA_MAINTENANCE_WINDUP/
+ * CANCEL_CAMERA_MAINTENANCE_WINDUP/TICK, LeftWallView.tsx) — stejný "drž a
+ * riskuj" vzor jako EmergencyRunWindupState výše (`progressMs` roste v
+ * TICKu, dokud `active`). Po dosažení CAMERA_MAINTENANCE_WINDUP_DURATION_MS
+ * se `active` spadne zpět na `false` a `GameState.cameraMaintenanceReadySeq`
+ * se zvýší — signál pro app/play/page.tsx, ať skutečně spustí
+ * EmergencyMiniGame s objective "replace_camera".
+ */
+export interface CameraMaintenanceWindupState {
+  active: boolean;
+  startedAtMs: number | null;
+  progressMs: number;
+}
+
 export interface GeneratorOverloadWindupState {
   active: boolean;
   startedAtMs: number | null;
@@ -924,6 +940,17 @@ export interface GameState {
    * přetížení), samotný reducer tady jen odpočítává držení.
    */
   generatorOverloadReadySeq: number;
+
+  /** Držení "CAMERA MAINTENANCE" (viz CameraMaintenanceWindupState) — vždy resetováno na novou směnu, stejná konvence jako emergencyRunWindup/thinkItOverWindup/generatorOverloadWindup. */
+  cameraMaintenanceWindup: CameraMaintenanceWindupState;
+  /**
+   * Zvyšuje se přesně jednou při ÚSPĚŠNÉM dokončení držení "CAMERA
+   * MAINTENANCE" — stejný "seq" vzor jako `emergencyRunReadySeq` výše.
+   * app/play/page.tsx podle změny skutečně spustí EmergencyMiniGame s
+   * objective "replace_camera" (viz handleStartCameraMaintenanceRunWindup),
+   * samotný reducer tady jen odpočítává držení.
+   */
+  cameraMaintenanceReadySeq: number;
   /**
    * `elapsedMs`, kdy skončí probíhající přetížení generátoru (viz
    * START_GENERATOR_OVERLOAD, GENERATOR_OVERLOAD_DOOR_DURATION_MS) — `null`
