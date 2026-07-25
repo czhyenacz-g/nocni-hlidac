@@ -105,6 +105,7 @@ import { isAdminUsername } from "@/lib/auth/adminUsers";
 import { apiFetch } from "@/lib/http/apiFetch";
 import type { GuardRunState } from "@/lib/leaderboard/types";
 import type { GuardRunResponse } from "@/lib/leaderboard/guardRunRequestHandlers";
+import { applyDeath } from "@/lib/leaderboard/guardRunTransitions";
 import { DEFAULT_GAME_MODE, GAME_MODE_CONFIG, GameMode, resolveGameMode } from "@/game/core/gameMode";
 import { Object13PlayerProfileProvider, useObject13PlayerProfile } from "@/components/playerProfile/Object13PlayerProfileProvider";
 import { resolveStartingBulbsRemaining } from "@/game/core/bulbInventory";
@@ -699,15 +700,32 @@ function PlayPageContent() {
           // === 1) — KAŽDÁ Hardcore smrt je tedy vždy skutečný konec runu,
           // stejná "run skončil" hranice jako Normal bez životů výše.
           setTitanEncounterNights(resetTitanEncounterNights());
+          // Optimistický lokální reset currentRun na 0 (viz zadání — bug
+          // "Night 7 po smrti a restartu na noci 7"). PŘED voláním serveru,
+          // ne až v jeho odpovědi: `currentNight` (řádek ~279) čte
+          // `serverRunState.currentRun` OKAMŽITĚ při dalším renderu (briefing
+          // po handleRestart), ale `/api/player/death` níže je fire-and-forget
+          // bez retry — když nestihne doběhnout dřív, než hráč klikne restart
+          // (nebo tiše selže, viz `202 stored:false` při nedostupném VPS API),
+          // `serverRunState` by beze změny zůstal na PŘED-smrtní hodnotě a
+          // nová směna by omylem naskočila na starou noc. Hardcore smrt VŽDY
+          // znamená konec runu (jediný život, viz komentář výše) — že nový
+          // `currentRun` bude 0, je tedy jistá věc, ne odhad; nemá smysl na
+          // to čekat na server. `bestRun` se nemění (mění se jen při
+          // survive-night), ponecháváme beze změny. Odpověď serveru níže
+          // (`applyGuardRunResponse`) tenhle stejný výsledek jen potvrdí/
+          // přepíše autoritativní hodnotou, jakmile dorazí — žádný konflikt.
+          setServerRunState((prev) => (prev ? applyDeath(prev) : prev));
           // Hardcore je nové jméno pro původní soutěžní chování (viz zadání)
           // — jediný gameMode, který smí zapisovat na server. Best-effort
           // online stav (viz TECH_DESIGN.md "VPS API specifikace") — server
           // si identitu vezme ze session, ne odsud (klient nikdy neposílá
           // discordUserId). Nepřihlášený hráč dostane 401, nedostupné VPS API
-          // 202 — v obou případech hra pokračuje beze změny, jen zaloguje
-          // warning (viz applyGuardRunResponse). gameMode se posílá v těle
-          // requestu jako DRUHÁ (server-side) pojistka nad rámec toho, že
-          // Normal tenhle fetch vůbec nevolá (viz app/api/player/death/route.ts).
+          // 202 — v obou případech hra pokračuje beze změny (viz optimistický
+          // reset výše), jen zaloguje warning (viz applyGuardRunResponse).
+          // gameMode se posílá v těle requestu jako DRUHÁ (server-side)
+          // pojistka nad rámec toho, že Normal tenhle fetch vůbec nevolá
+          // (viz app/api/player/death/route.ts).
           // TODO (true ending odměna, viz TODO u survive-night níže v tomhle
           // souboru pro plné zdůvodnění): stejné "veteránský run neoddělený
           // od čistého Hardcore" omezení platí i tady.
@@ -719,7 +737,7 @@ function PlayPageContent() {
             .then((res) => res.json())
             .then((body: GuardRunResponse["body"]) => applyGuardRunResponse(body, "death"))
             .catch((err) => {
-              console.warn("[nocni-hlidac] death request failed — server currentRun may not have been reset to 0", err);
+              console.warn("[nocni-hlidac] death request failed — currentRun was already reset optimistically to 0 locally", err);
             });
         }
         // Normal (ať už pokračuje, nebo mu došly životy) na server nikdy
