@@ -156,7 +156,7 @@ export const COPY_EN: CopyShape = {
     audioOffLabel: "Sound: off",
     helpButtonLabel: "Help",
     helpModalText:
-      "Power level is critically important during your shift. If you're low on it, or short on supplies (e.g. bulbs), you'll have to go outside — where monsters may be waiting for you.",
+      "Power level is critically important during your shift. If you're low on it, or short on supplies (e.g. bulbs), you'll have to go outside — where monsters may be waiting for you.\n\nIf any monster gets through the door into your office, that was your last mistake.",
     helpModalCloseLabel: "Close",
     lookAtDoorLabel: "Turn to the door",
     lookAtDeskLabel: "Back to the desk",

@@ -271,7 +271,7 @@ export const COPY_CS = {
     // čistě lokální otevřít/zavřít stav (žádné GameState pole).
     helpButtonLabel: "Nápověda",
     helpModalText:
-      "Při tvé službě je stav energie kriticky důležitý. Pokud ji máš málo, nebo máš nedostatek vybavení (např. žárovek), budeš muset vyrazit ven, kde ale na tebe mohou čekat monstra.",
+      "Při tvé službě je stav energie kriticky důležitý. Pokud ji máš málo, nebo máš nedostatek vybavení (např. žárovek), budeš muset vyrazit ven, kde ale na tebe mohou čekat monstra.\n\nJestli se nějaké monstrum dostane přes dveře k tobě do kanceláře, tak to byla tvoje poslední chyba.",
     helpModalCloseLabel: "Zavřít",
     // Dominantní navigace v control roomu — šipka dolů, ne doprava, ať
     // odpovídá tomu, že dveře jsou "hlavní směr pohledu" spodní navigace
