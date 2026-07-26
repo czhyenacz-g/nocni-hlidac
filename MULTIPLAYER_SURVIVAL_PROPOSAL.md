@@ -870,3 +870,127 @@ Nejdůležitější vlastnosti budoucího režimu:
 Klíčová herní situace:
 
 > Jeden hráč monstrum odvádí. Ostatní si připraví zbraně a munici. Dokud nikdo nevystřelí, tým má situaci relativně pod kontrolou. Jakmile padne první rána, monstrum se rozzuří a celý tým ho musí co nejrychleji dorazit.
+
+---
+
+# 26. Fáze 1 — audit (proveden 2026-07-26)
+
+Provedený audit `/minihra` enginu (nocni-hlidac) a multiplayerového jádra Osmé ligy
+(osma-liga + project-hub-api). Čistě informativní — bez implementace, viz zadání fáze 1.
+
+## 26.1 `/minihra` engine — zjištění
+
+- **Je to stejná komponenta jako v ostré hře.** `/minihra` (`app/minihra/page.tsx`) je jen
+  debug obálka (výběr z 27 scénářů + JSON panel) kolem `components/minigame/EmergencyMiniGame.tsx`
+  — TÉTÉŽ komponenty, kterou `app/play/page.tsx` používá pro battery/shotgun/camera-maintenance
+  výjezdy. Žádná druhá paralelní minihra neexistuje.
+- **Žádný reducer.** Stav žije v `useRef<MiniGameRefState>` (jeden velký mutovaný objekt),
+  ~20 `useState` zrcadel jen kvůli re-renderu HUD. Vstupní kontrakt je
+  `EmergencyMiniGameInput` (objective/equipment/layoutId/seed/...).
+- **Mapa je datově definovaná a seedovaná** (`layoutTypes.ts`, `layouts/`, `layoutPlacement.ts`,
+  `seededRandom.ts`) — místnosti/zdi/sloty s tagy, deterministický výběr přes seed. Nezávislé
+  na počtu hráčů/monster na datové úrovni — přímo použitelné pro survival mapu.
+- **Čisté funkce (přímo znovupoužitelné, i server-side):** `game/minigame/logic.ts` (kolize
+  `moveWithWallSliding`/`circlesTouch`, LOS/zorný kužel `hasLineOfSight`/`isTargetInCone`,
+  `updateEnemyAi` — čistá, per-entita, dá se mapovat přes pole monster, `applyShot`/`isEnemyHit`
+  — per-střelec/per-cíl), `playerVision.ts` (fog, taky per-entita), `layoutPlacement.ts`,
+  `touchControls.ts`, `officeThreat.ts`.
+- **Svázané s React komponentou (NENÍ přímo znovupoužitelné):** celý `EmergencyMiniGame.tsx` —
+  `tick()`/`draw()` čtou `game.player`/`game.enemy` v JEDNOTNÉM čísle na desítkách míst,
+  canvas vykreslování, keyboard/pointer handlery, `requestAnimationFrame` smyčka. **Neexistuje
+  žádný "headless" `tick(state, input) -> state"` vstupní bod** — orchestrace je dnes
+  zapletená přímo v komponentě.
+- **Monstrum už má částečnou verzi "zrychlí po zásahu":** `Enemy.enraged` — jednorázově
+  natrvalo `true` po prvním zotavení z "wounded", pak `investigating` běhá rychlostí
+  `chaseSpeed` místo `searchSpeed` navždy. Není to eskalující křivka, jen jeden trvalý
+  přepínač — základ pro budoucí mechaniku, ne hotové řešení.
+- **Hidden true ending (`monsterHits`)** — počítadlo/report existuje i v `game/minigame/logic.ts`
+  (`qualifiesAsNewMonsterHit`, `isMonsterHitFinal`), ale skutečný PRÁH a rozhodnutí "already
+  defeated" žije v `game/core/monsterEnding.ts` na straně hlavní hry — spolupráce dvou vrstev,
+  ne jedna uzavřená mechanika.
+- **`MiniGameObjective` enum** (`"return_to_office" | "collect_item" | "survive" | "replace_camera"`)
+  je existující "plug-in" bod pro nové objective, ale sám o sobě NESTAČÍ na multiplayer — pokrývá
+  jen dispatch cíle mise, ne víc herců/síť/autoritu. Multiplayerový survival bude
+  pravděpodobně potřebovat NOVOU komponentu/runtime, která znovupoužije `logic.ts` a
+  `layouts/`, ne vsunutí do současné jednohráčové `tick()` smyčky `EmergencyMiniGame.tsx`.
+
+## 26.2 Osmá liga — zjištění
+
+- **Transport:** Socket.IO (ne raw WebSocket), server běží v `project-hub-api`
+  (Fastify + `socket.io` na stejném HTTP serveru), klient `socket.io-client`
+  v `osma-liga/components/online/useOnlineGame.ts`.
+- **Room model:** místnosti jako obyčejné objekty v `Map<string, OnlineGameRoom>`
+  (`project-hub-api/src/modules/osmaLiga/onlineGames.ts`), stavy
+  `waiting/full/playing/finished/expired`, TTL 30 minut, úklid při přístupu (ne
+  samostatný cron).
+- **Identita hráče:** neautentizovaný náhodný token (16 bajtů hex) na hosta/hosta při
+  vytvoření/joinu, uložený v `sessionStorage` na klientovi, žádný JWT/podpis — znalost
+  tokenu = důkaz identity v rámci místnosti.
+- **Heartbeat/reconnect: SLABÉ MÍSTO, ne vzor k okopírování.** Žádný vlastní
+  heartbeat/disconnect handler — spoléhá čistě na výchozí Socket.IO engine.io
+  ping/pong. Server na `disconnect` vůbec nereaguje (žádná pauza, žádné oznámení
+  soupeři). Reconnect "funguje" jen náhodou — stav hry běží v `setInterval`
+  nezávisle na socketu, takže hráč se vrátí přes `join_game` se stejným tokenem a
+  dostane snapshoty dál. Žádné reconnect okno, žádný forfeit timeout.
+- **Server je plně autoritativní** — klient posílá jen vstupy (`updateInput`),
+  veškerá fyzika/skóre/časovač běží v `tickGame()` na serveru (`setInterval`, 33ms
+  tick), oddělené od transportní vrstvy (`gameEngine/*.ts` bez znalosti socketu/HTTP).
+  **Tohle je klíčový vzor k převzetí.**
+- **Snapshoty:** posílají se každé 2 ticky (~15 Hz), obsahují `tick` counter, ale
+  klient nedělá ŽÁDNOU kontrolu pořadí/staleness — spoléhá na spolehlivé doručení
+  jednoho socketu. Žádné zahazování out-of-order snapshotů (protože žádné
+  nepřicházejí přes jeden socket).
+- **Interpolace:** klient lerpuje VŠECHNY entity (včetně vlastního hráče) směrem k
+  poslednímu snapshotu (`LERP = 0.3` konstanta) — žádná klientská predikce/reconciliace,
+  vlastní pohyb je tak znatelně opožděný pod latencí. Jednoduché, ale ne "vzorové" pro
+  responzivní ovládání.
+- **Debug/test nástroje:** jen jeden AI bot pro trénovací výzvy
+  (`gameEngine/ai.ts#computeTrainingChallengeInput`), žádný obecný bot/simulace
+  latence/multiplayer debug panel.
+- **Reload/rejoin:** čistě klientské řešení přes `sessionStorage` token + polling stavu
+  místnosti (5s) — funguje jen díky tomu, že stav hry vůbec není vázaný na
+  socket spojení. Zavření tabu (ne jen reload) token ztratí.
+- **Vrstvení engine/transport je čisté a je to TEN vzor, co stojí za převzetí:**
+  `tickGame(state, dt, ...)` v `project-hub-api/src/gameEngine/*.ts` nezná socket ani
+  HTTP, jde testovat samostatně (`tick.test.ts`) a v principu pohánět jakýmkoliv
+  transportem.
+
+## 26.3 Minimální integrační plán
+
+**Co převzít přímo (funguje dobře v Osmé lize):**
+- Server-autoritativní pevný tick loop oddělený od životního cyklu socketu
+  (`tickGame(state, inputs, dt)` nezná transport).
+- Tokenová identita hráče perzistovaná v `sessionStorage`, jednoduchý rejoin přes
+  znovu-poslaný token.
+- Vrstvení engine/transport/render do tří modulů (přesně princip ze sekce 5 zadání).
+
+**Co NEkopírovat beze změny (Osmá liga to sama řeší slabě):**
+- Chybějící heartbeat/disconnect handling — pro survival s až 20 hráči a
+  30 vlnami je "žádná reakce na odpojení" nedostatečné (zadání sekce 18 to už
+  správně předpokládá jako nutnou novou práci, ne převzatou).
+- Chybějící sekvenční/staleness kontrola snapshotů — u 20 hráčů a delšího zápasu
+  stojí za to od začátku přidat `seq`/reject-older-than-last, i když to Osmá
+  liga nepotřebovala (jeden 1v1 socket, krátký zápas).
+- Lerp-everything bez predikce — pro survival s vlastním pohybem/mířením/střelbou
+  hráče se vyplatí aspoň lokální predikce vlastního hráče (server jen koriguje),
+  ne stejné opožděné lerpování jako u soupeřova panáčka v Osmé lize.
+
+**Co potřebuje novou práci (neexistuje ani v jednom repu):**
+- Headless `tick(state, inputs, deltaMs) -> state` extrahovaný z
+  `EmergencyMiniGame.tsx` — `logic.ts` primitivy (kolize, AI, vidění, střelba) se dají
+  volat přímo, ale orchestrace kolem nich dnes žije jen v React komponentě.
+  Tohle je jádro prototypové fáze 2.
+- Pole hráčů/monster místo jednotného `game.player`/`game.enemy` — datový typ se
+  generalizuje snadno, ale VŠECHNY čtení/zápisy v `tick()`/`draw()` (desítky míst) se
+  musí přepsat na cyklus.
+- Eskalující (ne jednorázová) rychlost/agresivita monstra po zásahu — dnešní
+  `enraged` je jeden trvalý přepínač, survival bude podle zadání (sekce 10)
+  potřebovat výraznější/opakovatelnou reakci.
+- Nový vstupní bod/komponenta pro multiplayerový režim — `MiniGameObjective` enum
+  sám o sobě nestačí, protože nepokrývá víc hráčů ani síť.
+
+**Doporučený první krok (navazuje na fázi 2 v zadání, sekce 21/23):** extrahovat z
+`EmergencyMiniGame.tsx` headless `tick()` nad polem hráčů/monster (zatím jen 1
+skutečně ovládaný hráč + 1 monstrum, žádná síť) — tím se ověří, že se dá `logic.ts`
+znovupoužít beze změny a že se React vrstva dá čistě oddělit, než se vůbec sáhne na
+multiplayer transport.
