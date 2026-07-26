@@ -19,7 +19,7 @@
  * proti libovolnému API serveru").
  */
 
-import { existsSync, mkdirSync, rmSync, symlinkSync, writeFileSync, cpSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, symlinkSync, writeFileSync, cpSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
@@ -35,8 +35,83 @@ const FIXED_API_ORIGIN = "https://nocni-hlidac.cz";
 
 const TARGETS = /** @type {const} */ (["itch", "local", "custom"]);
 
-/** Symlinkovaná sdílená vrstva (žádná kopie zdrojového kódu). */
-const SHARED_SYMLINKS = ["components", "game", "content", "lib", "styles", "public", "node_modules", "tsconfig.json", "postcss.config.mjs", "tailwind.config.ts"];
+/**
+ * Symlinkovaná sdílená vrstva (žádná kopie zdrojového kódu) — `"public"`
+ * záměrně chybí, protože se sestavuje ZVLÁŠŤ přes `buildFilteredPublicDir`
+ * níže (potřebuje filtrovat jednotlivé soubory, ne symlinkovat celý
+ * adresář najednou, viz zadání "at je součástí buildu i přesun
+ * nepoužívaných png a jiných multimediálních souborů").
+ */
+const SHARED_SYMLINKS = ["components", "game", "content", "lib", "styles", "node_modules", "tsconfig.json", "postcss.config.mjs", "tailwind.config.ts"];
+
+/**
+ * Jestli je `entryPath` (absolutní cesta v `public/`) nechtěný zdrojový/mrtvý
+ * soubor, který se do distribuovatelného buildu nikdy nemá dostat (viz
+ * zadání "buildni to bez nepoužívaných png a jiných multimediálních
+ * souborů") — audit ukázal, že tyhle kategorie jsou VŽDY jen zmíněné v
+ * komentářích ("zdrojový wav", "zkonvertovaný z .png"), nikdy ve skutečné
+ * `src`/cestě, kterou by appka za běhu načetla:
+ *
+ * 1. `.png`, který má ve STEJNÉ složce sourozence se stejným jménem a
+ *    příponou `.webp` — projekt důsledně konvertuje obrázky přes `cwebp`
+ *    (viz CLAUDE.md "Povolení: konverze obrázků do WebP") a appka vždycky
+ *    natvrdo odkazuje jen `.webp` (viz `cameraAttackAnimation.object13.test.ts`/
+ *    `titanDoorAssets.test.ts`/`monsterPresentation.test.ts` — "nikdy .png").
+ *    Zdrojový `.png` je tak vždycky jen surovina pro konverzi, ne asset, co
+ *    appka sama načítá.
+ * 2. cokoliv uvnitř složky doslova pojmenované `source` (např. `sound/.../source/`)
+ *    — surové nezpracované nahrávky (`*_raw.wav`/`.m4a`), zmiňované jen v
+ *    komentářích jako "zdroj pro budoucí zpracování", appka je nikdy
+ *    nepřehrává.
+ * 3. `.DS_Store` (macOS metadata, nikdy součást appky).
+ */
+export function isExcludedPublicFile(entryPath) {
+  const base = path.basename(entryPath);
+  if (base === ".DS_Store") return true;
+  if (path.basename(path.dirname(entryPath)) === "source") return true;
+  if (base.toLowerCase().endsWith(".png")) {
+    const webpSibling = entryPath.slice(0, -path.extname(entryPath).length) + ".webp";
+    if (existsSync(webpSibling)) return true;
+  }
+  return false;
+}
+
+/**
+ * Rekurzivně zrcadlí `public/` do `destDir` — SYMLINK na každý JEDNOTLIVÝ
+ * soubor (ne kopie, stejný "žádné riziko driftu" princip jako
+ * SHARED_SYMLINKS výše), kromě souborů vyloučených přes
+ * `isExcludedPublicFile`. Vrací `{ keptCount, excludedCount, excludedBytes }`
+ * pro souhrnný výpis (viz `main()` níže) — hráč/vývojář má vidět, kolik se
+ * ušetřilo, ne jen tichý výsledek.
+ */
+export function buildFilteredPublicDir(srcDir, destDir) {
+  let keptCount = 0;
+  let excludedCount = 0;
+  let excludedBytes = 0;
+
+  function walk(currentSrc, currentDest) {
+    mkdirSync(currentDest, { recursive: true });
+    for (const name of readdirSync(currentSrc)) {
+      const entrySrc = path.join(currentSrc, name);
+      const entryDest = path.join(currentDest, name);
+      const stat = statSync(entrySrc);
+      if (stat.isDirectory()) {
+        walk(entrySrc, entryDest);
+        continue;
+      }
+      if (isExcludedPublicFile(entrySrc)) {
+        excludedCount += 1;
+        excludedBytes += stat.size;
+        continue;
+      }
+      symlinkSync(entrySrc, entryDest);
+      keptCount += 1;
+    }
+  }
+
+  walk(srcDir, destDir);
+  return { keptCount, excludedCount, excludedBytes };
+}
 
 /** Jen exportovatelné app/ cesty — vynechává /admin, /leaderboard, /database (server-only), /api/** (route handlery), a dev-only /minihra, /dev-sound, /death-test (nejsou součástí distribuovatelné hry). */
 const EXPORTABLE_APP_ENTRIES = ["layout.tsx", "globals.css", "favicon.ico", "icon.svg", "page.tsx", "config", "play", "about", "terms", "profile"];
@@ -179,6 +254,11 @@ function prepareTempBuildDir() {
     symlinkSync(src, path.join(TMP_BUILD_DIR, name));
   }
 
+  const publicSrc = path.join(REPO_ROOT, "public");
+  const publicFilterResult = existsSync(publicSrc)
+    ? buildFilteredPublicDir(publicSrc, path.join(TMP_BUILD_DIR, "public"))
+    : { keptCount: 0, excludedCount: 0, excludedBytes: 0 };
+
   mkdirSync(path.join(TMP_BUILD_DIR, "app"), { recursive: true });
   for (const entry of EXPORTABLE_APP_ENTRIES) {
     const src = path.join(REPO_ROOT, "app", entry);
@@ -207,6 +287,8 @@ function prepareTempBuildDir() {
     path.join(TMP_BUILD_DIR, "package.json"),
     JSON.stringify({ name: "nocni-hlidac-export", version: "0.0.0", private: true, type: rootPackageJson.type }, null, 2),
   );
+
+  return publicFilterResult;
 }
 
 function printCorsGuidance(target, publicUrl) {
@@ -279,7 +361,12 @@ async function main() {
   console.log(`Build version: ${buildVersion}`);
   console.log(`API origin:    ${FIXED_API_ORIGIN} (natvrdo, nelze změnit)`);
 
-  prepareTempBuildDir();
+  const { keptCount, excludedCount, excludedBytes } = prepareTempBuildDir();
+  const excludedMb = (excludedBytes / 1024 / 1024).toFixed(1);
+  console.log(
+    `public/ assets:  ${keptCount} zahrnuto, ${excludedCount} vynecháno (nepoužívané .png se .webp sourozencem, ` +
+      `zdrojové nahrávky ve složkách "source/", .DS_Store) — ušetřeno ~${excludedMb} MB`,
+  );
 
   const buildEnv = {
     ...process.env,
