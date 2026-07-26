@@ -282,6 +282,37 @@ export default function LeftWallView({
       </div>
 
       <div className="w-full max-w-md mx-auto flex flex-col items-end gap-2">
+        {/* "ZAŽÁDAT O MUNICI" (viz zadání "request ammo tlačítko hned pod
+            obrázkem zbraně, včetně nápisu o typu") — spolu se štítkem typu
+            zbraně (shotgunAmmoReadyLabel/doubleBarrelAmmoReadyLabel, např.
+            "Dvouhlavňovka: 2/2") hned pod obrázkem, PŘED zbytkem ovládacích
+            prvků. Vidět VŽDY, i bez brokovnice (jen vizuálně ztlumené), ať
+            hráč ví, že dávkovač existuje, dřív než zbraň najde. Přidá přesně
+            jeden náboj na klik, nikdy nad kapacitu — druhý klik na plné
+            kapacitě/bez zbraně jen zahraje zvuk odmítnutí (viz
+            app/play/page.tsx#handleRequestAmmo). */}
+        {hasShotgun && (
+          <div className="text-[10px] text-gray-400 w-full text-center">
+            {shotgunAmmo > 0
+              ? (hasDoubleBarrelShotgun ? COPY.game.doubleBarrelAmmoReadyLabel : COPY.game.shotgunAmmoReadyLabel)
+                  .replace("{ammo}", String(shotgunAmmo))
+                  .replace("{max}", String(shotgunMaxAmmo))
+              : hasDoubleBarrelShotgun
+                ? COPY.game.doubleBarrelAmmoEmptyLabel
+                : COPY.game.shotgunAmmoEmptyLabel}
+          </div>
+        )}
+        <button
+          type="button"
+          className={`pixel-button console-button tap-target flex items-center gap-2 px-3 py-2 text-xs touch-none select-none w-full justify-center ${canRequestAmmoNow ? "" : "opacity-50"}`}
+          onClick={handleRequestAmmoClick}
+        >
+          <span>{COPY.game.requestAmmoLabel.replace("{ammo}", String(shotgunAmmo)).replace("{max}", String(shotgunMaxAmmo))}</span>
+        </button>
+        {showNoWeaponMessage && (
+          <div className="text-[10px] text-gray-300 bg-black/70 px-2 py-1 rounded">{COPY.game.requestAmmoNoWeaponLabel}</div>
+        )}
+
         {/* "Zpět ke stolu" + "Otočit se ke dveřím" na jednom řádku, STEJNĚ
             ŠIROKÉ (na výslovnou žádost) — ViewSwitchArrow už samo má
             `w-full`, obalení do `flex-1` divu ho zúží na polovinu řádku
@@ -407,37 +438,6 @@ export default function LeftWallView({
             <div className="h-full bg-red-500 transition-all duration-150" style={{ width: `${cameraMaintenancePercent}%` }} />
           </div>
         )}
-        {/* Nenápadná informace o munici (viz zadání) — jen když má hráč
-            brokovnici vůbec (bez ní nedává tenhle text smysl a jen by
-            prozrazoval mechaniku předem). */}
-        {hasShotgun && (
-          <div className="text-[10px] text-gray-400">
-            {shotgunAmmo > 0
-              ? (hasDoubleBarrelShotgun ? COPY.game.doubleBarrelAmmoReadyLabel : COPY.game.shotgunAmmoReadyLabel)
-                  .replace("{ammo}", String(shotgunAmmo))
-                  .replace("{max}", String(shotgunMaxAmmo))
-              : hasDoubleBarrelShotgun
-                ? COPY.game.doubleBarrelAmmoEmptyLabel
-                : COPY.game.shotgunAmmoEmptyLabel}
-          </div>
-        )}
-
-        {/* "ZAŽÁDAT O MUNICI" (viz zadání) — vidět VŽDY, i bez brokovnice
-            (jen vizuálně ztlumené), ať hráč ví, že dávkovač existuje, dřív
-            než zbraň najde. Přidá přesně jeden náboj na klik, nikdy nad
-            kapacitu — druhý klik na plné kapacitě/bez zbraně jen zahraje
-            zvuk odmítnutí (viz app/play/page.tsx#handleRequestAmmo). */}
-        <button
-          type="button"
-          className={`pixel-button console-button tap-target flex items-center gap-2 px-3 py-2 text-xs touch-none select-none w-full justify-center ${canRequestAmmoNow ? "" : "opacity-50"}`}
-          onClick={handleRequestAmmoClick}
-        >
-          <span>{COPY.game.requestAmmoLabel.replace("{ammo}", String(shotgunAmmo)).replace("{max}", String(shotgunMaxAmmo))}</span>
-        </button>
-        {showNoWeaponMessage && (
-          <div className="text-[10px] text-gray-300 bg-black/70 px-2 py-1 rounded">{COPY.game.requestAmmoNoWeaponLabel}</div>
-        )}
-
         {/* Posuvník "za jak dlouho se dveře do kanceláře samy odemknou" (viz
             zadání "kompenzovat horší mobilní ovládání") — jen s brokovnicí. */}
         {hasShotgun && (
