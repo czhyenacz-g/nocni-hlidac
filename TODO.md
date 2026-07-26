@@ -464,6 +464,10 @@
 
 ## Explicitně odložené věci
 
+- Multiplayerová survival minihra (až 20 hráčů, 30 vln, viz
+  `MULTIPLAYER_SURVIVAL_PROPOSAL.md`) — kompletní návrh sepsaný, ale záměrně
+  NENÍ implementační zadání, dokud neproběhne audit `/minihra` engine a
+  multiplayerového jádra Osmé ligy (fáze 1 v dokumentu)
 - Platby, Patreon
 - Databáze (Discord login zatím jen v podepsané cookie, žádná DB tabulka — viz "Další kroky po MVP")
 - Editor kampaní, více kampaní
