@@ -41,6 +41,7 @@ import {
   STUCK_MOVE_THRESHOLD_PX,
   STUCK_TIMEOUT_MS,
   CAMERA_REPLACEMENT_DURATION_MS,
+  LOOT_PICKUP_DURATION_MS,
   computeMiniGameWorldScale,
   createInitialEnemy,
   createInitialPlayer,
@@ -90,6 +91,7 @@ import {
   shouldHighlightOfficeMarker,
   shouldShowOfficeBoundCrisisMarker,
   updateCameraReplacementProgressMs,
+  updateLootingProgressMs,
   updateEnemyAi,
   updateMissionPhase,
 } from "@/game/minigame/logic";
@@ -114,7 +116,6 @@ import {
   isMoveTargetMarkerVisible,
   isTouchCapableDevice,
   resolveMoveTargetFromWorldPoint,
-  shouldAutoCollectItem,
   shouldHandleMapPointerEvent,
 } from "@/game/minigame/touchControls";
 
@@ -189,9 +190,10 @@ interface MiniGameRefState {
   /**
    * Doplňkový loot navíc k hlavnímu objective (viz zadání "sandbox
    * výprava", EmergencyMiniGameInput.extraLootItems) — battery/bulb
-   * garantované, shotgun podmíněně. Sbírá se dotykem stejně jako hlavní item
-   * (viz shouldAutoCollectItem v tick()), ale NEZÁVISLE na mission.phase —
-   * hráč může sebrat kterýkoliv v libovolném pořadí, kdykoliv za výpravu.
+   * garantované, shotgun podmíněně. Sbírá se odstáním stejně jako hlavní item
+   * (viz "Prohledávám" channel v tick(), updateLootingProgressMs), ale
+   * NEZÁVISLE na mission.phase — hráč může sebrat kterýkoliv v libovolném
+   * pořadí, kdykoliv za výpravu.
    */
   extraLoot: MiniGameLootState[];
   /** Statická AI konfigurace se souřadnicemi TOHOTO layoutu (mapWidth/mapHeight) — jednou spočítaná při vytvoření, ne module-level konstanta (různé layouty mají různě velký svět). */
@@ -268,6 +270,22 @@ interface MiniGameRefState {
    * pohybu, viz tick(). `0` mimo tenhle objective (nikdy nepoužité).
    */
   cameraReplacementProgressMs: number;
+  /**
+   * "Prohledávám" postup (viz zadání "stejně jako u opravy kamery, ať musí
+   * chvíli stát, než item sebere", game/minigame/logic.ts#updateLootingProgressMs,
+   * config.ts#LOOT_PICKUP_DURATION_MS) — společné pro hlavní objective
+   * (battery/bulb/shotgun/fuse) i doplňkový loot, viz tick(). Resetuje se na
+   * 0, jakmile hráč opustí dosah AKTUÁLNÍHO cíle, pohne se, nebo se cíl
+   * změní (viz lootingTargetKey).
+   */
+  lootingProgressMs: number;
+  /**
+   * Identita AKTUÁLNÍHO cíle "prohledávám" — `"main"` pro hlavní objective,
+   * `"loot-{index}"` pro index v `extraLoot`, `null` mimo dosah čehokoliv.
+   * Změna cíle mezi tiky (i z/na `null`) vynuluje `lootingProgressMs` —
+   * hráč nemůže "přenést" rozjetý postup na jiný item přeběhnutím.
+   */
+  lootingTargetKey: string | null;
 }
 
 function createInitialState(input: EmergencyMiniGameInput): MiniGameRefState {
@@ -318,6 +336,8 @@ function createInitialState(input: EmergencyMiniGameInput): MiniGameRefState {
     finalHitAtMs: null,
     finalHitMarkerPosition: null,
     cameraReplacementProgressMs: 0,
+    lootingProgressMs: 0,
+    lootingTargetKey: null,
   };
 }
 
@@ -470,6 +490,10 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
   // stejný "aktualizuje se každý tik, re-render jen na skutečnou změnu"
   // bailout vzor jako woundedMsLeft výše. 0 = neběží (mimo dosah/pohyb).
   const [cameraReplacementProgressMs, setCameraReplacementProgressMs] = useState(0);
+  // "Prohledávám... X.X/2 s" (viz zadání "stejně jako u opravy kamery, ať
+  // musí chvíli stát") — stejný bailout vzor jako cameraReplacementProgressMs
+  // výše, jen pro sebrání itemu (hlavní objective i doplňkový loot).
+  const [lootingProgressMs, setLootingProgressMs] = useState(0);
   // Nenápadný HUD status ("Režim: Pátrání/Čeká/Lov/Zraněno") — stejný bailout
   // vzor jako woundedMsLeft, mění se jen při skutečném přechodu módu.
   const [enemyMode, setEnemyMode] = useState<EnemyMode>("investigating");
@@ -1026,32 +1050,84 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
           // jen při skutečném vstupu/opuštění zóny, ne 60×/s.
           setInExitZone(circleIntersectsWall(game.player.x, game.player.y, game.player.radius, game.exitZone));
 
-          // Automatické sbírání itemu dotykem (viz zadání "sjednotit pro PC i
-          // mobil") — nahrazuje nutnost stisku E jen pro sebrání věci; E dál
-          // funguje i na návrat do kanceláře (viz handleObjectiveKey).
-          if (
-            shouldAutoCollectItem({
-              objective: input.objective,
-              missionPhase: game.mission.phase,
-              playerX: game.player.x,
-              playerY: game.player.y,
-              playerRadius: game.player.radius,
-              itemPosition: game.itemPosition,
-              itemRadius: ITEM_RADIUS,
-            })
-          ) {
-            const collectedItemId = input.itemToCollect ?? "fuse";
-            game.mission = completeObjective(game.mission, {
-              type: "collected_item",
-              itemId: collectedItemId,
-            });
-            setMissionPhase(game.mission.phase);
-            // Chybělo tu úplně (na rozdíl od doplňkového lootu níže) — hlavní
-            // objective (typicky baterie/brokovnice) po sebrání dřív neukázal
-            // žádnou hlášku, viz zadání "u brokovnice se nezobrazila žádná
-            // hláška, u žárovky ano".
-            setPickupMessage(COPY.game.itemCollectedLabel.replace("{item}", COPY.minigame.itemLabelsNominative[collectedItemId]));
-            audioManager.play(pickupSoundForItem(collectedItemId));
+          // "Prohledávám" — hráč musí LOOT_PICKUP_DURATION_MS (2s) souvisle
+          // stát v dosahu itemu, než se sebere (viz zadání "stejně jako u
+          // opravy kamery, ať musí chvíli stát"), místo dřívějšího
+          // okamžitého sebrání dotykem (shouldAutoCollectItem/extraLoot
+          // smyčka). Platí pro hlavní objective (collect_item, "outbound"
+          // fáze) I doplňkový loot (nezávisle na objective/fázi, viz zadání
+          // "sandbox výprava") — ale jen JEDEN cíl najednou, hlavní item má
+          // přednost, pokud je náhodou v dosahu obojí zároveň (sloty jsou v
+          // praxi vždy dost rozestoupené, ať se to nestává). `lootingTargetKey`
+          // identifikuje AKTUÁLNÍ cíl ("main" nebo "loot-{index}") — změna
+          // cíle mezi tiky (i z/na `null`) vynuluje progres, ať hráč
+          // nemůže "přenést" rozjetý postup přeběhnutím na jiný item.
+          const mainItemInRange =
+            input.objective === "collect_item" &&
+            game.mission.phase === "outbound" &&
+            game.itemPosition !== undefined &&
+            circlesTouch(
+              game.player.x,
+              game.player.y,
+              game.player.radius,
+              game.itemPosition.x,
+              game.itemPosition.y,
+              ITEM_RADIUS,
+            );
+          const inRangeExtraLootIndex = mainItemInRange
+            ? -1
+            : game.extraLoot.findIndex(
+                (loot) =>
+                  !loot.collected &&
+                  circlesTouch(game.player.x, game.player.y, game.player.radius, loot.position.x, loot.position.y, ITEM_RADIUS),
+              );
+          const currentLootTargetKey = mainItemInRange ? "main" : inRangeExtraLootIndex !== -1 ? `loot-${inRangeExtraLootIndex}` : null;
+
+          if (currentLootTargetKey !== game.lootingTargetKey) {
+            game.lootingTargetKey = currentLootTargetKey;
+            game.lootingProgressMs = 0;
+          }
+
+          const lootPlayerMoved = game.player.x !== playerXBeforeMove || game.player.y !== playerYBeforeMove;
+          game.lootingProgressMs = updateLootingProgressMs(
+            currentLootTargetKey !== null,
+            !lootPlayerMoved,
+            game.lootingProgressMs,
+            deltaMs,
+          );
+          // Zaokrouhleno na desetiny sekundy — stejný vzor jako woundedMsLeft/
+          // cameraReplacementProgressMs, ať progress panel nezpůsobuje
+          // re-render 60×/s.
+          setLootingProgressMs(Math.floor(game.lootingProgressMs / 100) * 100);
+
+          if (currentLootTargetKey !== null && game.lootingProgressMs >= LOOT_PICKUP_DURATION_MS) {
+            if (currentLootTargetKey === "main") {
+              const collectedItemId = input.itemToCollect ?? "fuse";
+              game.mission = completeObjective(game.mission, {
+                type: "collected_item",
+                itemId: collectedItemId,
+              });
+              setMissionPhase(game.mission.phase);
+              // Chybělo tu úplně (na rozdíl od doplňkového lootu níže) — hlavní
+              // objective (typicky baterie/brokovnice) po sebrání dřív neukázal
+              // žádnou hlášku, viz zadání "u brokovnice se nezobrazila žádná
+              // hláška, u žárovky ano".
+              setPickupMessage(COPY.game.itemCollectedLabel.replace("{item}", COPY.minigame.itemLabelsNominative[collectedItemId]));
+              audioManager.play(pickupSoundForItem(collectedItemId));
+            } else {
+              // Doplňkový loot (viz zadání "sandbox výprava") — sbírá se
+              // stejně jako hlavní item výše, ale NEZÁVISLE na mission.phase/
+              // objective (battery/bulb/shotgun jdou sebrat v libovolném
+              // pořadí, kdykoliv, i souběžně s hlavním objective). `collected`
+              // je čistě v gameRef (ne v mission), takže se nedotýká
+              // canReturnToOffice.
+              const loot = game.extraLoot[inRangeExtraLootIndex];
+              loot.collected = true;
+              setPickupMessage(COPY.game.itemCollectedLabel.replace("{item}", COPY.minigame.itemLabelsNominative[loot.itemId]));
+              audioManager.play(pickupSoundForItem(loot.itemId));
+            }
+            game.lootingProgressMs = 0;
+            game.lootingTargetKey = null;
           }
 
           // "Výměna kamery" channel (viz zadání "druhý výjezd — údržba
@@ -1087,20 +1163,6 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
               setMissionPhase(game.mission.phase);
               setPickupMessage(COPY.minigame.cameraReplacedLabel);
               audioManager.play(AUDIO_EVENTS.bulbReplaceSuccess);
-            }
-          }
-
-          // Doplňkový loot (viz zadání "sandbox výprava") — sbírá se dotykem
-          // stejně jako hlavní item výše, ale NEZÁVISLE na mission.phase/
-          // objective (battery/bulb/shotgun jdou sebrat v libovolném pořadí,
-          // kdykoliv, i souběžně s hlavním objective). `collected` je čistě v
-          // gameRef (ne v mission), takže se nedotýká canReturnToOffice.
-          for (const loot of game.extraLoot) {
-            if (loot.collected) continue;
-            if (circlesTouch(game.player.x, game.player.y, game.player.radius, loot.position.x, loot.position.y, ITEM_RADIUS)) {
-              loot.collected = true;
-              setPickupMessage(COPY.game.itemCollectedLabel.replace("{item}", COPY.minigame.itemLabelsNominative[loot.itemId]));
-              audioManager.play(pickupSoundForItem(loot.itemId));
             }
           }
 
@@ -1271,6 +1333,12 @@ export default function EmergencyMiniGame({ input, onComplete, onCancel, onMonst
             <div style={{ color: "#5dffa0", textShadow: "0 0 4px rgba(93,255,160,0.6)" }}>
               {COPY.minigame.cameraReplacingLabel} {(cameraReplacementProgressMs / 1000).toFixed(1)}/
               {(CAMERA_REPLACEMENT_DURATION_MS / 1000).toFixed(0)} s
+            </div>
+          )}
+          {lootingProgressMs > 0 && (
+            <div style={{ color: "#5dffa0", textShadow: "0 0 4px rgba(93,255,160,0.6)" }}>
+              {COPY.minigame.lootingLabel} {(lootingProgressMs / 1000).toFixed(1)}/
+              {(LOOT_PICKUP_DURATION_MS / 1000).toFixed(0)} s
             </div>
           )}
           {pickupMessage && (
@@ -1842,10 +1910,10 @@ function draw(
   }
 
   // Doplňkový loot (viz zadání "sandbox výprava") — stejný vizuál jako hlavní
-  // item marker výše (jen žlutý bod, žádný popisek), sbírá se čistě dotykem
-  // (viz tick()#shouldAutoCollectItem-analog smyčka), jeden na KAŽDOU dosud
-  // nesebranou položku. Skryté mimo viditelnost hráče stejně jako hlavní item
-  // (dev overlay ho vidí vždy přes itemVisible).
+  // item marker výše (jen žlutý bod, žádný popisek), sbírá se odstáním (viz
+  // "Prohledávám" channel v tick()), jeden na KAŽDOU dosud nesebranou
+  // položku. Skryté mimo viditelnost hráče stejně jako hlavní item (dev
+  // overlay ho vidí vždy přes itemVisible).
   for (const loot of game.extraLoot) {
     if (loot.collected) continue;
     const lootVisible =

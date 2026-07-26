@@ -266,6 +266,7 @@ export const COPY_EN: CopyShape = {
     missionHintCameraReplaced: "Camera replaced. Return to the office.",
     cameraReplacingLabel: "Replacing camera...",
     cameraReplacedLabel: "Camera replaced.",
+    lootingLabel: "Looting...",
     statusLabel: "STATUS:",
     statusPlayingLabel: "PATROL IN PROGRESS",
     statusWonLabel: "COMPLETE",

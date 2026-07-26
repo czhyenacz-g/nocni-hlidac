@@ -55,30 +55,6 @@ export function isMoveTargetMarkerVisible(elapsedMsSinceSet: number, durationMs:
   return elapsedMsSinceSet < durationMs;
 }
 
-export interface AutoCollectItemInput {
-  objective: MiniGameObjective;
-  missionPhase: EmergencyMissionPhase;
-  playerX: number;
-  playerY: number;
-  playerRadius: number;
-  itemPosition?: Vec2;
-  itemRadius: number;
-}
-
-/**
- * Jestli se má věc (collect_item) TEĎ automaticky sebrat — dotykem, bez
- * nutnosti klávesy E (viz zadání "sjednotit pro PC i mobil"). Mimo
- * "collect_item" nebo mimo "outbound" fázi (věc už sebraná/mise jiná) vždy
- * false — samotné sebrání pak dál řeší existující completeObjective
- * (logic.ts), tahle funkce jen říká "ano, dotýká se".
- */
-export function shouldAutoCollectItem(input: AutoCollectItemInput): boolean {
-  if (input.objective !== "collect_item") return false;
-  if (input.missionPhase !== "outbound") return false;
-  if (!input.itemPosition) return false;
-  return circlesTouch(input.playerX, input.playerY, input.playerRadius, input.itemPosition.x, input.itemPosition.y, input.itemRadius);
-}
-
 export interface CanShowReturnButtonInput {
   status: "playing" | "won" | "gameOver";
   inExitZone: boolean;

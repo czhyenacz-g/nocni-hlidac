@@ -1308,6 +1308,7 @@ function PlayPageContent() {
           primaryItemId: "shotgun",
           nightFeatures: state.nightFeatures,
           hasShotgun: state.hasShotgun,
+          nightNumber: currentNight,
         });
         setActiveMiniGame({
           id: "shotgun_run",
@@ -1325,6 +1326,7 @@ function PlayPageContent() {
           primaryItemId: "battery",
           nightFeatures: state.nightFeatures,
           hasShotgun: state.hasShotgun,
+          nightNumber: currentNight,
         });
         setActiveMiniGame({
           id: "battery_run",

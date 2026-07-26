@@ -8,7 +8,6 @@ import {
   isMoveTargetMarkerVisible,
   isTouchCapableDevice,
   resolveMoveTargetFromWorldPoint,
-  shouldAutoCollectItem,
   shouldHandleMapPointerEvent,
 } from "./touchControls";
 
@@ -66,34 +65,6 @@ describe("isMoveTargetMarkerVisible", () => {
 
   it("disappears after the configured duration", () => {
     expect(isMoveTargetMarkerVisible(901, 900)).toBe(false);
-  });
-});
-
-describe("shouldAutoCollectItem", () => {
-  const base = {
-    objective: "collect_item" as const,
-    missionPhase: "outbound" as const,
-    playerX: 100,
-    playerY: 100,
-    playerRadius: 14,
-    itemPosition: { x: 105, y: 100 },
-    itemRadius: 10,
-  };
-
-  it("triggers when the player is within the pickup radius", () => {
-    expect(shouldAutoCollectItem(base)).toBe(true);
-  });
-
-  it("does not trigger outside the pickup radius", () => {
-    expect(shouldAutoCollectItem({ ...base, itemPosition: { x: 500, y: 500 } })).toBe(false);
-  });
-
-  it("does not trigger once the mission has moved past outbound", () => {
-    expect(shouldAutoCollectItem({ ...base, missionPhase: "returning" })).toBe(false);
-  });
-
-  it("does not trigger for objectives other than collect_item", () => {
-    expect(shouldAutoCollectItem({ ...base, objective: "return_to_office" })).toBe(false);
   });
 });
 

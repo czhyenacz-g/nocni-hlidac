@@ -39,7 +39,7 @@ export const AUDIO_EVENTS = {
   // bolestivý řev, ne smrtelný jumpscare (monstrum je jen "wounded", ne mrtvé).
   monsterWounded: "monster_wounded",
   // Sebrání lootu v EmergencyMiniGame (baterie/žárovka/brokovnice, viz
-  // shouldAutoCollectItem/extraLoot v EmergencyMiniGame.tsx) — hlasitější
+  // "Prohledávám" channel/extraLoot v EmergencyMiniGame.tsx) — hlasitější
   // varianta uiClick, ať sběr věci má jasnou zvukovou odezvu.
   itemPickup: "item_pickup",
   // Držení tlačítka "Nouzově opustit místnost" (viz zadání,

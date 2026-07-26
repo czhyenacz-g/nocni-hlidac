@@ -423,6 +423,12 @@
       `cameraDamage.ts`) — noc 1–9 → 6 %, 10–19 → 12 %, 20+ → 16 % (dřív pevných 5 % bez
       ohledu na noc). Limit počtu současně vyřazených kamer podle noci
       (`MAX_DISABLED_CAMERAS_BY_NIGHT`) zůstává beze změny.
+- [x] Skladová minihra — sdílený loot pool (14 slotů v `serviceFloorEvacPlan.ts`
+      teď nese VŠECHNY item tagy najednou, ne jeden napevno), noc-škálovaný počet
+      prázdných krabic (`getEmptyLootCountForNight`: noc 1–9 → 2, 10–20 → 3, 21+ → 4),
+      a nové "prohledávám" 2s odstátí před sebráním itemu/lootu
+      (`updateLootingProgressMs` v `game/minigame/logic.ts`, stejná mechanika jako
+      výměna kamery, jen kratší) — nahrazuje dřívější okamžité sebrání dotykem.
 - Discord login krok 2 — DB tabulka `players` (id, discord_user_id, username, display_name,
   avatar_url, created_at, updated_at, last_login_at), upsert v `app/api/auth/callback/route.ts`
   (dnes jen podepsaná cookie, žádná perzistence hráče)

@@ -553,6 +553,10 @@ export const COPY_CS = {
     missionHintCameraReplaced: "Kamera vyměněna. Vrať se do kanceláře.",
     cameraReplacingLabel: "Vyměňuji kameru...",
     cameraReplacedLabel: "Kamera vyměněna.",
+    // "Prohledávám" (viz zadání "stejně jako u opravy kamery, ať musí chvíli
+    // stát, než item sebere") — HUD progress label, stejný vzor jako
+    // cameraReplacingLabel výše.
+    lootingLabel: "Prohledávám...",
     statusLabel: "STAV:",
     statusPlayingLabel: "PROBÍHÁ OBCHŮZKA",
     statusWonLabel: "SPLNĚNO",

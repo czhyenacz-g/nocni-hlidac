@@ -1,4 +1,10 @@
-import { MiniGameLayout } from "../layoutTypes";
+import { MiniGameLayout, MiniGameLayoutSlotTag } from "../layoutTypes";
+
+// Sdílený tag-set pro "loot pool" sloty níže (viz zadání "chci, aby se to
+// víc promíchávalo") — jedna konstanta, ať všech 14 poolových slotů drží
+// PŘESNĚ stejnou sadu tagů (žádné riziko, že se při editaci jeden slot
+// omylem rozejde od ostatních).
+const LOOT_POOL_TAGS: MiniGameLayoutSlotTag[] = ["battery", "bulb", "fuse", "ammo", "toolbox", "empty"];
 
 // Druhý, výrazně komplexnější servisně-skladový layout (viz zadání
 // "evakuační plán / půdorys budovy") — 10 místností v pravidelné 3-sloupcové
@@ -179,45 +185,39 @@ export const SERVICE_FLOOR_EVAC_PLAN: MiniGameLayout = {
       debugName: "Spawn — temná centrální chodba",
     },
 
-    { id: "battery_storage_a_01", roomId: "storage_a", x: 450, y: 240, tags: ["battery"], debugName: "Baterie — sklad A" },
-    { id: "battery_technical_01", roomId: "technical_room", x: 1050, y: 350, tags: ["battery"], debugName: "Baterie — rozvodna" },
-    { id: "battery_maintenance_01", roomId: "maintenance_workshop", x: 1300, y: 700, tags: ["battery"], debugName: "Baterie — dílna" },
+    // Sdílený loot pool (viz zadání "prázdná krabice byla dvakrát po sobě na
+    // stejném místě" -> "chci, aby se to víc promíchávalo") — KAŽDÝ z těchhle
+    // 14 slotů nese VŠECHNY běžné item tagy najednou (battery/bulb/fuse/ammo/
+    // toolbox/empty), takže které konkrétní místo dostane kterou věc se
+    // losuje nezávisle každou výpravu (viz layoutPlacement.ts#pickSlotByTag +
+    // excludeSlotIds, který zaručuje, že žádné dvě položky neskončí na
+    // stejném slotu). Stejný "univerzální slot" princip jako
+    // serviceFloorAlpha.ts (tam jeden slot pro všechno), tady rozprostřený
+    // přes 14 fyzických míst po celé mapě, ne jen jedno. `shotgun` záměrně
+    // MIMO tenhle pool (viz níže) — hlavní/vzácný cíl shotgun run, potřebuje
+    // vlastní spolehlivě rozlišitelné místo, ne se míchat s běžným lootem.
+    { id: "loot_storage_a_01", roomId: "storage_a", x: 450, y: 240, tags: LOOT_POOL_TAGS, debugName: "Loot — sklad A" },
+    { id: "loot_technical_01", roomId: "technical_room", x: 1050, y: 350, tags: LOOT_POOL_TAGS, debugName: "Loot — rozvodna" },
+    { id: "loot_maintenance_01", roomId: "maintenance_workshop", x: 1300, y: 700, tags: LOOT_POOL_TAGS, debugName: "Loot — dílna" },
 
-    { id: "bulb_storage_b_01", roomId: "storage_b", x: 450, y: 900, tags: ["bulb"], debugName: "Žárovka — sklad B" },
-    { id: "bulb_utility_01", roomId: "utility_room", x: 450, y: 550, tags: ["bulb"], debugName: "Žárovka — údržbářská místnost" },
+    { id: "loot_storage_b_01", roomId: "storage_b", x: 450, y: 900, tags: LOOT_POOL_TAGS, debugName: "Loot — sklad B" },
+    { id: "loot_utility_01", roomId: "utility_room", x: 450, y: 550, tags: LOOT_POOL_TAGS, debugName: "Loot — údržbářská místnost" },
 
-    { id: "fuse_technical_01", roomId: "technical_room", x: 1350, y: 250, tags: ["fuse"], debugName: "Pojistka — rozvodna" },
-    { id: "fuse_service_01", roomId: "service_corridor", x: 1400, y: 550, tags: ["fuse"], debugName: "Pojistka — servisní chodba" },
+    { id: "loot_technical_02", roomId: "technical_room", x: 1350, y: 250, tags: LOOT_POOL_TAGS, debugName: "Loot — rozvodna 2" },
+    { id: "loot_service_01", roomId: "service_corridor", x: 1400, y: 550, tags: LOOT_POOL_TAGS, debugName: "Loot — servisní chodba" },
 
     { id: "shotgun_maintenance_01", roomId: "maintenance_workshop", x: 1400, y: 780, tags: ["shotgun"], debugName: "Brokovnice — dílna" },
 
     // x300 = uprostřed centrální uličky (viz shelf_a_row3_l/r mezera 280–320) — ne v regálu.
-    { id: "ammo_storage_a_01", roomId: "storage_a", x: 300, y: 420, tags: ["ammo"], debugName: "Náboje — sklad A" },
-    { id: "ammo_workshop_01", roomId: "maintenance_workshop", x: 1000, y: 900, tags: ["ammo"], debugName: "Náboje — dílna" },
+    { id: "loot_storage_a_02", roomId: "storage_a", x: 300, y: 420, tags: LOOT_POOL_TAGS, debugName: "Loot — sklad A 2" },
+    { id: "loot_maintenance_02", roomId: "maintenance_workshop", x: 1000, y: 900, tags: LOOT_POOL_TAGS, debugName: "Loot — dílna 2" },
 
-    { id: "toolbox_maintenance_01", roomId: "maintenance_workshop", x: 1150, y: 900, tags: ["toolbox"], debugName: "Nářadí — dílna" },
+    { id: "loot_maintenance_03", roomId: "maintenance_workshop", x: 1150, y: 900, tags: LOOT_POOL_TAGS, debugName: "Loot — dílna 3" },
 
-    // "Prázdná krabice" (viz zadání) — čistě atmosférický decoy bez efektu
-    // (worldEffectsForItem "empty" -> []), dvě samostatné položky (viz
-    // resolveExtraLootItems v game/core/emergencyMiniGameIntegration.ts).
-    { id: "empty_storage_a_01", roomId: "storage_a", x: 300, y: 300, tags: ["empty"], debugName: "Prázdná krabice — sklad A" },
-    {
-      id: "empty_lower_corridor_01",
-      roomId: "lower_corridor",
-      x: 750,
-      y: 760,
-      tags: ["empty"],
-      debugName: "Prázdná krabice — spodní chodba",
-    },
+    { id: "loot_storage_a_03", roomId: "storage_a", x: 300, y: 300, tags: LOOT_POOL_TAGS, debugName: "Loot — sklad A 3" },
+    { id: "loot_lower_corridor_01", roomId: "lower_corridor", x: 750, y: 760, tags: LOOT_POOL_TAGS, debugName: "Loot — spodní chodba" },
 
-    { id: "generic_loot_storage_01", roomId: "storage_b", x: 150, y: 850, tags: ["generic_loot"], debugName: "Obecný loot — sklad B" },
-    {
-      id: "generic_loot_utility_01",
-      roomId: "utility_room",
-      x: 100,
-      y: 650,
-      tags: ["generic_loot"],
-      debugName: "Obecný loot — údržbářská místnost",
-    },
+    { id: "loot_storage_b_02", roomId: "storage_b", x: 150, y: 850, tags: LOOT_POOL_TAGS, debugName: "Loot — sklad B 2" },
+    { id: "loot_utility_02", roomId: "utility_room", x: 100, y: 650, tags: LOOT_POOL_TAGS, debugName: "Loot — údržbářská místnost 2" },
   ],
 };

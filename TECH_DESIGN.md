@@ -2603,6 +2603,47 @@ Odpověď serveru (`applyGuardRunResponse`) tenhle stejný výsledek jen potvrd�
 autoritativní hodnotou, jakmile dorazí — žádný konflikt, žádné dvojí navýšení (server vždy
 vrací kompletní `player` objekt, ne delta).
 
+## Nouzová minihra — sdílený loot pool, noc-škálované prázdné krabice, "prohledávám" odstátí
+
+Tři související úpravy (viz zadání "dvakrát po sobě prázdná krabice na
+stejném místě" -> "chci, aby se to víc promíchávalo" -> "stejně jako u
+opravy kamery, ať musí chvíli stát"):
+
+- **Sdílený loot pool** (`game/minigame/layouts/serviceFloorEvacPlan.ts`) —
+  14 z dřívějších jednotlivě-tagovaných slotů (battery ×3, bulb ×2, fuse ×2,
+  ammo ×2, toolbox ×1, empty ×2, generic_loot ×2) teď nesou VŠECHNY tyhle
+  tagy najednou (`LOOT_POOL_TAGS = ["battery","bulb","fuse","ammo","toolbox","empty"]`,
+  jedna sdílená konstanta, ať žádný slot při editaci omylem nerozejde od
+  ostatních). Stejný princip jako `serviceFloorAlpha.ts` (tam jeden
+  univerzální slot pro všechno, tady rozprostřený přes 14 fyzických míst) —
+  `layoutPlacement.ts#pickSlotByTag`/`excludeSlotIds` fungují beze změny,
+  žádný nový kód, jen datová změna. `shotgun` záměrně MIMO pool (vlastní
+  dedikovaný slot) — vzácný/hlavní cíl shotgun run nemá konkurovat o slot s
+  běžným lootem.
+- **Noc-škálovaný počet prázdných krabic** — `resolveExtraLootItems` dřív
+  vždy přidávalo přesně `"empty", "empty"` (2), teď
+  `getEmptyLootCountForNight(nightNumber)` (`emergencyMiniGameIntegration.ts`,
+  stejná "sestupné prahy" konvence jako `getMaxDisabledCamerasForNight`):
+  noc 1–9 → 2 (beze změny), noc 10–20 → 3, noc 21+ → 4. `nightNumber` je
+  nový volitelný parametr `resolveExtraLootItems` (`?? 1`, zpětně
+  kompatibilní), `app/play/page.tsx` mu předává `currentNight` na obou
+  volajících místech (battery/shotgun run start).
+- **"Prohledávám" — 2s odstátí před sebráním** — nahrazuje dřívější okamžité
+  sebrání dotykem (`shouldAutoCollectItem` v `touchControls.ts`, teď
+  smazané jako mrtvý kód, a samostatná `extraLoot` smyčka v `tick()`, taky
+  smazaná). Nová `updateLootingProgressMs` (`game/minigame/logic.ts`) je
+  identická mechanika jako `updateCameraReplacementProgressMs` (nuluje se
+  mimo dosah nebo při pohybu), jen kratší `LOOT_PICKUP_DURATION_MS` (2s,
+  `config.ts`) — sebrání věci je rutinní úkon, ne riskantní oprava kamery
+  (5s). `MiniGameRefState.lootingTargetKey` (`"main"` | `"loot-{index}"` |
+  `null`) identifikuje AKTUÁLNÍ cíl — platí pro hlavní objective
+  (`collect_item`, "outbound" fáze) I doplňkový loot NEZÁVISLE na
+  objective/fázi, ale jen JEDEN najednou (hlavní item má přednost). Změna
+  cíle mezi tiky (i z/na `null`) vynuluje `lootingProgressMs` — hráč
+  nemůže "přenést" rozjetý postup přeběhnutím na jiný item. HUD ukáže
+  `COPY.minigame.lootingLabel` ("Prohledávám...") + `X.X/2.0 s`, stejný
+  vzor jako `cameraReplacingLabel`.
+
 ## Nouzová minihra — hrozba přenesená zpět do kanceláře ("threat on return")
 
 Úspěšný návrat z EmergencyMiniGame (`outcome: "returned"`) může nést informaci, že

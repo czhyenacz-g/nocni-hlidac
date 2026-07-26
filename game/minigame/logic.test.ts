@@ -29,6 +29,7 @@ import {
   isPointInCone,
   isTargetInCone,
   updateCameraReplacementProgressMs,
+  updateLootingProgressMs,
   lineIntersectsRect,
   moveWithWallSliding,
   MINIGAME_HEARTBEAT_VOLUME_BASE,
@@ -1271,6 +1272,38 @@ describe("updateCameraReplacementProgressMs", () => {
       progress = updateCameraReplacementProgressMs(true, true, progress, 1000);
     }
     expect(progress).toBe(5000);
+  });
+});
+
+// "Prohledávám" (viz zadání "stejně jako u opravy kamery, ať musí chvíli
+// stát, než item sebere", LOOT_PICKUP_DURATION_MS v config.ts) — identická
+// mechanika jako updateCameraReplacementProgressMs výše, jen jiná (kratší)
+// cílová konstanta a volající řeší i identitu cíle (hlavní item vs. který
+// kus doplňkového lootu), ne tahle funkce.
+describe("updateLootingProgressMs", () => {
+  it("accumulates deltaMs while in range and stationary", () => {
+    expect(updateLootingProgressMs(true, true, 0, 500)).toBe(500);
+    expect(updateLootingProgressMs(true, true, 500, 500)).toBe(1000);
+  });
+
+  it("resets to 0 when out of range, regardless of stationarity or prior progress", () => {
+    expect(updateLootingProgressMs(false, true, 1500, 500)).toBe(0);
+  });
+
+  it("resets to 0 when the player moved (not stationary), even while in range", () => {
+    expect(updateLootingProgressMs(true, false, 1500, 500)).toBe(0);
+  });
+
+  it("resets to 0 when both out of range and moving", () => {
+    expect(updateLootingProgressMs(false, false, 1500, 500)).toBe(0);
+  });
+
+  it("reaches (and can exceed) LOOT_PICKUP_DURATION_MS given enough continuous in-range stationary ticks", () => {
+    let progress = 0;
+    for (let i = 0; i < 2; i++) {
+      progress = updateLootingProgressMs(true, true, progress, 1000);
+    }
+    expect(progress).toBe(2000);
   });
 });
 

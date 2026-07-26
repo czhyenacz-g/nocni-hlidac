@@ -159,20 +159,25 @@ export function createCameraMaintenanceEmergencyInput(
  * Doplňkový loot vždy dostupný na mapě NAVÍC k hlavnímu objective (viz
  * zadání "sandbox výprava") — battery/bulb garantované na KAŽDÉ výpravě,
  * shotgun podmíněně podle `canStartShotgunEmergencyRun` (noc 10+, hráč ho
- * ještě nemá), a DVĚ "prázdné krabice" (viz zadání, MiniGameItemId "empty")
- * VŽDY — čistě atmosférický decoy bez efektu (worldEffectsForItem vrací pro
- * "empty" `[]`), na mapě musí být dvě samostatné položky, ne jedna (viz
- * SERVICE_FLOOR_EVAC_PLAN dvě sloty tagované "empty"). `primaryItemId` (co je
- * zrovna hlavní objective) se z výsledku vynechá, ať se stejná položka
- * nežádá dvakrát (viz game/minigame/layoutPlacement.ts#resolveMiniGamePlacement
- * — dvě položky by si jinak konkurovaly o stejný tag/slot) — "empty" nikdy
- * není `primaryItemId` (nikdy to není hlavní objective), takže se přidává
+ * ještě nemá), a "prázdné krabice" (viz zadání, MiniGameItemId "empty") —
+ * čistě atmosférický decoy bez efektu (worldEffectsForItem vrací pro "empty"
+ * `[]`). Počet prázdných krabic roste s nocí (viz
+ * `getEmptyLootCountForNight`/`EMPTY_LOOT_COUNT_BY_NIGHT` níže, zadání "ať se
+ * to víc promíchává, a v pozdějších nocích přidej další") — mapa má dost
+ * sdílených loot slotů na nejvyšší počet (viz SERVICE_FLOOR_EVAC_PLAN
+ * "loot pool", 14 slotů sdílejících tag "empty" mezi jiné). `primaryItemId`
+ * (co je zrovna hlavní objective) se z výsledku vynechá, ať se stejná
+ * položka nežádá dvakrát (viz
+ * game/minigame/layoutPlacement.ts#resolveMiniGamePlacement — dvě položky by
+ * si jinak konkurovaly o stejný tag/slot) — "empty" nikdy není
+ * `primaryItemId` (nikdy to není hlavní objective), takže se přidává
  * bezpodmínečně.
  */
 export function resolveExtraLootItems(input: {
   primaryItemId: MiniGameItemId;
   nightFeatures: Pick<NightFeatureFlags, "emergencyRunsEnabled" | "shotgunLootEnabled">;
   hasShotgun: boolean;
+  nightNumber?: number;
 }): MiniGameItemId[] {
   const items: MiniGameItemId[] = [];
   if (input.primaryItemId !== "battery") items.push("battery");
@@ -180,8 +185,27 @@ export function resolveExtraLootItems(input: {
   if (input.primaryItemId !== "shotgun" && canStartShotgunEmergencyRun(input.nightFeatures, input.hasShotgun)) {
     items.push("shotgun");
   }
-  items.push("empty", "empty");
+  const emptyLootCount = getEmptyLootCountForNight(input.nightNumber ?? 1);
+  for (let i = 0; i < emptyLootCount; i++) items.push("empty");
   return items;
+}
+
+/**
+ * Kolik "prázdných krabic" se má přidat podle čísla noci (viz zadání "pro
+ * noci 10-20 a 21 a víc přidat ještě jednu, popř. dvě") — stejná "sestupné
+ * prahy" konvence jako getMaxDisabledCamerasForNight/
+ * getGhoulCameraAttackChanceForNight (game/core/cameraDamage.ts). Noc 1–9:
+ * 2 (beze změny dřívějšího chování), noc 10–20: 3, noc 21+: 4.
+ */
+const EMPTY_LOOT_COUNT_BY_NIGHT: readonly { minNight: number; count: number }[] = [
+  { minNight: 21, count: 4 },
+  { minNight: 10, count: 3 },
+  { minNight: 1, count: 2 },
+];
+
+export function getEmptyLootCountForNight(nightNumber: number): number {
+  const tier = EMPTY_LOOT_COUNT_BY_NIGHT.find((entry) => nightNumber >= entry.minNight);
+  return tier?.count ?? 2;
 }
 
 /**

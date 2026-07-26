@@ -264,6 +264,16 @@ export const ITEM_RADIUS = 10;
  */
 export const CAMERA_REPLACEMENT_DURATION_MS = 5_000;
 
+/**
+ * "Prohledávám" (viz zadání "stejně jako u opravy kamery, ať musí chvíli
+ * stát, než item sebere") — jak dlouho musí hráč nehybně stát v dosahu
+ * itemu (hlavní objective NEBO doplňkový loot), než se automaticky sebere
+ * (game/minigame/logic.ts#updateLootingProgressMs). Kratší než
+ * CAMERA_REPLACEMENT_DURATION_MS (2s vs 5s, na výslovnou žádost) — sebrání
+ * věci je rutinní úkon, ne riskantní oprava. Dosah sdílí ITEM_RADIUS výše.
+ */
+export const LOOT_PICKUP_DURATION_MS = 2_000;
+
 // Nepřítel startuje nahoře a hned v "investigating" (NE "chasing") — s
 // prvním podezřelým bodem poblíž hráčovy startovní pozice, s náhodnou
 // odchylkou (viz createInvestigationTarget). Bere `player` jako parametr,

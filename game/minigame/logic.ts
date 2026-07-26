@@ -1048,6 +1048,27 @@ export function updateCameraReplacementProgressMs(
   return currentProgressMs + deltaMs;
 }
 
+/**
+ * Postup "prohledávám" (sebrání itemu, viz zadání "stejně jako u opravy
+ * kamery, ať musí chvíli stát") — stejná mechanika jako
+ * updateCameraReplacementProgressMs výše (nuluje se, jakmile hráč není v
+ * dosahu SVÉHO AKTUÁLNÍHO cíle, nebo se od minulého tiku pohnul), jen jiná
+ * cílová konstanta (LOOT_PICKUP_DURATION_MS, kratší). Volající
+ * (EmergencyMiniGame.tsx#tick) navíc řeší, KTERÝ konkrétní item (hlavní
+ * objective vs. který kus doplňkového lootu) se zrovna sbírá — tahle funkce
+ * o identitě cíle nic neví, jen sčítá/resetuje ms pro "cokoliv, na čem hráč
+ * zrovna stojí".
+ */
+export function updateLootingProgressMs(
+  inRange: boolean,
+  isPlayerStationary: boolean,
+  currentProgressMs: number,
+  deltaMs: number,
+): number {
+  if (!inRange || !isPlayerStationary) return 0;
+  return currentProgressMs + deltaMs;
+}
+
 // ── Zamčené dveře kanceláře (viz zadání "diegetická herní mechanika",
 // EMERGENCY_OFFICE_DOOR_LOCK_MS/EMERGENCY_MONSTER_OFFICE_TARGET_DELAY_MS v
 // config.ts) — čisté funkce jen z `elapsedMs`, žádný vlastní stav. Dveře

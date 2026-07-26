@@ -9,6 +9,7 @@ import {
   createBatteryEmergencyInput,
   createCameraMaintenanceEmergencyInput,
   createShotgunEmergencyInput,
+  getEmptyLootCountForNight,
   resolveBulbsGainedFromWorldEffects,
   resolveCameraMaintenanceTargetCameraId,
   resolveExtraLootItems,
@@ -251,7 +252,7 @@ describe("resolveExtraLootItems", () => {
     expect(items).toEqual(["bulb", "empty", "empty"]);
   });
 
-  it("always adds exactly two 'empty' decoys, regardless of primary item or shotgun eligibility", () => {
+  it("always adds exactly two 'empty' decoys on night 1-9 (default, no nightNumber passed), regardless of primary item or shotgun eligibility", () => {
     for (const primaryItemId of ["battery", "bulb", "shotgun"] as const) {
       const items = resolveExtraLootItems({
         primaryItemId,
@@ -260,6 +261,43 @@ describe("resolveExtraLootItems", () => {
       });
       expect(items.filter((item) => item === "empty")).toEqual(["empty", "empty"]);
     }
+  });
+
+  it("adds three 'empty' decoys on nights 10-20 (viz zadání)", () => {
+    const items = resolveExtraLootItems({
+      primaryItemId: "battery",
+      nightFeatures: { emergencyRunsEnabled: true, shotgunLootEnabled: true },
+      hasShotgun: false,
+      nightNumber: 10,
+    });
+    expect(items.filter((item) => item === "empty")).toHaveLength(3);
+  });
+
+  it("adds four 'empty' decoys from night 21+ (viz zadání)", () => {
+    const items = resolveExtraLootItems({
+      primaryItemId: "battery",
+      nightFeatures: { emergencyRunsEnabled: true, shotgunLootEnabled: true },
+      hasShotgun: false,
+      nightNumber: 21,
+    });
+    expect(items.filter((item) => item === "empty")).toHaveLength(4);
+  });
+});
+
+describe("getEmptyLootCountForNight", () => {
+  it("nights 1-9: 2", () => {
+    expect(getEmptyLootCountForNight(1)).toBe(2);
+    expect(getEmptyLootCountForNight(9)).toBe(2);
+  });
+
+  it("nights 10-20: 3", () => {
+    expect(getEmptyLootCountForNight(10)).toBe(3);
+    expect(getEmptyLootCountForNight(20)).toBe(3);
+  });
+
+  it("nights 21+: 4", () => {
+    expect(getEmptyLootCountForNight(21)).toBe(4);
+    expect(getEmptyLootCountForNight(99)).toBe(4);
   });
 });
 
