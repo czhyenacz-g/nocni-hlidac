@@ -747,6 +747,11 @@ export const COPY_CS = {
     aboutLinkLabel: "O projektu",
     comingSoonLabel: "Připravujeme: inzerce nočních provozů",
     tagline: "Hororová hra a pocta nočním směnám.",
+    // Nahrazuje dřívější viditelný e-mail v patičce (viz zadání "odstraň
+    // mail... dej tam A game by czhyenacz games") — čistě textový credit,
+    // ne mailto odkaz. Kontaktní e-mail (COPY.menu.authorEmail) zůstává
+    // beze změny na /about, kde slouží jako funkční "napiš nám" CTA.
+    credit: "A game by czhyenacz games",
   },
   about: {
     seoTitle: "O projektu | Noční hlídač",

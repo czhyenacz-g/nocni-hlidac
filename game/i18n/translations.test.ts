@@ -113,7 +113,7 @@ describe("switching the active language changes the displayed text", () => {
   // the same key, with no other state involved.
   it("the same key resolves to different text for cs vs en", () => {
     expect(TRANSLATIONS.cs.menu.title).toBe("Noční hlídač");
-    expect(TRANSLATIONS.en.menu.title).toBe("Night Watchman");
+    expect(TRANSLATIONS.en.menu.title).toBe("Object 13: First Shift");
     expect(TRANSLATIONS.cs.menu.title).not.toBe(TRANSLATIONS.en.menu.title);
   });
 
@@ -123,7 +123,7 @@ describe("switching the active language changes the displayed text", () => {
 
     expect(readTitle()).toBe("Noční hlídač");
     language = "en";
-    expect(readTitle()).toBe("Night Watchman");
+    expect(readTitle()).toBe("Object 13: First Shift");
     language = "cs";
     expect(readTitle()).toBe("Noční hlídač");
   });

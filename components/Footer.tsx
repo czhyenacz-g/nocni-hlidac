@@ -20,10 +20,7 @@ export default function Footer() {
       </p>
       <p className="text-gray-700 italic mb-1">{COPY.footer.tagline}</p>
       <p>
-        <span title={`build ${BUILD_COMMIT}`}>{APP_VERSION}</span> ·{" "}
-        <a href={`mailto:${COPY.menu.authorEmail}`} className="hover:text-gray-400">
-          {COPY.menu.authorEmail}
-        </a>
+        <span title={`build ${BUILD_COMMIT}`}>{APP_VERSION}</span> · <span>{COPY.footer.credit}</span>
       </p>
     </footer>
   );

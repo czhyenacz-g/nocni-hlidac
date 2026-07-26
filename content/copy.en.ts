@@ -16,8 +16,8 @@ export const COPY_EN: CopyShape = {
     },
   },
   menu: {
-    title: "Night Watchman",
-    subtitle: "Object 13: First Shift",
+    title: "Object 13: First Shift",
+    subtitle: "Night Watchman Horror Game",
     intro: "You're sitting in a small room. The cameras hiss with static. The door won't hold forever. Survive till dawn.",
     goldenGuardIntro:
       "You're sitting in a small room. The cameras hiss with static. The door won't hold forever. Except this time, you're not the one who should be afraid.",
@@ -396,6 +396,7 @@ export const COPY_EN: CopyShape = {
     aboutLinkLabel: "About",
     comingSoonLabel: "Coming soon: night-shift job listings",
     tagline: "A horror game and tribute to night shift workers.",
+    credit: "A game by czhyenacz games",
   },
   about: {
     seoTitle: "About | Night Watchman",

@@ -8,3 +8,4 @@ node_modules/
 .DS_Store
 .export-build-tmp/
 dist-game/
+dist/
