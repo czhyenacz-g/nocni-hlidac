@@ -12,7 +12,8 @@ export type ConsoleIconId =
   | "clock"
   | "battery"
   | "skull"
-  | "discord";
+  | "discord"
+  | "help";
 
 /**
  * Sdílené inline SVG ikony pro konzolové ikonové bloky (viz
@@ -90,6 +91,14 @@ export default function ConsoleIcon({ id }: { id: ConsoleIconId }) {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
           <path d="M4 9v6h4l5 4V5L8 9H4Z" />
           <path d="M16 9l5 6M21 9l-5 6" />
+        </svg>
+      );
+    case "help":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M9.5 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.3 1.9-2.3 3.6" />
+          <circle cx="12" cy="16.8" r="0.6" fill="currentColor" stroke="none" />
         </svg>
       );
     case "clock":

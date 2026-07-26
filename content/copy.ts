@@ -255,6 +255,9 @@ export const COPY_CS = {
     // viditelný jen v detailu právě otevřené kamery.
     sonicCannonOffLabel: "ZAPNOUT SONICKÉ DĚLO",
     sonicCannonOnLabel: "SONICKÉ DĚLO: AKTIVNÍ",
+    // Tooltip po 5s podržení kurzoru na tlačítku (viz zadání) — čistě
+    // atmosférický/vtipný flavor text, žádná herní informace navíc.
+    sonicCannonTooltipText: "Experimentální zbraň. Němčina zabírá i na bestie.",
     // Kamera vyřazená Ghoulem (viz zadání "systém útoku na kameru",
     // CameraDamageOverlay.tsx) — obraz je pryč, mikrofon zůstává aktivní
     // (poslední řádek to hráči výslovně potvrzuje).
@@ -264,6 +267,12 @@ export const COPY_CS = {
     cameraOfflineMicActiveLabel: "MIKROFON: AKTIVNÍ",
     audioOnLabel: "Zvuk: zapnutý",
     audioOffLabel: "Zvuk: vypnutý",
+    // Ikonové tlačítko nápovědy vedle mapy/zvuku (viz zadání) — HelpButton.tsx,
+    // čistě lokální otevřít/zavřít stav (žádné GameState pole).
+    helpButtonLabel: "Nápověda",
+    helpModalText:
+      "Při tvé službě je stav energie kriticky důležitý. Pokud ji máš málo, nebo máš nedostatek vybavení (např. žárovek), budeš muset vyrazit ven, kde ale na tebe mohou čekat monstra.",
+    helpModalCloseLabel: "Zavřít",
     // Dominantní navigace v control roomu — šipka dolů, ne doprava, ať
     // odpovídá tomu, že dveře jsou "hlavní směr pohledu" spodní navigace
     // (viz DeskView.tsx, ViewSwitchArrow variant="primary").

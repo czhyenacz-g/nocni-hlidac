@@ -25,6 +25,7 @@ import PowerMeter from "../game/PowerMeter";
 import ShiftTimer from "../game/ShiftTimer";
 import AudioToggle from "../game/AudioToggle";
 import MapButton from "../game/MapButton";
+import HelpButton from "../game/HelpButton";
 import DebugPanel from "../game/DebugPanel";
 import OfficeBreachBanner from "../game/OfficeBreachBanner";
 import RadioMessageOverlay from "../game/radio/RadioMessageOverlay";
@@ -296,6 +297,7 @@ export default function GameScreen({
               <div className="flex items-center gap-2">
                 <MapButton onClick={onLookAtMap} />
                 <AudioToggle muted={state.audioMuted} onToggle={onToggleAudio} />
+                <HelpButton />
               </div>
             </div>
 

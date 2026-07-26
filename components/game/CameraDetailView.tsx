@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useCopy } from "@/game/i18n/useTranslation";
 import { CameraDamageState, CameraDefinition, EnemyMoveDecision, EnemyStage } from "@/game/core/types";
 import { resolveCameraAttackVisualPhase } from "@/game/core/cameraDamage";
@@ -54,6 +54,23 @@ export default function CameraDetailView({
   // zase zmenší zpátky.
   const [zoomed, setZoomed] = useState(false);
 
+  // Tooltip po 5s podržení kurzoru na tlačítku sonického děla (viz zadání)
+  // — čistě lokální UI stav/timer, žádné GameState pole. `hoverTimeoutRef`
+  // se ruší při opuštění kurzorem, ať krátký "projetí myší" tooltip nikdy
+  // neukáže.
+  const [showSonicCannonTooltip, setShowSonicCannonTooltip] = useState(false);
+  const sonicCannonHoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function handleSonicCannonMouseEnter() {
+    sonicCannonHoverTimeoutRef.current = setTimeout(() => setShowSonicCannonTooltip(true), 5000);
+  }
+
+  function handleSonicCannonMouseLeave() {
+    if (sonicCannonHoverTimeoutRef.current !== null) clearTimeout(sonicCannonHoverTimeoutRef.current);
+    sonicCannonHoverTimeoutRef.current = null;
+    setShowSonicCannonTooltip(false);
+  }
+
   return (
     <div className="camera-detail-zoom-in flex flex-col gap-2">
       {/* `relative` obal jen kvůli sonic-cannon/camera-damage overlayům níže
@@ -104,13 +121,25 @@ export default function CameraDetailView({
         />
       </div>
 
-      <button
-        type="button"
-        className={`pixel-button tap-target px-3 py-2 text-xs ${sonicCannonActive ? "console-button--primary" : ""}`}
-        onClick={onToggleSonicCannon}
-      >
-        {sonicCannonActive ? COPY.game.sonicCannonOnLabel : COPY.game.sonicCannonOffLabel}
-      </button>
+      <div className="relative">
+        <button
+          type="button"
+          className={`pixel-button tap-target px-3 py-2 text-xs w-full ${sonicCannonActive ? "console-button--primary" : ""}`}
+          onClick={onToggleSonicCannon}
+          onMouseEnter={handleSonicCannonMouseEnter}
+          onMouseLeave={handleSonicCannonMouseLeave}
+        >
+          {sonicCannonActive ? COPY.game.sonicCannonOnLabel : COPY.game.sonicCannonOffLabel}
+        </button>
+        {showSonicCannonTooltip && (
+          <div
+            className="pixel-panel absolute bottom-full left-1/2 z-10 mb-2 w-56 -translate-x-1/2 p-2 text-center text-[11px] text-gray-200"
+            role="tooltip"
+          >
+            {COPY.game.sonicCannonTooltipText}
+          </div>
+        )}
+      </div>
 
       <ViewSwitchArrow label={COPY.game.backToOverviewLabel} onClick={onBack} align="left" />
     </div>
