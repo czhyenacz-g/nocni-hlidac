@@ -25,7 +25,11 @@ function findNearestAlivePlayer(monster: MonsterState, players: PlayerState[]): 
  */
 export function tickMonsterAi(monster: MonsterState, players: PlayerState[], walls: Wall[], deltaMs: number, rng?: () => number): MonsterState {
   const target = findNearestAlivePlayer(monster, players);
-  if (!target) return monster;
+  // Žádný živý hráč = monstrum zůstane stát beze změny pohybu/módu, ale
+  // `targetPlayerId` se vyčistí — jinak by debug overlay ukazoval "sleduje"
+  // hráče, který už neexistuje/je mrtvý (viz zadání "debug zobrazuje, koho
+  // monstrum sleduje").
+  if (!target) return monster.targetPlayerId === null ? monster : { ...monster, targetPlayerId: null };
 
   const updated = updateEnemyAi({
     enemy: monster,

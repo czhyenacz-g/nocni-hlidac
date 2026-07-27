@@ -26,7 +26,12 @@ import { MonsterState, MultiplayerSurvivalInputs, MultiplayerSurvivalState, Pick
  */
 export function createInitialMultiplayerSurvivalState(playerIds: string[] = ["player-1"], monsterIds: string[] = ["monster-1"]): MultiplayerSurvivalState {
   const players: PlayerState[] = playerIds.map((id, index) => {
-    const spawn = PROTOTYPE_PLAYER_SPAWNS[index] ?? { x: PROTOTYPE_PLAYER_SPAWNS[0].x + index * 30, y: PROTOTYPE_PLAYER_SPAWNS[0].y + index * 30 };
+    // Mapa má dnes jen jeden reálný `player_start` slot (office_start_01) —
+    // další hráči navíc se odsadí jen na ose X, uvnitř kanceláře (room
+    // "office" má x 560-840), ať odsazení nevystrčí spawn mimo mapu/do zdi
+    // (kancelář je jen 80px vysoká místnost při spodním okraji mapy, takže
+    // odsazení na Y by snadno přeteklo přes mapWidth/mapHeight clamp).
+    const spawn = PROTOTYPE_PLAYER_SPAWNS[index] ?? { x: PROTOTYPE_PLAYER_SPAWNS[0].x + index * 30, y: PROTOTYPE_PLAYER_SPAWNS[0].y };
     return {
       id,
       x: spawn.x,

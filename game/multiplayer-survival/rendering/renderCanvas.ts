@@ -34,6 +34,12 @@ export const DEFAULT_DEBUG_TOGGLES: MultiplayerSurvivalDebugToggles = {
   showPickupHitboxes: false,
 };
 
+/** Barva těla/výseče/facing-tick podle indexu hráče v `state.players` — čistě vizuální rozlišení pro 2+ hráče, viz vykreslovací smyčka níže. */
+const PLAYER_COLORS = [
+  { fill: "#d9ffe8", shadow: "rgba(200,255,220,0.9)", stroke: "#3fe08a", coneFill: "rgba(163,255,130,0.18)" },
+  { fill: "#bae6fd", shadow: "rgba(125,211,252,0.9)", stroke: "#38bdf8", coneFill: "rgba(56,189,248,0.18)" },
+];
+
 let fogCanvas: HTMLCanvasElement | null = null;
 
 function getFogCanvas(width: number, height: number): HTMLCanvasElement {
@@ -45,7 +51,15 @@ function getFogCanvas(width: number, height: number): HTMLCanvasElement {
   return fogCanvas;
 }
 
-function drawFogOfWar(ctx: CanvasRenderingContext2D, state: MultiplayerSurvivalState, primaryPlayer: PlayerState) {
+/**
+ * Mlha se odkrývá pro SJEDNOCENÍ viditelnosti VŠECH živých hráčů (ne jen
+ * jednoho "primárního") — každý hráč má sice vlastní vision cone (viz
+ * getPlayerVisibilityAtPoint níže, počítané per-hráč), ale tenhle dev
+ * prototyp nemá split-screen, takže na jednom sdíleném canvasu dává smysl
+ * ukázat "co vidí PARTA", ne jen první hráč. Pro 1 hráče je to beze změny
+ * oproti dřívějšku.
+ */
+function drawFogOfWar(ctx: CanvasRenderingContext2D, state: MultiplayerSurvivalState, players: PlayerState[]) {
   const fog = getFogCanvas(state.map.width, state.map.height);
   const fogCtx = fog.getContext("2d");
   if (!fogCtx) return;
@@ -57,36 +71,39 @@ function drawFogOfWar(ctx: CanvasRenderingContext2D, state: MultiplayerSurvivalS
   fogCtx.globalCompositeOperation = "destination-out";
   fogCtx.filter = "blur(10px)";
 
-  const facingAngle = DIRECTION_ANGLES[primaryPlayer.direction];
+  for (const player of players) {
+    if (!player.alive) continue;
+    const facingAngle = DIRECTION_ANGLES[player.direction];
 
-  const peripheralPoints = castVisionCone({
-    originX: primaryPlayer.x,
-    originY: primaryPlayer.y,
-    facingAngle,
-    coneAngleRad: Math.PI * 2,
-    range: PLAYER_VISION_CONFIG.peripheralRangePx,
-    walls: state.map.walls,
-    rayCount: PLAYER_VISION_RAY_COUNT,
-    stepPx: PLAYER_VISION_RAY_STEP_PX,
-  });
-  const directionalPoints = castVisionCone({
-    originX: primaryPlayer.x,
-    originY: primaryPlayer.y,
-    facingAngle,
-    coneAngleRad: PLAYER_VISION_CONFIG.directionalAngleRad,
-    range: PLAYER_VISION_CONFIG.directionalRangePx,
-    walls: state.map.walls,
-    rayCount: PLAYER_VISION_RAY_COUNT,
-    stepPx: PLAYER_VISION_RAY_STEP_PX,
-  });
+    const peripheralPoints = castVisionCone({
+      originX: player.x,
+      originY: player.y,
+      facingAngle,
+      coneAngleRad: Math.PI * 2,
+      range: PLAYER_VISION_CONFIG.peripheralRangePx,
+      walls: state.map.walls,
+      rayCount: PLAYER_VISION_RAY_COUNT,
+      stepPx: PLAYER_VISION_RAY_STEP_PX,
+    });
+    const directionalPoints = castVisionCone({
+      originX: player.x,
+      originY: player.y,
+      facingAngle,
+      coneAngleRad: PLAYER_VISION_CONFIG.directionalAngleRad,
+      range: PLAYER_VISION_CONFIG.directionalRangePx,
+      walls: state.map.walls,
+      rayCount: PLAYER_VISION_RAY_COUNT,
+      stepPx: PLAYER_VISION_RAY_STEP_PX,
+    });
 
-  for (const points of [peripheralPoints, directionalPoints]) {
-    if (points.length === 0) continue;
-    fogCtx.beginPath();
-    fogCtx.moveTo(primaryPlayer.x, primaryPlayer.y);
-    for (const point of points) fogCtx.lineTo(point.x, point.y);
-    fogCtx.closePath();
-    fogCtx.fill();
+    for (const points of [peripheralPoints, directionalPoints]) {
+      if (points.length === 0) continue;
+      fogCtx.beginPath();
+      fogCtx.moveTo(player.x, player.y);
+      for (const point of points) fogCtx.lineTo(point.x, point.y);
+      fogCtx.closePath();
+      fogCtx.fill();
+    }
   }
 
   fogCtx.filter = "none";
@@ -195,8 +212,13 @@ export function renderMultiplayerSurvival(ctx: CanvasRenderingContext2D, state: 
   }
 
   // Hráči — kruh + výseč (bliká bíle při výstřelu, stejně jako produkční
-  // "isFlashing"), facing tick, volitelný debug view cone.
-  for (const player of state.players) {
+  // "isFlashing"), facing tick, volitelný debug view cone. Každý hráč má
+  // vlastní barvu (index 0 = mint jako produkční minihra, index 1+ = cyan,
+  // fialová, ...) — čistě vizuální rozlišení "kdo je kdo" pro 2+ hráče,
+  // žádný vliv na herní logiku (ta je pořád per-entita v engine/tick.ts).
+  for (let i = 0; i < state.players.length; i++) {
+    const player = state.players[i];
+    const bodyColor = PLAYER_COLORS[i % PLAYER_COLORS.length];
     const facingAngle = DIRECTION_ANGLES[player.direction];
 
     if (debug.showPlayerCone) {
@@ -204,7 +226,7 @@ export function renderMultiplayerSurvival(ctx: CanvasRenderingContext2D, state: 
       ctx.moveTo(player.x, player.y);
       ctx.arc(player.x, player.y, CONE_RANGE, facingAngle - CONE_ANGLE_RAD / 2, facingAngle + CONE_ANGLE_RAD / 2);
       ctx.closePath();
-      ctx.fillStyle = player.shotFlashRemainingMs > 0 ? "rgba(255,255,255,0.5)" : "rgba(163,255,130,0.18)";
+      ctx.fillStyle = player.shotFlashRemainingMs > 0 ? "rgba(255,255,255,0.5)" : bodyColor.coneFill;
       ctx.fill();
     }
 
@@ -217,14 +239,14 @@ export function renderMultiplayerSurvival(ctx: CanvasRenderingContext2D, state: 
     }
 
     ctx.beginPath();
-    ctx.shadowColor = "rgba(200,255,220,0.9)";
+    ctx.shadowColor = bodyColor.shadow;
     ctx.shadowBlur = 10;
-    ctx.fillStyle = "#d9ffe8";
+    ctx.fillStyle = bodyColor.fill;
     ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
 
-    ctx.strokeStyle = "#3fe08a";
+    ctx.strokeStyle = bodyColor.stroke;
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(player.x + Math.cos(facingAngle) * player.radius, player.y + Math.sin(facingAngle) * player.radius);
@@ -238,13 +260,20 @@ export function renderMultiplayerSurvival(ctx: CanvasRenderingContext2D, state: 
       ctx.arc(player.x, player.y, player.radius + 6, -Math.PI / 2, -Math.PI / 2 + (player.lootingProgressMs / 2000) * Math.PI * 2);
       ctx.stroke();
     }
+
+    if (debug.showTargetPlayerId) {
+      ctx.fillStyle = bodyColor.fill;
+      ctx.font = "10px monospace";
+      ctx.fillText(player.id, player.x - player.radius, player.y - player.radius - 4);
+    }
   }
 
-  // Mlha války — na primárním (prvním) hráči, stejná destination-out +
-  // blur technika jako EmergencyMiniGame.tsx#draw. Vypnutelná přes
-  // debug.showPlayerCone (dev overlay v ostré minihře taky ruší mlhu).
-  if (!debug.showPlayerCone && state.players[0]) {
-    drawFogOfWar(ctx, state, state.players[0]);
+  // Mlha války — sjednocená viditelnost VŠECH živých hráčů (viz
+  // drawFogOfWar výše), stejná destination-out + blur technika jako
+  // EmergencyMiniGame.tsx#draw. Vypnutelná přes debug.showPlayerCone (dev
+  // overlay v ostré minihře taky ruší mlhu).
+  if (!debug.showPlayerCone) {
+    drawFogOfWar(ctx, state, state.players);
   }
 
   ctx.restore();

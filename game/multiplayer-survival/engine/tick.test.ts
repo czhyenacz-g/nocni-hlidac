@@ -201,3 +201,130 @@ describe("tickMultiplayerSurvival — pickups", () => {
     expect(next.pickups.every((p) => !p.collected)).toBe(true);
   });
 });
+
+describe("tickMultiplayerSurvival — multiple players", () => {
+  it("creates independent player entries for each requested id", () => {
+    const state = createInitialMultiplayerSurvivalState(["p1", "p2"], ["m1"]);
+    expect(state.players).toHaveLength(2);
+    expect(state.players[0].id).toBe("p1");
+    expect(state.players[1].id).toBe("p2");
+    // Spawny se nesmí překrývat (mapa má dnes jen jeden reálný player_start slot).
+    expect(state.players[0].x !== state.players[1].x || state.players[0].y !== state.players[1].y).toBe(true);
+  });
+
+  it("moves each player independently according to their own input", () => {
+    const state = createInitialMultiplayerSurvivalState(["p1", "p2"], ["m1"]);
+    const [p1, p2] = state.players;
+
+    const next = tickMultiplayerSurvival(
+      state,
+      [
+        { playerId: p1.id, moveX: 1, moveY: 0, firing: false },
+        { playerId: p2.id, moveX: 0, moveY: 0, firing: false },
+      ],
+      100,
+    );
+
+    expect(next.players[0].x).toBeGreaterThan(p1.x);
+    expect(next.players[1].x).toBe(p2.x);
+    expect(next.players[1].y).toBe(p2.y);
+  });
+
+  it("collides each player independently — one can be blocked by a wall while the other moves freely", () => {
+    const state = createInitialMultiplayerSurvivalState(["p1", "p2"], ["m1"]);
+    const wall = state.map.walls[0];
+    const players = [
+      { ...state.players[0], x: wall.x - state.players[0].radius - 1, y: wall.y + wall.height / 2 },
+      { ...state.players[1], x: 750, y: 700 }, // otevřená plocha centrální chodby, daleko od jakékoliv zdi/překážky
+    ];
+    const blocked = { ...state, players };
+
+    const next = tickMultiplayerSurvival(
+      blocked,
+      [
+        { playerId: players[0].id, moveX: 1, moveY: 0, firing: false },
+        { playerId: players[1].id, moveX: 1, moveY: 0, firing: false },
+      ],
+      200,
+    );
+
+    expect(next.players[0].x).toBe(players[0].x); // do zdi — beze změny
+    expect(next.players[1].x).toBeGreaterThan(players[1].x); // volný pohyb
+  });
+
+  it("gives each player their own independent inventory", () => {
+    const state = createInitialMultiplayerSurvivalState(["p1", "p2"], ["m1"]);
+    const [pickupA, pickupB] = state.pickups;
+    const players = [
+      { ...state.players[0], x: pickupA.x, y: pickupA.y },
+      { ...state.players[1], x: pickupB.x, y: pickupB.y },
+    ];
+    const positioned = { ...state, players };
+
+    const next = tickMultiplayerSurvival(
+      positioned,
+      [
+        { playerId: players[0].id, moveX: 0, moveY: 0, firing: false },
+        { playerId: players[1].id, moveX: 0, moveY: 0, firing: false },
+      ],
+      2100,
+    );
+
+    expect(next.players[0].collectedItemIds).toEqual([pickupA.itemId]);
+    expect(next.players[1].collectedItemIds).toEqual([pickupB.itemId]);
+  });
+});
+
+describe("tickMultiplayerSurvival — monster targeting", () => {
+  /** Monstrum s výchozím visionAngle=0 (směr +x) — oba hráči rovně "před ním" na stejné ose, ať je zásah/viditelnost nezávislá na náhodné AI orientaci. */
+  function stateWithTwoPlayersInMonsterView(nearOffset: number, farOffset: number): MultiplayerSurvivalState {
+    const state = createInitialMultiplayerSurvivalState(["near", "far"], ["m1"]);
+    const monster = state.monsters[0];
+    const players = [
+      { ...state.players[0], id: "near", x: monster.x + nearOffset, y: monster.y },
+      { ...state.players[1], id: "far", x: monster.x + farOffset, y: monster.y },
+    ];
+    return { ...state, players };
+  }
+
+  it("targets the nearest alive player and exposes it via targetPlayerId", () => {
+    const state = stateWithTwoPlayersInMonsterView(80, 150);
+    const next = tickMultiplayerSurvival(state, noInputFor(["near", "far"]), 16);
+
+    expect(next.monsters[0].mode).toBe("chasing");
+    expect(next.monsters[0].targetPlayerId).toBe("near");
+  });
+
+  it("retargets to the remaining alive player once the current target dies", () => {
+    let state = stateWithTwoPlayersInMonsterView(80, 150);
+    state = tickMultiplayerSurvival(state, noInputFor(["near", "far"]), 16);
+    expect(state.monsters[0].targetPlayerId).toBe("near");
+
+    const nearPlayerDown = { ...state, players: state.players.map((p) => (p.id === "near" ? { ...p, alive: false } : p)) };
+    const next = tickMultiplayerSurvival(nearPlayerDown, noInputFor(["far"]), 16);
+
+    expect(next.monsters[0].targetPlayerId).toBe("far");
+  });
+
+  it("retargets to the remaining alive player once the current target is removed from the players array entirely", () => {
+    let state = stateWithTwoPlayersInMonsterView(80, 150);
+    state = tickMultiplayerSurvival(state, noInputFor(["near", "far"]), 16);
+    expect(state.monsters[0].targetPlayerId).toBe("near");
+
+    const nearPlayerLeft = { ...state, players: state.players.filter((p) => p.id !== "near") };
+    const next = tickMultiplayerSurvival(nearPlayerLeft, noInputFor(["far"]), 16);
+
+    expect(next.monsters[0].targetPlayerId).toBe("far");
+  });
+
+  it("has no target once every player is dead", () => {
+    let state = stateWithTwoPlayersInMonsterView(80, 150);
+    state = tickMultiplayerSurvival(state, noInputFor(["near", "far"]), 16);
+    expect(state.monsters[0].targetPlayerId).toBe("near");
+
+    const allDown = { ...state, players: state.players.map((p) => ({ ...p, alive: false })) };
+    const next = tickMultiplayerSurvival(allDown, noInputFor(["near", "far"]), 16);
+
+    expect(next.monsters[0].targetPlayerId).toBeNull();
+  });
+});
