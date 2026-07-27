@@ -111,6 +111,7 @@ import type { GuardRunResponse } from "@/lib/leaderboard/guardRunRequestHandlers
 import { applyDeath, applySurviveNight } from "@/lib/leaderboard/guardRunTransitions";
 import { DEFAULT_GAME_MODE, GAME_MODE_CONFIG, GameMode, resolveGameMode } from "@/game/core/gameMode";
 import { Object13PlayerProfileProvider, useObject13PlayerProfile } from "@/components/playerProfile/Object13PlayerProfileProvider";
+import { AuthStatusProvider } from "@/components/auth/useAuthStatus";
 import { resolveStartingBulbsRemaining } from "@/game/core/bulbInventory";
 import {
   BulbInventoryOperationState,
@@ -133,9 +134,11 @@ import { resolveExistingPlayerWeaponMigrationAction } from "@/game/equipment/exi
  */
 export default function PlayPage() {
   return (
-    <Object13PlayerProfileProvider>
-      <PlayPageContent />
-    </Object13PlayerProfileProvider>
+    <AuthStatusProvider>
+      <Object13PlayerProfileProvider>
+        <PlayPageContent />
+      </Object13PlayerProfileProvider>
+    </AuthStatusProvider>
   );
 }
 
