@@ -47,11 +47,46 @@ const TARGETS = /** @type {const} */ (["itch", "local", "custom"]);
 const SHARED_SYMLINKS = ["components", "game", "content", "lib", "styles", "node_modules", "tsconfig.json", "postcss.config.mjs", "tailwind.config.ts"];
 
 /**
+ * Složky, které jsou samy o sobě vždy pracovní odpad, ne asset appky — nikdy
+ * žádná `src`/cesta v kódu na soubor UVNITŘ takové složky neodkazuje (ověřeno
+ * `grep -rn <basename>` napříč `game/`, `components/`, `content/`, `lib/`,
+ * `app/` v době psaní tohohle pravidla, viz zadání "44 MB nepoužitého
+ * balastu"). Case-insensitive substring match na libovolný segment cesty —
+ * pokrývá `camera (backup)/`, `sound/.../backup/`,
+ * `sound/.../original_backup/` (obsahují "backup") i `object_13/Bez názvu/`
+ * (zapomenuté screenshoty/exporty, český název "Bez názvu" = "Untitled").
+ */
+const JUNK_DIR_MARKERS = ["backup", "bez názvu"];
+
+/**
+ * Osamocené soubory MIMO výše uvedené junk složky, které stejným `grep`
+ * auditem vyšly jako nikde v appce nepoužité (starší/nahrazené obrázky,
+ * nepoužité `.wav` originály vedle skutečně přehrávaných `.mp3`/`.m4a`) — na
+ * rozdíl od `JUNK_DIR_MARKERS` jde o jednotlivé přesné názvy, ne vzor, proto
+ * samostatný explicitní seznam místo dalšího heuristického pravidla.
+ */
+const KNOWN_UNUSED_BASENAMES = new Set([
+  "sonic_cannon_v2.wav",
+  "victory_game_ove.png",
+  "play_backound_universal.png",
+  "repel_failed.wav",
+  "repel_stay.wav",
+  "rigth_hallway_fleeing_monster.png",
+  "camera_destroid_full.m4a",
+  // Zapomenuté surové nahrávky pojmenované podle místa natáčení (Všestary),
+  // ne podle obsahu — leftover z původního nahrávání, appka je nikde nehraje.
+  "Všestary 3.m4a",
+  "Všestary 11.m4a",
+  "Všestary 4.m4a",
+]);
+
+/**
  * Jestli je `entryPath` (absolutní cesta v `public/`) nechtěný zdrojový/mrtvý
  * soubor, který se do distribuovatelného buildu nikdy nemá dostat (viz
  * zadání "buildni to bez nepoužívaných png a jiných multimediálních
- * souborů") — audit ukázal, že tyhle kategorie jsou VŽDY jen zmíněné v
- * komentářích ("zdrojový wav", "zkonvertovaný z .png"), nikdy ve skutečné
+ * souborů" a navazující "44 MB nepoužitého balastu") — audit ukázal, že tyhle
+ * kategorie jsou VŽDY jen zmíněné v komentářích ("zdrojový wav", "zkonvertovaný
+ * z .png") nebo úplně zapomenuté pracovní kopie, nikdy ve skutečné
  * `src`/cestě, kterou by appka za běhu načetla:
  *
  * 1. `.png`, který má ve STEJNÉ složce sourozence se stejným jménem a
@@ -66,6 +101,9 @@ const SHARED_SYMLINKS = ["components", "game", "content", "lib", "styles", "node
  *    komentářích jako "zdroj pro budoucí zpracování", appka je nikdy
  *    nepřehrává.
  * 3. `.DS_Store` (macOS metadata, nikdy součást appky).
+ * 4. cokoliv uvnitř složky, jejíž název odpovídá `JUNK_DIR_MARKERS`
+ *    (zálohy/duplicitní kopie, zapomenuté screenshoty).
+ * 5. jednotlivé soubory z `KNOWN_UNUSED_BASENAMES` mimo výše uvedené složky.
  */
 export function isExcludedPublicFile(entryPath) {
   const base = path.basename(entryPath);
@@ -75,6 +113,9 @@ export function isExcludedPublicFile(entryPath) {
     const webpSibling = entryPath.slice(0, -path.extname(entryPath).length) + ".webp";
     if (existsSync(webpSibling)) return true;
   }
+  const segments = entryPath.split(path.sep).map((segment) => segment.toLowerCase());
+  if (segments.some((segment) => JUNK_DIR_MARKERS.some((marker) => segment.includes(marker)))) return true;
+  if (KNOWN_UNUSED_BASENAMES.has(base)) return true;
   return false;
 }
 

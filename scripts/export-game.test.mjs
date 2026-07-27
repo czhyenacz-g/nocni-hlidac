@@ -22,6 +22,13 @@ describe("isExcludedPublicFile", () => {
     writeFileSync(path.join(dir, "camera", "outdoor_01.mp3"), "mp3"); // unrelated ext, has "sibling" only by coincidence of basename prefix
     writeFileSync(path.join(dir, "sound", "camera_destroid", "source", "ghoul_appear_raw.wav"), "raw");
     writeFileSync(path.join(dir, ".DS_Store"), "junk");
+    mkdirSync(path.join(dir, "camera (backup)"), { recursive: true });
+    writeFileSync(path.join(dir, "camera (backup)", "outdoor_01.webp"), "webp");
+    mkdirSync(path.join(dir, "sound", "release_monster", "original_backup"), { recursive: true });
+    writeFileSync(path.join(dir, "sound", "release_monster", "original_backup", "take1.m4a"), "m4a");
+    mkdirSync(path.join(dir, "Bez názvu"), { recursive: true });
+    writeFileSync(path.join(dir, "Bez názvu", "screenshot.png"), "png");
+    writeFileSync(path.join(dir, "camera", "sonic_cannon_v2.wav"), "wav");
   });
 
   afterAll(() => {
@@ -50,6 +57,19 @@ describe("isExcludedPublicFile", () => {
 
   it("excludes .DS_Store", () => {
     expect(isExcludedPublicFile(path.join(dir, ".DS_Store"))).toBe(true);
+  });
+
+  it("excludes anything inside a folder whose name contains 'backup' (case-insensitive)", () => {
+    expect(isExcludedPublicFile(path.join(dir, "camera (backup)", "outdoor_01.webp"))).toBe(true);
+    expect(isExcludedPublicFile(path.join(dir, "sound", "release_monster", "original_backup", "take1.m4a"))).toBe(true);
+  });
+
+  it("excludes anything inside a folder literally named 'Bez názvu'", () => {
+    expect(isExcludedPublicFile(path.join(dir, "Bez názvu", "screenshot.png"))).toBe(true);
+  });
+
+  it("excludes known-unused basenames outside any junk folder", () => {
+    expect(isExcludedPublicFile(path.join(dir, "camera", "sonic_cannon_v2.wav"))).toBe(true);
   });
 });
 
