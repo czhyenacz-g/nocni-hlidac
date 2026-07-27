@@ -13,7 +13,9 @@
  * symlinky, takže nulové riziko driftu. Normální `npm run build`
  * (`next.config.ts` v kořeni repozitáře) zůstává úplně beze změny.
  *
- * `NEXT_PUBLIC_API_ORIGIN` je VŽDY natvrdo `https://nocni-hlidac.cz` — tenhle
+ * `NEXT_PUBLIC_API_ORIGIN` je VŽDY natvrdo `https://www.nocni-hlidac.cz` (WWW,
+ * ne holý apex — apex dělá 308 redirect na www, který CORS preflight z
+ * cross-origin itch.io embedu nesmí následovat, viz TECH_DESIGN.md) — tenhle
  * skript záměrně nikdy nedovolí sestavit veřejný build proti jinému API
  * serveru (viz zadání "Nevytvářej dotaz, který dovolí sestavit veřejný build
  * proti libovolnému API serveru").
@@ -31,7 +33,7 @@ const DIST_ROOT = path.join(REPO_ROOT, "dist-game");
 
 // Nikdy konfigurovatelné z venku — viz zadání "API origin musí pro tento
 // úkol zůstat natvrdo".
-const FIXED_API_ORIGIN = "https://nocni-hlidac.cz";
+const FIXED_API_ORIGIN = "https://www.nocni-hlidac.cz";
 
 const TARGETS = /** @type {const} */ (["itch", "local", "custom"]);
 
@@ -267,11 +269,16 @@ function prepareTempBuildDir() {
   }
 
   // Export-specific Next config — `output: "export"` + `images.unoptimized`
-  // (povinné pro statický export). Samostatný soubor, nikdy nezasahuje do
-  // kořenového next.config.ts (ten používá normální `npm run build`).
+  // (povinné pro statický export). `assetPrefix: "."` dělá z `_next/...`
+  // odkazů RELATIVNÍ cesty místo absolutních `/​_next/...` — bez tohohle
+  // itch.io embed (servírovaný z libovolné podsložky, ne z kořene domény)
+  // dostává 404 na každý JS chunk, protože `/​_next/...` se vždy resolvne
+  // od kořene CELÉ domény (html-classic.itch.zone), ne od složky s hrou.
+  // Samostatný soubor, nikdy nezasahuje do kořenového next.config.ts (ten
+  // používá normální `npm run build`).
   writeFileSync(
     path.join(TMP_BUILD_DIR, "next.config.mjs"),
-    `const nextConfig = {\n  output: "export",\n  images: { unoptimized: true },\n};\nexport default nextConfig;\n`,
+    `const nextConfig = {\n  output: "export",\n  images: { unoptimized: true },\n  assetPrefix: ".",\n};\nexport default nextConfig;\n`,
   );
 
   // next-env.d.ts jen odkazuje na typy, next build si ho případně sám
@@ -394,6 +401,16 @@ async function main() {
   rmIfExists(outputDir);
   mkdirSync(outputDir, { recursive: true });
   cpSync(exportedOutDir, outputDir, { recursive: true });
+
+  // Kořenová "/" route je jen `redirect("/play")` (viz app/page.tsx) — na
+  // doméně to funguje, ale hostitelé jako itch.io servírují hru z libovolné
+  // (neznámé) podsložky, kde by klientský redirect na absolutní "/play"
+  // skončil na špatné adrese. Kořenový index.html proto rovnou nahradíme
+  // obsahem play.html, ať ZIP jde otevřít/embednout přímo bez mezikroku.
+  const playHtmlPath = path.join(outputDir, "play.html");
+  if (existsSync(playHtmlPath)) {
+    cpSync(playHtmlPath, path.join(outputDir, "index.html"));
+  }
 
   const builtAt = new Date().toISOString();
   writeFileSync(

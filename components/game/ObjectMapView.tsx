@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useCopy } from "@/game/i18n/useTranslation";
 import ViewSwitchArrow from "./ViewSwitchArrow";
+import { assetPath } from "../../lib/config/assetPath";
 
 interface ObjectMapViewProps {
   onLookAtDesk: () => void;
 }
 
-const MAP_IMAGE_SRC = "/object_13/views/mapa.webp";
+const MAP_IMAGE_SRC = assetPath("/object_13/views/mapa.webp");
 
 // Čistě informativní pohled bez interaktivity — statický orientační plánek
 // objektu jako skutečný obrázek (dodaný asset), žádné klikání na místnosti,

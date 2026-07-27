@@ -13,6 +13,7 @@ import { getShotgunMaxAmmo } from "@/game/core/shotgunEquipment";
 import { OFFICE_DOOR_LOCK_MAX_MS, OFFICE_DOOR_LOCK_MIN_MS } from "@/game/minigame/config";
 import ViewSwitchArrow from "./ViewSwitchArrow";
 import ConsoleIcon from "./ConsoleIcon";
+import { assetPath } from "../../lib/config/assetPath";
 
 interface LeftWallViewProps {
   onLookAtDesk: () => void;
@@ -119,16 +120,16 @@ interface LeftWallViewProps {
 }
 
 /** Prázdný stojan na zbraň — beze změny oproti dřívějšku, dokud hráč brokovnici nemá (viz hasShotgun). */
-const EMPTY_LEFT_WALL_IMAGE_SRC = "/object_13/views/empty-shotgun.webp";
+const EMPTY_LEFT_WALL_IMAGE_SRC = assetPath("/object_13/views/empty-shotgun.webp");
 /** Stejná scéna, ale s brokovnicí na zdi — hráč ji trvale získal (viz game/core/shotgunEquipment.ts). Zatím jen .webp (žádný .png fallback jako u prázdného stojanu), ale stejný imageFailed guard níže hru neshodí, kdyby soubor chyběl. */
-const SHOTGUN_LEFT_WALL_IMAGE_SRC = "/object_13/views/shotgun.webp";
+const SHOTGUN_LEFT_WALL_IMAGE_SRC = assetPath("/object_13/views/shotgun.webp");
 /**
  * Trvalá true ending odměna (viz zadání, game/core/monsterDefeatReward.ts) —
  * zlatě zarámovaná trofejní dvouhlavňovka s deskou "Big mamma for big boy!",
  * dodaný asset (`public/object_13/views/reward_shotgun.png`, zkonvertovaný
  * na .webp), NE stejný obrázek jako běžná brokovnice s jiným textem.
  */
-const DOUBLE_BARREL_LEFT_WALL_IMAGE_SRC = "/object_13/views/reward_shotgun.webp";
+const DOUBLE_BARREL_LEFT_WALL_IMAGE_SRC = assetPath("/object_13/views/reward_shotgun.webp");
 
 // Čistě atmosférický pohled bez herní mechaniky (viz gameReducer.ts
 // LOOK_AT_LEFT_WALL) — stejné rámované okno na scénu jako DoorView

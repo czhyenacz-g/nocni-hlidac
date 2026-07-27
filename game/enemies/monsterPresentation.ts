@@ -1,4 +1,5 @@
 import { CameraId, EnemyStage } from "../core/types";
+import { assetPath } from "../../lib/config/assetPath";
 import { CameraAssetsEntry, MonsterStageCameraPresentation } from "../cameras/cameraAssets.object13";
 import { BackgroundSceneId } from "../visuals/backgroundImages";
 
@@ -54,122 +55,122 @@ export const IMP_CAMERA_ASSETS: Record<CameraId, CameraAssetsEntry> = {
   outer_yard: {
     default: {
       normal: [
-        "/object_13/camera/outdoor/outdoor_01.webp",
-        "/object_13/camera/outdoor/outdoor_02.webp",
-        "/object_13/camera/outdoor/outdoor_04.webp",
-        "/object_13/camera/outdoor/outdoor_07.webp",
-        "/object_13/camera/outdoor/outdoor_09.webp",
-        "/object_13/camera/outdoor/outdoor_10.webp",
+        assetPath("/object_13/camera/outdoor/outdoor_01.webp"),
+        assetPath("/object_13/camera/outdoor/outdoor_02.webp"),
+        assetPath("/object_13/camera/outdoor/outdoor_04.webp"),
+        assetPath("/object_13/camera/outdoor/outdoor_07.webp"),
+        assetPath("/object_13/camera/outdoor/outdoor_09.webp"),
+        assetPath("/object_13/camera/outdoor/outdoor_10.webp"),
       ],
       monster: [
-        "/object_13/camera/outdoor/outdoor_01_monster.webp",
-        "/object_13/camera/outdoor/outdoor_02_monster.webp",
-        "/object_13/camera/outdoor/outdoor_03_monster.webp",
-        "/object_13/camera/outdoor/outdoor_04_monster.webp",
-        "/object_13/camera/outdoor/outdoor_05_monster.webp",
-        "/object_13/camera/outdoor/outdoor_06_monster.webp",
-        "/object_13/camera/outdoor/outdoor_07_monster.webp",
-        "/object_13/camera/outdoor/outdoor_08_monster.webp",
-        "/object_13/camera/outdoor/outdoor_09_monster.webp",
-        "/object_13/camera/outdoor/outdoor_10_monster.webp",
+        assetPath("/object_13/camera/outdoor/outdoor_01_monster.webp"),
+        assetPath("/object_13/camera/outdoor/outdoor_02_monster.webp"),
+        assetPath("/object_13/camera/outdoor/outdoor_03_monster.webp"),
+        assetPath("/object_13/camera/outdoor/outdoor_04_monster.webp"),
+        assetPath("/object_13/camera/outdoor/outdoor_05_monster.webp"),
+        assetPath("/object_13/camera/outdoor/outdoor_06_monster.webp"),
+        assetPath("/object_13/camera/outdoor/outdoor_07_monster.webp"),
+        assetPath("/object_13/camera/outdoor/outdoor_08_monster.webp"),
+        assetPath("/object_13/camera/outdoor/outdoor_09_monster.webp"),
+        assetPath("/object_13/camera/outdoor/outdoor_10_monster.webp"),
       ],
-      fleeing: ["/object_13/camera/outdoor/outdoor_fleeing_monster.webp"],
+      fleeing: [assetPath("/object_13/camera/outdoor/outdoor_fleeing_monster.webp")],
     },
   },
   right_hallway: {
     default: {
       normal: [
-        "/object_13/camera/right_hallway/right_hallway_01.webp",
-        "/object_13/camera/right_hallway/right_hallway_02.webp",
-        "/object_13/camera/right_hallway/right_hallway_04.webp",
-        "/object_13/camera/right_hallway/right_hallway_06.webp",
-        "/object_13/camera/right_hallway/right_hallway_08.webp",
-        "/object_13/camera/right_hallway/right_hallway_09.webp",
+        assetPath("/object_13/camera/right_hallway/right_hallway_01.webp"),
+        assetPath("/object_13/camera/right_hallway/right_hallway_02.webp"),
+        assetPath("/object_13/camera/right_hallway/right_hallway_04.webp"),
+        assetPath("/object_13/camera/right_hallway/right_hallway_06.webp"),
+        assetPath("/object_13/camera/right_hallway/right_hallway_08.webp"),
+        assetPath("/object_13/camera/right_hallway/right_hallway_09.webp"),
       ],
       monster: [
-        "/object_13/camera/right_hallway/right_hallway_01_monster.webp",
-        "/object_13/camera/right_hallway/right_hallway_02_monster.webp",
-        "/object_13/camera/right_hallway/right_hallway_03_monster.webp",
-        "/object_13/camera/right_hallway/right_hallway_04_monster.webp",
-        "/object_13/camera/right_hallway/right_hallway_05_monster.webp",
-        "/object_13/camera/right_hallway/right_hallway_06_monster.webp",
-        "/object_13/camera/right_hallway/right_hallway_07_monster.webp",
-        "/object_13/camera/right_hallway/right_hallway_08_monster.webp",
-        "/object_13/camera/right_hallway/right_hallway_09_monster.webp",
-        "/object_13/camera/right_hallway/right_hallway_10_monster.webp",
+        assetPath("/object_13/camera/right_hallway/right_hallway_01_monster.webp"),
+        assetPath("/object_13/camera/right_hallway/right_hallway_02_monster.webp"),
+        assetPath("/object_13/camera/right_hallway/right_hallway_03_monster.webp"),
+        assetPath("/object_13/camera/right_hallway/right_hallway_04_monster.webp"),
+        assetPath("/object_13/camera/right_hallway/right_hallway_05_monster.webp"),
+        assetPath("/object_13/camera/right_hallway/right_hallway_06_monster.webp"),
+        assetPath("/object_13/camera/right_hallway/right_hallway_07_monster.webp"),
+        assetPath("/object_13/camera/right_hallway/right_hallway_08_monster.webp"),
+        assetPath("/object_13/camera/right_hallway/right_hallway_09_monster.webp"),
+        assetPath("/object_13/camera/right_hallway/right_hallway_10_monster.webp"),
       ],
-      fleeing: ["/object_13/camera/right_hallway/right_hallway_fleeing_monster.webp"],
+      fleeing: [assetPath("/object_13/camera/right_hallway/right_hallway_fleeing_monster.webp")],
     },
   },
   left_hallway: {
     default: {
       normal: [
-        "/object_13/camera/left_hallway/left_hallway_01.webp",
-        "/object_13/camera/left_hallway/left_hallway_02.webp",
-        "/object_13/camera/left_hallway/left_hallway_03.webp",
-        "/object_13/camera/left_hallway/left_hallway_04.webp",
-        "/object_13/camera/left_hallway/left_hallway_05.webp",
-        "/object_13/camera/left_hallway/left_hallway_07.webp",
-        "/object_13/camera/left_hallway/left_hallway_09.webp",
+        assetPath("/object_13/camera/left_hallway/left_hallway_01.webp"),
+        assetPath("/object_13/camera/left_hallway/left_hallway_02.webp"),
+        assetPath("/object_13/camera/left_hallway/left_hallway_03.webp"),
+        assetPath("/object_13/camera/left_hallway/left_hallway_04.webp"),
+        assetPath("/object_13/camera/left_hallway/left_hallway_05.webp"),
+        assetPath("/object_13/camera/left_hallway/left_hallway_07.webp"),
+        assetPath("/object_13/camera/left_hallway/left_hallway_09.webp"),
       ],
       monster: [
-        "/object_13/camera/left_hallway/left_hallway_01_monster.webp",
-        "/object_13/camera/left_hallway/left_hallway_02_monster.webp",
-        "/object_13/camera/left_hallway/left_hallway_03_monster.webp",
-        "/object_13/camera/left_hallway/left_hallway_04_monster.webp",
-        "/object_13/camera/left_hallway/left_hallway_05_monster.webp",
-        "/object_13/camera/left_hallway/left_hallway_06_monster.webp",
-        "/object_13/camera/left_hallway/left_hallway_07_monster.webp",
-        "/object_13/camera/left_hallway/left_hallway_08_monster.webp",
-        "/object_13/camera/left_hallway/left_hallway_09_monster.webp",
-        "/object_13/camera/left_hallway/left_hallway_10_monster.webp",
+        assetPath("/object_13/camera/left_hallway/left_hallway_01_monster.webp"),
+        assetPath("/object_13/camera/left_hallway/left_hallway_02_monster.webp"),
+        assetPath("/object_13/camera/left_hallway/left_hallway_03_monster.webp"),
+        assetPath("/object_13/camera/left_hallway/left_hallway_04_monster.webp"),
+        assetPath("/object_13/camera/left_hallway/left_hallway_05_monster.webp"),
+        assetPath("/object_13/camera/left_hallway/left_hallway_06_monster.webp"),
+        assetPath("/object_13/camera/left_hallway/left_hallway_07_monster.webp"),
+        assetPath("/object_13/camera/left_hallway/left_hallway_08_monster.webp"),
+        assetPath("/object_13/camera/left_hallway/left_hallway_09_monster.webp"),
+        assetPath("/object_13/camera/left_hallway/left_hallway_10_monster.webp"),
       ],
       fleeing: [
-        "/object_13/camera/left_hallway/left_hallway_fleeing_monster.webp",
-        "/object_13/camera/left_hallway/left_hallway_fleeing_monster_02.webp",
+        assetPath("/object_13/camera/left_hallway/left_hallway_fleeing_monster.webp"),
+        assetPath("/object_13/camera/left_hallway/left_hallway_fleeing_monster_02.webp"),
       ],
     },
   },
   door_hallway: {
     default: {
       normal: [
-        "/object_13/camera/door_hallway/door_hallway_01.webp",
-        "/object_13/camera/door_hallway/door_hallway_02.webp",
-        "/object_13/camera/door_hallway/door_hallway_03.webp",
-        "/object_13/camera/door_hallway/door_hallway_04.webp",
-        "/object_13/camera/door_hallway/door_hallway_05.webp",
-        "/object_13/camera/door_hallway/door_hallway_08.webp",
-        "/object_13/camera/door_hallway/door_hallway_09.webp",
+        assetPath("/object_13/camera/door_hallway/door_hallway_01.webp"),
+        assetPath("/object_13/camera/door_hallway/door_hallway_02.webp"),
+        assetPath("/object_13/camera/door_hallway/door_hallway_03.webp"),
+        assetPath("/object_13/camera/door_hallway/door_hallway_04.webp"),
+        assetPath("/object_13/camera/door_hallway/door_hallway_05.webp"),
+        assetPath("/object_13/camera/door_hallway/door_hallway_08.webp"),
+        assetPath("/object_13/camera/door_hallway/door_hallway_09.webp"),
       ],
       // door_hallway_10_monster.webp byl přejmenovaný na
       // door_hallway_10_monster_at_door.webp (viz IMP_PRESENTATION.cameraByEnemyStage.at_door
       // níže) — vyřazený odsud, ať se náhodou nevybere pro obyčejný
       // door_hallway monster stav (soubor pod původním názvem už neexistuje).
       monster: [
-        "/object_13/camera/door_hallway/door_hallway_06_monster.webp",
-        "/object_13/camera/door_hallway/door_hallway_07_monster.webp",
+        assetPath("/object_13/camera/door_hallway/door_hallway_06_monster.webp"),
+        assetPath("/object_13/camera/door_hallway/door_hallway_07_monster.webp"),
       ],
-      fleeing: ["/object_13/camera/door_hallway/door_hallway_fleeing_monster.webp"],
+      fleeing: [assetPath("/object_13/camera/door_hallway/door_hallway_fleeing_monster.webp")],
     },
     // Světlo do chodby zapnuté — jiná sada snímků (jasnější chodba), stejné
     // rozdělení normal/monster. Viz resolveAssetSet v cameraAssets.object13.ts.
     lightOn: {
       normal: [
-        "/object_13/camera/door_hallway_light/door_hallway_light_01.webp",
-        "/object_13/camera/door_hallway_light/door_hallway_light_02.webp",
-        "/object_13/camera/door_hallway_light/door_hallway_light_03.webp",
-        "/object_13/camera/door_hallway_light/door_hallway_light_04.webp",
-        "/object_13/camera/door_hallway_light/door_hallway_light_05.webp",
-        "/object_13/camera/door_hallway_light/door_hallway_light_08.webp",
-        "/object_13/camera/door_hallway_light/door_hallway_light_09.webp",
+        assetPath("/object_13/camera/door_hallway_light/door_hallway_light_01.webp"),
+        assetPath("/object_13/camera/door_hallway_light/door_hallway_light_02.webp"),
+        assetPath("/object_13/camera/door_hallway_light/door_hallway_light_03.webp"),
+        assetPath("/object_13/camera/door_hallway_light/door_hallway_light_04.webp"),
+        assetPath("/object_13/camera/door_hallway_light/door_hallway_light_05.webp"),
+        assetPath("/object_13/camera/door_hallway_light/door_hallway_light_08.webp"),
+        assetPath("/object_13/camera/door_hallway_light/door_hallway_light_09.webp"),
       ],
       // Stejný důvod jako výše — door_hallway_light_10_monster.webp byl
       // přejmenovaný na _at_door variantu.
       monster: [
-        "/object_13/camera/door_hallway_light/door_hallway_light_06_monster.webp",
-        "/object_13/camera/door_hallway_light/door_hallway_light_07_monster.webp",
+        assetPath("/object_13/camera/door_hallway_light/door_hallway_light_06_monster.webp"),
+        assetPath("/object_13/camera/door_hallway_light/door_hallway_light_07_monster.webp"),
       ],
-      fleeing: ["/object_13/camera/door_hallway_light/door_hallway_light_fleeing_monster.webp"],
+      fleeing: [assetPath("/object_13/camera/door_hallway_light/door_hallway_light_fleeing_monster.webp")],
     },
   },
 };
@@ -199,7 +200,7 @@ export const IMP_CAMERA_ASSETS: Record<CameraId, CameraAssetsEntry> = {
 // Titanovy DVEŘNÍ vizuály (at_door/breach/attack/overload) jsou samostatné a
 // beze změny — viz game/visuals/titanDoorAssets.ts, DoorView.tsx — tenhle
 // registr se jich netýká (DoorView vůbec nečte `presentation.camera`).
-const TITAN_CAMERA_PATH = "/object_13/monster/titan";
+const TITAN_CAMERA_PATH = assetPath("/object_13/monster/titan");
 
 export const TITAN_CAMERA_ASSETS: Record<CameraId, CameraAssetsEntry> = {
   outer_yard: {
@@ -264,8 +265,8 @@ export const IMP_PRESENTATION: MonsterPresentation = {
     // Dnes jediná varianta v poli, ale mechanismus (pickDeterministic) je
     // připravený i na víc variant beze změny chování.
     at_door: {
-      default: ["/object_13/camera/door_hallway/door_hallway_10_monster_at_door.webp"],
-      lightOn: ["/object_13/camera/door_hallway_light/door_hallway_light_10_monster_at_door.webp"],
+      default: [assetPath("/object_13/camera/door_hallway/door_hallway_10_monster_at_door.webp")],
+      lightOn: [assetPath("/object_13/camera/door_hallway_light/door_hallway_light_10_monster_at_door.webp")],
     },
   },
   outcomes: {

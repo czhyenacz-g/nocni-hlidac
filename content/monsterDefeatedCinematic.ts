@@ -5,6 +5,8 @@
 // jeho přehrávání (`atMs`), ne proti kliknutí hráče. Menší datový model
 // (jen text + atMs), žádné responseLabel/audioSrc per-segment.
 
+import { assetPath } from "../lib/config/assetPath";
+
 export interface TimedCaption {
   /** Klíč do content/copy.ts#monsterDefeatedCinematicCaptions (jazykově nezávislý, viz i18n) — samotný text titulku žije tam, tady jen timing. */
   id: string;
@@ -12,7 +14,7 @@ export interface TimedCaption {
   atMs: number;
 }
 
-export const MONSTER_DEFEATED_CINEMATIC_AUDIO_SRC = "/object_13/story/dead_monster_1.m4a";
+export const MONSTER_DEFEATED_CINEMATIC_AUDIO_SRC = assetPath("/object_13/story/dead_monster_1.m4a");
 
 // Celková délka `dead_monster_1.m4a` (ověřeno ffprobe, zaokrouhleno na celé
 // ms) — použije se jako bezpečnostní fallback (setTimeout), kdyby se audio

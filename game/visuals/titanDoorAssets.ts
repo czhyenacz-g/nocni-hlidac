@@ -13,7 +13,9 @@
 // Zdrojové PNG (public/object_13/monster/titan/*.png) zůstávají beze změny —
 // tady jsou jen WebP cesty použité ve hře (cwebp -q 87, viz report).
 
-const TITAN_DOOR_PATH = "/object_13/monster/titan";
+import { assetPath } from "../../lib/config/assetPath";
+
+const TITAN_DOOR_PATH = assetPath("/object_13/monster/titan");
 
 export const TITAN_DOOR_ASSETS = {
   /**

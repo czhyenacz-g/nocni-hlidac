@@ -4,6 +4,7 @@
 // vykreslení řeší components/SceneBackground.tsx.
 
 import { TITAN_ATTACK_SRC } from "./titanDoorAssets";
+import { assetPath } from "../../lib/config/assetPath";
 
 export interface BackgroundFrame {
   src: string;
@@ -75,7 +76,7 @@ const DEFAULT_OVERLAY = "linear-gradient(rgba(0,0,0,0.05), rgba(0,0,0,0.25))";
 // Objektu 13. BACKGROUND_SCENES níže zatím obsluhuje jen tenhle jeden objekt;
 // až přibude další noc s jinou mapou, přibude vlastní sada scén se stejným
 // vzorem (vlastní `<MAP>_BACKGROUND_PATH` konstanta + vlastní frames).
-const OBJECT_13_BACKGROUND_PATH = "/object_13/background";
+const OBJECT_13_BACKGROUND_PATH = assetPath("/object_13/background");
 
 // Zavřené dveře v BACKGROUND_SCENES.door mají 4 snímky (door_closed_0..3,
 // idle animace — dveře nejsou úplně statické, i když zavřené) na indexech
@@ -221,7 +222,7 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
       // IMP_AT_DOOR_FRAME_INDEX výše.
       { src: `${OBJECT_13_BACKGROUND_PATH}/door_generator_overload_0.webp` },
       { src: `${OBJECT_13_BACKGROUND_PATH}/door_destroyed_0.webp` },
-      { src: "/object_13/monster/imp/imp_at_door.webp" },
+      { src: assetPath("/object_13/monster/imp/imp_at_door.webp") },
       { src: `${OBJECT_13_BACKGROUND_PATH}/door_open_death_0.webp` },
     ],
     holdMs: DEFAULT_HOLD_MS,
@@ -245,10 +246,10 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
   // jednoho), ať je každý snímek ještě chvíli čistě vidět, ne jen v prolnutí.
   death: {
     frames: [
-      { src: "/object_13/monster/ghoul/ghoul_death_1.webp", holdMs: 120 },
-      { src: "/object_13/monster/ghoul/ghoul_death_2.webp", holdMs: 120 },
-      { src: "/object_13/monster/ghoul/ghoul_death_3.webp", holdMs: 120 },
-      { src: "/object_13/monster/ghoul/ghoul_death_4.webp", holdMs: 120 },
+      { src: assetPath("/object_13/monster/ghoul/ghoul_death_1.webp"), holdMs: 120 },
+      { src: assetPath("/object_13/monster/ghoul/ghoul_death_2.webp"), holdMs: 120 },
+      { src: assetPath("/object_13/monster/ghoul/ghoul_death_3.webp"), holdMs: 120 },
+      { src: assetPath("/object_13/monster/ghoul/ghoul_death_4.webp"), holdMs: 120 },
     ],
     holdMs: DEFAULT_HOLD_MS,
     crossfadeMs: 40,
@@ -265,10 +266,10 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
   // zůstala nečekaně statická).
   deathDoorAttack: {
     frames: [
-      { src: "/object_13/monster/ghoul/ghoul_death_1.webp", holdMs: 120 },
-      { src: "/object_13/monster/ghoul/ghoul_death_2.webp", holdMs: 120 },
-      { src: "/object_13/monster/ghoul/ghoul_death_3.webp", holdMs: 120 },
-      { src: "/object_13/monster/ghoul/ghoul_death_4.webp", holdMs: 120 },
+      { src: assetPath("/object_13/monster/ghoul/ghoul_death_1.webp"), holdMs: 120 },
+      { src: assetPath("/object_13/monster/ghoul/ghoul_death_2.webp"), holdMs: 120 },
+      { src: assetPath("/object_13/monster/ghoul/ghoul_death_3.webp"), holdMs: 120 },
+      { src: assetPath("/object_13/monster/ghoul/ghoul_death_4.webp"), holdMs: 120 },
     ],
     holdMs: DEFAULT_HOLD_MS,
     crossfadeMs: 40,
@@ -326,7 +327,7 @@ export const BACKGROUND_SCENES: Record<BackgroundSceneId, SceneBackgroundConfig>
   // story_1.webp v content/cinematics.ts), ne pod OBJECT_13_BACKGROUND_PATH
   // jako ostatní scény výše, proto tu jediná plná cesta natvrdo.
   monsterDefeated: {
-    frames: [{ src: "/object_13/story/dead_monster.webp" }],
+    frames: [{ src: assetPath("/object_13/story/dead_monster.webp") }],
     holdMs: DEFAULT_HOLD_MS,
     crossfadeMs: DEFAULT_CROSSFADE_MS,
     overlay: DEFAULT_OVERLAY,

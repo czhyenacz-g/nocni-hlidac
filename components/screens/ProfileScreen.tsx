@@ -8,6 +8,7 @@ import { BACKGROUND_SCENES } from "@/game/visuals/backgroundImages";
 import { useAuthStatus } from "@/components/auth/useAuthStatus";
 import { isAdminUsername } from "@/lib/auth/adminUsers";
 import { apiFetch } from "@/lib/http/apiFetch";
+import { assetPath } from "../../lib/config/assetPath";
 import { getMonsterDefeatReward, resetMonsterDefeatReward, MonsterDefeatReward } from "@/game/core/monsterDefeatReward";
 import { getPlayerProfileStats, resetPlayerProfileStats, PlayerProfileStats } from "@/game/core/playerProfileStats";
 import { resolvePlayerAchievements } from "@/game/core/playerAchievements";
@@ -304,7 +305,7 @@ function ProfileScreenContent() {
                 <div className="console-panel p-3 flex items-center gap-3">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src="/object_13/views/reward_shotgun.webp"
+                    src={assetPath("/object_13/views/reward_shotgun.webp")}
                     alt=""
                     aria-hidden="true"
                     className="w-20 h-16 object-cover rounded border border-gray-700"

@@ -1,4 +1,5 @@
 import { AUDIO_EVENTS, AudioEventId } from "./audioEvents";
+import { assetPath } from "../../lib/config/assetPath";
 
 /** Jedna nota syntetizovaného fallbacku — viz FallbackSynthConfig. */
 export interface SynthNote {
@@ -35,14 +36,14 @@ export interface AudioClipConfig {
 // případně použije fallbackSynth, pokud je definovaný.
 export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   // O 15 % tišší po dvou koleček playtestu (0.35 -> 0.2975 -> 0.252875).
-  [AUDIO_EVENTS.ambienceLoop]: { src: "/assets/audio/ambience_loop.mp3", volume: 0.252875, loop: true },
+  [AUDIO_EVENTS.ambienceLoop]: { src: assetPath("/assets/audio/ambience_loop.mp3"), volume: 0.252875, loop: true },
   // Zvuk překvapení, když je nepřítel právě na kameře nejblíž hráči (viz
   // app/play/page.tsx handleSelectCamera) — tlukot srdce místo generického
   // šumu, ať je to čitelnější jako "leknutí", ne jako rušení signálu.
   // Žádný reálný soubor zatím neexistuje, spadne vždy na syntetizovaný
   // fallback (dvě nízké "lub-dub" noty).
   [AUDIO_EVENTS.heartbeat]: {
-    src: "/assets/audio/heartbeat.mp3",
+    src: assetPath("/assets/audio/heartbeat.mp3"),
     volume: 0.6,
     loop: false,
     fallbackSynth: {
@@ -60,29 +61,29 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   // audioManager.setVolume() podle stressLevel. Nikdy se nespouští přes
   // opakované play(), vždy jen startLoop() jednou + průběžné setVolume().
   [AUDIO_EVENTS.heartbeatStressSlow]: {
-    src: "/assets/audio/heartbeat_slow_reverb.mp3",
+    src: assetPath("/assets/audio/heartbeat_slow_reverb.mp3"),
     volume: 0,
     loop: true,
   },
   [AUDIO_EVENTS.heartbeatStressFast]: {
-    src: "/assets/audio/heartbeat_fast_reverb.mp3",
+    src: assetPath("/assets/audio/heartbeat_fast_reverb.mp3"),
     volume: 0,
     loop: true,
   },
-  [AUDIO_EVENTS.doorClose]: { src: "/assets/audio/door_close.mp3", volume: 0.7, loop: false },
-  [AUDIO_EVENTS.doorOpen]: { src: "/assets/audio/door_open.mp3", volume: 0.7, loop: false },
-  [AUDIO_EVENTS.lightClick]: { src: "/assets/audio/light_click.mp3", volume: 0.6, loop: false },
-  [AUDIO_EVENTS.enemyStep]: { src: "/assets/audio/enemy_step.mp3", volume: 0.5, loop: false },
-  [AUDIO_EVENTS.enemyNear]: { src: "/assets/audio/enemy_near.mp3", volume: 0.6, loop: false },
-  [AUDIO_EVENTS.powerLow]: { src: "/assets/audio/power_low.mp3", volume: 0.6, loop: false },
-  [AUDIO_EVENTS.jumpscare]: { src: "/assets/audio/jumpscare.mp3", volume: 1.0, loop: false },
-  [AUDIO_EVENTS.shiftWin]: { src: "/assets/audio/shift_win.mp3", volume: 0.7, loop: false },
-  [AUDIO_EVENTS.uiClick]: { src: "/assets/audio/ui_click.mp3", volume: 0.4, loop: false },
+  [AUDIO_EVENTS.doorClose]: { src: assetPath("/assets/audio/door_close.mp3"), volume: 0.7, loop: false },
+  [AUDIO_EVENTS.doorOpen]: { src: assetPath("/assets/audio/door_open.mp3"), volume: 0.7, loop: false },
+  [AUDIO_EVENTS.lightClick]: { src: assetPath("/assets/audio/light_click.mp3"), volume: 0.6, loop: false },
+  [AUDIO_EVENTS.enemyStep]: { src: assetPath("/assets/audio/enemy_step.mp3"), volume: 0.5, loop: false },
+  [AUDIO_EVENTS.enemyNear]: { src: assetPath("/assets/audio/enemy_near.mp3"), volume: 0.6, loop: false },
+  [AUDIO_EVENTS.powerLow]: { src: assetPath("/assets/audio/power_low.mp3"), volume: 0.6, loop: false },
+  [AUDIO_EVENTS.jumpscare]: { src: assetPath("/assets/audio/jumpscare.mp3"), volume: 1.0, loop: false },
+  [AUDIO_EVENTS.shiftWin]: { src: assetPath("/assets/audio/shift_win.mp3"), volume: 0.7, loop: false },
+  [AUDIO_EVENTS.uiClick]: { src: assetPath("/assets/audio/ui_click.mp3"), volume: 0.4, loop: false },
   // Výrazné "generátor běží" pípnutí každých pár sekund — má být jasně slyšet,
   // ne jen tiché tiknutí v pozadí. Hlasitost o 30 % snížená oproti dřívější
   // 0.6/0.8 (na žádost — původní hlasitost byla po předchozím doladění moc rušivá).
   [AUDIO_EVENTS.generatorBeep]: {
-    src: "/assets/audio/generator_beep.mp3",
+    src: assetPath("/assets/audio/generator_beep.mp3"),
     // O dalších 30 % tišší na žádost po playtestu (0.6 -> 0.42 dřív, teď 0.42 -> 0.294).
     volume: 0.294,
     loop: false,
@@ -94,7 +95,7 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   },
   // Krátký, výrazný řev při door-light repelu (viz GAME_DESIGN.md "Světlo a dveře").
   [AUDIO_EVENTS.monsterRetreatRoar]: {
-    src: "/assets/audio/monster_retreat_roar.mp3",
+    src: assetPath("/assets/audio/monster_retreat_roar.mp3"),
     volume: 0.8,
     loop: false,
     fallbackSynth: {
@@ -115,7 +116,7 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   // načtení. Přehrávání (1–2 údery + cooldown proti spamu) řeší
   // game/audio/doorBangPlayback.ts + app/play/page.tsx, ne tenhle config.
   [AUDIO_EVENTS.monsterDoorBang]: {
-    src: "/assets/audio/monster_door_bang.mp3",
+    src: assetPath("/assets/audio/monster_door_bang.mp3"),
     volume: 0.8,
     loop: false,
     fallbackSynth: {
@@ -129,7 +130,7 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   // soubor zatím neexistuje, fallback je tichý krátký "krok" tón — záměrně
   // nenápadný, ať bez skutečného assetu nepůsobí rušivě.
   [AUDIO_EVENTS.monsterRetreatSteps]: {
-    src: "/assets/audio/monster_retreat_steps.mp3",
+    src: assetPath("/assets/audio/monster_retreat_steps.mp3"),
     volume: 0.5,
     loop: false,
     fallbackSynth: {
@@ -143,7 +144,7 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   },
   // Vzdálené zavytí na začátku blackoutu (viz GAME_DESIGN.md "Blackout").
   [AUDIO_EVENTS.blackoutHowl]: {
-    src: "/assets/audio/blackout_howl.mp3",
+    src: assetPath("/assets/audio/blackout_howl.mp3"),
     volume: 0.7,
     loop: false,
     fallbackSynth: {
@@ -163,7 +164,7 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   // footsteps/ — obě "těžké monstrum" varianty jsou schované pro budoucí
   // "gigant" typ nepřítele, ne pro tohle), fallback zatím stačí.
   [AUDIO_EVENTS.blackoutStepsFar]: {
-    src: "/assets/audio/blackout_steps_far.mp3",
+    src: assetPath("/assets/audio/blackout_steps_far.mp3"),
     volume: 0.5,
     loop: false,
     fallbackSynth: {
@@ -176,7 +177,7 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
     },
   },
   [AUDIO_EVENTS.blackoutStepsNear]: {
-    src: "/assets/audio/blackout_steps_near.mp3",
+    src: assetPath("/assets/audio/blackout_steps_near.mp3"),
     volume: 0.6,
     loop: false,
     fallbackSynth: {
@@ -197,7 +198,7 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   // vybraný krátký segment roar_08 z rozřezané 60s nahrávky) — fallback pro
   // případ selhání načtení zůstává.
   [AUDIO_EVENTS.blackoutMonsterRoar]: {
-    src: "/assets/audio/blackout_monster_roar.mp3",
+    src: assetPath("/assets/audio/blackout_monster_roar.mp3"),
     volume: 0.9,
     loop: false,
     fallbackSynth: {
@@ -213,7 +214,7 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   // "cvak/sklo" zvuk, žádný reálný soubor zatím neexistuje, fallback synth
   // je jen krátký vysoký "prasknutí" tón + tišší dozvuk.
   [AUDIO_EVENTS.bulbBreak]: {
-    src: "/assets/audio/bulb_break.mp3",
+    src: assetPath("/assets/audio/bulb_break.mp3"),
     volume: 0.7,
     loop: false,
     fallbackSynth: {
@@ -231,7 +232,7 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   // zvuk. Žádný reálný soubor zatím neexistuje, fallback je krátký
   // sine sweep nahoru (dvě rychle navazující stoupající noty, ~0.35 s celkem).
   [AUDIO_EVENTS.bulbReplaceSuccess]: {
-    src: "/assets/audio/bulb_replace_success.mp3",
+    src: assetPath("/assets/audio/bulb_replace_success.mp3"),
     volume: 0.5,
     loop: false,
     fallbackSynth: {
@@ -248,7 +249,7 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   // proto tišší/kratší tón než jumpscare/blackoutMonsterRoar). Fallback pro
   // případ selhání načtení zůstává, stejný vzor jako ostatní monster* eventy.
   [AUDIO_EVENTS.monsterWounded]: {
-    src: "/assets/audio/monster_wounded.mp3",
+    src: assetPath("/assets/audio/monster_wounded.mp3"),
     volume: 0.75,
     loop: false,
     fallbackSynth: {
@@ -264,7 +265,7 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   // stejný soubor jako uiClick, jen výrazně hlasitější, ať potvrzení sběru
   // vynikne i přes ambientní heartbeat loop během výpravy.
   [AUDIO_EVENTS.itemPickup]: {
-    src: "/assets/audio/ui_click.mp3",
+    src: assetPath("/assets/audio/ui_click.mp3"),
     volume: 0.9,
     loop: false,
     fallbackSynth: {
@@ -280,7 +281,7 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   // (dva střídavé tóny) se použije jen kdyby se skutečný soubor nepodařilo
   // načíst (viz audioManager.ts#startFallbackSynthLoop).
   [AUDIO_EVENTS.emergencyRunSiren]: {
-    src: "/assets/audio/emergency_run_siren.mp3",
+    src: assetPath("/assets/audio/emergency_run_siren.mp3"),
     volume: 0.5,
     loop: true,
     fallbackSynth: {
@@ -296,7 +297,7 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   // #handleSelectHardcore) — krátký (2.2s) řev, viz assets/audio/README.md
   // "Hardcore výběr".
   [AUDIO_EVENTS.hardcoreSelectRoar]: {
-    src: "/assets/audio/hardcore_select_roar.mp3",
+    src: assetPath("/assets/audio/hardcore_select_roar.mp3"),
     volume: 0.7,
     loop: false,
     fallbackSynth: {
@@ -313,7 +314,7 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   // "Finální řev monstra"). Znamená smrt, ne ústup — nikdy nezaměňovat s
   // monsterRetreatRoar.
   [AUDIO_EVENTS.monsterFinalDeathRoar]: {
-    src: "/assets/audio/monster_final_death_roar.mp3",
+    src: assetPath("/assets/audio/monster_final_death_roar.mp3"),
     volume: 0.8,
     loop: false,
     fallbackSynth: {
@@ -332,7 +333,7 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   // bulbReplaceSuccess, ale vyšší/kratší — jednoznačně "úspěch", ne "světlo
   // naskočilo").
   [AUDIO_EVENTS.achievementUnlock]: {
-    src: "/assets/audio/achievement_unlock.mp3",
+    src: assetPath("/assets/audio/achievement_unlock.mp3"),
     volume: 0.5,
     loop: false,
     fallbackSynth: {
@@ -352,7 +353,7 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   // (roarVolume/impactVolume/glitchVolume/deathVolume). Žádné reálné
   // soubory zatím neexistují, všechny čtyři mají jen synth fallback.
   [AUDIO_EVENTS.deathSequenceRoar]: {
-    src: "/assets/audio/death_sequence_roar.mp3",
+    src: assetPath("/assets/audio/death_sequence_roar.mp3"),
     volume: 0.8,
     loop: false,
     fallbackSynth: {
@@ -365,7 +366,7 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
     },
   },
   [AUDIO_EVENTS.deathSequenceImpact]: {
-    src: "/assets/audio/death_sequence_impact.mp3",
+    src: assetPath("/assets/audio/death_sequence_impact.mp3"),
     volume: 0.8,
     loop: false,
     fallbackSynth: {
@@ -375,7 +376,7 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
     },
   },
   [AUDIO_EVENTS.deathSequenceGlitch]: {
-    src: "/assets/audio/death_sequence_glitch.mp3",
+    src: assetPath("/assets/audio/death_sequence_glitch.mp3"),
     volume: 0.6,
     loop: false,
     fallbackSynth: {
@@ -393,7 +394,7 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
     // Stejný zvukový soubor jako hardcoreSelectRoar ("řev monstra #3" z
     // /dev-sound), ale VLASTNÍ dedikovaný event — setVolume z /death-test
     // tak nemění hlasitost na obrazovce výběru hardcore obtížnosti.
-    src: "/assets/audio/hardcore_select_roar.mp3",
+    src: assetPath("/assets/audio/hardcore_select_roar.mp3"),
     volume: 0.7,
     loop: false,
     fallbackSynth: {
@@ -413,57 +414,57 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   // pokud soubor chybí, hláška se prostě tiše nepřehraje (viz
   // audioManager.ts#play).
   [AUDIO_EVENTS.radioReleaseMonster01]: {
-    src: "/object_13/sound/release_monster/release_monster_01.mp3",
+    src: assetPath("/object_13/sound/release_monster/release_monster_01.mp3"),
     volume: 0.85,
     loop: false,
   },
   [AUDIO_EVENTS.radioReleaseMonster02]: {
-    src: "/object_13/sound/release_monster/release_monster_02.mp3",
+    src: assetPath("/object_13/sound/release_monster/release_monster_02.mp3"),
     volume: 0.85,
     loop: false,
   },
   [AUDIO_EVENTS.radioReleaseMonster03]: {
-    src: "/object_13/sound/release_monster/release_monster_03.mp3",
+    src: assetPath("/object_13/sound/release_monster/release_monster_03.mp3"),
     volume: 0.85,
     loop: false,
   },
   [AUDIO_EVENTS.radioReleaseMonster04]: {
-    src: "/object_13/sound/release_monster/release_monster_04.mp3",
+    src: assetPath("/object_13/sound/release_monster/release_monster_04.mp3"),
     volume: 0.85,
     loop: false,
   },
   [AUDIO_EVENTS.radioReleaseMonster05]: {
-    src: "/object_13/sound/release_monster/release_monster_05.mp3",
+    src: assetPath("/object_13/sound/release_monster/release_monster_05.mp3"),
     volume: 0.85,
     loop: false,
   },
   [AUDIO_EVENTS.radioReleaseMonster06]: {
-    src: "/object_13/sound/release_monster/release_monster_06.mp3",
+    src: assetPath("/object_13/sound/release_monster/release_monster_06.mp3"),
     volume: 0.85,
     loop: false,
   },
   [AUDIO_EVENTS.radioReleaseMonster07]: {
-    src: "/object_13/sound/release_monster/release_monster_07.mp3",
+    src: assetPath("/object_13/sound/release_monster/release_monster_07.mp3"),
     volume: 0.85,
     loop: false,
   },
   [AUDIO_EVENTS.radioReleaseMonster08]: {
-    src: "/object_13/sound/release_monster/release_monster_08.mp3",
+    src: assetPath("/object_13/sound/release_monster/release_monster_08.mp3"),
     volume: 0.85,
     loop: false,
   },
   [AUDIO_EVENTS.radioReleaseMonster09]: {
-    src: "/object_13/sound/release_monster/release_monster_09.mp3",
+    src: assetPath("/object_13/sound/release_monster/release_monster_09.mp3"),
     volume: 0.85,
     loop: false,
   },
   [AUDIO_EVENTS.radioReleaseMonster10]: {
-    src: "/object_13/sound/release_monster/release_monster_10.mp3",
+    src: assetPath("/object_13/sound/release_monster/release_monster_10.mp3"),
     volume: 0.85,
     loop: false,
   },
   [AUDIO_EVENTS.radioReleaseMonster11]: {
-    src: "/object_13/sound/release_monster/release_monster_11.mp3",
+    src: assetPath("/object_13/sound/release_monster/release_monster_11.mp3"),
     volume: 0.85,
     loop: false,
   },
@@ -473,52 +474,52 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   // hlasitost jako radioReleaseMonster* výše, bez fallbackSynth (namluvenou
   // větu nemá smysl nahrazovat syntetizovaným tónem).
   [AUDIO_EVENTS.radioMonsterRepelSuccess0]: {
-    src: "/object_13/sound/repel_monster/radio_monster_repel_success_0.mp3",
+    src: assetPath("/object_13/sound/repel_monster/radio_monster_repel_success_0.mp3"),
     volume: 0.85,
     loop: false,
   },
   [AUDIO_EVENTS.radioMonsterRepelSuccess1]: {
-    src: "/object_13/sound/repel_monster/radio_monster_repel_success_1.mp3",
+    src: assetPath("/object_13/sound/repel_monster/radio_monster_repel_success_1.mp3"),
     volume: 0.85,
     loop: false,
   },
   [AUDIO_EVENTS.radioMonsterRepelSuccess2]: {
-    src: "/object_13/sound/repel_monster/radio_monster_repel_success_2.mp3",
+    src: assetPath("/object_13/sound/repel_monster/radio_monster_repel_success_2.mp3"),
     volume: 0.85,
     loop: false,
   },
   [AUDIO_EVENTS.radioMonsterRepelSuccess3]: {
-    src: "/object_13/sound/repel_monster/radio_monster_repel_success_3.mp3",
+    src: assetPath("/object_13/sound/repel_monster/radio_monster_repel_success_3.mp3"),
     volume: 0.85,
     loop: false,
   },
   [AUDIO_EVENTS.radioMonsterRepelStay0]: {
-    src: "/object_13/sound/repel_monster/radio_monster_repel_stay_0.mp3",
+    src: assetPath("/object_13/sound/repel_monster/radio_monster_repel_stay_0.mp3"),
     volume: 0.85,
     loop: false,
   },
   [AUDIO_EVENTS.radioMonsterRepelStay1]: {
-    src: "/object_13/sound/repel_monster/radio_monster_repel_stay_1.mp3",
+    src: assetPath("/object_13/sound/repel_monster/radio_monster_repel_stay_1.mp3"),
     volume: 0.85,
     loop: false,
   },
   [AUDIO_EVENTS.radioMonsterRepelStay2]: {
-    src: "/object_13/sound/repel_monster/radio_monster_repel_stay_2.mp3",
+    src: assetPath("/object_13/sound/repel_monster/radio_monster_repel_stay_2.mp3"),
     volume: 0.85,
     loop: false,
   },
   [AUDIO_EVENTS.radioMonsterRepelFail0]: {
-    src: "/object_13/sound/repel_monster/radio_monster_repel_fail_0.mp3",
+    src: assetPath("/object_13/sound/repel_monster/radio_monster_repel_fail_0.mp3"),
     volume: 0.85,
     loop: false,
   },
   [AUDIO_EVENTS.radioMonsterRepelFail1]: {
-    src: "/object_13/sound/repel_monster/radio_monster_repel_fail_1.mp3",
+    src: assetPath("/object_13/sound/repel_monster/radio_monster_repel_fail_1.mp3"),
     volume: 0.85,
     loop: false,
   },
   [AUDIO_EVENTS.radioMonsterRepelFail2]: {
-    src: "/object_13/sound/repel_monster/radio_monster_repel_fail_2.mp3",
+    src: assetPath("/object_13/sound/repel_monster/radio_monster_repel_fail_2.mp3"),
     volume: 0.85,
     loop: false,
   },
@@ -532,7 +533,7 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   // záměrně nízká (0.14 vs. 0.85 u rádiových hlášek) — má jen potvrzovat,
   // že zařízení běží, ne rušit.
   [AUDIO_EVENTS.sonicCannonHum]: {
-    src: "/assets/audio/sonic_cannon_hum.mp3",
+    src: assetPath("/assets/audio/sonic_cannon_hum.mp3"),
     volume: 0.14,
     loop: true,
     fallbackSynth: {
@@ -552,14 +553,14 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   // fallbackSynth — je to jedna konkrétní namluvená nahrávka, syntetizovaný
   // tón by ji smysluplně nenahradil.
   [AUDIO_EVENTS.sonicCannonVoice]: {
-    src: "/object_13/sound/sonic_cannon.mp3",
+    src: assetPath("/object_13/sound/sonic_cannon.mp3"),
     volume: 0.8,
     loop: false,
   },
   // Dávkovač munice (viz zadání) — žádné soubory zatím nedodané, vždy
   // spadne na fallbackSynth. Dvě stoupající noty ("cvak-cvak" nabíjení).
   [AUDIO_EVENTS.ammoDispenseClick]: {
-    src: "/assets/audio/ammo_dispense_click.mp3",
+    src: assetPath("/assets/audio/ammo_dispense_click.mp3"),
     volume: 0.6,
     loop: false,
     fallbackSynth: {
@@ -574,7 +575,7 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   // Odmítnutí (plná zbraň i žádná zbraň zatím nenalezená) — jedna krátká,
   // nízká tupá nota, ať je jasně odlišná od úspěšného dávkování výše.
   [AUDIO_EVENTS.ammoRequestRejected]: {
-    src: "/assets/audio/ammo_request_rejected.mp3",
+    src: assetPath("/assets/audio/ammo_request_rejected.mp3"),
     volume: 0.5,
     loop: false,
     fallbackSynth: {
@@ -587,7 +588,7 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   // === false) — suchý, vyšší cvak bez žádné rezonance, ať je jasně "kov o
   // kov", ne výstřel.
   [AUDIO_EVENTS.weaponEmptyClick]: {
-    src: "/assets/audio/weapon_empty_click.mp3",
+    src: assetPath("/assets/audio/weapon_empty_click.mp3"),
     volume: 0.55,
     loop: false,
     fallbackSynth: {
@@ -602,7 +603,7 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   // death sekvenci, viz jeho komentář v tomhle souboru, proto nový event).
   // Krátký nepravidelný "prasknutí" zvuk — dvě rychlé nesouhlasné noty.
   [AUDIO_EVENTS.cameraDamageStart]: {
-    src: "/assets/audio/camera_damage_start.mp3",
+    src: assetPath("/assets/audio/camera_damage_start.mp3"),
     volume: 0.6,
     loop: false,
     fallbackSynth: {
@@ -617,7 +618,7 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   // Úplné přerušení signálu (attackPhase -> "offline") — nižší, delší tón,
   // ať je jasně odlišný od cameraDamageStart výše ("začátek" vs. "konec").
   [AUDIO_EVENTS.cameraSignalLost]: {
-    src: "/assets/audio/camera_signal_lost.mp3",
+    src: assetPath("/assets/audio/camera_signal_lost.mp3"),
     volume: 0.6,
     loop: false,
     fallbackSynth: {
@@ -634,7 +635,7 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   // preview hlasitosti, ať to zní jako vzdálený mikrofonní přenos, ne
   // zvuk "v místnosti".
   [AUDIO_EVENTS.disabledCameraFootsteps]: {
-    src: "/dev-sound-candidates/footsteps_human/footsteps_stone_securesubset.mp3",
+    src: assetPath("/dev-sound-candidates/footsteps_human/footsteps_stone_securesubset.mp3"),
     volume: 0.5,
     loop: false,
   },
@@ -642,17 +643,17 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   // (camera_destroid_full_1.wav, zpracováno ffmpeg, viz
   // game/radio/cameraDisabledRadioMessage.ts).
   [AUDIO_EVENTS.radioCameraDestroyed0]: {
-    src: "/object_13/sound/camera_destroid/radio_camera_destroyed_0.mp3",
+    src: assetPath("/object_13/sound/camera_destroid/radio_camera_destroyed_0.mp3"),
     volume: 0.85,
     loop: false,
   },
   [AUDIO_EVENTS.radioCameraDestroyed1]: {
-    src: "/object_13/sound/camera_destroid/radio_camera_destroyed_1.mp3",
+    src: assetPath("/object_13/sound/camera_destroid/radio_camera_destroyed_1.mp3"),
     volume: 0.85,
     loop: false,
   },
   [AUDIO_EVENTS.radioCameraDestroyed2]: {
-    src: "/object_13/sound/camera_destroid/radio_camera_destroyed_2.mp3",
+    src: assetPath("/object_13/sound/camera_destroid/radio_camera_destroyed_2.mp3"),
     volume: 0.85,
     loop: false,
   },
@@ -664,27 +665,27 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   // volume=XdB" -codec:a libmp3lame -b:a 128k`, gain per-segment podle
   // původní hlasitosti — stejný cíl jako dřívější dvě varianty/monster_retreat_roar).
   [AUDIO_EVENTS.ghoulCameraAttackWarning0]: {
-    src: "/object_13/sound/camera_destroid/ghoul_appear_0.mp3",
+    src: assetPath("/object_13/sound/camera_destroid/ghoul_appear_0.mp3"),
     volume: 0.8,
     loop: false,
   },
   [AUDIO_EVENTS.ghoulCameraAttackWarning1]: {
-    src: "/object_13/sound/camera_destroid/ghoul_appear_1.mp3",
+    src: assetPath("/object_13/sound/camera_destroid/ghoul_appear_1.mp3"),
     volume: 0.8,
     loop: false,
   },
   [AUDIO_EVENTS.ghoulCameraAttackWarning2]: {
-    src: "/object_13/sound/camera_destroid/ghoul_appear_2.mp3",
+    src: assetPath("/object_13/sound/camera_destroid/ghoul_appear_2.mp3"),
     volume: 0.8,
     loop: false,
   },
   [AUDIO_EVENTS.ghoulCameraAttackWarning3]: {
-    src: "/object_13/sound/camera_destroid/ghoul_appear_3.mp3",
+    src: assetPath("/object_13/sound/camera_destroid/ghoul_appear_3.mp3"),
     volume: 0.8,
     loop: false,
   },
   [AUDIO_EVENTS.ghoulCameraAttackWarning4]: {
-    src: "/object_13/sound/camera_destroid/ghoul_appear_4.mp3",
+    src: assetPath("/object_13/sound/camera_destroid/ghoul_appear_4.mp3"),
     volume: 0.8,
     loop: false,
   },
@@ -696,27 +697,27 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   // titulek se zobrazí i tak (text je zdroj pravdy, viz
   // titanEscapeMessages.ts hlavička).
   [AUDIO_EVENTS.titanEscape01]: {
-    src: "/object_13/sound/titan_escape/titan_escape_01.mp3",
+    src: assetPath("/object_13/sound/titan_escape/titan_escape_01.mp3"),
     volume: 0.85,
     loop: false,
   },
   [AUDIO_EVENTS.titanEscape02]: {
-    src: "/object_13/sound/titan_escape/titan_escape_02.mp3",
+    src: assetPath("/object_13/sound/titan_escape/titan_escape_02.mp3"),
     volume: 0.85,
     loop: false,
   },
   [AUDIO_EVENTS.titanEscape03]: {
-    src: "/object_13/sound/titan_escape/titan_escape_03.mp3",
+    src: assetPath("/object_13/sound/titan_escape/titan_escape_03.mp3"),
     volume: 0.85,
     loop: false,
   },
   [AUDIO_EVENTS.titanEscape04]: {
-    src: "/object_13/sound/titan_escape/titan_escape_04.mp3",
+    src: assetPath("/object_13/sound/titan_escape/titan_escape_04.mp3"),
     volume: 0.85,
     loop: false,
   },
   [AUDIO_EVENTS.titanEscape05]: {
-    src: "/object_13/sound/titan_escape/titan_escape_05.mp3",
+    src: assetPath("/object_13/sound/titan_escape/titan_escape_05.mp3"),
     volume: 0.85,
     loop: false,
   },
@@ -732,7 +733,7 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   // vzdálenosti (viz app/play/page.tsx efekt), `loop: true` pro
   // nepřerušovanou smyčku po celou dobu aktivního encounteru.
   [AUDIO_EVENTS.titanFootsteps]: {
-    src: "/dev-sound-candidates/footsteps/monster_footsteps_gravel.mp3",
+    src: assetPath("/dev-sound-candidates/footsteps/monster_footsteps_gravel.mp3"),
     volume: 0.8,
     loop: true,
   },
@@ -746,7 +747,7 @@ export const AUDIO_CONFIG: Record<AudioEventId, AudioClipConfig> = {
   // (viz zadání "bušení má být dominantní"), ale ne tak hlasité, aby
   // clippovalo/přehlušilo srozumitelnost běžící rádiové hlášky.
   [AUDIO_EVENTS.titanDoorPounding]: {
-    src: "/dev-sound-candidates/door_pound/door_knocking_angry.mp3",
+    src: assetPath("/dev-sound-candidates/door_pound/door_knocking_angry.mp3"),
     volume: 0.9,
     loop: true,
   },
