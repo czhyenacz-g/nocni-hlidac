@@ -1,0 +1,20 @@
+# Multiplayer-survival WebSocket server — samostatná služba vedle hlavní
+# Next.js appky (ta zůstává na Vercelu). Stejná konvence jako project-hub-api
+# na tomtéž VPS (Docker Compose, port publikovaný jen na 127.0.0.1, TLS
+# terminovaný nginx reverse proxy před kontejnerem). Viz
+# game/multiplayer-survival/README.md "Nasazení na VPS" pro celý postup.
+services:
+  nocni-hlidac-multiplayer:
+    build:
+      context: .
+      dockerfile: Dockerfile.multiplayer-survival
+    container_name: nocni-hlidac-multiplayer
+    restart: unless-stopped
+    ports:
+      # Jen loopback — venku ho zpřístupňuje výhradně nginx (TLS + WS upgrade
+      # headers), Node port samotný není nikdy vystavený mimo VPS.
+      - "127.0.0.1:${MULTIPLAYER_SURVIVAL_WS_PORT:-4001}:4001"
+    environment:
+      NODE_ENV: production
+      PORT: 4001
+      MULTIPLAYER_SURVIVAL_CORS_ORIGINS: ${MULTIPLAYER_SURVIVAL_CORS_ORIGINS:-https://nocni-hlidac.cz,https://www.nocni-hlidac.cz}

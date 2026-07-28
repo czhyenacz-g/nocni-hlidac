@@ -1,0 +1,8 @@
+# Jen pro Dockerfile.multiplayer-survival build (viz
+# game/multiplayer-survival/README.md "Nasazení na VPS") — repo samo o sobě
+# nemá jiný Dockerfile, Next.js frontend jede na Vercelu bez Dockeru.
+node_modules
+.next
+.git
+public
+*.log

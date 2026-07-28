@@ -1,0 +1,38 @@
+# Samostatný dlouho běžící WebSocket server pro
+# game/multiplayer-survival/server/ — NENÍ obraz hlavní Next.js appky (ta
+# zůstává na Vercelu jako serverless). Sdílí zdrojový kód s hlavní hrou
+# (game/minigame/logic.ts, types.ts, layouts/...), proto se staví ze
+# STEJNÉHO repozitáře, jen s jiným entrypointem
+# (scripts/dev-multiplayer-survival-server.mjs). Viz
+# game/multiplayer-survival/README.md "Nasazení na VPS" pro celý postup
+# (docker compose, nginx, TLS).
+
+FROM node:22-alpine AS runner
+WORKDIR /app
+
+COPY package*.json ./
+# NODE_ENV se nastavuje AŽ PO instalaci (viz níže) — npm samo přeskakuje
+# devDependencies, kdykoliv je NODE_ENV=production nastavené (i bez
+# --omit=dev), a server běží přes `tsx`, které je devDependency. Nastavit
+# NODE_ENV=production dřív by ho tiše vynechalo z instalace a `npx tsx` by
+# si ho pak zkoušelo stáhnout z registru za běhu kontejneru.
+#
+# `node:22-alpine` má navíc natvrdo zabalené npm 10.x, které hlásí falešný
+# "lock file out of sync" na optional/platform-specific balíčcích (např.
+# esbuild/@emnapi/*) zapsaných novější npm verzí, kterou byl package-lock.json
+# vygenerovaný — upgrade npm PŘED `npm ci` to opraví, aniž by se muselo sahat
+# do samotného package-lock.json.
+RUN npm install -g npm@11.6.1 && npm ci
+
+# Jen to, co server/tick engine skutečně za běhu importuje — tsconfig kvůli
+# tsx (i když tenhle kód žádné `@/` aliasy nepoužívá, jen relativní importy),
+# `game/` obsahuje jak game/multiplayer-survival, tak game/minigame (odkud
+# multiplayer-survival importuje čistou geometrii/AI/typy beze změny).
+COPY tsconfig.json ./
+COPY scripts ./scripts
+COPY game ./game
+
+ENV NODE_ENV=production
+EXPOSE 4001
+
+CMD ["npx", "tsx", "scripts/dev-multiplayer-survival-server.mjs"]

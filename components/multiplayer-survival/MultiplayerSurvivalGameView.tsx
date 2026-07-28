@@ -34,7 +34,7 @@ export interface MultiplayerSurvivalGameViewProps {
 
 export function MultiplayerSurvivalGameView({ serverUrl }: MultiplayerSurvivalGameViewProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const { status, errorMessage, playerId, state, lastAppliedSeq, pingMs, sendInput, sendRestart } = useMultiplayerSurvivalOnline(serverUrl);
+  const { status, errorMessage, playerId, state, lastAppliedSeq, pingMs, sendInput, sendRestart, retry } = useMultiplayerSurvivalOnline(serverUrl);
   const keysRef = useRef<KeyboardMoveState>({ ...EMPTY_KEYBOARD_MOVE_STATE });
   const wasFiringRef = useRef(false);
   const predictedRef = useRef<{ x: number; y: number; direction: MultiplayerSurvivalState["players"][number]["direction"] } | null>(null);
@@ -122,12 +122,16 @@ export function MultiplayerSurvivalGameView({ serverUrl }: MultiplayerSurvivalGa
     return <p className="text-sm text-gray-400">Připojuji se do hry…</p>;
   }
 
+  if (status === "unreachable") {
+    return <ConnectionProblem title="Herní server není dostupný." onRetry={retry} />;
+  }
+
   if (status === "full") {
-    return <p className="text-sm text-red-400">Místnost je plná. Zkus to prosím znovu za chvíli.</p>;
+    return <ConnectionProblem title="Místnost je plná." subtitle="Zkus to prosím znovu za chvíli." onRetry={retry} />;
   }
 
   if (status === "error") {
-    return <p className="text-sm text-red-400">{errorMessage ?? "Připojení se nezdařilo."}</p>;
+    return <ConnectionProblem title={errorMessage ?? "Připojení se nezdařilo."} onRetry={retry} />;
   }
 
   return (
@@ -136,7 +140,7 @@ export function MultiplayerSurvivalGameView({ serverUrl }: MultiplayerSurvivalGa
         <canvas ref={canvasRef} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} className="border border-gray-700" />
 
         {status === "disconnected" && (
-          <RoundOverlay title="Spojení přerušeno" subtitle="Zkus obnovit stránku." />
+          <RoundOverlay title="Spojení přerušeno" subtitle="Zkus se připojit znovu." onRestart={retry} restartLabel="Zkusit znovu" />
         )}
 
         {status === "joined" && state?.roundStatus === "waiting" && <RoundOverlay title="Čekání na hráče…" />}
@@ -161,6 +165,19 @@ export function MultiplayerSurvivalGameView({ serverUrl }: MultiplayerSurvivalGa
         </div>
       )}
       <p className="text-[11px] text-gray-500">Ovládání: WASD nebo šipky pro pohyb, mezerník pro výstřel.</p>
+    </div>
+  );
+}
+
+/** Zobrazí se MÍSTO canvasu, když se ještě vůbec nepodařilo připojit/joinnout (viz zadání "server nedostupný"/"server odmítl"/"místnost je plná") — na rozdíl od `RoundOverlay`, který jede NAD canvasem pro stavy uvnitř už běžící hry. */
+function ConnectionProblem({ title, subtitle, onRetry }: { title: string; subtitle?: string; onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center gap-3 text-center px-4">
+      <p className="text-sm text-red-400">{title}</p>
+      {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
+      <button onClick={onRetry} className="pixel-button px-4 py-2 text-sm">
+        Zkusit znovu
+      </button>
     </div>
   );
 }

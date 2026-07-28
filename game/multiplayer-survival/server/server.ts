@@ -37,6 +37,20 @@ export interface MultiplayerSurvivalDevServerOptions {
 }
 
 export function attachMultiplayerSurvivalSocket(httpServer: http.Server, corsOrigins: string[], options: MultiplayerSurvivalDevServerOptions = {}): MultiplayerSurvivalDevServerHandle {
+  // `/health` na STEJNÉM http serveru/portu jako socket.io (viz zadání
+  // "nevytvářej kvůli tomu druhou aplikaci nebo druhý port") — registrovaný
+  // jako další 'request' listener vedle toho, co si engine.io/socket.io
+  // přidá samo (Node volá VŠECHNY 'request' listenery na daný request,
+  // takže tenhle handler prostě nic neudělá pro cesty, které nejsou
+  // "/health", a nechá je na socket.io). Žádný stav místnosti ani jiné
+  // citlivé údaje se tu nevrací.
+  httpServer.on("request", (req, res) => {
+    if (req.method === "GET" && req.url === "/health") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ status: "ok", service: "multiplayer-survival" }));
+    }
+  });
+
   const io = new IOServer<ClientToServerEvents, ServerToClientEvents>(httpServer, {
     cors: { origin: corsOrigins, methods: ["GET", "POST"] },
     path: "/socket.io/",
@@ -104,13 +118,33 @@ export function attachMultiplayerSurvivalSocket(httpServer: http.Server, corsOri
   };
 }
 
-/** Samostatný spustitelný dev server — viz scripts/dev-multiplayer-survival-server.mjs. Ne součást Next.js appky (dlouho běžící proces, na Vercelu serverless funkce nefunguje — pro veřejný deploy potřebuje vlastní dlouho běžící Node proces, viz README.md "Nasazení"). */
+/**
+ * Samostatný spustitelný server — viz scripts/dev-multiplayer-survival-server.mjs
+ * (STEJNÝ entrypoint pro lokální dev i produkční VPS deploy, liší se jen
+ * environment proměnnými, viz README.md "Nasazení na VPS"). Ne součást
+ * Next.js appky (dlouho běžící proces, na Vercelu serverless funkce
+ * nefunguje). Poslouchá na `0.0.0.0` (ne jen `localhost`) — nutné, aby byl
+ * dosažitelný zevnitř Docker kontejneru/skrz nginx reverse proxy na VPS.
+ * `SIGTERM`/`SIGINT` ukončí server čistě (zastaví tick interval, zavře
+ * socket.io i http server) — bez toho `docker compose restart`/systemd
+ * stop nechá viset spojení a tick interval.
+ */
 export function startMultiplayerSurvivalDevServer(port: number, corsOrigins: string[], options: MultiplayerSurvivalDevServerOptions = {}): MultiplayerSurvivalDevServerHandle {
   const httpServer = http.createServer();
   const handle = attachMultiplayerSurvivalSocket(httpServer, corsOrigins, options);
-  httpServer.listen(port, () => {
+  httpServer.listen(port, "0.0.0.0", () => {
     // eslint-disable-next-line no-console
-    console.log(`[multiplayer-survival] dev server listening on :${port} (room "${DEV_ROOM_CODE}")`);
+    console.log(`[multiplayer-survival] listening on 0.0.0.0:${port} (room "${DEV_ROOM_CODE}")`);
   });
+
+  const shutdown = (signal: string) => {
+    // eslint-disable-next-line no-console
+    console.log(`[multiplayer-survival] received ${signal}, shutting down`);
+    handle.stop();
+    process.exit(0);
+  };
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
+
   return handle;
 }

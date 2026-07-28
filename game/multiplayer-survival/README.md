@@ -169,8 +169,10 @@ leaderboard ani žádný jiný produkční stav.
   `4001`), CORS povolené originy přes `MULTIPLAYER_SURVIVAL_CORS_ORIGINS`
   (výchozí `http://localhost:3000,http://localhost:3001`).
 - Frontend se k němu připojuje na `NEXT_PUBLIC_MULTIPLAYER_SURVIVAL_WS_URL`
-  (výchozí `http://localhost:4001`) — nastav tuhle proměnnou na produkční
-  `wss://` URL při nasazení (viz níže).
+  (výchozí `http://localhost:4001`) — je to Socket.IO klient, ne čistý
+  WebSocket, takže produkční hodnota je veřejná **HTTPS** URL
+  (`https://multiplayer.nocni-hlidac.cz`), ne `wss://` (viz "Nasazení na
+  VPS" níže).
 
 ### Jak dočasně zkrátit kolo pro test
 
@@ -220,22 +222,208 @@ NENÍ zapojená do `ai/monsterAi.ts` ani nikam jinam:
   nesmí sám rozhodnout, že boost běží nebo jakou má rychlost, až se boost
   skutečně zapojí.
 
-## Co bude potřeba pro veřejné nasazení
+## Nasazení na VPS
 
-- WebSocket server (`server/server.ts`) je dlouho běžící Node proces —
-  NEBĚŽÍ jako Vercel serverless funkce. Potřebuje vlastní hosting (VPS,
-  Fly.io, Railway, Render, ...) s `wss://` (TLS) před sebou, typicky přes
-  reverse proxy/load balancer terminující TLS.
-- Frontend (Next.js) může zůstat na Vercelu jako dnes — nastav mu
-  `NEXT_PUBLIC_MULTIPLAYER_SURVIVAL_WS_URL=wss://<doména-serveru>`.
-  `next.config`/`vercel.ts` úpravu nepotřebuje, je to jen env proměnná
-  čtená v `app/multiplayer-survival/page.tsx` a
-  `app/dev/multiplayer-survival-online/page.tsx`.
-- Server potřebuje `MULTIPLAYER_SURVIVAL_CORS_ORIGINS` nastavené na
-  skutečnou produkční doménu frontendu (jinak socket.io handshake spadne na
-  CORS).
-- Žádná databáze/perzistence — místnost žije jen v paměti procesu a zmizí
-  při restartu (to je pro první veřejnou verzi záměrně v pořádku, viz
-  zadání "nepřidávej zatím složitý systém").
-- Konkrétní cloudová platforma pro WebSocket server zatím není zvolená —
-  tahle dokumentace záměrně necílí na jednu konkrétní volbu.
+Server je Socket.IO (`socket.io` balíček, NE čistý `ws`/WebSocket) — klient
+(`socket.io-client`) se připojuje na veřejnou **HTTPS** URL (socket.io si
+WS upgrade řeší samo přes svůj vlastní handshake na `/socket.io/`), ne na
+`wss://` přímo. `NEXT_PUBLIC_MULTIPLAYER_SURVIVAL_WS_URL` proto je
+`https://multiplayer.nocni-hlidac.cz`, ne `wss://...`.
+
+Zvolená subdoména: **`multiplayer.nocni-hlidac.cz`** — stejná konvence jako
+`api.osmaliga.cz` pro `project-hub-api` na tomtéž VPS (jedna subdoména na
+jednu samostatnou dlouho běžící službu, každá s vlastním nginx site a TLS
+certifikátem).
+
+Stejná VPS už hostuje `project-hub-api` (Docker Compose, port `3001` na
+`127.0.0.1`, nginx + certbot) — tahle služba jede vedle, jako DALŠÍ
+nezávislý Compose stack, ne uvnitř stejného `docker-compose.yml`. Napojení
+na hráčské API (Discord login, leaderboard, `project-hub-api`) je záměrně
+MIMO rozsah týhle fáze — multiplayer server dnes nemluví s žádnou DB ani s
+`lib/hubClient.ts`.
+
+### Co je hotové v repozitáři (tahle fáze)
+
+- `Dockerfile.multiplayer-survival` (repo root) — staví image jen ze
+  `scripts/` + `game/` (přes `tsx`, žádný Next.js build).
+- `docker-compose.yml` (repo root) — jedna služba, port publikovaný jen na
+  `127.0.0.1:4001`, `MULTIPLAYER_SURVIVAL_CORS_ORIGINS` s produkční
+  výchozí hodnotou.
+- `.dockerignore` (repo root) — vynechá `node_modules`/`.next`/`.git`/`public`
+  z build kontextu.
+- `GET /health` na stejném portu/procesu jako Socket.IO (`server/server.ts`)
+  — vrací `{"status":"ok","service":"multiplayer-survival"}`, žádný stav
+  místnosti.
+- Server poslouchá na `0.0.0.0` (ne jen `localhost`) a čistě se ukončí na
+  `SIGTERM`/`SIGINT` (`server/server.ts#startMultiplayerSurvivalDevServer`)
+  — nutné pro `docker compose restart`/kontejnerový supervizor.
+- `scripts/dev-multiplayer-survival-server.mjs` čte `PORT` (Docker/PM2/
+  systemd konvence) s `MULTIPLAYER_SURVIVAL_WS_PORT` jako záložním aliasem.
+- Klientská UX oprava nekonečného "Připojuji se…" (viz "Produkční UX při
+  nedostupném serveru" níže).
+
+### Co MUSÍŠ udělat ručně na VPS (nemám na něj přístup)
+
+Postup níže předpokládá, že Docker + `docker-compose-plugin` už na VPS jsou
+(project-hub-api je používá, viz jeho `docs/deployment.md`).
+
+**1. DNS záznam** — v administraci domény `nocni-hlidac.cz` přidej `A`
+záznam `multiplayer` → IP tvého VPS (stejná IP, kde běží `project-hub-api`).
+
+**2. Naklonuj/aktualizuj repo na VPS a vytvoř `.env`:**
+
+```bash
+ssh root@<tvoje-vps-ip>
+git clone https://github.com/czhyenacz-g/nocni-hlidac /opt/nocni-hlidac-multiplayer
+cd /opt/nocni-hlidac-multiplayer
+
+cat > .env << 'ENVEOF'
+MULTIPLAYER_SURVIVAL_WS_PORT=4001
+MULTIPLAYER_SURVIVAL_CORS_ORIGINS=https://nocni-hlidac.cz,https://www.nocni-hlidac.cz
+ENVEOF
+```
+
+Pokud port `4001` na VPS už něco používá (ověř `ss -tlnp | grep 4001`),
+zvol jiný a uprav `MULTIPLAYER_SURVIVAL_WS_PORT` v `.env` i `proxy_pass` v
+nginx configu níže konzistentně.
+
+**3. Spusť kontejner:**
+
+```bash
+docker compose up -d --build
+docker compose logs -f nocni-hlidac-multiplayer   # ověř "listening on 0.0.0.0:4001"
+```
+
+**4. Ověř `/health` LOKÁLNĚ na VPS (ještě bez nginx/TLS):**
+
+```bash
+curl http://127.0.0.1:4001/health
+# {"status":"ok","service":"multiplayer-survival"}
+```
+
+**5. Nginx — vytvoř site (HTTP, před certbotem):**
+
+```bash
+cat > /etc/nginx/sites-available/multiplayer.nocni-hlidac.cz << 'NGINXEOF'
+server {
+    listen 80;
+    server_name multiplayer.nocni-hlidac.cz;
+
+    location / {
+        proxy_pass http://127.0.0.1:4001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+}
+NGINXEOF
+
+ln -s /etc/nginx/sites-available/multiplayer.nocni-hlidac.cz /etc/nginx/sites-enabled/
+nginx -t
+systemctl reload nginx
+```
+
+**6. TLS certifikát (certbot už je na VPS nainstalovaný kvůli
+`api.osmaliga.cz`):**
+
+```bash
+certbot --nginx -d multiplayer.nocni-hlidac.cz
+```
+
+**7. Ověř `/health` VEŘEJNĚ přes HTTPS:**
+
+```bash
+curl https://multiplayer.nocni-hlidac.cz/health
+```
+
+**8. Nastav proměnnou na Vercelu** (projekt `nocni-hlidac`, Production
+environment):
+
+```
+NEXT_PUBLIC_MULTIPLAYER_SURVIVAL_WS_URL=https://multiplayer.nocni-hlidac.cz
+```
+
+Přes Vercel dashboard (Project → Settings → Environment Variables) nebo
+`vercel env add NEXT_PUBLIC_MULTIPLAYER_SURVIVAL_WS_URL production`.
+
+**9. Redeploy Vercelu** (`NEXT_PUBLIC_*` proměnné se pečou do buildu, prostý
+restart nestačí):
+
+```bash
+vercel --prod
+# nebo: git push do main, pokud má projekt zapnutý auto-deploy
+```
+
+**10. Test dvou oken** — otevři `https://www.nocni-hlidac.cz/multiplayer-survival`
+v běžném i anonymním okně, v obou klikni "Připojit se do hry", ověř dva
+nezávislé hráče a společné 5minutové kolo.
+
+### Aktualizace po push do main
+
+```bash
+cd /opt/nocni-hlidac-multiplayer
+git pull
+docker compose up -d --build
+```
+
+### Logy
+
+```bash
+docker compose logs -f nocni-hlidac-multiplayer
+```
+
+### Environment proměnné — přesný seznam
+
+**VPS (`.env` vedle `docker-compose.yml`):**
+
+```
+MULTIPLAYER_SURVIVAL_WS_PORT=4001
+MULTIPLAYER_SURVIVAL_CORS_ORIGINS=https://nocni-hlidac.cz,https://www.nocni-hlidac.cz
+```
+
+(`NODE_ENV=production` a `PORT` jsou nastavené natvrdo v `docker-compose.yml`,
+nepřidávej je do `.env` znovu.)
+
+**Vercel (Production):**
+
+```
+NEXT_PUBLIC_MULTIPLAYER_SURVIVAL_WS_URL=https://multiplayer.nocni-hlidac.cz
+```
+
+Žádné jiné proměnné multiplayer server nepotřebuje — žádná DB, žádný API
+klíč (viz "Bezpečnost a kompatibilita" níže).
+
+### Bezpečnost a kompatibilita
+
+- Identita hráče zůstává vázaná na Socket.IO připojení (`server/room.ts`) —
+  klient nikdy neposílá vlastní `playerId`, tahle fáze na tom nic nemění.
+- Žádné tajné hodnoty v repozitáři — `.env` na VPS zůstává mimo git (stejně
+  jako u `project-hub-api`).
+- CORS origins jsou vždy explicitní seznam domén, nikdy `*` — chybějící
+  `MULTIPLAYER_SURVIVAL_CORS_ORIGINS` v produkci jen spadne zpět na
+  localhost (server to nahlas vypíše do logu jako WARNING), ne na wildcard.
+- Žádná herní logika, pravidla kola ani databázová perzistence se touhle
+  fází nemění — je to čistě "dostat existující server z localhostu na VPS".
+
+## Produkční UX při nedostupném serveru
+
+`server/useMultiplayerSurvivalOnline.ts` rozlišuje:
+
+- `"connecting"` — probíhá handshake.
+- `"joined"` — připojeno a joinnuto do místnosti.
+- `"unreachable"` — handshake/join se nepodařil do 9 s
+  (`CONNECT_TIMEOUT_MS`) → `"Herní server není dostupný."` + tlačítko
+  "Zkusit znovu".
+- `"full"` — místnost je plná (`MAX_PLAYERS`).
+- `"error"` — jiná serverová chyba (neznámá místnost, ...).
+- `"disconnected"` — byl joinnutý, spojení spadlo za běhu.
+
+`"Zkusit znovu"` (`retry()`) zahodí aktuální socket a vytvoří nový (token z
+`localStorage` se pošle znovu, takže rejoin na stejný slot funguje i po
+chybě) — žádný nekonečný "Připojuji se…" stav.
