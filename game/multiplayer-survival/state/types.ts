@@ -50,7 +50,22 @@ export interface MonsterState extends Enemy {
   targetPlayerId: PlayerId | null;
 }
 
-export type MultiplayerSurvivalStatus = "playing" | "all_players_down";
+/**
+ * Životní cyklus JEDNOHO kola (5minutové přežití, viz zadání "první veřejná
+ * hratelná verze") — odděleno od per-entity `alive` (ten zůstává čistě
+ * per-hráč/monstrum jako dřív). `"waiting"` = kolo ještě nezačalo (v místnosti
+ * není nikdo, viz server/room.ts#createDevRoom); `"playing"` běží; `"won"`/
+ * `"lost"` kolo skončilo (viz `MultiplayerSurvivalRoundEndReason`) a
+ * `tickMultiplayerSurvival` už v těchhle stavech engine dál nesimuluje
+ * (early-return beze změny, viz engine/tick.ts) — restart je výhradně
+ * serverová akce (`server/room.ts#restartRound`), ne herní tik.
+ */
+export type MultiplayerSurvivalRoundStatus = "waiting" | "playing" | "won" | "lost";
+
+/** Proč kolo skončilo — `null` dokud běží. `"caught"` = kteréhokoli hráče
+ * chytlo monstrum (kolo končí OKAMŽITĚ, ne až když jsou dole všichni).
+ * `"timeout"` = `remainingMs` doběhlo na 0 a nikdo nebyl chycen. */
+export type MultiplayerSurvivalRoundEndReason = "caught" | "timeout" | null;
 
 export interface MultiplayerSurvivalMap {
   id: string;
@@ -70,7 +85,10 @@ export interface PickupState {
 }
 
 export interface MultiplayerSurvivalState {
-  status: MultiplayerSurvivalStatus;
+  roundStatus: MultiplayerSurvivalRoundStatus;
+  roundEndReason: MultiplayerSurvivalRoundEndReason;
+  /** Zbývající čas kola v ms — počítá se dolů jen když `roundStatus === "playing"` (viz engine/tick.ts). Server řídí skutečnou délku kola (viz engine/config.ts#ROUND_DURATION_MS, room.ts#roundDurationMs). */
+  remainingMs: number;
   elapsedMs: number;
   map: MultiplayerSurvivalMap;
   players: PlayerState[];

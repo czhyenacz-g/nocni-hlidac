@@ -34,11 +34,29 @@ export const DEFAULT_DEBUG_TOGGLES: MultiplayerSurvivalDebugToggles = {
   showPickupHitboxes: false,
 };
 
-/** Barva těla/výseče/facing-tick podle indexu hráče v `state.players` — čistě vizuální rozlišení pro 2+ hráče, viz vykreslovací smyčka níže. */
+/**
+ * Barva těla/výseče/facing-tick podle STABILNÍHO indexu odvozeného z
+ * `player.id` (viz `playerColorIndex` níže), ne podle pozice v poli — pozice
+ * v `state.players` se může měnit (odpojení hráči mizí ze stavu, viz
+ * server/room.ts), ale barva konkrétního hráče musí zůstat stejná po celé
+ * kolo. Až `MAX_PLAYERS` (engine/config.ts) barev, pak cyklí.
+ */
 const PLAYER_COLORS = [
   { fill: "#d9ffe8", shadow: "rgba(200,255,220,0.9)", stroke: "#3fe08a", coneFill: "rgba(163,255,130,0.18)" },
   { fill: "#bae6fd", shadow: "rgba(125,211,252,0.9)", stroke: "#38bdf8", coneFill: "rgba(56,189,248,0.18)" },
+  { fill: "#fde68a", shadow: "rgba(253,230,138,0.9)", stroke: "#f59e0b", coneFill: "rgba(245,158,11,0.18)" },
+  { fill: "#fbcfe8", shadow: "rgba(251,207,232,0.9)", stroke: "#ec4899", coneFill: "rgba(236,72,153,0.18)" },
+  { fill: "#ddd6fe", shadow: "rgba(221,214,254,0.9)", stroke: "#8b5cf6", coneFill: "rgba(139,92,246,0.18)" },
+  { fill: "#fed7aa", shadow: "rgba(254,215,170,0.9)", stroke: "#f97316", coneFill: "rgba(249,115,22,0.18)" },
 ];
+
+/** `"player-3"` → index 2 — stabilní napříč restarty/odpojeními, viz komentář u `PLAYER_COLORS`. Neznámý formát id (dev sandbox může použít vlastní řetězce) spadne na 0. */
+function playerColorIndex(playerId: string): number {
+  const match = /(\d+)$/.exec(playerId);
+  if (!match) return 0;
+  const n = Number.parseInt(match[1], 10);
+  return Number.isFinite(n) && n > 0 ? (n - 1) % PLAYER_COLORS.length : 0;
+}
 
 let fogCanvas: HTMLCanvasElement | null = null;
 
@@ -112,7 +130,12 @@ function drawFogOfWar(ctx: CanvasRenderingContext2D, state: MultiplayerSurvivalS
   ctx.drawImage(fog, 0, 0);
 }
 
-export function renderMultiplayerSurvival(ctx: CanvasRenderingContext2D, state: MultiplayerSurvivalState, debug: MultiplayerSurvivalDebugToggles = DEFAULT_DEBUG_TOGGLES): void {
+export function renderMultiplayerSurvival(
+  ctx: CanvasRenderingContext2D,
+  state: MultiplayerSurvivalState,
+  debug: MultiplayerSurvivalDebugToggles = DEFAULT_DEBUG_TOGGLES,
+  ownPlayerId?: string,
+): void {
   const { map } = state;
   const scale = computeWorldScale(map.width, map.height);
 
@@ -218,7 +241,7 @@ export function renderMultiplayerSurvival(ctx: CanvasRenderingContext2D, state: 
   // žádný vliv na herní logiku (ta je pořád per-entita v engine/tick.ts).
   for (let i = 0; i < state.players.length; i++) {
     const player = state.players[i];
-    const bodyColor = PLAYER_COLORS[i % PLAYER_COLORS.length];
+    const bodyColor = PLAYER_COLORS[playerColorIndex(player.id)];
     const facingAngle = DIRECTION_ANGLES[player.direction];
 
     if (debug.showPlayerCone) {
@@ -261,6 +284,16 @@ export function renderMultiplayerSurvival(ctx: CanvasRenderingContext2D, state: 
       ctx.stroke();
     }
 
+    // Vlastní postava — jasně odlišená "TY" štítkem nad hlavou (viz zadání
+    // "jasné rozlišení vlastní postavy"), nezávisle na debug togglech.
+    if (ownPlayerId && player.id === ownPlayerId) {
+      ctx.fillStyle = "#f8fafc";
+      ctx.font = "bold 11px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("TY", player.x, player.y - player.radius - 10);
+      ctx.textAlign = "left";
+    }
+
     if (debug.showTargetPlayerId) {
       ctx.fillStyle = bodyColor.fill;
       ctx.font = "10px monospace";
@@ -281,7 +314,7 @@ export function renderMultiplayerSurvival(ctx: CanvasRenderingContext2D, state: 
   // HUD — mimo scale/translate, pevné pixely.
   ctx.fillStyle = "#6fe3a0";
   ctx.font = "12px monospace";
-  ctx.fillText(`status: ${state.status} · t=${(state.elapsedMs / 1000).toFixed(1)}s`, 8, 16);
+  ctx.fillText(`round: ${state.roundStatus} · t=${(state.elapsedMs / 1000).toFixed(1)}s`, 8, 16);
   const primary = state.players[0];
   if (primary) {
     ctx.fillText(`ammo: ${primary.ammo}  items: ${primary.collectedItemIds.length}`, 8, 32);

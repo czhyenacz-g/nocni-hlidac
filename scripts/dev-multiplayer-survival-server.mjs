@@ -8,5 +8,9 @@ import { startMultiplayerSurvivalDevServer } from "../game/multiplayer-survival/
 
 const port = Number(process.env.MULTIPLAYER_SURVIVAL_WS_PORT ?? 4001);
 const corsOrigins = (process.env.MULTIPLAYER_SURVIVAL_CORS_ORIGINS ?? "http://localhost:3000,http://localhost:3001").split(",");
+// Jen pro lokální rychlé testování 5minutového kola (viz README.md "Jak
+// dočasně zkrátit kolo pro test") — produkční výchozí (ROUND_DURATION_MS)
+// se použije, pokud proměnná není nastavená.
+const roundDurationMs = process.env.MULTIPLAYER_SURVIVAL_ROUND_MS ? Number(process.env.MULTIPLAYER_SURVIVAL_ROUND_MS) : undefined;
 
-startMultiplayerSurvivalDevServer(port, corsOrigins);
+startMultiplayerSurvivalDevServer(port, corsOrigins, { roundDurationMs });

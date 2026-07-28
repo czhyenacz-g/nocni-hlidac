@@ -10,7 +10,8 @@ import { MultiplayerSurvivalInputs, MultiplayerSurvivalState, PlayerId } from ".
 /** Jedna pevná dev místnost — žádné lobby/matchmaking (viz README.md rozsah týhle směny). */
 export const DEV_ROOM_CODE = "dev-room";
 
-export type PlayerSlot = "player-1" | "player-2";
+/** `player-<n>` (1-based, `n <= MAX_PLAYERS`, viz engine/config.ts) — přidělené podle prvního volného slotu, ne podle klávesnice. */
+export type PlayerSlot = PlayerId;
 
 export interface JoinRequest {
   /** Kód místnosti — dnes vždy DEV_ROOM_CODE, pole existuje jen kvůli tvaru zprávy, ne kvůli budoucí rozšiřitelnosti (žádné lobby se neplánuje). */
@@ -27,6 +28,11 @@ export interface JoinedResponse {
 
 export interface JoinErrorResponse {
   message: string;
+}
+
+/** Klientem vyžádaný restart kola (jen smysluplné, když je kolo "won"/"lost" — viz server/room.ts#restartRound, který jinak vstup ignoruje). Kdokoli připojený smí restart vyžádat, žádné "host" oprávnění (mimo rozsah týhle fáze). */
+export interface RestartRoundRequest {
+  code: string;
 }
 
 export interface SnapshotMessage {
@@ -49,6 +55,7 @@ export interface ClientToServerEvents {
   join: (request: JoinRequest) => void;
   input: (input: Omit<MultiplayerSurvivalInputs[number], "playerId">) => void;
   ping: (message: PingMessage) => void;
+  restart_round: (request: RestartRoundRequest) => void;
 }
 
 /**

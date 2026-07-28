@@ -56,7 +56,7 @@ export default function MultiplayerSurvivalDevPage() {
     [PLAYER_2_ID]: { ...EMPTY_KEYBOARD_MOVE_STATE },
   });
   const wasFiringRef = useRef<Record<PlayerId, boolean>>({ [PLAYER_1_ID]: false, [PLAYER_2_ID]: false });
-  const [status, setStatus] = useState(stateRef.current.status);
+  const [status, setStatus] = useState(stateRef.current.roundStatus);
   const [hud, setHud] = useState(() => Object.fromEntries(stateRef.current.players.map((p) => [p.id, { ammo: p.ammo, items: 0, alive: true }])));
   const [debug, setDebug] = useState<MultiplayerSurvivalDebugToggles>(DEFAULT_DEBUG_TOGGLES);
   const debugRef = useRef(debug);
@@ -131,7 +131,7 @@ export default function MultiplayerSurvivalDevPage() {
         }
       }
 
-      setStatus(after.status);
+      setStatus(after.roundStatus);
       setHud(Object.fromEntries(after.players.map((p) => [p.id, { ammo: p.ammo, items: p.collectedItemIds.length, alive: p.alive }])));
 
       const ctx = canvasRef.current?.getContext("2d");

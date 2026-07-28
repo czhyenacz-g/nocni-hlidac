@@ -18,7 +18,8 @@
 
 import { Server as IOServer } from "socket.io";
 import * as http from "node:http";
-import { createDevRoom, DevRoom, joinRoom, markSlotConnection, nextSnapshotSeq, setPlayerInput, tickRoom } from "./room";
+import { MAX_PLAYERS } from "../engine/config";
+import { createDevRoom, DevRoom, joinRoom, markSlotConnection, nextSnapshotSeq, restartRound, setPlayerInput, tickRoom } from "./room";
 import { ClientToServerEvents, DEV_ROOM_CODE, JoinRequest, ServerToClientEvents } from "./protocol";
 import { PlayerId } from "../state/types";
 
@@ -30,13 +31,18 @@ export interface MultiplayerSurvivalDevServerHandle {
   stop: () => void;
 }
 
-export function attachMultiplayerSurvivalSocket(httpServer: http.Server, corsOrigins: string[]): MultiplayerSurvivalDevServerHandle {
+export interface MultiplayerSurvivalDevServerOptions {
+  /** Přebije `ROUND_DURATION_MS` (engine/config.ts) — jen pro lokální zkrácené testování (viz README.md), produkční deploy tenhle parametr nepoužívá. */
+  roundDurationMs?: number;
+}
+
+export function attachMultiplayerSurvivalSocket(httpServer: http.Server, corsOrigins: string[], options: MultiplayerSurvivalDevServerOptions = {}): MultiplayerSurvivalDevServerHandle {
   const io = new IOServer<ClientToServerEvents, ServerToClientEvents>(httpServer, {
     cors: { origin: corsOrigins, methods: ["GET", "POST"] },
     path: "/socket.io/",
   });
 
-  const room = createDevRoom();
+  const room = createDevRoom(options.roundDurationMs);
 
   io.on("connection", (socket) => {
     let joinedPlayerId: PlayerId | null = null;
@@ -48,7 +54,7 @@ export function attachMultiplayerSurvivalSocket(httpServer: http.Server, corsOri
       }
       const result = joinRoom(room, request.token);
       if (!result.ok) {
-        socket.emit("error", { message: "Room is full (max 2 players in this dev room)" });
+        socket.emit("error", { message: `Room is full (max ${MAX_PLAYERS} players in this dev room)` });
         return;
       }
       joinedPlayerId = result.playerId;
@@ -64,6 +70,14 @@ export function attachMultiplayerSurvivalSocket(httpServer: http.Server, corsOri
 
     socket.on("ping", (message) => {
       socket.emit("pong", { clientTimeMs: message.clientTimeMs, serverTimeMs: Date.now() });
+    });
+
+    // Restart je no-op v room.ts, dokud kolo neskončilo (won/lost) — bezpečné
+    // zavolat z libovolného joinnutého klienta, žádné "host" oprávnění v
+    // týhle fázi (viz zadání "nepřidávej zbytečně enterprise-level" věci).
+    socket.on("restart_round", (request) => {
+      if (!joinedPlayerId || request.code !== DEV_ROOM_CODE) return;
+      restartRound(room);
     });
 
     // Oprava #1 (viz komentář nahoře) — Osmá liga tenhle handler vůbec nemá.
@@ -90,10 +104,10 @@ export function attachMultiplayerSurvivalSocket(httpServer: http.Server, corsOri
   };
 }
 
-/** Samostatný spustitelný dev server — viz scripts/dev-multiplayer-survival-server.mjs. Ne součást Next.js appky (dlouho běžící proces, na Vercelu serverless funkce nefunguje). */
-export function startMultiplayerSurvivalDevServer(port: number, corsOrigins: string[]): MultiplayerSurvivalDevServerHandle {
+/** Samostatný spustitelný dev server — viz scripts/dev-multiplayer-survival-server.mjs. Ne součást Next.js appky (dlouho běžící proces, na Vercelu serverless funkce nefunguje — pro veřejný deploy potřebuje vlastní dlouho běžící Node proces, viz README.md "Nasazení"). */
+export function startMultiplayerSurvivalDevServer(port: number, corsOrigins: string[], options: MultiplayerSurvivalDevServerOptions = {}): MultiplayerSurvivalDevServerHandle {
   const httpServer = http.createServer();
-  const handle = attachMultiplayerSurvivalSocket(httpServer, corsOrigins);
+  const handle = attachMultiplayerSurvivalSocket(httpServer, corsOrigins, options);
   httpServer.listen(port, () => {
     // eslint-disable-next-line no-console
     console.log(`[multiplayer-survival] dev server listening on :${port} (room "${DEV_ROOM_CODE}")`);

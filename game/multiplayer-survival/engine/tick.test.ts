@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createInitialMultiplayerSurvivalState, tickMultiplayerSurvival } from "./tick";
 import { MultiplayerSurvivalInputs, MultiplayerSurvivalState } from "../state/types";
+import { ROUND_DURATION_MS } from "./config";
 
 function noInputFor(playerIds: string[]): MultiplayerSurvivalInputs {
   return playerIds.map((playerId) => ({ playerId, moveX: 0, moveY: 0, firing: false }));
@@ -11,8 +12,15 @@ describe("createInitialMultiplayerSurvivalState", () => {
     const state = createInitialMultiplayerSurvivalState();
     expect(state.players).toHaveLength(1);
     expect(state.monsters).toHaveLength(1);
-    expect(state.status).toBe("playing");
+    expect(state.roundStatus).toBe("playing");
+    expect(state.roundEndReason).toBeNull();
+    expect(state.remainingMs).toBe(ROUND_DURATION_MS);
     expect(state.elapsedMs).toBe(0);
+  });
+
+  it("starts as waiting (not playing) with no players — a round has nobody to survive yet", () => {
+    const state = createInitialMultiplayerSurvivalState([], ["m1"]);
+    expect(state.roundStatus).toBe("waiting");
   });
 
   it("supports arrays of multiple players and monsters", () => {
@@ -141,7 +149,8 @@ describe("tickMultiplayerSurvival — monster touching a player", () => {
     const next = tickMultiplayerSurvival(touching, noInputFor([touching.players[0].id]), 16);
 
     expect(next.players[0].alive).toBe(false);
-    expect(next.status).toBe("all_players_down");
+    expect(next.roundStatus).toBe("lost");
+    expect(next.roundEndReason).toBe("caught");
   });
 
   it("does not knock the player down when the touching monster is stunned", () => {
@@ -155,7 +164,53 @@ describe("tickMultiplayerSurvival — monster touching a player", () => {
     const next = tickMultiplayerSurvival(touching, noInputFor([touching.players[0].id]), 16);
 
     expect(next.players[0].alive).toBe(true);
-    expect(next.status).toBe("playing");
+    expect(next.roundStatus).toBe("playing");
+  });
+
+  it("ends the round the instant ANY player is caught, even with a second player still alive", () => {
+    const state = createInitialMultiplayerSurvivalState(["near", "far"], ["m1"]);
+    const monster = state.monsters[0];
+    const players = [
+      { ...state.players[0], id: "near", x: monster.x, y: monster.y },
+      { ...state.players[1], id: "far", x: monster.x + 500, y: monster.y + 500 },
+    ];
+    const next = tickMultiplayerSurvival({ ...state, players }, noInputFor(["near", "far"]), 16);
+
+    expect(next.players.find((p) => p.id === "near")?.alive).toBe(false);
+    expect(next.players.find((p) => p.id === "far")?.alive).toBe(true);
+    expect(next.roundStatus).toBe("lost");
+    expect(next.roundEndReason).toBe("caught");
+  });
+});
+
+describe("tickMultiplayerSurvival — round timer", () => {
+  it("counts remainingMs down by deltaMs while playing", () => {
+    const state = createInitialMultiplayerSurvivalState();
+    const next = tickMultiplayerSurvival(state, noInputFor([state.players[0].id]), 1000);
+    expect(next.remainingMs).toBe(ROUND_DURATION_MS - 1000);
+  });
+
+  it("ends the round as won once remainingMs reaches 0, with nobody caught", () => {
+    const state = { ...createInitialMultiplayerSurvivalState(), remainingMs: 50 };
+    const next = tickMultiplayerSurvival(state, noInputFor([state.players[0].id]), 100);
+
+    expect(next.remainingMs).toBe(0);
+    expect(next.roundStatus).toBe("won");
+    expect(next.roundEndReason).toBe("timeout");
+  });
+
+  it("does not simulate further once the round is won or lost — engine is frozen", () => {
+    const wonState: MultiplayerSurvivalState = { ...createInitialMultiplayerSurvivalState(), roundStatus: "won", roundEndReason: "timeout" };
+    const [player] = wonState.players;
+    const next = tickMultiplayerSurvival(wonState, [{ playerId: player.id, moveX: 1, moveY: 0, firing: false }], 100);
+
+    expect(next).toBe(wonState);
+  });
+
+  it("does not simulate while waiting for players", () => {
+    const waitingState = createInitialMultiplayerSurvivalState([], ["m1"]);
+    const next = tickMultiplayerSurvival(waitingState, [], 1000);
+    expect(next).toBe(waitingState);
   });
 });
 

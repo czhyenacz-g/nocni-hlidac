@@ -46,6 +46,12 @@ export const PLAYER_VISION_RAY_STEP_PX = 8;
 export const ITEM_RADIUS = 10;
 export const LOOT_PICKUP_DURATION_MS = 2_000;
 
+/** Délka jednoho survival kola — jediné místo, které tuhle hodnotu určuje (viz zadání "nedávej natvrdo na mnoha místech"). Server (server/room.ts) může tuhle výchozí hodnotu přebít přes `MULTIPLAYER_SURVIVAL_ROUND_MS` env proměnnou pro lokální testování, viz README.md. */
+export const ROUND_DURATION_MS = 5 * 60 * 1000;
+
+/** Kolik hráčů se najednou vejde do jedné dev místnosti (viz server/room.ts) — dost na "pošlu odkaz partě kamarádů", bez lobby/matchmakingu. */
+export const MAX_PLAYERS = 6;
+
 /**
  * `mapWidth`/`mapHeight` sedí na `PROTOTYPE_MAP` (viz maps/prototypeMap.ts,
  * SERVICE_FLOOR_STORAGE.world) — modul zatím počítá jen s touhle jednou

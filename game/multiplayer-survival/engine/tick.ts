@@ -11,7 +11,7 @@
 import { circlesTouch, directionFromVector, isEnemyHit, moveWithWallSliding, updateLootingProgressMs } from "../../minigame/logic";
 import { tickMonsterAi } from "../ai/monsterAi";
 import { PROTOTYPE_MAP, PROTOTYPE_MONSTER_SPAWNS, PROTOTYPE_PICKUPS, PROTOTYPE_PLAYER_SPAWNS } from "../maps/prototypeMap";
-import { AMMO_START, CONE_ANGLE_RAD, CONE_RANGE, ENEMY_RADIUS, ITEM_RADIUS, LOOT_PICKUP_DURATION_MS, PLAYER_RADIUS, PLAYER_SPEED, SHOT_FLASH_DURATION_MS } from "./config";
+import { AMMO_START, CONE_ANGLE_RAD, CONE_RANGE, ENEMY_RADIUS, ITEM_RADIUS, LOOT_PICKUP_DURATION_MS, PLAYER_RADIUS, PLAYER_SPEED, ROUND_DURATION_MS, SHOT_FLASH_DURATION_MS } from "./config";
 import { MonsterState, MultiplayerSurvivalInputs, MultiplayerSurvivalState, PickupState, PlayerState } from "../state/types";
 
 /**
@@ -70,7 +70,13 @@ export function createInitialMultiplayerSurvivalState(playerIds: string[] = ["pl
   });
 
   return {
-    status: "playing",
+    // Bez hráčů (viz server/room.ts#createDevRoom, volané dřív, než kdokoliv
+    // připojí) není co "hrát" — kolo čeká, dokud první join nespustí
+    // room.ts#startRound. Dev sandbox (/dev/multiplayer-survival) volá tuhle
+    // funkci rovnou s hráči od začátku, takže tam kolo běží okamžitě.
+    roundStatus: playerIds.length > 0 ? "playing" : "waiting",
+    roundEndReason: null,
+    remainingMs: ROUND_DURATION_MS,
     elapsedMs: 0,
     map: PROTOTYPE_MAP,
     players,
@@ -157,6 +163,11 @@ function applyShotsToMonster(monster: MonsterState, shooters: PlayerState[], wal
  * princip jako updateEnemyAi).
  */
 export function tickMultiplayerSurvival(state: MultiplayerSurvivalState, inputs: MultiplayerSurvivalInputs, deltaMs: number): MultiplayerSurvivalState {
+  // Kolo, které čeká na hráče nebo už skončilo (výhra/prohra), se dál
+  // nesimuluje — žádný pohyb, žádná AI, žádný odpočet času. Rozjet ho zase
+  // je výhradně serverová akce (room.ts#startRound/restartRound), ne tik.
+  if (state.roundStatus !== "playing") return state;
+
   const { map } = state;
   const inputByPlayerId = new Map(inputs.map((input) => [input.playerId, input]));
 
@@ -206,10 +217,24 @@ export function tickMultiplayerSurvival(state: MultiplayerSurvivalState, inputs:
     return touchedByLivingMonster ? { ...player, alive: false } : player;
   });
 
-  const status = finalPlayers.every((player) => !player.alive) ? "all_players_down" : "playing";
+  // "Chycení" = kterýkoli DŘÍVE živý hráč je po tomhle tiku dole — kolo končí
+  // OKAMŽITĚ (na rozdíl od dřívějšího "all_players_down"), viz zadání
+  // "chycení kteréhokoli aktivního hráče monstrem ukončí celé kolo".
+  const caughtThisTick = state.players.some((before) => {
+    if (!before.alive) return false;
+    const after = finalPlayers.find((player) => player.id === before.id);
+    return after !== undefined && !after.alive;
+  });
+
+  const remainingMs = Math.max(0, state.remainingMs - deltaMs);
+
+  const roundStatus = caughtThisTick ? "lost" : remainingMs <= 0 ? "won" : "playing";
+  const roundEndReason = caughtThisTick ? "caught" : remainingMs <= 0 ? "timeout" : null;
 
   return {
-    status,
+    roundStatus,
+    roundEndReason,
+    remainingMs,
     elapsedMs: state.elapsedMs + deltaMs,
     map,
     players: finalPlayers,

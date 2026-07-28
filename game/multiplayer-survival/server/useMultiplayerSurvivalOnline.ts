@@ -34,6 +34,8 @@ export interface MultiplayerSurvivalOnlineHookResult {
   lastAppliedSeq: number;
   pingMs: number | null;
   sendInput: (moveX: number, moveY: number, firing: boolean) => void;
+  /** Vyžádá nové kolo (viz server/room.ts#restartRound) — no-op na serveru, dokud aktuální kolo neskončilo (won/lost). */
+  sendRestart: () => void;
 }
 
 function readStoredToken(): string | null {
@@ -107,7 +109,11 @@ export function useMultiplayerSurvivalOnline(serverUrl: string): MultiplayerSurv
     socketRef.current?.emit("input", { moveX, moveY, firing });
   }, []);
 
-  return { status, errorMessage, playerId, state, lastAppliedSeq, pingMs, sendInput };
+  const sendRestart = useCallback(() => {
+    socketRef.current?.emit("restart_round", { code: DEV_ROOM_CODE });
+  }, []);
+
+  return { status, errorMessage, playerId, state, lastAppliedSeq, pingMs, sendInput, sendRestart };
 }
 
 /**

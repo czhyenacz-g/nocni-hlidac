@@ -7,7 +7,8 @@ export type {
   MultiplayerSurvivalMap,
   MultiplayerSurvivalInputs,
   MultiplayerSurvivalPlayerInput,
-  MultiplayerSurvivalStatus,
+  MultiplayerSurvivalRoundStatus,
+  MultiplayerSurvivalRoundEndReason,
   PlayerState,
   MonsterState,
   PickupState,
@@ -16,6 +17,9 @@ export type {
 } from "./state/types";
 
 export { createInitialMultiplayerSurvivalState, tickMultiplayerSurvival } from "./engine/tick";
+export { formatRemainingTime } from "./engine/formatRoundTime";
+export { computeRoundProgress, getMonsterBoostConfig } from "./engine/monsterBoostConfig";
+export type { MonsterBoostConfig } from "./engine/monsterBoostConfig";
 export { renderMultiplayerSurvival, DEFAULT_DEBUG_TOGGLES } from "./rendering/renderCanvas";
 export type { MultiplayerSurvivalDebugToggles } from "./rendering/renderCanvas";
 export { PROTOTYPE_MAP } from "./maps/prototypeMap";
