@@ -24,6 +24,8 @@ export const metadata: Metadata = {
     title: "Noční hlídač — Objekt 13: První směna",
     description: "Kamery šumí. Dveře nevydrží věčně. Přežij do rána.",
   },
+  // Seznam Webmaster Tools — ověření vlastnictví domény.
+  other: { "seznam-wmt": "xPpmYtltgJ85A2bNnvhDARfvR4WaOtvO" },
 };
 
 // Bez tohohle prohlížeč na mobilu často defaultně "oddálí" stránku, takže by
