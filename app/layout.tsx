@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     description: "Kamery šumí. Dveře nevydrží věčně. Přežij do rána.",
   },
   // Seznam Webmaster Tools — ověření vlastnictví domény.
-  other: { "seznam-wmt": "xPpmYtltgJ85A2bNnvhDARfvR4WaOtvO" },
+  other: { "seznam-wmt": "q0t9gBVZcbImhASsIjFUBYlg4HwferoO" },
 };
 
 // Bez tohohle prohlížeč na mobilu často defaultně "oddálí" stránku, takže by
